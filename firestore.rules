@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permite leer y escribir en CUALQUIER documento si el usuario está autenticado.
+    // Esto es ideal para el PoC, pero inseguro para producción.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
