@@ -1,4 +1,4 @@
-// features/auth/presentation/bloc/auth_state.dart
+// lib/features/auth/presentation/bloc/auth_state.dart  
 
 part of 'auth_bloc.dart';
 
@@ -7,35 +7,34 @@ abstract class AuthState extends Equatable {
   const AuthState();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
-/// Estado inicial, la app no sabe si el usuario está autenticado.
+/// El estado inicial, antes de que se haya verificado la autenticación.
 class AuthInitial extends AuthState {}
 
-/// Estado de carga, se muestra mientras se realiza una operación asíncrona (ej. login).
+/// Indica que una operación de autenticación está en progreso.
 class AuthLoading extends AuthState {}
 
-/// Estado que indica que el usuario está autenticado correctamente.
-/// Contiene la información del usuario.
+/// Indica que el usuario está autenticado exitosamente y contiene los datos del usuario.
 class Authenticated extends AuthState {
   final User user;
 
   const Authenticated({required this.user});
 
   @override
-  List<Object> get props => [user];
+  List<Object?> get props => [user];
 }
 
-/// Estado que indica que no hay un usuario autenticado.
+/// Indica que no hay ningún usuario autenticado.
 class Unauthenticated extends AuthState {}
 
-/// Estado que representa un error durante una operación de autenticación.
+/// Indica que ocurrió un error durante el proceso de autenticación.
 class AuthError extends AuthState {
   final String message;
 
   const AuthError({required this.message});
 
   @override
-  List<Object> get props => [message];
+  List<Object?> get props => [message];
 }

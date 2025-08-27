@@ -1,7 +1,7 @@
 // lib/features/auth/data/models/user_model.dart
 
 import '../../domain/entities/user.dart';
-import 'package:meta/meta.dart';
+// import 'package:meta/meta.dart';
 
 /// UserModel es una implementación concreta de la entidad User.
 /// Contiene la lógica para convertir datos desde/hacia JSON,

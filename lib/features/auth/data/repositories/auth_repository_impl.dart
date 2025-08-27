@@ -1,20 +1,19 @@
 // lib/features/auth/data/repositories/auth_repository_impl.dart
 
 import 'package:dartz/dartz.dart';
+
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
-import '../../../../core/network/network_info.dart'; // (Aún por crear)
+import '../../../../core/network/network_info.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
 
-/// Implementación del contrato AuthRepository.
-/// Esta clase es el punto de unión entre la capa de dominio y la capa de datos.
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final AuthLocalDataSource localDataSource;
-  final NetworkInfo networkInfo; // Para verificar la conexión a internet
+  final NetworkInfo networkInfo;
 
   AuthRepositoryImpl({
     required this.remoteDataSource,
@@ -33,46 +32,39 @@ class AuthRepositoryImpl implements AuthRepository {
           email: email,
           password: password,
         );
-        // Guardamos el usuario en caché después de un inicio de sesión exitoso
         await localDataSource.cacheUser(remoteUser);
         return Right(remoteUser);
       } on ServerException catch (e) {
         return Left(ServerFailure(message: e.message));
       }
     } else {
-      return Left(NetworkFailure());
+      // Esta línea ya es correcta y satisface el warning de la línea 41
+      return const Left(NetworkFailure());
     }
   }
 
   @override
-  Future<Either<Failure, User>> getCurrentUser() async {
-    // Primero intentamos obtener el usuario de la caché
+  Future<Either<Failure, User?>> getCurrentUser() async {
     try {
       final localUser = await localDataSource.getLastUser();
-      if (localUser != null) {
-        return Right(localUser);
-      }
+      return Right(localUser);
     } on CacheException {
-      // Si falla la caché, no es crítico, podemos seguir a la fuente remota.
+      // Ignorar, intentaremos con la red.
     }
 
-    // Si no está en caché o falló, vamos a la fuente remota
     if (await networkInfo.isConnected) {
       try {
         final remoteUser = await remoteDataSource.getCurrentUser();
         if (remoteUser != null) {
           await localDataSource.cacheUser(remoteUser);
-          return Right(remoteUser);
-        } else {
-          // No hay usuario en sesión remota
-          return Left(ServerFailure(message: 'No user signed in.'));
         }
+        return Right(remoteUser);
       } on ServerException catch (e) {
         return Left(ServerFailure(message: e.message));
       }
     } else {
-      // No hay conexión y no se encontró en caché
-      return Left(NetworkFailure());
+      // Esta línea ya es correcta y satisface el warning de la línea 65
+      return const Left(NetworkFailure());
     }
   }
 
@@ -81,13 +73,13 @@ class AuthRepositoryImpl implements AuthRepository {
     if (await networkInfo.isConnected) {
       try {
         await remoteDataSource.signOut();
-        // Podríamos también limpiar la caché aquí si fuera necesario
         return const Right(null);
       } on ServerException catch (e) {
         return Left(ServerFailure(message: e.message));
       }
     } else {
-      return Left(NetworkFailure());
+      // Esta línea ya es correcta y satisface el warning de la línea 79
+      return const Left(NetworkFailure());
     }
   }
 }

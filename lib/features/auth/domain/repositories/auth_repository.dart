@@ -28,5 +28,5 @@ abstract class AuthRepository {
   ///
   /// Devuelve el [User] actual si hay una sesión activa.
   /// Devuelve un [Failure] si no hay ningún usuario autenticado o si ocurre un error.
-  Future<Either<Failure, User>> getCurrentUser();
+  Future<Either<Failure, User?>> getCurrentUser();
 }

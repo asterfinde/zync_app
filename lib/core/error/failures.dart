@@ -1,31 +1,29 @@
-// core/error/failures.dart
+// lib/core/error/failures.dart
 
 import 'package:equatable/equatable.dart';
 
-/// Clase base abstracta para los errores (Failures).
-/// En Arquitectura Limpia, los errores de las capas externas (Data, Presentation)
-/// se convierten en un Failure para ser manejados de forma consistente.
 abstract class Failure extends Equatable {
-  // Si se usan propiedades, se deben pasar al constructor.
+  // Si tienes propiedades aquí, asegúrate de que el constructor sea const.
   const Failure([List properties = const <dynamic>[]]);
-
+  
   @override
-  List<Object> get props => [];
+  List<Object> get props => []; // Puedes dejar la lista vacía si no hay props.
 }
 
-// Failures generales de la aplicación
-
-/// Se produce cuando hay un error en el servidor (ej. API, base de datos remota).
+// Clases de fallos específicos
 class ServerFailure extends Failure {
   final String? message;
+
+  // --- AÑADE 'const' AQUÍ ---
   const ServerFailure({this.message});
 }
 
-/// Se produce cuando hay un error con la caché local.
-class CacheFailure extends Failure {
-  final String? message;
-  const CacheFailure({this.message});
+class NetworkFailure extends Failure {
+  // --- AÑADE 'const' AQUÍ ---
+  const NetworkFailure();
 }
 
-/// Se produce cuando no hay conexión a internet.
-class NetworkFailure extends Failure {}
+class CacheFailure extends Failure {
+  // --- AÑADE 'const' AQUÍ ---
+  const CacheFailure();
+}

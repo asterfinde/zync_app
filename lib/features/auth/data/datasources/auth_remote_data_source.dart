@@ -22,20 +22,3 @@ abstract class AuthRemoteDataSource {
 }
 
 
-// -----------------------------------------------------------------
-
-
-// features/auth/data/datasources/auth_local_data_source.dart
-
-import '../models/user_model.dart';
-
-/// Contrato para la fuente de datos local.
-/// Define los métodos para guardar y recuperar datos del usuario en caché.
-/// Lanzará una [CacheException] en caso de errores.
-abstract class AuthLocalDataSource {
-  /// Guarda el [UserModel] en la caché local (ej. SharedPreferences).
-  Future<void> cacheUser(UserModel userToCache);
-
-  /// Obtiene el último [UserModel] guardado en la caché.
-  Future<UserModel?> getLastUser();
-}
