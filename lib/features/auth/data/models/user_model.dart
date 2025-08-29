@@ -1,32 +1,48 @@
 // lib/features/auth/data/models/user_model.dart
 
-import '../../domain/entities/user.dart';
-// import 'package:meta/meta.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase;
+import 'package:zync_app/features/auth/domain/entities/user.dart';
 
-/// UserModel es una implementación concreta de la entidad User.
-/// Contiene la lógica para convertir datos desde/hacia JSON,
-/// lo cual es una responsabilidad de la capa de datos.
 class UserModel extends User {
   const UserModel({
-    required String uid,
-    required String email,
-  }) : super(uid: uid, email: email);
+    required super.uid,
+    required super.email,
+    required super.name,
+  });
 
-  /// Factory constructor para crear un UserModel a partir de un mapa JSON.
-  /// Esto es útil cuando se reciben datos de una API.
-  factory UserModel.fromJson(Map<String, dynamic> json) {
+  factory UserModel.fromFirebase(firebase.User user) {
     return UserModel(
-      uid: json['uid'],
-      email: json['email'],
+      uid: user.uid,
+      email: user.email ?? '',
+      name: user.displayName ?? 'Usuario',
+    );
+  }
+  
+  // CORRECCIÓN: Se añade el factory 'fromSnapshot' que es necesario
+  // para la hidratación de datos en la capa de datos del círculo.
+  factory UserModel.fromSnapshot(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return UserModel(
+      uid: doc.id,
+      email: data['email'] ?? '',
+      name: data['name'] ?? '',
     );
   }
 
-  /// Método para convertir un UserModel a un mapa JSON.
-  /// Esto es útil para enviar datos a una API.
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      uid: json['uid'] ?? '',
+      email: json['email'] ?? '',
+      name: json['name'] ?? '',
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'uid': uid,
       'email': email,
+      'name': name,
     };
   }
 }

@@ -1,4 +1,4 @@
-package com.example.zync_app
+package com.datainfers.zync
 
 import io.flutter.embedding.android.FlutterActivity
 

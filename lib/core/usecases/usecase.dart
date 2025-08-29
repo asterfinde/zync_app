@@ -12,6 +12,10 @@ abstract class UseCase<Type, Params> {
   Future<Either<Failure, Type>> call(Params params);
 }
 
+abstract class StreamUseCase<Type, Params> {
+  Stream<Either<Failure, Type>> call(Params params);
+}
+
 /// Un objeto para ser usado cuando un caso de uso no requiere parámetros.
 class NoParams extends Equatable {
   @override
