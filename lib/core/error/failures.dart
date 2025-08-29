@@ -3,27 +3,23 @@
 import 'package:equatable/equatable.dart';
 
 abstract class Failure extends Equatable {
-  // Si tienes propiedades aquí, asegúrate de que el constructor sea const.
-  const Failure([List properties = const <dynamic>[]]);
-  
+  final String message;
+
+  const Failure({required this.message});
+
   @override
-  List<Object> get props => []; // Puedes dejar la lista vacía si no hay props.
+  List<Object> get props => [message];
 }
 
 // Clases de fallos específicos
 class ServerFailure extends Failure {
-  final String? message;
-
-  // --- AÑADE 'const' AQUÍ ---
-  const ServerFailure({this.message});
-}
-
-class NetworkFailure extends Failure {
-  // --- AÑADE 'const' AQUÍ ---
-  const NetworkFailure();
+  const ServerFailure({required super.message});
 }
 
 class CacheFailure extends Failure {
-  // --- AÑADE 'const' AQUÍ ---
-  const CacheFailure();
+  const CacheFailure({required super.message});
+}
+
+class NetworkFailure extends Failure {
+  const NetworkFailure({required super.message});
 }

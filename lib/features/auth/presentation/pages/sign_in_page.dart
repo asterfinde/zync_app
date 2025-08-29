@@ -1,78 +1,51 @@
-// features/auth/presentation/pages/sign_in_page.dart
+// lib/features/auth/presentation/pages/sign_in_page.dart
 
+import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/auth_bloc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../provider/auth_provider.dart';
+import '../provider/auth_state.dart';
+import '../widgets/auth_form.dart';
 
-class SignInPage extends StatelessWidget {
-  const SignInPage({Key? key}) : super(key: key);
+class SignInPage extends ConsumerWidget {
+  const SignInPage({super.key});
+
+  void _submitAuthForm(WidgetRef ref, String email, String password) {
+    log("[SignInPage] _submitAuthForm called. Triggering signInOrRegister...");
+    ref.read(authProvider.notifier).signInOrRegister(email, password);
+  }
 
   @override
-  Widget build(BuildContext context) {
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
+  Widget build(BuildContext context, WidgetRef ref) {
+    log("[BUILD] SignInPage rebuilding...");
+
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next is AuthError) {
+        log("[SignInPage] Listener detected AuthError: ${next.message}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.message),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    });
+
+    final authState = ref.watch(authProvider);
+    log("[SignInPage] Watching authState. Current state is: $authState");
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Zync Auth')),
-      body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is Authenticated) {
-            // Navegar a la pantalla de inicio (HomePage)
-            // Navigator.of(context).pushReplacementNamed('/home');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Welcome ${state.user.email}')),
-            );
-          } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state is AuthLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Sign In or Register',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () {
-                    // Disparar el evento para iniciar sesión
-                    BlocProvider.of<AuthBloc>(context).add(
-                      SignInOrRegisterEvent(
-                        email: emailController.text.trim(),
-                        password: passwordController.text.trim(),
-                      ),
-                    );
-                  },
-                  child: const Text('CONTINUE'),
-                ),
-              ],
+      appBar: AppBar(title: const Text('Zync')),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: AuthForm(
+              submitFn: (email, password) => _submitAuthForm(ref, email, password),
+              isLoading: authState is AuthLoading,
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
