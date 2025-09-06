@@ -2,8 +2,8 @@ ESTRUCTURA DE DIRECTORIOS Y ARCHIVOS
 ========================================== 
  
 Ubicacion: C:\projects\zync_app\lib 
-Fecha de generacion: 2025-08-29 
-Hora de generacion: 10:50:54.09 
+Fecha de generacion: 2025-09-05 
+Hora de generacion: 11:00:21.30 
  
 ========================================== 
  
@@ -13,7 +13,7 @@ C:.
 |   firebase_options.dart
 |   generate-tree.bat
 |   main.dart
-|   tree-2025-08-29.txt
+|   tree-2025-09-05.txt
 |   
 +---core
 |   +---di
@@ -59,7 +59,6 @@ C:.
     |   |           sign_out.dart
     |   |           
     |   \---presentation
-    |       +---bloc
     |       +---pages
     |       |       sign_in_page.dart
     |       |       
@@ -78,9 +77,13 @@ C:.
         |   |       
         |   +---models
         |   |       circle_model.dart
+        |   |       user_status_model.dart
         |   |       
-        |   \---repositories
-        |           circle_repository_impl.dart
+        |   +---repositories
+        |   |       circle_repository_impl.dart
+        |   |       
+        |   \---services
+        |           geolocation_service_impl.dart
         |           
         +---domain
         |   +---entities
@@ -90,24 +93,30 @@ C:.
         |   +---repositories
         |   |       circle_repository.dart
         |   |       
+        |   +---services
+        |   |       geolocation_service.dart
+        |   |       
         |   \---usecases
         |           create_circle.dart
         |           get_circle_stream_for_user.dart
         |           join_circle.dart
-        |           update_circle_status.dart
+        |           send_user_status.dart
         |           
-        \---presentation
-            +---pages
-            |       home_page.dart
-            |       
-            +---provider
-            |       circle_provider.dart
-            |       circle_state.dart
-            |       
-            \---widgets
-                    in_circle_view.dart
-                    no_circle_view.dart
-                    
+        +---presentation
+        |   +---pages
+        |   |       home_page.dart
+        |   |       
+        |   +---provider
+        |   |       circle_provider.dart
+        |   |       circle_state.dart
+        |   |       
+        |   \---widgets
+        |           in_circle_view.dart
+        |           no_circle_view.dart
+        |           
+        \---services
+                quick_status_service.dart
+                
  
 ========================================== 
 Generado por: generate-tree.bat 

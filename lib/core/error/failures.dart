@@ -23,3 +23,8 @@ class CacheFailure extends Failure {
 class NetworkFailure extends Failure {
   const NetworkFailure({required super.message});
 }
+
+class PermissionFailure extends Failure {
+  // Constructor corregido para usar super-parameters
+  const PermissionFailure({required super.message});
+}
