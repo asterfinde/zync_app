@@ -3,61 +3,91 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:zync_app/features/auth/domain/entities/user.dart';
 import 'package:zync_app/features/circle/domain/entities/circle.dart' as circle_entity;
+import 'package:zync_app/features/circle/data/models/user_status_model.dart';
+import 'package:zync_app/features/auth/data/models/user_model.dart';
 
-class CircleModel {
-  final String id;
-  final String name;
-  final String invitationCode;
-  final List<User> members;
-  final Map<String, String> memberStatus;
-
+class CircleModel extends circle_entity.Circle {
   const CircleModel({
-    required this.id,
-    required this.name,
-    required this.invitationCode,
-    required this.members,
-    required this.memberStatus,
-  });
+    required super.id,
+    required super.name,
+    required super.invitationCode,
+    required super.members,
+    required Map<String, UserStatusModel> super.memberStatus,
+  }) : super();
 
-  factory CircleModel.fromSnapshot(DocumentSnapshot doc) {
+  static Future<CircleModel> fromSnapshot(DocumentSnapshot doc) async {
     final data = doc.data() as Map<String, dynamic>;
+    
+    final statusData = data['memberStatus'] as Map<String, dynamic>? ?? {};
+    final memberStatusMap = statusData.map((key, value) {
+      return MapEntry(key, UserStatusModel.fromMap(value as Map<String, dynamic>, key));
+    });
+
+    final List<String> memberUIDs = List<String>.from(data['members'] ?? []);
+    final List<User> hydratedMembers = [];
+
+    if (memberUIDs.isNotEmpty) {
+      final userFutures = memberUIDs.map((uid) {
+        return FirebaseFirestore.instance.collection('users').doc(uid).get();
+      }).toList();
+      
+      final userSnapshots = await Future.wait(userFutures);
+      
+      for (var userDoc in userSnapshots) {
+        if (userDoc.exists) {
+          hydratedMembers.add(UserModel.fromSnapshot(userDoc));
+        }
+      }
+    }
+
     return CircleModel(
       id: doc.id,
       name: data['name'] ?? '',
       invitationCode: data['invitation_code'] ?? '',
-      memberStatus: Map<String, String>.from(data['memberStatus'] ?? {}),
-      members: const [], // Se inicia vacío, se llenará en el repositorio
+      memberStatus: memberStatusMap,
+      members: hydratedMembers,
     );
   }
-
+  
+  // Este método ahora compilará sin errores porque UserStatusModel ya tiene .toEntity()
   circle_entity.Circle toEntity() {
+    final entityStatusMap = (memberStatus as Map<String, UserStatusModel>)
+        .map((key, model) => MapEntry(key, model.toEntity()));
+
     return circle_entity.Circle(
       id: id,
       name: name,
       invitationCode: invitationCode,
       members: members,
-      memberStatus: memberStatus,
+      memberStatus: entityStatusMap,
     );
   }
 
-  // CORRECCIÓN: Se reintroduce el método toJson() que es vital para escribir en Firestore.
-  // Convierte la lista de miembros de objetos User a una lista de UIDs (String).
   Map<String, dynamic> toJson() {
+    final firestoreStatusMap = (memberStatus as Map<String, UserStatusModel>)
+        .map((key, model) => MapEntry(key, model.toMap()));
+
     return {
       'name': name,
       'invitation_code': invitationCode,
       'members': members.map((user) => user.uid).toList(),
-      'memberStatus': memberStatus,
+      'memberStatus': firestoreStatusMap,
     };
   }
 
-  CircleModel copyWith({ List<User>? members }) {
+  CircleModel copyWith({
+    String? id,
+    String? name,
+    String? invitationCode,
+    List<User>? members,
+    Map<String, UserStatusModel>? memberStatus,
+  }) {
     return CircleModel(
-      id: id,
-      name: name,
-      invitationCode: invitationCode,
+      id: id ?? this.id,
+      name: name ?? this.name,
+      invitationCode: invitationCode ?? this.invitationCode,
       members: members ?? this.members,
-      memberStatus: memberStatus,
+      memberStatus: memberStatus ?? this.memberStatus as Map<String, UserStatusModel>,
     );
   }
 }

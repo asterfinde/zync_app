@@ -1,4 +1,6 @@
-import 'package:equatable/equatable.dart'; // <-- LÍNEA CORREGIDA
+// lib/features/auth/presentation/provider/auth_state.dart
+
+import 'package:equatable/equatable.dart';
 import '../../domain/entities/user.dart';
 
 abstract class AuthState extends Equatable {
