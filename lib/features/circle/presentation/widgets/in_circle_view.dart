@@ -3,13 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:developer';
-// CORRECCIÓN: Imports necesarios para Riverpod y el provider
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zync_app/features/circle/presentation/provider/circle_provider.dart';
 import '../../domain/entities/circle.dart';
 import '../../../auth/domain/entities/user.dart';
+import '../../domain/entities/user_status.dart';
 
-// CORRECCIÓN: Convertido a ConsumerWidget para poder usar Riverpod de forma segura
 class InCircleView extends ConsumerWidget {
   final Circle circle;
   const InCircleView({super.key, required this.circle});
@@ -63,21 +62,32 @@ class InCircleView extends ConsumerWidget {
           ),
           const Divider(),
           Expanded(
-            child: ListView.builder(
-              itemCount: circle.members.length,
-              itemBuilder: (context, index) {
-                final User member = circle.members[index];
-                return ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(
-                    (member.name.isNotEmpty)
-                        ? member.name
-                        : 'User: ${member.uid.substring(0, 6)}...',
+            child: circle.members.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Finding members...',
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: circle.members.length,
+                    itemBuilder: (context, index) {
+                      final User member = circle.members[index];
+                      final status = circle.memberStatus[member.uid];
+                      return ListTile(
+                        leading: Text(
+                          status?.statusType.emoji ?? '...',
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        title: Text(
+                          (member.name.isNotEmpty)
+                              ? member.name
+                              : 'User: ${member.uid.substring(0, 6)}...',
+                        ),
+                        subtitle: Text(status?.statusType.description ?? "No status yet"),
+                      );
+                    },
                   ),
-                  subtitle: Text(member.email),
-                );
-              },
-            ),
           ),
           const SizedBox(height: 16),
           Center(
@@ -85,14 +95,13 @@ class InCircleView extends ConsumerWidget {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               ),
-              // CORRECCIÓN: onPressed ahora es async y usa 'ref' para llamar al provider
-              onPressed: () async {
-                // TODO: Reemplazar 'emoji_de_prueba' con un selector de emojis
-                await ref
+              // CORRECCIÓN: Ahora que 'sendUserStatus' está restaurado en el provider, esta llamada funciona.
+              onPressed: () {
+                ref
                     .read(circleProvider.notifier)
-                    .updateCircleStatus("emoji_de_prueba");
+                    .sendUserStatus(StatusType.fine);
               },
-              child: const Text('Update My Status'),
+              child: const Text('Send "Fine" Status'),
             ),
           )
         ],

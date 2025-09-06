@@ -2,118 +2,100 @@
 
 import 'dart:async';
 import 'dart:developer';
-
-import 'package:zync_app/features/auth/presentation/provider/auth_provider.dart'; 
-import 'package:zync_app/features/auth/presentation/provider/auth_state.dart'; 
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zync_app/features/circle/domain/usecases/update_circle_status.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../domain/usecases/create_circle.dart';
-import '../../domain/usecases/get_circle_stream_for_user.dart';
-import '../../domain/usecases/join_circle.dart';
+import 'package:zync_app/features/auth/presentation/provider/auth_provider.dart';
+import 'package:zync_app/features/auth/presentation/provider/auth_state.dart';
+import 'package:zync_app/core/di/injection_container.dart';
+import 'package:zync_app/features/circle/domain/entities/user_status.dart';
+import 'package:zync_app/features/circle/domain/usecases/create_circle.dart';
+import 'package:zync_app/features/circle/domain/usecases/get_circle_stream_for_user.dart';
+import 'package:zync_app/features/circle/domain/usecases/join_circle.dart';
+import 'package:zync_app/features/circle/domain/usecases/send_user_status.dart';
 import 'circle_state.dart';
 
 class CircleNotifier extends StateNotifier<CircleState> {
   final CreateCircle _createCircle;
-  final JoinCircle _joinCircle;
+  final JoinCircle _joinCircle; // FUNCIONALIDAD RESTAURADA
   final GetCircleStreamForUser _getCircleStreamForUser;
-  final UpdateCircleStatus _updateCircleStatus;
+  final SendUserStatus _sendUserStatus; // FUNCIONALIDAD RESTAURADA
   final String? _userId;
 
   StreamSubscription? _circleSubscription;
 
   CircleNotifier({
     required CreateCircle createCircle,
-    required JoinCircle joinCircle,
+    required JoinCircle joinCircle, // FUNCIONALIDAD RESTAURADA
     required GetCircleStreamForUser getCircleStreamForUser,
-    required UpdateCircleStatus updateCircleStatus,
+    required SendUserStatus sendUserStatus, // FUNCIONALIDAD RESTAURADA
     required String? userId,
   })  : _createCircle = createCircle,
-        _joinCircle = joinCircle,
+        _joinCircle = joinCircle, // FUNCIONALIDAD RESTAURADA
         _getCircleStreamForUser = getCircleStreamForUser,
-        _updateCircleStatus = updateCircleStatus,
+        _sendUserStatus = sendUserStatus, // FUNCIONALIDAD RESTAURADA
         _userId = userId,
         super(CircleInitial()) {
     _listenToCircleChanges();
   }
-
+  
   void _listenToCircleChanges() {
-    if (_userId == null) { // <- AÑADE ESTE BLOQUE if
+    if (_userId == null) {
       state = NoCircle();
-      log("[CircleNotifier] HU: No hay usuario, estado -> NoCircle.");
       return;
     }
 
-    log("[CircleNotifier] HU: Iniciando escucha de cambios del círculo...");
     state = CircleLoading();
     _circleSubscription?.cancel();
+    
+    // CORRECCIÓN: Ahora que el UseCase devuelve un Stream, esta es la forma correcta de consumirlo.
     _circleSubscription =
-      _getCircleStreamForUser(GetCircleStreamParams(userId: _userId!)).listen( 
+        _getCircleStreamForUser(Params(_userId!)).listen(
       (either) {
-        log("[CircleNotifier] HU: El stream de círculo emitió nuevos datos.");
         either.fold(
           (failure) {
-            log("[CircleNotifier] HU: El stream devolvió un Failure: ${failure.message}");
             state = CircleError(failure.message);
           },
           (circle) {
             if (circle != null) {
-              log("[CircleNotifier] HU: El stream devolvió un Círculo: ${circle.name}. Estado -> InCircle");
-              state = InCircle(circle);
+              state = CircleLoaded(circle);
             } else {
-              log("[CircleNotifier] HU: El stream devolvió null. Estado -> NoCircle");
               state = NoCircle();
             }
           },
         );
       },
       onError: (e) {
-        log("[CircleNotifier] HU: El stream lanzó un Error: ${e.toString()}");
         state = CircleError(e.toString());
       },
     );
   }
 
   Future<void> createCircle(String name) async {
-    log("[CircleNotifier] HU: Acción 'createCircle' iniciada para el nombre: $name");
-    state = CircleLoading();
     final result = await _createCircle(CreateCircleParams(name: name));
     result.fold(
-      (failure) {
-        log("[CircleNotifier] HU: 'createCircle' falló: ${failure.message}");
-        state = CircleError(failure.message);
-      },
-      (_) => log("[CircleNotifier] HU: 'createCircle' tuvo éxito. Esperando actualización del stream."),
+      (failure) => log("Creación fallida: ${failure.message}"),
+      (_) => log("Creación exitosa. Stream actualizará la UI."),
     );
   }
 
   Future<void> joinCircle(String invitationCode) async {
-    log("[CircleNotifier] HU: Acción 'joinCircle' iniciada con el código: $invitationCode");
-    state = CircleLoading();
-    final result =
-        await _joinCircle(JoinCircleParams(invitationCode: invitationCode));
-    result.fold(
-      (failure) {
-        log("[CircleNotifier] HU: 'joinCircle' falló: ${failure.message}");
-        state = CircleError(failure.message);
-      },
-      (_) => log("[CircleNotifier] HU: 'joinCircle' tuvo éxito. Esperando actualización del stream."),
+    final result = await _joinCircle(JoinCircleParams(invitationCode: invitationCode));
+     result.fold(
+      (failure) => log("Unión fallida: ${failure.message}"),
+      (_) => log("Unión exitosa. Stream actualizará la UI."),
     );
   }
-  
-  // El resto del archivo no necesita logs para este caso de prueba.
-  // ...
-  Future<void> updateCircleStatus(String newStatusEmoji) async {
-    if (state is InCircle) {
-      final circleId = (state as InCircle).circle.id;
-      final params = UpdateCircleStatusParams(
-          circleId: circleId, newStatus: newStatusEmoji);
-      final result = await _updateCircleStatus(params);
-      result.fold(
-        (failure) => log('[CircleNotifier] Update failed: ${failure.message}'),
-        (_) => log('[CircleNotifier] Update succeeded'),
+
+  // FUNCIONALIDAD RESTAURADA: Este método es requerido por in_circle_view.dart
+  Future<void> sendUserStatus(StatusType statusType,
+      {Coordinates? coordinates}) async {
+    if (state is CircleLoaded) {
+      final circleId = (state as CircleLoaded).circle.id;
+      final params = SendUserStatusParams(
+        circleId: circleId,
+        statusType: statusType,
+        coordinates: coordinates,
       );
+      await _sendUserStatus(params);
     }
   }
 
@@ -125,133 +107,14 @@ class CircleNotifier extends StateNotifier<CircleState> {
 }
 
 final circleProvider = StateNotifierProvider<CircleNotifier, CircleState>((ref) {
-  // 1. Observa el estado de autenticación
-  // (Reemplaza 'authNotifierProvider' con el nombre real de tu provider de auth)
   final authState = ref.watch(authProvider);
-
-  // 2. Obtiene el UID solo si el usuario está autenticado
   final userId = (authState is Authenticated) ? authState.user.uid : null;
-
-  // 3. Crea el Notifier pasándole el userId
-  final notifier = CircleNotifier(
+  
+  return CircleNotifier(
     createCircle: sl<CreateCircle>(),
-    joinCircle: sl<JoinCircle>(),
+    joinCircle: sl<JoinCircle>(), // FUNCIONALIDAD RESTAURADA
     getCircleStreamForUser: sl<GetCircleStreamForUser>(),
-    updateCircleStatus: sl<UpdateCircleStatus>(),
-    userId: userId, // <- Pasa el userId (o null) al notifier
+    sendUserStatus: sl<SendUserStatus>(), // FUNCIONALIDAD RESTAURADA
+    userId: userId,
   );
-
-  return notifier;
 });
-
-
-// // lib/features/circle/presentation/provider/circle_provider.dart
-
-// import 'dart:async';
-// import 'dart:developer';
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import 'package:zync_app/features/circle/domain/usecases/update_circle_status.dart';
-// import '../../../../core/di/injection_container.dart';
-// import '../../domain/usecases/create_circle.dart';
-// import '../../domain/usecases/get_circle_stream_for_user.dart';
-// import '../../domain/usecases/join_circle.dart';
-// import 'circle_state.dart';
-
-// class CircleNotifier extends StateNotifier<CircleState> {
-//   final CreateCircle _createCircle;
-//   final JoinCircle _joinCircle;
-//   final GetCircleStreamForUser _getCircleStreamForUser;
-//   final UpdateCircleStatus _updateCircleStatus;
-//   // final FirebaseAuth _firebaseAuth; // Eliminado porque no se usa
-
-//   StreamSubscription? _circleSubscription;
-
-//   CircleNotifier({
-//     required CreateCircle createCircle,
-//     required JoinCircle joinCircle,
-//     required GetCircleStreamForUser getCircleStreamForUser,
-//     required UpdateCircleStatus updateCircleStatus,
-//     // required FirebaseAuth firebaseAuth, // Eliminado porque no se usa
-//   })  : _createCircle = createCircle,
-//         _joinCircle = joinCircle,
-//         _getCircleStreamForUser = getCircleStreamForUser,
-//         _updateCircleStatus = updateCircleStatus,
-//         super(CircleInitial()) {
-//     _listenToCircleChanges();
-//   }
-
-//   void _listenToCircleChanges() {
-//     state = CircleLoading();
-//     _circleSubscription?.cancel();
-//     _circleSubscription =
-//         _getCircleStreamForUser(const GetCircleStreamParams()).listen(
-//       (either) {
-//         either.fold(
-//           (failure) {
-//             state = CircleError(failure.message);
-//             log('[CircleNotifier] Stream Error: ${failure.message}');
-//           },
-//           (circle) {
-//             if (circle != null) {
-//               state = InCircle(circle);
-//             } else {
-//               state = NoCircle();
-//             }
-//             log('[CircleNotifier] State Updated: ${state.runtimeType}');
-//           },
-//         );
-//       },
-//       onError: (e) => state = CircleError(e.toString()),
-//     );
-//   }
-
-//   Future<void> createCircle(String name) async {
-//     state = CircleLoading();
-//     final result = await _createCircle(CreateCircleParams(name: name));
-//     result.fold(
-//       (failure) => state = CircleError(failure.message),
-//       (_) => null, // El stream actualizará el estado a InCircle
-//     );
-//   }
-
-//   Future<void> joinCircle(String invitationCode) async {
-//     state = CircleLoading();
-//     final result =
-//         await _joinCircle(JoinCircleParams(invitationCode: invitationCode));
-//     result.fold(
-//       (failure) => state = CircleError(failure.message),
-//       (_) => null, // El stream actualizará el estado a InCircle
-//     );
-//   }
-
-//   // CORRECCIÓN: Método añadido
-//   Future<void> updateCircleStatus(String newStatusEmoji) async {
-//     if (state is InCircle) {
-//       final circleId = (state as InCircle).circle.id;
-//       final params = UpdateCircleStatusParams(
-//           circleId: circleId, newStatus: newStatusEmoji);
-//       final result = await _updateCircleStatus(params);
-//       result.fold(
-//         (failure) => log('[CircleNotifier] Update failed: ${failure.message}'),
-//         (_) => log('[CircleNotifier] Update succeeded'),
-//       );
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     _circleSubscription?.cancel();
-//     super.dispose();
-//   }
-// }
-
-// final circleProvider =
-//     StateNotifierProvider<CircleNotifier, CircleState>((ref) {
-//   return CircleNotifier(
-//     createCircle: sl<CreateCircle>(),
-//     joinCircle: sl<JoinCircle>(),
-//     getCircleStreamForUser: sl<GetCircleStreamForUser>(),
-//     updateCircleStatus: sl<UpdateCircleStatus>(),
-//     // firebaseAuth: sl<FirebaseAuth>(), // Eliminado porque no se usa
-//   );
-// });
