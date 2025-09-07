@@ -10,6 +10,8 @@ import 'package:zync_app/features/auth/presentation/provider/auth_provider.dart'
 import 'package:zync_app/features/auth/presentation/provider/auth_state.dart';
 import 'package:zync_app/features/auth/presentation/pages/sign_in_page.dart';
 import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
+// Se confirma que este es el import correcto para la fachada del servicio.
+import 'package:zync_app/features/circle/services/quick_status_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +27,8 @@ void main() async {
     }
   }
   await di.init();
+  // Se confirma que esta es la llamada correcta al método estático.
+  QuickStatusService.initializeService();
   log("--- App Initialization Complete ---");
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -44,18 +48,13 @@ class MyApp extends ConsumerWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      // --- CORRECCIÓN AQUÍ: USAMOS 'switch' EN LUGAR DE 'when' ---
-      // Esta es la forma estándar de Dart para manejar diferentes estados
-      // cuando no se usa un paquete como 'freezed'.
       home: switch (authState) {
         Authenticated() => const HomePage(),
         Unauthenticated() || AuthError() => const SignInPage(),
-        // Para AuthInitial y AuthLoading, mostramos un indicador de carga.
         _ => const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         ),
       },
-      // --- FIN DE LA CORRECCIÓN ---
     );
   }
 }

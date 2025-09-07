@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="8dp">
+
+    <!-- Botón 1: Bien -->
+    <ImageButton
+        android:id="@+id/btn_status_fine"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_status_fine"
+        android:background="?android:attr/selectableItemBackground"
+        android:contentDescription="Bien" />
+
+    <!-- Botón 2: Preocupado -->
+    <ImageButton
+        android:id="@+id/btn_status_worried"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_status_worried"
+        android:background="?android:attr/selectableItemBackground"
+        android:contentDescription="Preocupado" />
+
+    <!-- Botón 3: Ubicación -->
+    <ImageButton
+        android:id="@+id/btn_status_location"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_status_location"
+        android:background="?android:attr/selectableItemBackground"
+        android:contentDescription="Ubicación" />
+
+    <!-- Botón 4: SOS -->
+    <ImageButton
+        android:id="@+id/btn_status_sos"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_status_sos"
+        android:background="?android:attr/selectableItemBackground"
+        android:contentDescription="SOS" />
+
+    <!-- Botón 5: Pensando en ti -->
+    <ImageButton
+        android:id="@+id/btn_status_thinking"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_status_thinking"
+        android:background="?android:attr/selectableItemBackground"
+        android:contentDescription="Pensando en ti" />
+
+</LinearLayout>
+
