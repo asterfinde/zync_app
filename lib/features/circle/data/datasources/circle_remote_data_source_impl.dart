@@ -1,5 +1,6 @@
 // lib/features/circle/data/datasources/circle_remote_data_source_impl.dart
 
+// C:/projects/zync_app/lib/features/circle/data/datasources/circle_remote_data_source_impl.dart
 import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -58,7 +59,6 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
     });
   }
 
-  // CORRECCIÓN: Se reincorporan todos los métodos requeridos por la interfaz.
   @override
   Future<void> createCircle(String name, String creatorId) async {
     if (name.isEmpty) {
@@ -151,6 +151,9 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
     required StatusType statusType,
     Coordinates? coordinates,
   }) async {
+    // --- PUNTO DE TRAZA 5 ---
+    log('[TRAZA 5/5] DataSource: Método "sendUserStatus" invocado. Preparando para escribir en Firestore...');
+    
     final circleRef = _firestore.collection('circles').doc(circleId);
 
     final Map<String, Object?> newStatusData = {
@@ -177,6 +180,7 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
     });
 
     await batch.commit();
+    log('[TRAZA-ÉXITO] DataSource: Escritura en Firestore completada.');
   }
 
   @override

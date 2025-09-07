@@ -1,14 +1,13 @@
-// lib/features/circle/domain/entities/user_status.dart
+// C:/projects/zync_app/lib/features/circle/domain/entities/user_status.dart
 
 import 'package:equatable/equatable.dart';
 
-// PASO 1: Tu enum, renombrado a 'StatusType' y manteniendo tus valores.
-// ¡Este es tu código original, solo con un nuevo nombre!
 enum StatusType {
   fine("😊", "Bien"),
-  worried("😰", "Preocupado"),
+  worried("😟", "Preocupado"), // <-- AÑADIDO
   location("📍", "Ubicación"),
   sos("🆘", "SOS"),
+  thinking("💭", "Pensando en ti"), // <-- AÑADIDO
   meeting("⏳", "Reunión"),
   ready("✅?", "Listo"),
   leave("🚶‍♂️💨", "Saliste?"),
@@ -30,7 +29,6 @@ class Coordinates extends Equatable {
   List<Object?> get props => [latitude, longitude];
 }
 
-// PASO 2: La nueva entidad UserStatus que cumple con los requisitos de la tarea.
 class UserStatus extends Equatable {
   final String id; // ID único del evento de estado
   final String userId; // ID del usuario que publica el estado
@@ -49,21 +47,3 @@ class UserStatus extends Equatable {
   @override
   List<Object?> get props => [id, userId, statusType, timestamp, coordinates];
 }
-
-// // lib/features/circle/domain/entities/user_status.dart
-
-// enum UserStatus {
-//   // El emoji es el valor que se guardará en la base de datos y se mostrará en la UI
-//   fine("😊", "Bien"),
-//   worried("😰", "Preocupado"),
-//   location("📍", "Ubicación"),
-//   sos("🆘", "SOS"),
-//   meeting("⏳", "Reunión"),
-//   ready("✅?", "Listo"),
-//   leave("🚶‍♂️💨", "Saliste?"),
-//   love("❤️", "Amor");
-
-//   const UserStatus(this.emoji, this.description);
-//   final String emoji;
-//   final String description;
-// }
