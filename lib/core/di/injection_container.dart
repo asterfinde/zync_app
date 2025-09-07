@@ -97,4 +97,3 @@ Future<void> init() async {
   sl.registerLazySingleton<GeolocationService>(() => GeolocationServiceImpl());
 }
 
-// (Dejamos el bloque comentado anterior si lo necesitas para referencia histórica)

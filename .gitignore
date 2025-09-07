@@ -33,3 +33,6 @@ android/app/src/main/assets/flutter_assets/kernel_blob.bin
 
 # Visual Studio Code
 .vscode/
+
+# Documentos
+/docs/
