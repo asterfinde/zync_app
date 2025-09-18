@@ -36,3 +36,15 @@ android/app/src/main/assets/flutter_assets/kernel_blob.bin
 
 # Documentos
 /docs/
+
+# Archivos de configuración de herramientas locales
+.fvm/
+fvm_config.json
+patrol.yaml
+
+# Archivos generados por scripts
+/lib/arbol.txt
+/lib/tree-*.txt
+
+# Archivos de sistema operativo
+.DS_Store
