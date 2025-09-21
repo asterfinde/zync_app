@@ -1,6 +1,7 @@
 // lib/main.dart
 
 import 'dart:developer';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,11 +11,22 @@ import 'package:zync_app/features/auth/presentation/provider/auth_provider.dart'
 import 'package:zync_app/features/auth/presentation/provider/auth_state.dart';
 import 'package:zync_app/features/auth/presentation/pages/sign_in_page.dart';
 import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
-// Se confirma que este es el import correcto para la fachada del servicio.
 import 'package:zync_app/features/circle/services/quick_status_service.dart';
+// import 'package:zync_app/features/circle/presentation/widgets/quick_status_send_dialog.dart';
+import 'package:zync_app/features/circle/presentation/pages/quick_status_selector_page.dart';
+// import 'package:zync_app/features/circle/domain/entities/user_status.dart';
+// import 'package:zync_app/features/circle/presentation/provider/circle_provider.dart';
+// import 'package:zync_app/features/circle/presentation/provider/circle_state.dart';
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+// SINGLETON PARA EVITAR CONFIGURAR METHODCHANNEL MÚLTIPLES VECES
+bool _methodChannelConfigured = false;
+
+// NUEVA FUNCIÓN PARA SER LLAMADA DESDE EL TEST
+Future<void> initializeApp() async {
+  log('[main.dart] initializeApp() called');
+  // MethodChannel YA configurado en main()
+  
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -27,10 +39,62 @@ void main() async {
     }
   }
   await di.init();
-  // Se confirma que esta es la llamada correcta al método estático.
-  QuickStatusService.initializeService();
+  QuickStatusService.initialize();
   log("--- App Initialization Complete ---");
-  runApp(const ProviderScope(child: MyApp()));
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  print('🚀🚀🚀 [FLUTTER] Iniciando app');
+  
+  // CONFIGURAR METHODCHANNEL INMEDIATAMENTE AQUÍ
+  _setupMethodChannelEarly();
+  
+  await initializeApp();
+  runApp(ProviderScope(child: MyApp()));
+}
+
+void _setupMethodChannelEarly() {
+  if (_methodChannelConfigured) {
+    print('🔥🔥🔥 [FLUTTER] MethodChannel YA configurado, saltando...');
+    return;
+  }
+  
+  final MethodChannel channel = MethodChannel('zync/notification');
+  print('🔥🔥🔥 [FLUTTER] MethodChannel configurado TEMPRANO en main()');
+  _methodChannelConfigured = true;
+  
+  // PRUEBA INMEDIATA PARA VER SI EL HANDLER FUNCIONA
+  Future.delayed(Duration(seconds: 3), () {
+    print('🔥🔥🔥 [FLUTTER] Enviando TEST call desde Flutter...');
+    channel.invokeMethod('showQuickStatusModal', {});
+  });
+  
+  channel.setMethodCallHandler((call) async {
+    print('🔥🔥🔥 [FLUTTER] MethodChannel call recibido: ${call.method}');
+    print('🔥🔥🔥 [FLUTTER] Arguments: ${call.arguments}');
+    
+    if (call.method == 'showQuickStatusModal') {
+      print('🔥🔥🔥 [FLUTTER] ¡showQuickStatusModal llamado desde Android!');
+      
+      // Usar schedulerBinding para asegurar que el widget tree esté listo
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final context = rootNavigatorKey.currentContext;
+        if (context != null) {
+          print('🔥🔥🔥 [FLUTTER] Context encontrado, navegando a QuickStatusSelectorPage');
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const QuickStatusSelectorPage(),
+              fullscreenDialog: true,
+            ),
+          );
+        } else {
+          print('🔥🔥🔥 [FLUTTER] ERROR: Context es null, no se puede navegar');
+        }
+      });
+    }
+  });
 }
 
 class MyApp extends ConsumerWidget {
@@ -38,11 +102,10 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    log("[BUILD] MyApp rebuilding...");
     final authState = ref.watch(authProvider);
-    log("[MyApp] Watching authState. Current state is: $authState");
 
     return MaterialApp(
+      navigatorKey: rootNavigatorKey,
       title: 'Zync',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -58,3 +121,5 @@ class MyApp extends ConsumerWidget {
     );
   }
 }
+
+

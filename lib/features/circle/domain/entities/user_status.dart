@@ -1,21 +1,26 @@
-// C:/projects/zync_app/lib/features/circle/domain/entities/user_status.dart
+// lib/features/circle/domain/entities/user_status.dart
 
 import 'package:equatable/equatable.dart';
 
 enum StatusType {
-  fine("😊", "Bien"),
-  worried("😟", "Preocupado"), // <-- AÑADIDO
-  location("📍", "Ubicación"),
-  sos("🆘", "SOS"),
-  thinking("💭", "Pensando en ti"), // <-- AÑADIDO
-  meeting("⏳", "Reunión"),
-  ready("✅?", "Listo"),
-  leave("🚶‍♂️💨", "Saliste?"),
-  love("❤️", "Amor");
+  fine("😊", "Bien", "ic_status_fine"),
+  sos("🆘", "SOS", "ic_status_sos"),
+  meeting("⏳", "Reunión", "ic_status_meeting"),
+  ready("✅", "Listo", "ic_status_ready"),
+  leave("🚶‍♂️", "Saliendo", "ic_status_leave"),
+  // 🚀 TAREA 3: Estados adicionales completados
+  happy("😄", "Feliz", "ic_status_happy"),
+  sad("😢", "Triste", "ic_status_sad"),
+  busy("🔥", "Ocupado", "ic_status_busy"),
+  sleepy("😴", "Con sueño", "ic_status_sleepy"),
+  excited("🎉", "Emocionado", "ic_status_excited"),
+  thinking("🤔", "Pensando", "ic_status_thinking"),
+  worried("😰", "Preocupado", "ic_status_worried");
 
-  const StatusType(this.emoji, this.description);
+  const StatusType(this.emoji, this.description, this.iconName);
   final String emoji;
   final String description;
+  final String iconName;
 }
 
 // Clase auxiliar para las coordenadas, como discutimos.

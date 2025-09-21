@@ -35,7 +35,7 @@ android/app/src/main/assets/flutter_assets/kernel_blob.bin
 .vscode/
 
 # Documentos
-/docs/
+/docs/adm/
 
 # Archivos de configuración de herramientas locales
 .fvm/

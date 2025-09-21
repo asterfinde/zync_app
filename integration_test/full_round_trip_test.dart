@@ -1,4 +1,8 @@
-// import 'package:flutter/material.dart';
+// integration_test/full_round_trip_test.dart
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:zync_app/main.dart' as app;
@@ -7,26 +11,43 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Round-trip completo: Login + Crear Círculo', (tester) async {
-    // 1. Inicializar la app
-    app.main();
-    await tester.pumpAndSettle();
+    // ------------------- FASE 1: PREPARACIÓN -------------------
+    // 1. Inicializar la app DE LA FORMA CORRECTA PARA TESTS
+    await app.initializeApp(); // Esperamos a que la inicialización REALMENTE termine
+    await tester.pumpWidget(const ProviderScope(child: app.MyApp())); // Cargamos la UI
+    await tester.pumpAndSettle(); // Esperamos a que la UI se estabilice
 
-    // 2. Encontrar y presionar el botón de sembrado de BD
-    final seedButton = find.byTooltip('Limpiar y Poblar BD');
-    expect(seedButton, findsOneWidget); // Verificamos que el botón exista
+    // 2. Resetear la base de datos con el botón de sembrado
+    final seedButton = find.byKey(const ValueKey('seed_database_button'));
+    expect(seedButton, findsOneWidget);
     await tester.tap(seedButton);
-
-    // 3. Esperar a que el proceso de sembrado termine
-    // Primero, esperamos que aparezca el SnackBar de "Iniciando"
     await tester.pumpAndSettle();
     expect(find.text('Iniciando sembrado...'), findsOneWidget);
-
-    // Luego, esperamos un tiempo prudencial a que se complete
-    // y aparezca el SnackBar de éxito.
     await tester.pumpAndSettle(const Duration(seconds: 10));
-    
-    // 4. Verificar que el sembrado fue exitoso
     expect(find.text('¡Sembrado completado! Base de datos lista.'), findsOneWidget);
     print('✅ Fase 1 completada: La base de datos ha sido reseteada y poblada.');
+
+    // ------------------- FASE 2: AUTENTICACIÓN -------------------
+    // 3. Identificar los campos y el botón del formulario por su Key
+    final emailField = find.byKey(const ValueKey('email'));
+    final passwordField = find.byKey(const ValueKey('password'));
+    final loginButton = find.byKey(const ValueKey('auth_button'));
+
+    expect(emailField, findsOneWidget);
+    expect(passwordField, findsOneWidget);
+    expect(loginButton, findsOneWidget);
+
+    // 4. Introducir credenciales y presionar el botón de login
+    await tester.enterText(emailField, 'user1@zync.com');
+    await tester.enterText(passwordField, '123456');
+    await tester.tap(loginButton);
+
+    // 5. Esperar a que la autenticación y la navegación terminen
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+
+    // 6. Verificar que el login fue exitoso y estamos en la siguiente pantalla.
+    // ¡AJUSTA ESTE FINDER A TU UI REAL!
+    expect(find.text('Crear un Círculo'), findsOneWidget);
+    print('✅ Fase 2 completada: Login exitoso.');
   });
 }
