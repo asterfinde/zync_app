@@ -1,0 +1,5 @@
+  fine("😊", "Bien", "ic_status_fine"),
+  sos("🆘", "SOS", "ic_status_sos"),
+  meeting("⏳", "Reunión", "ic_status_meeting"),
+  ready("✅?", "Listo", "ic_status_ready"),
+  leave("🚶‍♂️💨", "Saliste?", "ic_status_leave"),

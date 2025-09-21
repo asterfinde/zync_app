@@ -1,7 +1,7 @@
 // lib/features/auth/presentation/pages/sign_in_page.dart
 
 import 'dart:developer';
-import 'package:flutter/foundation.dart';
+// import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zync_app/core/di/injection_container.dart' as di;
@@ -114,7 +114,6 @@ class SignInPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ... (El resto del widget build se mantiene exactamente igual)
     log("[BUILD] SignInPage rebuilding...");
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next is AuthError) {
@@ -135,12 +134,12 @@ class SignInPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Zync'),
         actions: [
-          if (kDebugMode)
-            IconButton(
-              icon: const Icon(Icons.build_circle),
-              tooltip: 'Limpiar y Poblar BD',
-              onPressed: () => _seedDatabase(context),
-            ),
+          IconButton(
+            key: const ValueKey('seed_database_button'),
+            icon: const Icon(Icons.build_circle),
+            tooltip: 'Limpiar y Poblar BD',
+            onPressed: () => _seedDatabase(context),
+          ),
         ],
       ),
       body: Center(

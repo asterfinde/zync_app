@@ -22,30 +22,12 @@ class SendUserStatus implements UseCase<void, SendUserStatusParams> {
     
     Coordinates? coordinatesToBeSent = params.coordinates;
 
-    if (params.statusType == StatusType.location || params.statusType == StatusType.sos) {
-      final locationResult = await geolocationService.getCurrentPosition();
-
-      return locationResult.fold(
-        (failure) => Left(failure),
-        (position) async {
-          coordinatesToBeSent = Coordinates(
-            latitude: position.latitude,
-            longitude: position.longitude,
-          );
-          return await repository.sendUserStatus(
-            circleId: params.circleId,
-            statusType: params.statusType,
-            coordinates: coordinatesToBeSent,
-          );
-        },
-      );
-    } else {
-      return await repository.sendUserStatus(
-        circleId: params.circleId,
-        statusType: params.statusType,
-        coordinates: coordinatesToBeSent,
-      );
-    }
+    // Si en el futuro algún estado requiere coordenadas, agregar aquí la lógica
+    return await repository.sendUserStatus(
+      circleId: params.circleId,
+      statusType: params.statusType,
+      coordinates: coordinatesToBeSent,
+    );
   }
 }
 

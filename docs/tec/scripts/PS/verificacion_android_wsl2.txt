@@ -1,0 +1,151 @@
+lsusb
+
+adb devices
+
+.\conectar_android.ps1
+.\desconectar_android.ps1
+
+---
+
+usbipd list
+
+BUSID  VID:PID    DEVICE                                                        STATE
+...
+1-5    18d1:4ee7  Android, Dispositivo ADB de Google, Dispositivo compuesto USB   Attached
+...
+
+En este ejemplo, el BUSID correcto es 1-5
+
+usbipd detach --busid 1-5
+usbipd unbind --busid 1-5
+
+---
+
+# connect_android_auto.ps1 (ejecutar como Administrador)
+
+# Palabra clave para identificar tu dispositivo en la salida de `usbipd list`.
+# Puedes cambiar "Android" por "Pixel", "Samsung", etc., si es más específico.
+$deviceName = "Android"
+
+# 1. Busca la línea que contiene el nombre del dispositivo pero que NO esté ya "Attached".
+# El comando `findstr /V "Attached"` excluye las líneas que contienen la palabra "Attached".
+$deviceLine = usbipd list | findstr "$deviceName" | findstr /V "Attached"
+
+if ($deviceLine) {
+    # 2. Extrae el BUSID (la primera palabra de la línea)
+    $busid = $deviceLine.Split(' ')[0]
+    Write-Host "✅ Dispositivo '$deviceName' encontrado en BUSID: $busid"
+
+    # 3. Prepara (bind) y conecta (attach) el dispositivo a WSL
+    Write-Host "⚙️  Preparando dispositivo para conexión..."
+    usbipd bind --busid $busid
+    
+    Write-Host "🔗 Conectando dispositivo a WSL..."
+    usbipd attach --wsl --busid $busid
+    
+    Write-Host "✅ ¡Dispositivo conectado a WSL exitosamente!"
+    Write-Host "👉 Abre una terminal de WSL y ejecuta 'lsusb' para verificar."
+
+} else {
+    Write-Host "❌ No se encontró ningún dispositivo '$deviceName' disponible para conectar."
+    Write-Host "   (Puede que no esté conectado o que ya esté 'Attached' a WSL)."
+}
+
+# Pausa para ver el resultado antes de que se cierre la ventana
+Start-Sleep -Seconds 7
+
+Después de ejecutar el script, abre tu terminal de WSL (ej. Ubuntu) y ejecuta el comando:
+
+zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+lsusb
+
+# disconnect_android_auto.ps1 (ejecutar como Administrador)
+
+# 1. Busca la línea que contiene "Android" y está "Attached"
+$deviceLine = usbipd list | findstr "Android" | findstr "Attached"
+
+if ($deviceLine) {
+    # 2. Extrae el BUSID (la primera palabra de la línea)
+    $busid = $deviceLine.Split(' ')[0]
+    Write-Host "✅ Dispositivo Android encontrado en BUSID: $busid"
+
+    # 3. Desconecta y libera usando el BUSID encontrado
+    usbipd detach --busid $busid
+    usbipd unbind --busid $busid
+    
+    Write-Host "✅ Dispositivo desconectado y liberado exitosamente."
+} else {
+    Write-Host "❌ No se encontró ningún dispositivo Android conectado a WSL."
+}
+
+# Pausa para ver el resultado antes de que se cierre la ventana
+Start-Sleep -Seconds 5
+
+---
+
+Me refiero a **crear archivos .ps1 listos para ejecutar** que automaticen el proceso:
+
+## **📝 SCRIPTS COMPLETOS:**
+
+### **1. Script DESCONEXIÓN (`disconnect_android.ps1`):**
+```powershell
+# Guardar como: C:\scripts\disconnect_android.ps1
+Write-Host "🔌 Desconectando dispositivo Android de WSL2..." -ForegroundColor Yellow
+
+# Desconectar y liberar
+usbipd detach --busid 1-2
+usbipd unbind --busid 1-2
+
+Write-Host "✅ Dispositivo desconectado y liberado" -ForegroundColor Green
+Write-Host "🗒️  Estado actual:" -ForegroundColor Cyan
+usbipd list
+```
+
+### **2. Script CONEXIÓN (`connect_android.ps1`):**
+```powershell
+# Guardar como: C:\scripts\connect_android.ps1  
+Write-Host "🔌 Conectando dispositivo Android a WSL2..." -ForegroundColor Yellow
+
+# Conectar y verificar
+usbipd bind --busid 1-2
+usbipd attach --wsl --busid 1-2
+
+Write-Host "✅ Dispositivo conectado a WSL2" -ForegroundColor Green
+Write-Host "🗒️  Estado actual:" -ForegroundColor Cyan
+usbipd list
+```
+
+### **3. Script WSL2 (`reconnect_android.sh`):**
+```bash
+# Guardar como: ~/reconnect_android.sh
+#!/bin/bash
+echo "🔌 Reiniciando ADB en WSL2..."
+adb kill-server
+adb start-server
+echo "✅ ADB reiniciado"
+echo "📱 Dispositivos conectados:"
+adb devices
+```
+
+## **🚀 USO RÁPIDO:**
+```powershell
+# Antes de apagar (PowerShell como Admin):
+.\disconnect_android.ps1
+
+# Después de encender (PowerShell como Admin):
+.\connect_android.ps1
+
+# En WSL2:
+~/reconnect_android.sh
+```
+
+## **⚙️ HACER EJECUTABLES:**
+```powershell
+# Dar permisos de ejecución (PowerShell Admin)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Crear directorio de scripts
+mkdir C:\scripts
+```
+
+**¿Quieres que te guíe para crear estos scripts paso a paso?**
