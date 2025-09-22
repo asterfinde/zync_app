@@ -7,7 +7,7 @@ class QuickStatusSendDialog extends StatefulWidget {
   final StatusType statusType;
   final String userId;
   final String circleId;
-  const QuickStatusSendDialog({Key? key, required this.statusType, required this.userId, required this.circleId}) : super(key: key);
+  const QuickStatusSendDialog({super.key, required this.statusType, required this.userId, required this.circleId});
   @override
   State<QuickStatusSendDialog> createState() => _QuickStatusSendDialogState();
 }

@@ -12,6 +12,7 @@ import 'package:zync_app/features/circle/presentation/provider/circle_state.dart
 import 'package:zync_app/features/circle/presentation/pages/quick_status_selector_page.dart';
 import 'package:zync_app/features/circle/presentation/widgets/in_circle_view.dart';
 import 'package:zync_app/features/circle/presentation/widgets/no_circle_view.dart';
+import 'package:zync_app/main.dart';
 
 // --- CAMBIO 1: Convertir a ConsumerStatefulWidget para tener acceso a initState ---
 class HomePage extends ConsumerStatefulWidget {
@@ -35,6 +36,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     final status = await Permission.notification.request();
     if (status.isGranted) {
       log('Notification permission has been granted.');
+      
+      // 🎯 AUTOMATIZAR: Crear notificación emoji automáticamente
+      try {
+        await EmojiNotificationService.requestNotificationPermission();
+        await EmojiNotificationService.showNotification();
+        log('✅ Notificación emoji creada automáticamente');
+      } catch (e) {
+        log('❌ Error creando notificación emoji: $e');
+      }
     } else {
       log('Notification permission has been denied.');
     }
