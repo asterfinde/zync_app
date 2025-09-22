@@ -10,7 +10,7 @@ import 'package:zync_app/core/di/injection_container.dart' as di;
 
 
 class QuickStatusSelectorPage extends ConsumerWidget {
-  const QuickStatusSelectorPage({Key? key}) : super(key: key);
+  const QuickStatusSelectorPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
