@@ -2,48 +2,57 @@
 
 import 'dart:async';
 import 'dart:developer';
-import 'package:firebase_core/firebase_core.dart';
+// import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart'; // <--- CAMBIO 1: Importamos Material para la UI
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:zync_app/core/di/injection_container.dart' as di;
 import 'package:zync_app/features/circle/domain/entities/user_status.dart';
 import 'package:zync_app/features/circle/domain/usecases/send_user_status.dart';
-import 'package:zync_app/firebase_options.dart';
+// --- CAMBIO 2: Importamos nuestra nueva página de selección de estado ---
+import 'package:zync_app/features/circle/presentation/pages/quick_status_selector_page.dart';
+// import 'package:zync_app/firebase_options.dart';
 
+// =======================================================================
+// ESTA PARTE (QuickStatusTaskHandler) NO SE MODIFICA.
+// Maneja la lógica de fondo de las notificaciones y está correcta.
+// =======================================================================
 class QuickStatusTaskHandler extends TaskHandler {
   String? _userId;
   String? _circleId;
-    SendUserStatus? _sendUserStatus;
+  SendUserStatus? _sendUserStatus;
 
-    @override
-    Future<void> onStart(DateTime timestamp, TaskStarter? starter) async {
-      try {
-        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-        await di.init();
-        _sendUserStatus = di.sl<SendUserStatus>();
-        log('[QuickStatusTaskHandler] Service started.');
-      } catch (e) {
-        log('[QuickStatusTaskHandler] Initialization error: $e');
+  @override
+Future<void> onStart(DateTime timestamp, TaskStarter? starter) async {
+  try {
+    // if (Firebase.apps.isEmpty) {
+    //   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    // }
+    await di.init();
+    _sendUserStatus = di.sl<SendUserStatus>();
+    log('[QuickStatusTaskHandler] Service started.');
+  } catch (e) {
+    log('[QuickStatusTaskHandler] Initialization error: $e');
+  }
+}
+
+  @override
+  void onReceiveData(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final action = data['action'] as String?;
+      log('[QuickStatusTaskHandler] Received event: $action');
+
+      if (action == 'update_data') {
+        _userId = data['userId'] as String?;
+        _circleId = data['circleId'] as String?;
+        log('[QuickStatusTaskHandler] Updated data: userId=$_userId, circleId=$_circleId');
+        return;
+      }
+      if (action != null && action.startsWith('STATUS_')) {
+        _handleStatusAction(action);
       }
     }
-
-    @override
-    void onReceiveData(dynamic data) {
-      if (data is Map<String, dynamic>) {
-        final action = data['action'] as String?;
-        log('[QuickStatusTaskHandler] Received event: $action');
-
-        if (action == 'update_data') {
-          _userId = data['userId'] as String?;
-          _circleId = data['circleId'] as String?;
-          log('[QuickStatusTaskHandler] Updated data: userId=$_userId, circleId=$_circleId');
-          return;
-        }
-        if (action != null && action.startsWith('STATUS_')) {
-          _handleStatusAction(action);
-        }
-      }
-    }
+  }
 
   Future<void> _handleStatusAction(String action) async {
     if (_userId == null || _circleId == null || _sendUserStatus == null) {
@@ -98,9 +107,32 @@ void startCallback() {
   FlutterForegroundTask.setTaskHandler(QuickStatusTaskHandler());
 }
 
+// =======================================================================
+// ESTA PARTE (QuickStatusService) ES LA QUE ACTUALIZAMOS
+// =======================================================================
 class QuickStatusService {
   QuickStatusService._();
   static const _channel = MethodChannel('zync/notification');
+
+  // --- CAMBIO 3: AÑADIMOS UN NUEVO MÉTODO ESTÁTICO PARA MOSTRAR LA UI ---
+  // Este método se llamará desde la HomePage para mostrar nuestro panel deslizable.
+  static void showSelectorUI(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false, // Fundamental para la transparencia
+        pageBuilder: (context, animation, secondaryAnimation) => const QuickStatusSelectorPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Animación de fundido para una aparición suave
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
+  // --- El resto de los métodos para el servicio de fondo se mantienen intactos ---
 
   static void initialize() {
     FlutterForegroundTask.init(
@@ -186,3 +218,6 @@ class QuickStatusService {
     }
   }
 }
+
+
+

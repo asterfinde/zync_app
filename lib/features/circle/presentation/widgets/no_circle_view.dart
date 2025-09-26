@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/global_keys.dart';
 import '../provider/circle_provider.dart';
 
 // CORRECCIÓN 1: Se convierte a ConsumerStatefulWidget para manejar
@@ -32,7 +34,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     // Primero, se valida que el campo de texto no esté vacío.
     if (_createController.text.trim().isEmpty) {
       // Si está vacío, se muestra un mensaje de error y no se hace nada más.
-      ScaffoldMessenger.of(context).showSnackBar(
+      rootScaffoldMessengerKey.currentState?.showSnackBar(
         const SnackBar(
           content: Text('Please enter a name for your circle.'),
           backgroundColor: Colors.redAccent,
@@ -47,7 +49,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   void _onJoinCircle() {
     // Lógica similar para unirse a un círculo
     if (_joinController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      rootScaffoldMessengerKey.currentState?.showSnackBar(
         const SnackBar(
           content: Text('Please enter an invitation code.'),
           backgroundColor: Colors.redAccent,

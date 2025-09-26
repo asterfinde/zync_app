@@ -26,7 +26,10 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -50,19 +53,10 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAHQopyy49qwQv3u_CfI7c8SR7_nDHLuko',
-    appId: '1:991517822178:android:e0cfebb11cd27d13d5e2bb',
-    messagingSenderId: '991517822178',
-    projectId: 'zync-app-poc',
-    storageBucket: 'zync-app-poc.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCGkd_65SIQAYWWsbQNAzLBve4KZ7vMTEU',
-    appId: '1:991517822178:ios:88dbceea6887872ed5e2bb',
-    messagingSenderId: '991517822178',
-    projectId: 'zync-app-poc',
-    storageBucket: 'zync-app-poc.firebasestorage.app',
-    iosBundleId: 'com.example.zyncApp',
+    apiKey: 'AIzaSyC0cqR514ZQdfWTvstg_pdmUWWeQOSCbSQ',
+    appId: '1:475089002921:android:3de9165a322943bae264b8',
+    messagingSenderId: '475089002921',
+    projectId: 'zync-app-a2712',
+    storageBucket: 'zync-app-a2712.firebasestorage.app',
   );
 }

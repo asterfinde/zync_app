@@ -5,4 +5,5 @@ import '../models/user_model.dart';
 abstract class AuthLocalDataSource {
   Future<void> cacheUser(UserModel userToCache);
   Future<UserModel?> getLastUser();
+  Future<void> clearUser();
 }

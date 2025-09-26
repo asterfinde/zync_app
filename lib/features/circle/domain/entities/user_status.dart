@@ -10,7 +10,7 @@ enum StatusType {
   leave("🚶‍♂️", "Saliendo", "ic_status_leave"),
   // 🚀 TAREA 3: Estados adicionales completados
   happy("😄", "Feliz", "ic_status_happy"),
-  sad("😢", "Triste", "ic_status_sad"),
+  sad("😢", "Mal", "ic_status_sad"),
   busy("🔥", "Ocupado", "ic_status_busy"),
   sleepy("😴", "Con sueño", "ic_status_sleepy"),
   excited("🎉", "Emocionado", "ic_status_excited"),
