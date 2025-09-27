@@ -29,52 +29,100 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _signInOrRegister = signInOrRegister,
         _signOut = signOut,
         super(AuthInitial()) {
-    log("[AuthNotifier] Initializing and listening to authStateChanges...");
-    _authSubscription = _firebaseAuth.authStateChanges().listen((firebaseUser) async {
-      log("[AuthNotifier] authStateChanges stream received user: ${firebaseUser?.uid}");
+    log("[AuthNotifier] Initializing. The stream is the ONLY source of truth.");
+    _authSubscription = _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
+  }
+
+  void _onAuthStateChanged(firebase.User? firebaseUser) async {
+    log("[AuthNotifier] [STREAM] Stream reported user: \\${firebaseUser?.uid}");
+    log("[AuthNotifier] [STREAM] _onAuthStateChanged: firebaseUser = ${firebaseUser?.uid}, email = ${firebaseUser?.email}");
+    try {
       if (firebaseUser != null) {
+        log("[AuthNotifier] [STREAM] FirebaseUser existe. Llamando a _getCurrentUser...");
         final result = await _getCurrentUser(NoParams());
         result.fold(
           (failure) {
-            log("[AuthNotifier] Could not get user details: ${failure.message}");
-            state = Unauthenticated();
+            log("[AuthNotifier] [STREAM] getCurrentUser FAILURE: \\${failure.message}");
+            log("[AuthNotifier] [STREAM] getCurrentUser FAILURE (detalle): $failure");
+            state = AuthError("No pudimos cargar tus datos. Intenta de nuevo.");
+            Future.delayed(const Duration(seconds: 2), () {
+              if (!mounted) return;
+              if (state is AuthError) {
+                state = Unauthenticated();
+              }
+            });
           },
           (user) {
-            // TU CORRECCIÓN: Se mantiene el null-check por seguridad.
+            log("[AuthNotifier] [STREAM] getCurrentUser SUCCESS. user: $user");
             if (user != null) {
+              log("[AuthNotifier] [STREAM] User details fetched successfully. State -> Authenticated. user.nickname: ${user.nickname}, user.email: ${user.email}");
               state = Authenticated(user);
             } else {
-              // Si el caso de uso devolviera null en el lado exitoso, lo manejamos.
-              log("[AuthNotifier] UseCase returned a null user on success. Setting to Unauthenticated.");
+              log("[AuthNotifier] [STREAM] UseCase returned a null user. State -> Unauthenticated");
               state = Unauthenticated();
             }
           },
         );
       } else {
+        // Si el stream emite null tras la inicialización, avanzar a Unauthenticated
+        log("[AuthNotifier] Stream reported no user. State -> Unauthenticated");
         state = Unauthenticated();
       }
-    });
+    } catch (e) {
+      log("[AuthNotifier] EXCEPTION in _onAuthStateChanged: $e");
+      state = AuthError("Error inesperado de autenticación. Intenta de nuevo.");
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) state = Unauthenticated();
+      });
+    }
   }
 
-  Future<void> signInOrRegister(String email, String password) async {
-    log("[AuthNotifier] Attempting to signInOrRegister for email: $email");
+  Future<void> signInOrRegister(String email, String password, {String nickname = ''}) async {
+    log("[AuthNotifier] [ACTION] Triggering signInOrRegister for email: $email, nickname: $nickname");
     state = AuthLoading();
-    final params = SignInOrRegisterParams(email: email, password: password);
+    final params = SignInOrRegisterParams(email: email, password: password, nickname: nickname);
     final result = await _signInOrRegister(params);
-    result.fold(
-      (failure) {
-        log("[AuthNotifier] signInOrRegister FAILED: ${failure.message}");
+
+    await result.fold(
+      (failure) async {
+        if (nickname.isNotEmpty) {
+          log("[AuthNotifier] [ACTION] Registro fallido para $email. Borrando usuario Auth temporal si existe...");
+          try {
+            await _firebaseAuth.currentUser?.delete();
+          } catch (e) {
+            log("[AuthNotifier] [ACTION] No se pudo eliminar el usuario temporal tras fallo de registro: $e");
+          }
+        }
+        log("[AuthNotifier] [ACTION] signInOrRegister FAILED: ${failure.message}");
+        log("[AuthNotifier] [ACTION] signInOrRegister FAILURE (detalle): $failure");
         state = AuthError(failure.message);
       },
-      (user) {
-        log("[AuthNotifier] signInOrRegister SUCCEEDED for user: ${user.uid}");
-        state = Authenticated(user);
+      (user) async {
+        log("[AuthNotifier] [ACTION] signInOrRegister SUCCEEDED. Forzando recarga de usuario desde Firestore...");
+        final currentUserResult = await _getCurrentUser(NoParams());
+        await currentUserResult.fold(
+          (failure) async {
+            log("[AuthNotifier] [ACTION] getCurrentUser tras login/registro FAILED: ${failure.message}");
+            log("[AuthNotifier] [ACTION] getCurrentUser tras login/registro FAILURE (detalle): $failure");
+            state = AuthError(failure.message);
+          },
+          (freshUser) async {
+            log("[AuthNotifier] [ACTION] getCurrentUser tras login/registro SUCCESS. freshUser: $freshUser");
+            if (freshUser != null) {
+              log("[AuthNotifier] [ACTION] Usuario recargado tras login/registro. State -> Authenticated. Nickname: ${freshUser.nickname}, Email: ${freshUser.email}");
+              state = Authenticated(freshUser);
+            } else {
+              log("[AuthNotifier] [ACTION] Usuario recargado es null tras login/registro. State -> Unauthenticated");
+              state = Unauthenticated();
+            }
+          },
+        );
       },
     );
   }
 
   Future<void> signOut() async {
-    log("[AuthNotifier] Attempting to signOut...");
+    log("[AuthNotifier] Triggering signOut...");
     state = AuthLoading();
     final result = await _signOut(NoParams());
     result.fold(
@@ -83,8 +131,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthError(failure.message);
       },
       (_) {
-        log("[AuthNotifier] signOut SUCCEEDED via UseCase.");
-        // El listener de authStateChanges se encargará de actualizar el estado a Unauthenticated.
+        log("[AuthNotifier] signOut SUCCEEDED. Handing off to the stream listener.");
       },
     );
   }

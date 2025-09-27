@@ -9,6 +9,7 @@ class UserModel extends User {
     required super.uid,
     required super.email,
     required super.name,
+    required super.nickname,
   });
 
   factory UserModel.fromFirebase(firebase.User user) {
@@ -16,17 +17,17 @@ class UserModel extends User {
       uid: user.uid,
       email: user.email ?? '',
       name: user.displayName ?? 'Usuario',
+      nickname: '', // No hay nickname en Firebase Auth, se deja vacío
     );
   }
-  
-  // CORRECCIÓN: Se añade el factory 'fromSnapshot' que es necesario
-  // para la hidratación de datos en la capa de datos del círculo.
+
   factory UserModel.fromSnapshot(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return UserModel(
       uid: doc.id,
       email: data['email'] ?? '',
       name: data['name'] ?? '',
+      nickname: data['nickname'] ?? '',
     );
   }
 
@@ -35,6 +36,7 @@ class UserModel extends User {
       uid: json['uid'] ?? '',
       email: json['email'] ?? '',
       name: json['name'] ?? '',
+      nickname: json['nickname'] ?? '',
     );
   }
 
@@ -43,6 +45,7 @@ class UserModel extends User {
       'uid': uid,
       'email': email,
       'name': name,
+      'nickname': nickname,
     };
   }
 }

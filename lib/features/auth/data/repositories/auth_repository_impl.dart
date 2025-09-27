@@ -25,6 +25,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, User>> signInOrRegister({
     required String email,
     required String password,
+    String nickname = '',
   }) async {
     log('[AuthRepository] HU: Verificando conexión a internet...');
     if (await networkInfo.isConnected) {
@@ -33,15 +34,15 @@ class AuthRepositoryImpl implements AuthRepository {
         final remoteUser = await remoteDataSource.signInOrRegister(
           email: email,
           password: password,
+          nickname: nickname,
         );
-        log('[AuthRepository] HU: remoteDataSource devolvió el usuario con UID: ${remoteUser.uid}, email: ${remoteUser.email}');
+        log('[AuthRepository] HU: remoteDataSource devolvió el usuario con UID: ${remoteUser.uid}, email: ${remoteUser.email}, nickname: ${remoteUser.nickname}');
         await localDataSource.cacheUser(remoteUser);
         log('[AuthRepository] HU: Usuario cacheado con UID: ${remoteUser.uid}');
-        await localDataSource.cacheUser(remoteUser);
         return Right(remoteUser);
       } on ServerException catch (e) {
-        log('[AuthRepository] HU: ServerException atrapada: ${e.toString()}');
-        return Left(ServerFailure(message: e.toString()));
+        log('[AuthRepository] HU: ServerException atrapada: ${e.message}');
+        return Left(ServerFailure(message: e.message ?? 'Error desconocido'));
       }
     } else {
       log('[AuthRepository] HU: No hay conexión a internet.');
@@ -53,17 +54,10 @@ class AuthRepositoryImpl implements AuthRepository {
   // ...
   @override
   Future<Either<Failure, User?>> getCurrentUser() async {
-    try {
-      final localUser = await localDataSource.getLastUser();
-      log('[AuthRepository] HU: Usuario obtenido del caché: ${localUser?.uid}, email: ${localUser?.email}');
-      return Right(localUser);
-      // ignore: empty_catches
-    } on CacheException {}
-
     if (await networkInfo.isConnected) {
       try {
         final remoteUser = await remoteDataSource.getCurrentUser();
-        log('[AuthRepository] HU: Usuario obtenido de remoto: ${remoteUser?.uid}, email: ${remoteUser?.email}');
+        log('[AuthRepository] HU: Usuario obtenido de remoto: ${remoteUser?.uid}, email: ${remoteUser?.email}, nickname: ${remoteUser?.nickname}');
         if (remoteUser != null) {
           await localDataSource.cacheUser(remoteUser);
           log('[AuthRepository] HU: Usuario cacheado con UID: ${remoteUser.uid}');
@@ -73,10 +67,16 @@ class AuthRepositoryImpl implements AuthRepository {
           return Left(ServerFailure(message: 'No authenticated user found.'));
         }
       } on ServerException catch (e) {
-        return Left(ServerFailure(message: e.toString()));
+  return Left(ServerFailure(message: e.message ?? 'Error desconocido'));
       }
     } else {
-      return Left(NetworkFailure(message: 'No internet connection.'));
+      try {
+        final localUser = await localDataSource.getLastUser();
+        log('[AuthRepository] HU: Usuario obtenido del caché (sin conexión): ${localUser?.uid}, email: ${localUser?.email}, nickname: ${localUser?.nickname}');
+        return Right(localUser);
+      } on CacheException {
+        return Left(NetworkFailure(message: 'No internet connection and no cached user.'));
+      }
     }
   }
 
@@ -85,6 +85,7 @@ class AuthRepositoryImpl implements AuthRepository {
     if (await networkInfo.isConnected) {
       try {
         await remoteDataSource.signOut();
+        await localDataSource.clearUser();
         return const Right(null);
       } on ServerException catch (e) {
         return Left(ServerFailure(message: e.toString()));

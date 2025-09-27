@@ -1,12 +1,17 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.datainfers.zync">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.datainfers.zync">
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:label="zync_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -25,6 +30,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
         <activity
             android:name=".QuickStatusDialogActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
@@ -33,9 +39,20 @@
             android:taskAffinity=""
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="true"/>
+
         <receiver
             android:name=".ShowQuickStatusReceiver"
             android:exported="true"/>
+
+        <!-- ===================== INICIO DE LA SOLUCIÓN ===================== -->
+        <!-- Esta etiqueta desactiva la inicialización automática de Firebase -->
+        <!-- para que tu código en main.dart tenga el control total. -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove" />
+        <!-- ====================== FIN DE LA SOLUCIÓN ====================== -->
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
@@ -52,8 +69,9 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Este servicio mantiene una notificación con accesos directos para que el usuario pueda comunicar su estado rápidamente a su círculo de confianza en situaciones de emergencia o cotidianas."/>
-        </service>    
+        </service>
     </application>
+
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

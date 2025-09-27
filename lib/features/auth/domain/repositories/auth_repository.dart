@@ -16,6 +16,7 @@ abstract class AuthRepository {
   Future<Either<Failure, User>> signInOrRegister({
     required String email,
     required String password,
+    String nickname,
   });
 
   /// Cierra la sesión del usuario actual.
