@@ -48,3 +48,6 @@ patrol.yaml
 
 # Archivos de sistema operativo
 .DS_Store
+
+# Secret files
+scripts/serviceAccountKey.json
