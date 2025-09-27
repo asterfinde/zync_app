@@ -47,4 +47,4 @@ patrol.yaml
 /lib/tree-*.txt
 
 # Archivos de sistema operativo
-.DS_Store
+.DS_Storescripts/serviceAccountKey.json
