@@ -1,8 +1,8 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
-// import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({Key? key}) : super(key: key);
@@ -12,60 +12,199 @@ class AuthFinalPage extends StatefulWidget {
 }
 
 class _AuthFinalPageState extends State<AuthFinalPage> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _nicknameController = TextEditingController();
-  String _message = '';
-  bool _isLogin = true;
-  bool _isLoading = false;
-  bool _isPasswordObscured = true;
+  Future<void> _login() async {
+    setState(() { _isLoading = true; _message = ''; });
+    try {
+      // Navega a la página principal si el login es exitoso
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomePage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() { _message = getAuthErrorMessage(e.code); });
+    } catch (e) {
+      setState(() { _message = 'Error inesperado. Intenta de nuevo.'; });
+    } finally {
+      setState(() { _isLoading = false; });
+    }
+  }
 
   Future<void> _register() async {
     setState(() { _isLoading = true; _message = ''; });
     try {
-      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      final uid = userCredential.user?.uid;
-      if (uid != null) {
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'email': _emailController.text.trim(),
-          'nickname': _nicknameController.text.trim(),
-        });
-        setState(() { _message = 'Registro exitoso'; });
-        _navigateToHome();
-      } else {
-        setState(() { _message = 'Error: UID nulo tras registro.'; });
-      }
+      // Guarda el nickname en Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
+        'nickname': _nicknameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      // Navega a la página principal
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomePage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() { _message = getAuthErrorMessage(e.code); });
     } catch (e) {
-      setState(() { _message = 'Error en registro: $e'; });
+      setState(() { _message = 'Error inesperado. Intenta de nuevo.'; });
     } finally {
       setState(() { _isLoading = false; });
     }
   }
 
-  Future<void> _login() async {
-    setState(() { _isLoading = true; _message = ''; });
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      setState(() { _message = 'Login exitoso'; });
-      _navigateToHome();
-    } catch (e) {
-      setState(() { _message = 'Error en login: $e'; });
-    } finally {
-      setState(() { _isLoading = false; });
+  String getAuthErrorMessage(String code) {
+    switch (code) {
+      case 'user-not-found':
+        return 'Usuario no encontrado.';
+      case 'wrong-password':
+        return 'Contraseña incorrecta.';
+      case 'email-already-in-use':
+        return 'El correo ya está registrado.';
+      case 'invalid-email':
+        return 'Correo inválido.';
+      case 'weak-password':
+        return 'La contraseña es muy débil.';
+      default:
+        return 'Error de autenticación.';
     }
   }
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final TextEditingController _nicknameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLogin = true;
+  bool _isPasswordObscured = true;
+  bool _isLoading = false;
+  bool _isFormValid = false;
+  String _message = '';
 
-  void _navigateToHome() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomePage()),
+  void _showResetPasswordModal() {
+    final TextEditingController resetEmailController = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Recuperar contraseña',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Ingresa tu correo electrónico y te enviaremos instrucciones para recuperar tu contraseña.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF7EAEA0)),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: resetEmailController,
+                keyboardType: TextInputType.emailAddress,
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  labelStyle: TextStyle(color: Color(0xFF7EAEA0)),
+                  prefixIcon: Icon(Icons.alternate_email, color: Color(0xFF7EAEA0)),
+                  filled: true,
+                  fillColor: Color(0xFF171D1B),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFF7EAEA0), width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF7EAEA0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Enviar instrucciones',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  onPressed: () async {
+                    final email = resetEmailController.text.trim();
+                    if (email.isEmpty || !email.contains('@')) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Por favor ingresa un correo válido.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                    try {
+                      await _auth.sendPasswordResetEmail(email: email);
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Se enviaron las instrucciones a tu correo.'),
+                          backgroundColor: Color(0xFF7EAEA0),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('No se pudo enviar el correo. Verifica el email.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
+
+  void _updateFormValid() {
+    setState(() {
+      if (_isLogin) {
+        _isFormValid = _emailController.text.isNotEmpty && _passwordController.text.isNotEmpty;
+      } else {
+        _isFormValid = _nicknameController.text.length >= 3 &&
+            _emailController.text.isNotEmpty &&
+            _passwordController.text.isNotEmpty;
+      }
+    });
+  }
+
+  // ...existing login and register logic...
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +251,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     children: [
                       TextField(
                         controller: _nicknameController,
+                        onChanged: (_) => _updateFormValid(),
                         style: TextStyle(color: primaryTextColor),
                         decoration: InputDecoration(
                           labelText: 'Nickname',
@@ -136,6 +276,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   ),
                 TextField(
                   controller: _emailController,
+                  onChanged: (_) => _updateFormValid(),
                   style: TextStyle(color: primaryTextColor),
                   decoration: InputDecoration(
                     labelText: 'Email',
@@ -158,6 +299,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _passwordController,
+                  onChanged: (_) => _updateFormValid(),
                   obscureText: _isPasswordObscured,
                   style: TextStyle(color: primaryTextColor),
                   decoration: InputDecoration(
@@ -213,21 +355,26 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: _isLogin ? _login : _register,
+                        onPressed: _isFormValid && !_isLoading ? (_isLogin ? _login : _register) : null,
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(double.infinity, 55),
-                          backgroundColor: Colors.transparent,
+                          backgroundColor: _isFormValid && !_isLoading
+                              ? Colors.transparent
+                              : const Color(0xFF171D1B), // Fondo desactivado
                           shadowColor: Colors.transparent,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(30),
                           ),
+                          elevation: 0,
                         ),
                         child: Text(
                           _isLogin ? 'Iniciar Sesión' : 'Crear Cuenta',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: _isFormValid && !_isLoading
+                                ? Colors.black
+                                : const Color(0xFF7EAEA0), // Font desactivado
                           ),
                         ),
                       ),
@@ -235,29 +382,38 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   ),
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      Text(
-                        _isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?',
-                        style: TextStyle(color: secondaryTextColor),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() { _isLogin = !_isLogin; });
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          overlayColor: accentColor.withOpacity(0.1),
-                        ),
-                        child: Text(
-                          _isLogin ? 'Regístrate' : 'Inicia Sesión',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: accentColor,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _isLogin ? '¿No tienes una cuenta? ' : '¿Ya tienes una cuenta? ',
+                            style: TextStyle(color: secondaryTextColor),
                           ),
-                        ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() { _isLogin = !_isLogin; });
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              overlayColor: accentColor.withOpacity(0.1),
+                            ),
+                            child: Text(
+                              _isLogin ? 'Regístrate' : 'Inicia Sesión',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: accentColor,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                      if (_isLogin)
+                        TextButton(
+                          onPressed: _showResetPasswordModal,
+                          child: Text('¿Olvidaste tu contraseña?', style: TextStyle(color: accentColor)),
+                        ),
                     ],
                   ),
                 ),
@@ -277,5 +433,4 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
     );
   }
 }
-
 
