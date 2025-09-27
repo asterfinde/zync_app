@@ -1,20 +1,21 @@
+import '../../../../dev_utils/clean_firestore.dart';
+import '../../../../dev_utils/clean_auth.dart';
 // lib/features/circle/presentation/pages/home_page.dart
 
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:zync_app/features/circle/services/emoji_notification_service.dart';
 import 'package:zync_app/features/circle/services/quick_status_service.dart';
 import 'package:zync_app/features/auth/presentation/provider/auth_provider.dart';
 import 'package:zync_app/features/auth/presentation/provider/auth_state.dart';
+import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
 import 'package:zync_app/features/circle/presentation/provider/circle_provider.dart';
 import 'package:zync_app/features/circle/presentation/provider/circle_state.dart';
-import 'package:zync_app/features/circle/presentation/pages/quick_status_selector_page.dart';
 import 'package:zync_app/features/circle/presentation/widgets/in_circle_view.dart';
 import 'package:zync_app/features/circle/presentation/widgets/no_circle_view.dart';
-import 'package:zync_app/main.dart';
 
-// --- CAMBIO 1: Convertir a ConsumerStatefulWidget para tener acceso a initState ---
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -23,8 +24,6 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  // --- CAMBIO 2: Mover la lógica de permisos a initState ---
-  // initState se ejecuta UNA SOLA VEZ cuando el widget se inserta en la pantalla.
   @override
   void initState() {
     super.initState();
@@ -32,12 +31,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _requestPermissions() async {
-    // Pedimos el permiso de notificación.
     final status = await Permission.notification.request();
     if (status.isGranted) {
       log('Notification permission has been granted.');
-      
-      // 🎯 AUTOMATIZAR: Crear notificación emoji automáticamente
       try {
         await EmojiNotificationService.requestNotificationPermission();
         await EmojiNotificationService.showNotification();
@@ -53,15 +49,19 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final userEmail = authState is Authenticated ? authState.user.email : '...';
+    String userNickname = (authState is Authenticated) ? authState.user.nickname : '';
+    String userEmail = (authState is Authenticated) ? authState.user.email : '';
+    log('[UI] HomePage: nickname recibido: "$userNickname", email recibido: "$userEmail"');
+    if (userNickname.trim().isEmpty) {
+      userNickname = userEmail.isNotEmpty ? userEmail : 'Sin nickname';
+    }
+    final accentColor = Colors.tealAccent.shade400;
 
-    // Escuchamos los cambios en el estado del círculo para gestionar el servicio.
+    // Lógica para manejar el servicio de fondo
     ref.listen<CircleState>(circleProvider, (previous, next) {
       final userId = (authState is Authenticated) ? authState.user.uid : null;
       if (userId == null) return;
 
-      // --- CAMBIO 3: La lógica aquí ahora es más simple ---
-      // Solo se preocupa de iniciar/detener el servicio, no de los permisos.
       if (next is CircleLoaded) {
         log('Circle loaded. Starting foreground service...');
         QuickStatusService.startService(
@@ -74,15 +74,12 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
     });
 
-    // El resto del widget permanece igual...
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next is Unauthenticated) {
         log('User signed out. Stopping foreground service...');
         QuickStatusService.stopService();
       }
     });
-
-    // Removed unused variable 'circleState'
 
     return Scaffold(
       appBar: AppBar(
@@ -91,67 +88,77 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             const Text('Zync'),
             Text(
-              userEmail,
+              userNickname,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authProvider.notifier).signOut(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // BOTÓN TEMPORAL DE PRUEBA
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () {
-                log('[HOME] Botón de prueba presionado - abriendo modal');
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const QuickStatusSelectorPage(),
-                    fullscreenDialog: true,
+          // Solo en debug: botón de limpieza masiva
+          if (const bool.fromEnvironment('dart.vm.product') == false)
+            IconButton(
+              key: const ValueKey('clean_all_button'),
+              icon: const Icon(Icons.delete_forever),
+              tooltip: 'LIMPIEZA MASIVA (Firestore + Auth)',
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('¿Eliminar TODOS los datos?'),
+                    content: const Text('Esta acción eliminará TODOS los usuarios y círculos de Firestore y Auth. Solo para desarrollo.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar')),
+                    ],
                   ),
                 );
-              },
-              child: const Text('🧪 PRUEBA: Abrir Modal Emojis'),
-            ),
-          ),
-          // CONTENIDO ORIGINAL
-          Expanded(
-            child: Consumer(
-              builder: (context, ref, child) {
-                final circleState = ref.watch(circleProvider);
-                return switch (circleState) {
-                  CircleInitial() => const SizedBox.shrink(),
-                  CircleLoading() => const CircularProgressIndicator(),
-                  NoCircle() => const NoCircleView(),
-                  CircleLoaded(circle: final circle) => InCircleView(circle: circle),
-                  CircleError(message: final msg) => Text('Error: $msg'),
-                  _ => const SizedBox.shrink(),
-                };
+                if (confirmed != true) return;
+                try {
+                  await cleanFirestoreCollections();
+                  await cleanAuthUsers();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('¡Limpieza masiva completada!'), backgroundColor: Colors.green),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error en limpieza: $e'), backgroundColor: Colors.red),
+                  );
+                }
               },
             ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+                  (route) => false,
+                );
+              }
+            },
           ),
         ],
       ),
-      // 🚀 TAREA 1: FloatingActionButton Global
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          log('[FAB] Quick Status FAB presionado');
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const QuickStatusSelectorPage(),
-              fullscreenDialog: true,
-            ),
-          );
+      body: Consumer(
+        builder: (context, ref, child) {
+          final circleState = ref.watch(circleProvider);
+          return switch (circleState) {
+            CircleInitial() => const Center(child: Text("Iniciando círculo...")),
+            CircleLoading() => const Center(child: CircularProgressIndicator()),
+            NoCircle() => const NoCircleView(),
+            CircleLoaded(:final circle) => InCircleView(circle: circle),
+            CircleError(:final message) => Center(child: Text('Error: $message')),
+            _ => const SizedBox.shrink(),
+          };
         },
-        tooltip: 'Estado Rápido',
-        child: const Icon(Icons.mood),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: accentColor,
+        onPressed: () {
+          QuickStatusService.showSelectorUI(context);
+        },
+        child: const Icon(Icons.add_reaction_outlined, color: Colors.black),
       ),
     );
   }

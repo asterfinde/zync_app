@@ -15,6 +15,7 @@ class SignInOrRegister implements UseCase<User, SignInOrRegisterParams> {
     return await repository.signInOrRegister(
       email: params.email,
       password: params.password,
+      nickname: params.nickname,
     );
   }
 }
@@ -22,9 +23,10 @@ class SignInOrRegister implements UseCase<User, SignInOrRegisterParams> {
 class SignInOrRegisterParams extends Equatable {
   final String email;
   final String password;
+  final String nickname;
 
-  const SignInOrRegisterParams({required this.email, required this.password});
+  const SignInOrRegisterParams({required this.email, required this.password, this.nickname = ''});
 
   @override
-  List<Object> get props => [email, password];
+  List<Object> get props => [email, password, nickname];
 }

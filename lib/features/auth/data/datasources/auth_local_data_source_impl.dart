@@ -15,8 +15,25 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   AuthLocalDataSourceImpl({required this.sharedPreferences});
 
   @override
-  Future<void> cacheUser(UserModel userToCache) {
-    return sharedPreferences.setString(
+  Future<void> cacheUser(UserModel userToCache) async {
+    final stored = await sharedPreferences.getString(kCachedUser);
+    if (stored != null) {
+      try {
+        final existing = UserModel.fromJson(json.decode(stored) as Map<String, dynamic>);
+        if (existing.nickname.isNotEmpty && userToCache.nickname.isEmpty) {
+          userToCache = UserModel(
+            uid: userToCache.uid,
+            email: userToCache.email,
+            name: userToCache.name,
+            nickname: existing.nickname,
+          );
+        }
+      } catch (_) {
+        // Ignorar errores de parseo y sobrescribir con la nueva data
+      }
+    }
+
+    await sharedPreferences.setString(
       kCachedUser,
       json.encode(userToCache.toJson()),
     );
@@ -30,5 +47,10 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     } else {
       return Future.value(null);
     }
+  }
+
+  @override
+  Future<void> clearUser() async {
+    await sharedPreferences.remove(kCachedUser);
   }
 }
