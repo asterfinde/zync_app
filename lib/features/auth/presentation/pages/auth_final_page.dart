@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,6 +13,15 @@ class AuthFinalPage extends StatefulWidget {
 class _AuthFinalPageState extends State<AuthFinalPage> {
   Future<void> _login() async {
     setState(() { _isLoading = true; _message = ''; });
+    final email = _emailController.text.trim();
+    final emailValid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+    if (!emailValid) {
+      setState(() {
+        _isLoading = false;
+        _message = 'Por favor ingresa un correo válido.';
+      });
+      return;
+    }
     try {
       // Navega a la página principal si el login es exitoso
       Navigator.of(context).pushReplacement(
@@ -40,6 +48,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         'nickname': _nicknameController.text.trim(),
         'email': _emailController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'uid': userCredential.user?.uid,
       });
       // Navega a la página principal
       Navigator.of(context).pushReplacement(
@@ -194,17 +204,19 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
 
   void _updateFormValid() {
     setState(() {
+      final email = _emailController.text.trim();
+      final emailValid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+      final nickname = _nicknameController.text.trim();
+      final password = _passwordController.text;
+      final nicknameValid = nickname.length >= 3;
+      final passwordValid = password.length >= 6 && password.length <= 10 && password.trim().isNotEmpty;
       if (_isLogin) {
-        _isFormValid = _emailController.text.isNotEmpty && _passwordController.text.isNotEmpty;
+        _isFormValid = emailValid && passwordValid;
       } else {
-        _isFormValid = _nicknameController.text.length >= 3 &&
-            _emailController.text.isNotEmpty &&
-            _passwordController.text.isNotEmpty;
+        _isFormValid = nicknameValid && emailValid && passwordValid;
       }
     });
   }
-
-  // ...existing login and register logic...
 
   @override
   Widget build(BuildContext context) {
