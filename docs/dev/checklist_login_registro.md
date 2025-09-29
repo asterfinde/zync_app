@@ -43,7 +43,7 @@
 ## 9. Pruebas de Casos Límite
 - [x] Intentar registro con email inválido.
 - [x] Intentar login con contraseña incorrecta.
-- [ ] Intentar recuperación con email no registrado.
+- [x] Intentar recuperación con email no registrado.
 - [x] Intentar registro con nickname demasiado corto.
 
 ## 10. Pruebas de HotRestart

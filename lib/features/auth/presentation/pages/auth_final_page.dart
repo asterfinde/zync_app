@@ -259,16 +259,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                           // CASO 3: Validación de formato de email
                           final emailValid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
                           log('[VALIDACIÓN] Formato de email válido: $emailValid', name: 'PasswordReset');
-                          if (!emailValid) {
-                            log('[VALIDACIÓN] ❌ Formato de email inválido', name: 'PasswordReset');
-                            ScaffoldMessenger.of(rootContext).showSnackBar(
-                              SnackBar(
-                                content: Text('Por favor ingresa un correo válido.', style: TextStyle(color: Colors.white)),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
+                            if (!emailValid) {
+                              log('[VALIDACIÓN] ❌ Formato de email inválido', name: 'PasswordReset');
+                              return;
+                            }
 
                           log('[VALIDACIÓN] ✅ Todas las validaciones pasaron. Iniciando loading...', name: 'PasswordReset');
                           setModalState(() => isLoading = true);
@@ -290,8 +284,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                               // ÉXITO COMPLETO
                               log('[TREN EJECUCIÓN] 🎉 ÉXITO: Correo enviado correctamente', name: 'PasswordReset');
                               log('[TREN EJECUCIÓN] Mostrando SnackBar verde de éxito', name: 'PasswordReset');
+                              // ignore: use_build_context_synchronously
                               Navigator.of(modalContext).pop();
                               if (mounted) {
+                                // ignore: use_build_context_synchronously
                                 ScaffoldMessenger.of(rootContext).showSnackBar(
                                   SnackBar(
                                     content: Text('Hemos enviado las instrucciones. Si no las recibes, verifica que el correo esté registrado.', style: TextStyle(color: Colors.white)),
