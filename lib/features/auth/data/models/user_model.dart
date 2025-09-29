@@ -10,6 +10,8 @@ class UserModel extends User {
     required super.email,
     required super.name,
     required super.nickname,
+    super.createdAt,
+    super.updatedAt,
   });
 
   factory UserModel.fromFirebase(firebase.User user) {
@@ -28,6 +30,8 @@ class UserModel extends User {
       email: data['email'] ?? '',
       name: data['name'] ?? '',
       nickname: data['nickname'] ?? '',
+      createdAt: (data['createdAt'] is Timestamp) ? (data['createdAt'] as Timestamp).toDate() : null,
+      updatedAt: (data['updatedAt'] is Timestamp) ? (data['updatedAt'] as Timestamp).toDate() : null,
     );
   }
 
@@ -37,6 +41,8 @@ class UserModel extends User {
       email: json['email'] ?? '',
       name: json['name'] ?? '',
       nickname: json['nickname'] ?? '',
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
     );
   }
 
@@ -46,6 +52,8 @@ class UserModel extends User {
       'email': email,
       'name': name,
       'nickname': nickname,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 }

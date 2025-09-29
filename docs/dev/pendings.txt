@@ -1,0 +1,20 @@
+-------------------------------------------------
+28/09
+
+ Email válido + usuario existe → Envía correo + SnackBar verde
+
+ Email válido + usuario NO existe → SnackBar rojo "No existe ninguna cuenta"
+
+ Email inválido → SnackBar rojo "Por favor ingresa un correo válido"
+
+ Email válido pero con error de red/Firebase
+
+---
+Los 4 casos están cubiertos correctamente:
+
+✅ CASO 1: Email válido + usuario existe → sendPasswordResetEmail() funciona → SnackBar verde
+✅ CASO 2: Email válido + usuario NO existe → Captura user-not-found → SnackBar rojo
+✅ CASO 3: Email inválido → Validación previa + captura invalid-email → SnackBar rojo
+✅ CASO 4: Problemas de red → Captura network-request-failed y errores generales → SnackBar rojo
+
+-------------------------------------------------

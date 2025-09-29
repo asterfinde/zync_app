@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DevAuthTestPage extends StatefulWidget {
-  const DevAuthTestPage({Key? key}) : super(key: key);
+  const DevAuthTestPage({super.key});
 
   @override
   State<DevAuthTestPage> createState() => _DevAuthTestPageState();

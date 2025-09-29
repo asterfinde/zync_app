@@ -1,0 +1,11 @@
+{"users": [
+{
+  "localId": "vZcJZtrRjPVtiLhWsKoAncULt2X2",
+  "email": "dante.frias@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "8TU6fQrX+7ucV4MEW89HkOI0Q8j22bSZHlbRD+OIdF/oBZGR/i+Kyj3McpZlz784u1g5ofAFxD8y7L3rpv2VGA==",
+  "salt": "mJbkYE6C7VIYGg==",
+  "lastSignedInAt": "1759160454369",
+  "createdAt": "1759098745539",
+  "providerUserInfo": []
+}]}

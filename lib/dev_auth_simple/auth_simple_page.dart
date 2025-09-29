@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthSimplePage extends StatefulWidget {
-  const AuthSimplePage({Key? key}) : super(key: key);
+  const AuthSimplePage({super.key});
 
   @override
   State<AuthSimplePage> createState() => _AuthSimplePageState();
@@ -108,7 +108,7 @@ class _AuthSimplePageState extends State<AuthSimplePage> {
 }
 
 class HomePageSimple extends StatelessWidget {
-  const HomePageSimple({Key? key}) : super(key: key);
+  const HomePageSimple({super.key});
 
   @override
   Widget build(BuildContext context) {

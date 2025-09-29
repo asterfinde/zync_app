@@ -16,7 +16,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<void> cacheUser(UserModel userToCache) async {
-    final stored = await sharedPreferences.getString(kCachedUser);
+    final stored = sharedPreferences.getString(kCachedUser);
     if (stored != null) {
       try {
         final existing = UserModel.fromJson(json.decode(stored) as Map<String, dynamic>);
