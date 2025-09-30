@@ -198,73 +198,159 @@ class InCircleView extends ConsumerWidget {
                         ),
                         const SizedBox(height: 16),
                         
-                        ...circle.members.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final memberId = entry.value;
-                          final isFirst = index == 0;
+                        // Lista de miembros con nicknames optimizada
+                        FutureBuilder<Map<String, String>>(
+                          future: _getAllMemberNicknames(circle.members),
+                          builder: (context, snapshot) {
+                            // Mostrar indicador de carga mientras se obtienen los nicknames
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return Column(
+                                children: circle.members.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  // Miembro en estado de carga
+                                  final isFirst = index == 0;
 
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isFirst ? Colors.blue[900] : Colors.grey[700],
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      '🙂',
-                                      style: TextStyle(fontSize: 20),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      FutureBuilder<String>(
-                                        future: _getMemberNicknameFromFirestore(memberId),
-                                        builder: (context, snapshot) {
-                                          final nickname = snapshot.data ?? memberId;
-                                          return Text(
-                                            nickname,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.white,
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: isFirst ? Colors.blue[900] : Colors.grey[700],
+                                          ),
+                                          child: const Center(
+                                            child: Text(
+                                              '🙂',
+                                              style: TextStyle(fontSize: 20),
                                             ),
-                                          );
-                                        },
-                                      ),
-                                      if (isFirst) ...[
-                                        Text(
-                                          'Creador',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.blue[400],
-                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  SizedBox(
+                                                    width: 12,
+                                                    height: 12,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'Cargando...',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: Colors.grey[400],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              if (isFirst) ...[
+                                                Text(
+                                                  'Creador',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.blue[400],
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.green[400],
                                           ),
                                         ),
                                       ],
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            }
+                            
+                            final nicknames = snapshot.data ?? {};
+                            
+                            return Column(
+                              children: circle.members.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final memberId = entry.value;
+                                final isFirst = index == 0;
+                                final nickname = nicknames[memberId] ?? 
+                                  (memberId.length > 8 ? memberId.substring(0, 8) : memberId);
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isFirst ? Colors.blue[900] : Colors.grey[700],
+                                        ),
+                                        child: const Center(
+                                          child: Text(
+                                            '🙂',
+                                            style: TextStyle(fontSize: 20),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              nickname,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            if (isFirst) ...[
+                                              Text(
+                                                'Creador',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.blue[400],
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.green[400],
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                                Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.green[400],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -287,16 +373,71 @@ class InCircleView extends ConsumerWidget {
     return 'Usuario';
   }
 
-  Future<String> _getMemberNicknameFromFirestore(String uid) async {
+  Future<Map<String, String>> _getAllMemberNicknames(List<String> memberIds) async {
+    final Map<String, String> nicknames = {};
+    print('[InCircleView] 🔍 Obteniendo nicknames para ${memberIds.length} miembros: $memberIds');
+    
     try {
-      final doc = await FirebaseCircleService().getUserDoc(uid);
-      if (doc.exists && doc.data() != null && doc.data()!.containsKey('nickname')) {
-        return doc['nickname'] as String;
+      // Obtener todos los documentos de usuarios en una sola operación batch
+      final futures = memberIds.map((uid) async {
+        try {
+          print('[InCircleView] 📄 Consultando documento para UID: $uid');
+          final doc = await FirebaseCircleService().getUserDoc(uid);
+          
+          if (doc.exists && doc.data() != null) {
+            final data = doc.data()!;
+            print('[InCircleView] 📊 Datos del usuario $uid: $data');
+            
+            final nickname = data['nickname'] as String? ?? '';
+            final email = data['email'] as String? ?? '';
+            final name = data['name'] as String? ?? '';
+            
+            print('[InCircleView] 🏷️ Para $uid - nickname: "$nickname", email: "$email", name: "$name"');
+            
+            // Priorizar nickname, luego name, luego email (parte antes del @), luego UID
+            if (nickname.isNotEmpty && nickname.trim().isNotEmpty) {
+              print('[InCircleView] ✅ Usando nickname: "$nickname" para $uid');
+              return MapEntry(uid, nickname.trim());
+            } else if (name.isNotEmpty && name.trim().isNotEmpty) {
+              print('[InCircleView] ✅ Usando name: "$name" para $uid');
+              return MapEntry(uid, name.trim());
+            } else if (email.isNotEmpty) {
+              final emailPart = email.split('@')[0];
+              print('[InCircleView] ✅ Usando email: "$emailPart" para $uid');
+              return MapEntry(uid, emailPart);
+            } else {
+              final shortUid = uid.length > 8 ? uid.substring(0, 8) : uid;
+              print('[InCircleView] ⚠️ Usando UID acortado: "$shortUid" para $uid');
+              return MapEntry(uid, shortUid);
+            }
+          } else {
+            print('[InCircleView] ❌ Documento no existe para $uid');
+            final shortUid = uid.length > 8 ? uid.substring(0, 8) : uid;
+            return MapEntry(uid, shortUid);
+          }
+        } catch (e) {
+          print('[InCircleView] ❌ Error obteniendo nickname para $uid: $e');
+          final shortUid = uid.length > 8 ? uid.substring(0, 8) : uid;
+          return MapEntry(uid, shortUid);
+        }
+      });
+      
+      final results = await Future.wait(futures);
+      for (final entry in results) {
+        nicknames[entry.key] = entry.value;
+        print('[InCircleView] 🎯 Resultado final - ${entry.key}: "${entry.value}"');
       }
-      return uid;
-    } catch (_) {
-      return uid;
+    } catch (e) {
+      print('[InCircleView] ❌ Error general obteniendo nicknames de miembros: $e');
+      // Fallback: usar IDs acortados
+      for (final uid in memberIds) {
+        final shortUid = uid.length > 8 ? uid.substring(0, 8) : uid;
+        nicknames[uid] = shortUid;
+      }
     }
+    
+    print('[InCircleView] 🏁 Nicknames finales: $nicknames');
+    return nicknames;
   }
 
   void _copyToClipboard(BuildContext context, String text) {

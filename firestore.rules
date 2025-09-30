@@ -2,10 +2,23 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite leer y escribir en el documento del usuario y sus sub-colecciones
-    // Esto asegura que cada usuario solo puede acceder a sus propios datos
+    // Reglas para usuarios: pueden leer y escribir sus propios datos
+    // ADEMÁS: pueden leer el nickname de otros usuarios SI están en el mismo círculo
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Escribir: solo el propio usuario
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Leer: el propio usuario O miembros del mismo círculo (para nicknames)
+      allow read: if request.auth != null && (
+        // El propio usuario puede leer su documento completo
+        request.auth.uid == userId ||
+        // O si ambos usuarios están en el mismo círculo
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.circleId != null &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.circleId == resource.data.circleId
+        )
+      );
     }
     
     // Permite acceso a sub-colecciones del usuario (para futuras funcionalidades)
