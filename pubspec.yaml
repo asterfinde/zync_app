@@ -24,6 +24,9 @@ dependencies:
   # Programación funcional (para Either)
   dartz: ^0.10.1
   
+  # Utilidades para streams
+  async: ^2.11.0
+  
   # --- DEPENDENCIAS EXTERNAS (CAPA DE DATOS) ---
   # Firebase (versiones estables y compatibles)
   firebase_core: ^3.6.0

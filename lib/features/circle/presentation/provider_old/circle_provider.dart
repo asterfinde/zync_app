@@ -39,10 +39,12 @@ class CircleNotifier extends StateNotifier<CircleState> {
   
   void _listenToCircleChanges() {
     if (_userId == null) {
+      log("[CircleNotifier] _listenToCircleChanges: No userId, setting NoCircle state");
       state = NoCircle();
       return;
     }
 
+    log("[CircleNotifier] _listenToCircleChanges: Iniciando stream para userId: $_userId");
     state = CircleLoading();
     _circleSubscription?.cancel();
     
@@ -50,38 +52,67 @@ class CircleNotifier extends StateNotifier<CircleState> {
     _circleSubscription =
         _getCircleStreamForUser(Params(_userId!)).listen(
       (either) {
+        log("[CircleNotifier] Stream evento recibido");
         either.fold(
           (failure) {
+            log("[CircleNotifier] Stream error: ${failure.message}");
             state = CircleError(failure.message);
           },
           (circle) {
             if (circle != null) {
+              log("[CircleNotifier] ✅ Circle cargado desde stream: ${circle.name}");
               state = CircleLoaded(circle);
             } else {
+              log("[CircleNotifier] Stream devolvió null, setting NoCircle state");
               state = NoCircle();
             }
           },
         );
       },
       onError: (e) {
+        log("[CircleNotifier] Stream onError: $e");
         state = CircleError(e.toString());
       },
     );
   }
 
   Future<void> createCircle(String name) async {
+    log("[CircleNotifier] createCircle iniciado con nombre: '$name'");
+    
+    // Mostrar estado de carga
+    state = CircleLoading();
+    
     final result = await _createCircle(CreateCircleParams(name: name));
     result.fold(
-      (failure) => log("Creación fallida: ${failure.message}"),
-      (_) => log("Creación exitosa. Stream actualizará la UI."),
+      (failure) {
+        log("[CircleNotifier] Creación fallida: ${failure.message}");
+        state = CircleError(failure.message);
+      },
+      (_) {
+        log("[CircleNotifier] Creación exitosa. Esperando que el stream detecte el cambio...");
+        // El stream se encargará de actualizar el estado cuando detecte el cambio
+        // Reiniciar el stream para forzar la detección del cambio
+        log("[CircleNotifier] Reiniciando stream para detectar el nuevo círculo...");
+        _listenToCircleChanges();
+        
+        // Si no se actualiza en 10 segundos, hay un problema con el stream
+        Timer(const Duration(seconds: 10), () {
+          if (state is CircleLoading) {
+            log("[CircleNotifier] TIMEOUT: El stream no detectó el cambio del círculo");
+            state = CircleError("Stream timeout: Circle created but UI not updated");
+          }
+        });
+      },
     );
   }
 
   Future<void> joinCircle(String invitationCode) async {
+    log("[CircleNotifier] joinCircle llamado con código: '$invitationCode'");
+    
     final result = await _joinCircle(JoinCircleParams(invitationCode: invitationCode));
-     result.fold(
-      (failure) => log("Unión fallida: ${failure.message}"),
-      (_) => log("Unión exitosa. Stream actualizará la UI."),
+    result.fold(
+      (failure) => log("[CircleNotifier] Unión fallida: ${failure.message}"),
+      (_) => log("[CircleNotifier] Unión exitosa. Stream actualizará la UI."),
     );
   }
 

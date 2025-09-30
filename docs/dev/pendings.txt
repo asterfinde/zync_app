@@ -18,3 +18,6 @@ Los 4 casos están cubiertos correctamente:
 ✅ CASO 4: Problemas de red → Captura network-request-failed y errores generales → SnackBar rojo
 
 -------------------------------------------------
+
+errores de Google API Manager que podrían estar relacionados con Firebase/Google Services:
+

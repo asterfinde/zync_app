@@ -1,9 +1,26 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite leer y escribir en CUALQUIER documento si el usuario está autenticado.
-    // Esto es ideal para el PoC, pero inseguro para producción.
-    match /{document=**} {
+    // Permite leer y escribir en el documento del usuario y sus sub-colecciones
+    // Esto asegura que cada usuario solo puede acceder a sus propios datos
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Permite acceso a sub-colecciones del usuario (para futuras funcionalidades)
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Permite leer y escribir en la colección circles para usuarios autenticados
+    // Esto permite crear, leer, actualizar y eliminar círculos
+    match /circles/{circleId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Permite acceso a sub-colecciones de circles (como miembros, mensajes, etc.)
+    match /circles/{circleId}/{document=**} {
       allow read, write: if request.auth != null;
     }
   }

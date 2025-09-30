@@ -17,27 +17,27 @@ import '../../features/auth/domain/usecases/get_current_user.dart';
 import '../../features/auth/domain/usecases/sign_in_or_register.dart';
 import '../../features/auth/domain/usecases/sign_out.dart';
 
-// Features - Circle
-import '../../features/circle/data/datasources/circle_remote_data_source.dart';
-import '../../features/circle/data/datasources/circle_remote_data_source_impl.dart';
-import '../../features/circle/data/repositories/circle_repository_impl.dart' as repo_impl;
-import '../../features/circle/domain/repositories/circle_repository.dart';
-import '../../features/circle/domain/usecases/create_circle.dart';
-import '../../features/circle/domain/usecases/get_circle_stream_for_user.dart';
-import '../../features/circle/domain/usecases/join_circle.dart';
-// --- INICIO DE LA ACTUALIZACIÓN ---
-// 1. ELIMINAMOS el import del usecase antiguo
-// import '../../features/circle/domain/usecases/update_circle_status.dart';
-// 2. AÑADIMOS el import del nuevo usecase
-import '../../features/circle/domain/usecases/send_user_status.dart';
-// --- FIN DE LA ACTUALIZACIÓN ---
+// Features - Circle - COMENTADO TEMPORALMENTE (arquitectura simplificada)
+// import '../../features/circle/data/datasources/circle_remote_data_source.dart';
+// import '../../features/circle/data/datasources/circle_remote_data_source_impl.dart';
+// import '../../features/circle/data/repositories/circle_repository_impl.dart' as repo_impl;
+// import '../../features/circle/domain/repositories/circle_repository.dart';
+// import '../../features/circle/domain/usecases/create_circle.dart';
+// import '../../features/circle/domain/usecases/get_circle_stream_for_user.dart';
+// import '../../features/circle/domain/usecases/join_circle.dart';
+// import '../../features/circle/domain/usecases/send_user_status.dart';
+
+// Nueva arquitectura simplificada - importar cuando sea necesario
+// import '../../features/circle/services/firebase_circle_service.dart';
+// import '../../features/circle/providers/simple_circle_provider.dart';
 
 // Core
 import '../network/network_info.dart';
 import '../network/network_info_impl.dart';
 
-import '../../features/circle/domain/services/geolocation_service.dart';
-import '../../features/circle/data/services/geolocation_service_impl.dart';
+// Servicios de geolocalización - COMENTADO TEMPORALMENTE (movidos a domain_old/data_old)
+// import '../../features/circle/domain/services/geolocation_service.dart';
+// import '../../features/circle/data/services/geolocation_service_impl.dart';
 
 final sl = GetIt.instance;
 
@@ -60,29 +60,24 @@ Future<void> init() async {
     () => AuthLocalDataSourceImpl(sharedPreferences: sl()),
   );
 
-  // Features - Circle
-  sl.registerLazySingleton(() => CreateCircle(sl()));
-  sl.registerLazySingleton(() => JoinCircle(sl()));
-  sl.registerLazySingleton(() => GetCircleStreamForUser(sl()));
-  // --- INICIO DE LA ACTUALIZACIÓN ---
-  // 3. ELIMINAMOS el registro del usecase antiguo
-  // sl.registerLazySingleton(() => UpdateCircleStatus(sl()));
-  // 4. AÑADIMOS el registro del nuevo usecase
-  sl.registerLazySingleton(() => SendUserStatus(sl(), sl()));
-  // --- FIN DE LA ACTUALIZACIÓN ---
+  // Features - Circle - COMENTADO TEMPORALMENTE (arquitectura simplificada)
+  // sl.registerLazySingleton(() => CreateCircle(sl()));
+  // sl.registerLazySingleton(() => JoinCircle(sl()));
+  // sl.registerLazySingleton(() => GetCircleStreamForUser(sl()));
+  // sl.registerLazySingleton(() => SendUserStatus(sl(), sl()));
+  // sl.registerLazySingleton<CircleRepository>(
+  //   () => repo_impl.CircleRepositoryImpl(
+  //     remoteDataSource: sl(),
+  //     firebaseAuth: sl(),
+  //   ),
+  // );
+  // sl.registerLazySingleton<CircleRemoteDataSource>(
+  //   () => CircleRemoteDataSourceImpl(sl()),
+  // );
 
-  sl.registerLazySingleton<CircleRepository>(
-    () => repo_impl.CircleRepositoryImpl(
-      remoteDataSource: sl(),
-      firebaseAuth: sl(),
-      // Nota: removido 'firestore: sl()' porque el constructor del repo no lo recibe.
-    ),
-  );
-
-  sl.registerLazySingleton<CircleRemoteDataSource>(
-    // Constructor posicional: pasamos FirebaseFirestore resuelto por GetIt.
-    () => CircleRemoteDataSourceImpl(sl()),
-  );
+  // Nueva arquitectura simplificada - registrar cuando sea necesario
+  // sl.registerLazySingleton(() => FirebaseCircleService());
+  // sl.registerLazySingleton(() => SimpleCircleProvider());
 
   // Core
   sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(sl()));
@@ -94,6 +89,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => FirebaseFirestore.instance);
   sl.registerLazySingleton(() => Connectivity());
 
-  sl.registerLazySingleton<GeolocationService>(() => GeolocationServiceImpl());
+  // Servicios de geolocalización - COMENTADO TEMPORALMENTE
+  // sl.registerLazySingleton<GeolocationService>(() => GeolocationServiceImpl());
 }
 
