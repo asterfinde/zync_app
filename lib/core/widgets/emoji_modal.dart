@@ -2,9 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zync_app/features/circle/domain_old/entities/user_status.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:developer';
+import 'package:zync_app/core/services/status_service.dart';
 
 /// Bottom Sheet con grid de emojis para cambiar estado del usuario
 class EmojiStatusBottomSheet extends ConsumerStatefulWidget {
@@ -36,57 +34,10 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
       _currentStatus = newStatus;
     });
 
-    try {
-      log('[EmojiBottomSheet] Actualizando estado a: ${newStatus.description} ${newStatus.emoji}');
-      
-      // Actualización directa a Firestore sin capas intermedias complejas
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('Usuario no autenticado');
-      }
-
-      // Obtener el circleId del usuario
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-          
-      final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId == null) {
-        throw Exception('Usuario no está en ningún círculo');
-      }
-
-      // Actualizar el estado en el círculo
-      final batch = FirebaseFirestore.instance.batch();
-      
-      // Actualizar memberStatus en el documento del círculo
-      final statusData = {
-        'userId': user.uid,
-        'statusType': newStatus.name,
-        'timestamp': FieldValue.serverTimestamp(),
-      };
-      
-      batch.update(
-        FirebaseFirestore.instance.collection('circles').doc(circleId),
-        {'memberStatus.${user.uid}': statusData}
-      );
-      
-      // Crear evento en historial (opcional, si existe)
-      final historyRef = FirebaseFirestore.instance
-          .collection('circles')
-          .doc(circleId)
-          .collection('statusEvents')
-          .doc();
-          
-      batch.set(historyRef, {
-        'uid': user.uid,
-        'statusType': newStatus.name,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      
-      await batch.commit();
-      log('[EmojiBottomSheet] ✅ Estado actualizado exitosamente');
-      
+    // Usar el servicio extraído - MISMA lógica, diferente ubicación
+    final result = await StatusService.updateUserStatus(newStatus);
+    
+    if (result.isSuccess) {
       // Pequeña pausa para mostrar feedback visual
       await Future.delayed(const Duration(milliseconds: 300));
       
@@ -109,9 +60,8 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
           ),
         );
       }
-    } catch (e) {
-      log('[EmojiBottomSheet] Error actualizando estado: $e');
-      
+    } else {
+      // Manejar error - MISMA UX que antes
       setState(() {
         _isUpdating = false;
         _currentStatus = null;
@@ -120,7 +70,7 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error: ${e.toString()}'),
+            content: Text('❌ Error: ${result.errorMessage ?? 'Error desconocido'}'),
             backgroundColor: Colors.red[700],
           ),
         );
