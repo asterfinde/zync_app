@@ -1,295 +1,44 @@
 // lib/core/widgets/emoji_modal.dart
+// ARCHIVO TEMPORAL - La implementación original está en emoji_modal_backup.dart
+// Este archivo existe para evitar errores de compilación durante la refactorización
+
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zync_app/features/circle/domain_old/entities/user_status.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:developer';
 
-/// Bottom Sheet con grid de emojis para cambiar estado del usuario
-class EmojiStatusBottomSheet extends ConsumerStatefulWidget {
-  const EmojiStatusBottomSheet({super.key});
-
-  @override
-  ConsumerState<EmojiStatusBottomSheet> createState() => _EmojiStatusBottomSheetState();
-}
-
-class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet> {
-  bool _isUpdating = false;
-  StatusType? _currentStatus;
-
-  // Estados disponibles exactamente como los definiste
-  final List<StatusType> _availableStatuses = const [
-    StatusType.leave,    // 🚶‍♂️ Saliendo
-    StatusType.busy,     // 🔥 Ocupado
-    StatusType.fine,     // 😊 Bien
-    StatusType.sad,      // 😢 Mal
-    StatusType.ready,    // ✅ Listo
-    StatusType.sos,      // 🆘 SOS
-  ];
-
-  Future<void> _updateStatus(StatusType newStatus) async {
-    if (_isUpdating) return;
-    
-    setState(() {
-      _isUpdating = true;
-      _currentStatus = newStatus;
-    });
-
-    try {
-      log('[EmojiBottomSheet] Actualizando estado a: ${newStatus.description} ${newStatus.emoji}');
-      
-      // Actualización directa a Firestore sin capas intermedias complejas
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('Usuario no autenticado');
-      }
-
-      // Obtener el circleId del usuario
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-          
-      final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId == null) {
-        throw Exception('Usuario no está en ningún círculo');
-      }
-
-      // Actualizar el estado en el círculo
-      final batch = FirebaseFirestore.instance.batch();
-      
-      // Actualizar memberStatus en el documento del círculo
-      final statusData = {
-        'userId': user.uid,
-        'statusType': newStatus.name,
-        'timestamp': FieldValue.serverTimestamp(),
-      };
-      
-      batch.update(
-        FirebaseFirestore.instance.collection('circles').doc(circleId),
-        {'memberStatus.${user.uid}': statusData}
-      );
-      
-      // Crear evento en historial (opcional, si existe)
-      final historyRef = FirebaseFirestore.instance
-          .collection('circles')
-          .doc(circleId)
-          .collection('statusEvents')
-          .doc();
-          
-      batch.set(historyRef, {
-        'uid': user.uid,
-        'statusType': newStatus.name,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      
-      await batch.commit();
-      log('[EmojiBottomSheet] ✅ Estado actualizado exitosamente');
-      
-      // Pequeña pausa para mostrar feedback visual
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      if (mounted) {
-        Navigator.of(context).pop();
-        
-        // Mostrar confirmación sutil
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(newStatus.emoji),
-                const SizedBox(width: 8),
-                Text('Estado actualizado: ${newStatus.description}'),
-              ],
-            ),
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.green[700],
-          ),
-        );
-      }
-    } catch (e) {
-      log('[EmojiBottomSheet] Error actualizando estado: $e');
-      
-      setState(() {
-        _isUpdating = false;
-        _currentStatus = null;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: ${e.toString()}'),
-            backgroundColor: Colors.red[700],
-          ),
-        );
-      }
-    }
-  }
+class EmojiModal extends StatelessWidget {
+  const EmojiModal({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle visual para indicar que es draggable
-          Container(
-            width: 50,
-            height: 5,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(10),
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 350, maxHeight: 400),
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.construction,
+              size: 64,
+              color: Colors.orange,
             ),
-          ),
-          
-          // Título
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
-                const Text(
-                  '¿Cómo te sientes?',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Selecciona tu estado actual',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
+            const SizedBox(height: 16),
+            const Text(
+              'Funcionalidad de estado temporalmente deshabilitada durante la refactorización',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16),
             ),
-          ),
-          
-          // Grid de estados
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.0,
-              ),
-              itemCount: _availableStatuses.length,
-              itemBuilder: (context, index) {
-                final status = _availableStatuses[index];
-                final isSelected = _currentStatus == status;
-                final isUpdating = _isUpdating && isSelected;
-                
-                return GestureDetector(
-                  onTap: () => _updateStatus(status),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: isSelected 
-                          ? Colors.blue[50] 
-                          : Colors.grey[50],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected 
-                            ? Colors.blue[300]! 
-                            : Colors.grey[200]!,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: isSelected ? [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ] : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (isUpdating) ...[
-                          const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                            ),
-                          ),
-                        ] else ...[
-                          Text(
-                            status.emoji,
-                            style: const TextStyle(fontSize: 28),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        Text(
-                          status.description,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: isSelected ? Colors.blue[700] : Colors.grey[700],
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
             ),
-          ),
-          
-          // Botón de cancelar
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: _isUpdating ? null : () => Navigator.of(context).pop(),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: _isUpdating ? Colors.grey : Colors.grey[600],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
-          // Padding bottom para safe area
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
-
-/// Función helper para mostrar el bottom sheet
-void showEmojiStatusBottomSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) => const EmojiStatusBottomSheet(),
-  );
 }
 
 // import 'package:flutter/material.dart';

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firebase_circle_service.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
+import '../../../../core/widgets/emoji_modal.dart';
 
 class InCircleView extends ConsumerWidget {
   final Circle circle;
@@ -291,61 +293,95 @@ class InCircleView extends ConsumerWidget {
                                 final isFirst = index == 0;
                                 final nickname = nicknames[memberId] ?? 
                                   (memberId.length > 8 ? memberId.substring(0, 8) : memberId);
+                                
+                                // Verificar si es el usuario actual
+                                final currentUser = FirebaseAuth.instance.currentUser;
+                                final isCurrentUser = currentUser?.uid == memberId;
 
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isFirst ? Colors.blue[900] : Colors.grey[700],
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            '🙂',
-                                            style: TextStyle(fontSize: 20),
-                                          ),
-                                        ),
+                                Widget memberRow = Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isFirst ? Colors.blue[900] : Colors.grey[700],
                                       ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
+                                      child: StreamBuilder<Map<String, String>>(
+                                        stream: _getMemberStatusStream(circle.id),
+                                        builder: (context, snapshot) {
+                                          final statusEmojis = snapshot.data ?? {};
+                                          final emoji = statusEmojis[memberId] ?? '😊';
+                                          return Center(
+                                            child: Text(
+                                              emoji,
+                                              style: const TextStyle(fontSize: 20),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            nickname,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          if (isFirst) ...[
                                             Text(
-                                              nickname,
-                                              style: const TextStyle(
-                                                fontSize: 16,
+                                              'Creador',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.blue[400],
                                                 fontWeight: FontWeight.w500,
-                                                color: Colors.white,
                                               ),
                                             ),
-                                            if (isFirst) ...[
-                                              Text(
-                                                'Creador',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.blue[400],
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
                                           ],
-                                        ),
+                                          if (isCurrentUser) ...[
+                                            Text(
+                                              'Mantén presionado para cambiar estado',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey[400],
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                      Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.green[400],
-                                        ),
+                                    ),
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.green[400],
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
+                                );
+
+                                // Envolver con GestureDetector solo si es el usuario actual
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: isCurrentUser 
+                                    ? GestureDetector(
+                                        onLongPress: () {
+                                          // Mostrar feedback haptic
+                                          HapticFeedback.mediumImpact();
+                                          // Abrir bottom sheet para cambiar estado
+                                          showEmojiStatusBottomSheet(context);
+                                        },
+                                        child: memberRow,
+                                      )
+                                    : memberRow,
                                 );
                               }).toList(),
                             );
@@ -377,67 +413,105 @@ class InCircleView extends ConsumerWidget {
     final Map<String, String> nicknames = {};
     print('[InCircleView] 🔍 Obteniendo nicknames para ${memberIds.length} miembros: $memberIds');
     
-    try {
-      // Obtener todos los documentos de usuarios en una sola operación batch
-      final futures = memberIds.map((uid) async {
-        try {
-          print('[InCircleView] 📄 Consultando documento para UID: $uid');
-          final doc = await FirebaseCircleService().getUserDoc(uid);
+    // Procesar en paralelo para optimizar rendimiento
+    final futures = memberIds.map((uid) async {
+      try {
+        print('[InCircleView] 📄 Consultando documento para UID: $uid');
+        final doc = await FirebaseCircleService().getUserDoc(uid);
+        
+        if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
+          final nickname = data['nickname'] as String? ?? '';
+          final email = data['email'] as String? ?? '';
+          final name = data['name'] as String? ?? '';
           
-          if (doc.exists && doc.data() != null) {
-            final data = doc.data()!;
-            print('[InCircleView] 📊 Datos del usuario $uid: $data');
-            
-            final nickname = data['nickname'] as String? ?? '';
-            final email = data['email'] as String? ?? '';
-            final name = data['name'] as String? ?? '';
-            
-            print('[InCircleView] 🏷️ Para $uid - nickname: "$nickname", email: "$email", name: "$name"');
-            
-            // Priorizar nickname, luego name, luego email (parte antes del @), luego UID
-            if (nickname.isNotEmpty && nickname.trim().isNotEmpty) {
-              print('[InCircleView] ✅ Usando nickname: "$nickname" para $uid');
-              return MapEntry(uid, nickname.trim());
-            } else if (name.isNotEmpty && name.trim().isNotEmpty) {
-              print('[InCircleView] ✅ Usando name: "$name" para $uid');
-              return MapEntry(uid, name.trim());
-            } else if (email.isNotEmpty) {
-              final emailPart = email.split('@')[0];
-              print('[InCircleView] ✅ Usando email: "$emailPart" para $uid');
-              return MapEntry(uid, emailPart);
-            } else {
-              final shortUid = uid.length > 8 ? uid.substring(0, 8) : uid;
-              print('[InCircleView] ⚠️ Usando UID acortado: "$shortUid" para $uid');
-              return MapEntry(uid, shortUid);
-            }
+          print('[InCircleView] 🏷️ Para $uid - nickname: "$nickname", email: "$email", name: "$name"');
+          
+          String finalNickname;
+          if (nickname.isNotEmpty) {
+            finalNickname = nickname;
+            print('[InCircleView] ✅ Usando nickname: "$nickname" para $uid');
+          } else if (name.isNotEmpty) {
+            finalNickname = name;
+            print('[InCircleView] ✅ Usando name: "$name" para $uid');
+          } else if (email.isNotEmpty) {
+            finalNickname = email.split('@')[0];
+            print('[InCircleView] ✅ Usando email prefix: "${email.split('@')[0]}" para $uid');
           } else {
-            print('[InCircleView] ❌ Documento no existe para $uid');
-            final shortUid = uid.length > 8 ? uid.substring(0, 8) : uid;
-            return MapEntry(uid, shortUid);
+            finalNickname = uid.length > 8 ? uid.substring(0, 8) : uid;
+            print('[InCircleView] ⚠️ Usando UID truncado: "$finalNickname" para $uid');
           }
-        } catch (e) {
-          print('[InCircleView] ❌ Error obteniendo nickname para $uid: $e');
-          final shortUid = uid.length > 8 ? uid.substring(0, 8) : uid;
-          return MapEntry(uid, shortUid);
+          
+          return MapEntry(uid, finalNickname);
+        } else {
+          print('[InCircleView] ⚠️ Documento no existe para $uid');
+          final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
+          return MapEntry(uid, fallback);
         }
-      });
-      
-      final results = await Future.wait(futures);
-      for (final entry in results) {
-        nicknames[entry.key] = entry.value;
-        print('[InCircleView] 🎯 Resultado final - ${entry.key}: "${entry.value}"');
+      } catch (e) {
+        print('[InCircleView] ❌ Error obteniendo datos para $uid: $e');
+        final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
+        return MapEntry(uid, fallback);
       }
-    } catch (e) {
-      print('[InCircleView] ❌ Error general obteniendo nicknames de miembros: $e');
-      // Fallback: usar IDs acortados
-      for (final uid in memberIds) {
-        final shortUid = uid.length > 8 ? uid.substring(0, 8) : uid;
-        nicknames[uid] = shortUid;
-      }
+    });
+    
+    final results = await Future.wait(futures);
+    for (final entry in results) {
+      nicknames[entry.key] = entry.value;
+      print('[InCircleView] 🎯 Resultado final - ${entry.key}: "${entry.value}"');
     }
     
     print('[InCircleView] 🏁 Nicknames finales: $nicknames');
     return nicknames;
+  }
+
+  /// Stream que escucha cambios en el estado de los miembros del círculo
+  Stream<Map<String, String>> _getMemberStatusStream(String circleId) {
+    return FirebaseFirestore.instance
+        .collection('circles')
+        .doc(circleId)
+        .snapshots()
+        .map((snapshot) {
+      final Map<String, String> statusEmojis = {};
+      
+      if (snapshot.exists && snapshot.data() != null) {
+        final memberStatus = snapshot.data()!['memberStatus'] as Map<String, dynamic>?;
+        
+        if (memberStatus != null) {
+          memberStatus.forEach((memberId, statusData) {
+            if (statusData is Map<String, dynamic>) {
+              final statusType = statusData['statusType'] as String?;
+              
+              // Mapear el statusType a emoji
+              switch (statusType) {
+                case 'leave':
+                  statusEmojis[memberId] = '🚶‍♂️';
+                  break;
+                case 'busy':
+                  statusEmojis[memberId] = '🔥';
+                  break;
+                case 'fine':
+                  statusEmojis[memberId] = '😊';
+                  break;
+                case 'sad':
+                  statusEmojis[memberId] = '😢';
+                  break;
+                case 'ready':
+                  statusEmojis[memberId] = '✅';
+                  break;
+                case 'sos':
+                  statusEmojis[memberId] = '🆘';
+                  break;
+                default:
+                  statusEmojis[memberId] = '😊';
+              }
+            }
+          });
+        }
+      }
+      
+      return statusEmojis;
+    });
   }
 
   void _copyToClipboard(BuildContext context, String text) {
