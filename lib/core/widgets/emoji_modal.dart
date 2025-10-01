@@ -132,7 +132,7 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFF1E1E1E),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -140,50 +140,27 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
         children: [
           // Handle visual para indicar que es draggable
           Container(
-            width: 50,
-            height: 5,
+            width: 40,
+            height: 4,
             margin: const EdgeInsets.only(top: 12),
             decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.grey[600],
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
           
-          // Título
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
-                const Text(
-                  '¿Cómo te sientes?',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Selecciona tu estado actual',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
+
           
-          // Grid de estados
+          // Grid de estados (diseño minimalista)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 16.0),
             child: GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
                 childAspectRatio: 1.0,
               ),
               itemCount: _availableStatuses.length,
@@ -198,18 +175,18 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
                       color: isSelected 
-                          ? Colors.blue[50] 
-                          : Colors.grey[50],
+                          ? const Color(0xFF1CE4B3).withOpacity(0.15) 
+                          : const Color(0xFF2C2C2C),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isSelected 
-                            ? Colors.blue[300]! 
-                            : Colors.grey[200]!,
+                            ? const Color(0xFF1CE4B3) 
+                            : Colors.grey[700]!,
                         width: isSelected ? 2 : 1,
                       ),
                       boxShadow: isSelected ? [
                         BoxShadow(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: const Color(0xFF1CE4B3).withOpacity(0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -224,22 +201,22 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
                             height: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1CE4B3)),
                             ),
                           ),
                         ] else ...[
                           Text(
                             status.emoji,
-                            style: const TextStyle(fontSize: 28),
+                            style: const TextStyle(fontSize: 32),
                           ),
                         ],
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           status.description,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: isSelected ? Colors.blue[700] : Colors.grey[700],
+                            color: isSelected ? const Color(0xFF1CE4B3) : Colors.grey[300],
                           ),
                           textAlign: TextAlign.center,
                           maxLines: 1,
@@ -253,29 +230,8 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
             ),
           ),
           
-          // Botón de cancelar
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: _isUpdating ? null : () => Navigator.of(context).pop(),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: _isUpdating ? Colors.grey : Colors.grey[600],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
-          // Padding bottom para safe area
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
+          // Padding bottom para safe area (más compacto)
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
         ],
       ),
     );
