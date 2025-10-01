@@ -70,6 +70,16 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Este servicio mantiene una notificación con accesos directos para que el usuario pueda comunicar su estado rápidamente a su círculo de confianza en situaciones de emergencia o cotidianas."/>
         </service>
+
+        <!-- Widget Provider -->
+        <receiver android:name=".ZyncStatusWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/zync_status_widget" />
+        </receiver>
     </application>
 
     <queries>

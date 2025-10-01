@@ -13,6 +13,7 @@ import 'package:zync_app/core/di/injection_container.dart' as di;
 import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
 // import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
 // import 'package:zync_app/features/circle/services/quick_status_service.dart'; // COMENTADO TEMPORALMENTE
+import 'package:zync_app/core/widgets/status_widget.dart';
 
 import 'core/global_keys.dart';
 
@@ -35,7 +36,11 @@ void main() async {
   await di.init();
   print('>>> Después de di.init()');
   // QuickStatusService.initialize(); // COMENTADO TEMPORALMENTE - parte de arquitectura antigua
-  print('>>> Después de comentar QuickStatusService.initialize()');
+  
+  // Initialize the new widget service
+  await StatusWidgetService.initialize();
+  print('>>> Después de StatusWidgetService.initialize()');
+  
   runApp(const ProviderScope(child: MyApp()));
   print('>>> Después de runApp');
 }

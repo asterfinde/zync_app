@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zync_app/features/circle/domain_old/entities/user_status.dart';
 import 'package:zync_app/core/services/status_service.dart';
+import 'package:zync_app/core/widgets/status_widget.dart';
 
 /// Bottom Sheet con grid de emojis para cambiar estado del usuario
 class EmojiStatusBottomSheet extends ConsumerStatefulWidget {
@@ -38,6 +39,12 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
     final result = await StatusService.updateUserStatus(newStatus);
     
     if (result.isSuccess) {
+      // Notify the widget service about the status change
+      await StatusWidgetService.onStatusChanged(
+        status: newStatus,
+        circleId: 'active', // We'll track the active circle later
+      );
+      
       // Pequeña pausa para mostrar feedback visual
       await Future.delayed(const Duration(milliseconds: 300));
       

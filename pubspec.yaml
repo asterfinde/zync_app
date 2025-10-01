@@ -45,6 +45,14 @@ dependencies:
   flutter_foreground_task: ^9.1.0
   permission_handler: ^12.0.1
   google_fonts: ^6.3.1
+  
+  # --- FUNCIONALIDAD SILENCIOSA ---
+  # Widgets de pantalla de inicio
+  home_widget: ^0.6.0
+  # Quick actions (3D Touch / Long press)
+  quick_actions: ^1.0.0
+  # Notificaciones locales
+  flutter_local_notifications: ^17.2.2
 
 dev_dependencies:
   flutter_test:
