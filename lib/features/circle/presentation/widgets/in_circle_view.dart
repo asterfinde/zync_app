@@ -300,13 +300,9 @@ class InCircleView extends ConsumerWidget {
 
                                 Widget memberRow = Row(
                                   children: [
-                                    Container(
+                                    SizedBox(
                                       width: 40,
                                       height: 40,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: isFirst ? Colors.blue[900] : Colors.grey[700],
-                                      ),
                                       child: StreamBuilder<Map<String, String>>(
                                         stream: _getMemberStatusStream(circle.id),
                                         builder: (context, snapshot) {
@@ -315,7 +311,7 @@ class InCircleView extends ConsumerWidget {
                                           return Center(
                                             child: Text(
                                               emoji,
-                                              style: const TextStyle(fontSize: 20),
+                                              style: const TextStyle(fontSize: 28),
                                             ),
                                           );
                                         },
