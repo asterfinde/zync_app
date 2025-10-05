@@ -5,7 +5,7 @@
     android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:updatePeriodMillis="3600000"
-    android:previewImage="@drawable/ic_launcher_foreground"
+    android:previewImage="@mipmap/ic_launcher"
     android:initialLayout="@layout/zync_status_widget"
     android:configure="com.datainfers.zync.MainActivity"
     android:widgetCategory="home_screen"

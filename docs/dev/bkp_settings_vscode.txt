@@ -1,0 +1,39 @@
+Tengo un problema con el uso de Copilot en VSCode
+Venía trabajando bien y con rapidez mientras Copilot creaba o modificaba archivos dentro de un proyecto dado de manera automática
+Sin embargo al parecer algo ha cambiado en la configuración de Copilot y ahora las actualizaciones las tengo que hacer a mano, copiando y pegando los codigos 
+Podrías ayudarme con esto a fin de que la generación de código se haga automáticamente como antes, dentro de VSCode, con la aprobación previa de un botón azul "Allow" que me permitía confirmar las ejecuciones 
+
+{
+    "workbench.colorTheme": "Winter is Coming (Dark Blue - No Italics)",
+    "files.autoSave": "afterDelay",
+    "remote.autoForwardPortsSource": "hybrid",
+    "editor.inlineSuggest.syntaxHighlightingEnabled": true,
+    "editor.unicodeHighlight.invisibleCharacters": false,
+    "editor.unicodeHighlight.ambiguousCharacters": false,
+    
+    // Configuración de Copilot habilitado
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": true,
+        "markdown": true,
+        "scminput": true
+    },
+    
+    // CONFIGURACIONES CLAVE PARA EDITS AUTOMÁTICOS
+    "chat.editing.enabled": true,
+    "chat.editing.confirmEditRequestRemoval": true,
+    "chat.editing.alwaysSaveWithGeneratedChanges": false,
+    
+    // Configuraciones adicionales útiles
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "chat.edits2.enabled": true,
+    "chat.checkpoints.showFileChanges": true,
+    "chat.emptyState.history.enabled": true,
+    
+    // Configuraciones de terminal y chat
+    "terminal.integrated.allowChords": true,
+    "terminal.integrated.commandsToSkipShell": [],
+    "chat.agentSessionsViewLocation": "view",
+    "chat.fontSize": 14,
+    "workbench.settings.applyToAllProfiles": []
+}

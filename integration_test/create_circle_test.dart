@@ -23,9 +23,9 @@ void main() {
       await tester.tap(seedButton);
       await tester.pumpAndSettle(const Duration(seconds: 15));
       expect(find.text('¡Sembrado completado! Base de datos lista.'), findsOneWidget);
-      print('✅ Fase 1 (Preparación) completada.');
+      debugPrint('✅ Fase 1 (Preparación) completada.');
     } else {
-       print('--- AVISO: Botón de sembrado no encontrado. Saltando Fase 1. ---');
+       debugPrint('--- AVISO: Botón de sembrado no encontrado. Saltando Fase 1. ---');
     }
 
     // 2. AUTENTICACIÓN CON UN USUARIO NUEVO
@@ -42,7 +42,7 @@ void main() {
     await tester.enterText(passwordField, '123456');
     await tester.tap(authButton);
     await tester.pumpAndSettle(const Duration(seconds: 5));
-    print('✅ Fase 2 (Autenticación) completada.');
+    debugPrint('✅ Fase 2 (Autenticación) completada.');
 
     // 3. CREACIÓN DEL CÍRCULO
     
@@ -58,11 +58,11 @@ void main() {
     await tester.enterText(circleNameField, newCircleName);
     await tester.tap(createCircleButton);
     await tester.pumpAndSettle(const Duration(seconds: 5));
-    print('✅ Fase 3 (Creación del Círculo) completada.');
+    debugPrint('✅ Fase 3 (Creación del Círculo) completada.');
 
     // 4. VERIFICACIÓN FINAL
     // Verificamos que el nombre del nuevo círculo ahora es visible en la pantalla.
     expect(find.text(newCircleName), findsOneWidget);
-    print('✅ Fase 4 (Verificación Final) completada. ¡Test exitoso!');
+    debugPrint('✅ Fase 4 (Verificación Final) completada. ¡Test exitoso!');
   });
 }

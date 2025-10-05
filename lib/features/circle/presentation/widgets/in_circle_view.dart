@@ -7,6 +7,7 @@ import '../../services/firebase_circle_service.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
 import '../../../../core/widgets/emoji_modal.dart';
+import '../../../settings/presentation/pages/settings_page.dart';
 
 class InCircleView extends ConsumerWidget {
   final Circle circle;
@@ -57,22 +58,37 @@ class InCircleView extends ConsumerWidget {
                     case 'logout':
                       _showLogoutDialog(context, ref);
                       break;
+                    case 'settings':
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsPage(),
+                        ),
+                      );
+                      break;
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'leave_circle',
-                    child: ListTile(
-                      leading: Icon(Icons.exit_to_app, color: Colors.red),
-                      title: Text('Salir del Círculo'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
                   const PopupMenuItem(
                     value: 'logout',
                     child: ListTile(
                       leading: Icon(Icons.logout, color: Colors.grey),
                       title: Text('Cerrar Sesión'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'settings',
+                    child: ListTile(
+                      leading: Icon(Icons.settings, color: Colors.blue),
+                      title: Text('Configuración'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'leave_circle',
+                    child: ListTile(
+                      leading: Icon(Icons.exit_to_app, color: Colors.red),
+                      title: Text('Salir del Círculo'),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -407,12 +423,12 @@ class InCircleView extends ConsumerWidget {
 
   Future<Map<String, String>> _getAllMemberNicknames(List<String> memberIds) async {
     final Map<String, String> nicknames = {};
-    print('[InCircleView] 🔍 Obteniendo nicknames para ${memberIds.length} miembros: $memberIds');
+        // log('[InCircleView] 🔍 Obteniendo nicknames para ${uids.length} miembros: $uids');
     
     // Procesar en paralelo para optimizar rendimiento
     final futures = memberIds.map((uid) async {
       try {
-        print('[InCircleView] 📄 Consultando documento para UID: $uid');
+      // log('[InCircleView] 📄 Consultando documento para UID: $uid');
         final doc = await FirebaseCircleService().getUserDoc(uid);
         
         if (doc.exists && doc.data() != null) {

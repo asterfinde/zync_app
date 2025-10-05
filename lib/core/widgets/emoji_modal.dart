@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zync_app/features/circle/domain_old/entities/user_status.dart';
 import 'package:zync_app/core/services/status_service.dart';
 import 'package:zync_app/core/widgets/status_widget.dart';
+import 'package:zync_app/widgets/status_selector_overlay.dart';
 
 /// Bottom Sheet con grid de emojis para cambiar estado del usuario
 class EmojiStatusBottomSheet extends ConsumerStatefulWidget {
@@ -195,13 +196,20 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
   }
 }
 
-/// Función helper para mostrar el bottom sheet
+/// Función helper para mostrar el modal unificado
 void showEmojiStatusBottomSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) => const EmojiStatusBottomSheet(),
+  // Usar el mismo modal que las notificaciones para consistencia
+  Navigator.of(context).push(
+    PageRouteBuilder(
+      opaque: false, // Permite transparencia
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return StatusSelectorOverlay(
+          onClose: () {
+            print('[EmojiModal] Modal cerrado por usuario');
+          },
+        );
+      },
+    ),
   );
 }
 

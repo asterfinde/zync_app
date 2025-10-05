@@ -53,6 +53,8 @@ dependencies:
   quick_actions: ^1.0.0
   # Notificaciones locales
   flutter_local_notifications: ^17.2.2
+  # Badge en ícono de aplicación
+  app_badge_plus: ^1.1.6
 
 dev_dependencies:
   flutter_test:

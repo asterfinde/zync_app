@@ -72,7 +72,7 @@
         </service>
 
         <!-- Widget Provider -->
-        <receiver android:name=".ZyncStatusWidgetProvider"
+        <receiver android:name=".ZyncStatusWidget"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
