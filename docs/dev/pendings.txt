@@ -30,10 +30,25 @@ Funcionalidades implementadas:
 ✅ Navegación funcional a SettingsPage desde menú
 ✅ Íconos y colores apropiados para cada opción
 
-11.  Quick Actions 
+11. No todos los emojis del modal están mapeados correctamente para ser guardados en Firestore
+Por ejemplo si se elije el emoji "traveling" se guarda "fine", lo cual es un error
+
+12. No es necesario que al actualizar un estado se refleje inmediatamente en la notificación persistente
+
+13. No es necesario que al actualizar un estado se muestre el SnackBar de confirmación
+
+14.  Quick Actions 
 No salen todos los emojis ver la manera de implementarlos de ser posible
  
- ---
+15. Hacer de la funcionalidad un comportamineto muy silencioso:
+- No hacer exo con la barra de Notificaciones (solo la inicial al entrar al círculo)
+- No abrir la app si se abre el modal desde la notificación
+
+16. Cuando se envía el estado SOS se debe enviar, además, del emoji de estado, la posición del usuario 
+vía el GPS para que los demás miembros del círculo puedan verla y haciendo clic en ella abrir un 
+Google Maps asociado a la misma
+
+---
 
 04/10
 IMPLEMENTADAS ✅:
