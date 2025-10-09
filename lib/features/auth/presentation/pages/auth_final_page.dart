@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
+import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
+import 'package:zync_app/core/services/status_service.dart';
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});
@@ -42,6 +44,20 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       );
       if (userCredential.user != null) {
         if (mounted) {
+          // Activar funcionalidad silenciosa después del login exitoso
+          print('🟢 [LOGIN] Login exitoso, activando funcionalidad silenciosa...');
+          await SilentFunctionalityCoordinator.activateAfterLogin();
+          print('🟢 [LOGIN] activateAfterLogin completado');
+          
+          // Inicializar listener de estados para badge
+          print('🟢 [LOGIN] Inicializando status listener para badge...');
+          try {
+            await StatusService.initializeStatusListener();
+            print('🟢 [LOGIN] Status listener inicializado exitosamente');
+          } catch (e) {
+            print('❌ [LOGIN] Error inicializando status listener: $e');
+          }
+          
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => HomePage()),
           );
@@ -89,6 +105,20 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         'uid': userCredential.user?.uid,
       });
       if (mounted) {
+        // Activar funcionalidad silenciosa después del registro exitoso
+        print('🟢 [REGISTER] Registro exitoso, activando funcionalidad silenciosa...');
+        await SilentFunctionalityCoordinator.activateAfterLogin();
+        print('🟢 [REGISTER] activateAfterLogin completado');
+        
+        // Inicializar listener de estados para badge
+        print('🟢 [REGISTER] Inicializando status listener para badge...');
+        try {
+          await StatusService.initializeStatusListener();
+          print('🟢 [REGISTER] Status listener inicializado exitosamente');
+        } catch (e) {
+          print('❌ [REGISTER] Error inicializando status listener: $e');
+        }
+        
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => HomePage()),
         );
@@ -607,4 +637,6 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       ),
     );
   }
+
+
 }

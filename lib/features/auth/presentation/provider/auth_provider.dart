@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase;
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/usecases/usecase.dart';
+import '../../../../core/services/silent_functionality_coordinator.dart';
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/sign_in_or_register.dart';
 import '../../domain/usecases/sign_out.dart';
@@ -66,6 +67,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       } else {
         // Si el stream emite null tras la inicialización, avanzar a Unauthenticated
         log("[AuthNotifier] Stream reported no user. State -> Unauthenticated");
+        
+        // NUEVO: Desactivar funcionalidad silenciosa cuando el usuario se desloguea
+        log("[AuthNotifier] 🔴 Usuario deslogueado vía stream, desactivando funcionalidad silenciosa...");
+        try {
+          await SilentFunctionalityCoordinator.deactivateAfterLogout();
+          log("[AuthNotifier] 🔴 Funcionalidad silenciosa desactivada correctamente");
+        } catch (e) {
+          log("[AuthNotifier] ❌ Error desactivando funcionalidad silenciosa: $e");
+        }
+        
         state = Unauthenticated();
       }
     } catch (e) {

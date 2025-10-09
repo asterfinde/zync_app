@@ -1,1 +1,25 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"zync-app-a2712","appId":"1:475089002921:android:3de9165a322943bae264b8","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"zync-app-a2712","configurations":{"android":"1:475089002921:android:3de9165a322943bae264b8"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "zync-app-a2712",
+          "appId": "1:475089002921:android:3de9165a322943bae264b8",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "zync-app-a2712",
+          "configurations": {
+            "android": "1:475089002921:android:3de9165a322943bae264b8"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

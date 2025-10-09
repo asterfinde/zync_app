@@ -24,6 +24,9 @@ dependencies:
   # Programación funcional (para Either)
   dartz: ^0.10.1
   
+  # Utilidades para streams
+  async: ^2.11.0
+  
   # --- DEPENDENCIAS EXTERNAS (CAPA DE DATOS) ---
   # Firebase (versiones estables y compatibles)
   firebase_core: ^3.6.0
@@ -42,6 +45,16 @@ dependencies:
   flutter_foreground_task: ^9.1.0
   permission_handler: ^12.0.1
   google_fonts: ^6.3.1
+  
+  # --- FUNCIONALIDAD SILENCIOSA ---
+  # Widgets de pantalla de inicio
+  home_widget: ^0.6.0
+  # Quick actions (3D Touch / Long press)
+  quick_actions: ^1.0.0
+  # Notificaciones locales
+  flutter_local_notifications: ^17.2.2
+  # Badge en ícono de aplicación
+  app_badge_plus: ^1.1.6
 
 dev_dependencies:
   flutter_test:

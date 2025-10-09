@@ -22,12 +22,15 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
         _firestore.collection('users').doc(userId).snapshots();
 
     return userDocStream.asyncExpand<CircleModel?>((userSnap) {
+      log("[CircleDataSource] 🔄 Stream evento recibido para users/$userId");
+      
       if (!userSnap.exists) {
         log("[CircleDataSource] users/$userId no existe; emitiendo null.");
         return Stream.value(null);
       }
 
       final data = userSnap.data() ?? {};
+      log("[CircleDataSource] Datos del usuario: $data");
       final String? circleId = data['circleId'] as String?;
 
       if (circleId == null || circleId.isEmpty) {
@@ -35,19 +38,21 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
         return Stream.value(null);
       }
       
-      log("[CircleDataSource] Detectado circleId=$circleId; suscribiendo a circles/$circleId...");
+      log("[CircleDataSource] ✅ Detectado circleId=$circleId; suscribiendo a circles/$circleId...");
       return _firestore
           .collection('circles')
           .doc(circleId)
           .snapshots()
           .transform(StreamTransformer.fromHandlers(
             handleData: (DocumentSnapshot circleDoc, EventSink<CircleModel?> sink) async {
+              log("[CircleDataSource] 📄 Snapshot recibido para circles/${circleDoc.id}, exists: ${circleDoc.exists}");
               if (!circleDoc.exists) {
                 log("[CircleDataSource] circles/$circleId ya no existe; emitiendo null.");
                 sink.add(null);
               } else {
-                log("[CircleDataSource] Recibido snapshot para circles/${circleDoc.id}. Pasando a CircleModel para hidratación ASÍNCRONA.");
+                log("[CircleDataSource] Pasando a CircleModel para hidratación...");
                 final circleModel = await CircleModel.fromSnapshot(circleDoc);
+                log("[CircleDataSource] ✅ CircleModel creado: ${circleModel.name}, miembros: ${circleModel.members.length}");
                 sink.add(circleModel);
               }
             },
@@ -65,6 +70,7 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
       throw ServerException(message: 'Circle name cannot be empty');
     }
 
+    log("[CircleDataSource] Creando círculo '$name' para usuario $creatorId");
     final newCircleRef = _firestore.collection('circles').doc();
     final userRef = _firestore.collection('users').doc(creatorId);
     final invitationCode = newCircleRef.id.substring(0, 6).toUpperCase();
@@ -82,10 +88,12 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
       'memberStatus': {creatorId: initialStatus},
     };
 
+    log("[CircleDataSource] Iniciando transacción batch para crear círculo ${newCircleRef.id}");
     final batch = _firestore.batch();
     batch.set(newCircleRef, newCircleData);
     batch.update(userRef, {'circleId': newCircleRef.id});
     await batch.commit();
+    log("[CircleDataSource] ✅ Círculo creado exitosamente. El stream debería detectar el cambio en users/$creatorId");
   }
 
   @override
@@ -95,19 +103,27 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
 
   @override
   Future<void> joinCircle(String invitationCode, String userId) async {
+    print('[CircleDataSource] joinCircle - código: $invitationCode, userId: $userId');
+    
     if (invitationCode.isEmpty) {
+      print('[CircleDataSource] Error: Código de invitación vacío');
       throw ServerException(message: 'Invitation code cannot be empty');
     }
     if (userId.isEmpty) {
+      print('[CircleDataSource] Error: User ID vacío');
       throw ServerException(message: 'User ID cannot be empty');
     }
 
+    print('[CircleDataSource] Buscando círculo con código de invitación...');
     final query = await _firestore
         .collection('circles')
         .where('invitation_code', isEqualTo: invitationCode)
         .limit(1)
         .get();
+    
+    print('[CircleDataSource] Círculos encontrados: ${query.docs.length}');
     if (query.docs.isEmpty) {
+      print('[CircleDataSource] Error: Código de invitación inválido');
       throw ServerException(message: 'Invalid invitation code.');
     }
 

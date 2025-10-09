@@ -25,9 +25,9 @@ void main() {
       expect(find.text('Iniciando sembrado...'), findsOneWidget);
       await tester.pumpAndSettle(const Duration(seconds: 10));
       expect(find.text('¡Sembrado completado! Base de datos lista.'), findsOneWidget);
-      print('✅ Fase 1 completada: La base de datos ha sido reseteada y poblada.');
+      debugPrint('✅ Fase 1 completada: La base de datos ha sido reseteada y poblada.');
     } else {
-      print('--- AVISO: Botón de sembrado no encontrado. Saltando Fase 1. ---');
+      debugPrint('--- AVISO: Botón de sembrado no encontrado. Saltando Fase 1. ---');
     }
     
     // ------------------- FASE 2: AUTENTICACIÓN -------------------
@@ -50,7 +50,7 @@ void main() {
 
     // 6. Verificar que el login fue exitoso y estamos en la siguiente pantalla.
     expect(find.text('Crear un Círculo'), findsOneWidget);
-    print('✅ Fase 2 completada: Login exitoso.');
+    debugPrint('✅ Fase 2 completada: Login exitoso.');
   });
 }
 

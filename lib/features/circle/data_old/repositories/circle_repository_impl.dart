@@ -23,20 +23,30 @@ class CircleRepositoryImpl implements CircleRepository {
   Future<Either<Failure, void>> createCircle(String name) async {
     try {
       final String uid = firebaseAuth.currentUser?.uid ?? '';
+      print('[CircleRepository] createCircle - uid: $uid, name: $name');
+      
       if (uid.isEmpty) {
+        print('[CircleRepository] Error: Usuario no autenticado');
         return Left(ServerFailure(message: 'User not authenticated.'));
       }
+      
+      print('[CircleRepository] Llamando a remoteDataSource.createCircle...');
       await remoteDataSource.createCircle(name, uid);
+      print('[CircleRepository] ✅ createCircle completado exitosamente');
       return const Right(null);
     } on ServerException catch (e) {
+      print('[CircleRepository] ServerException: ${e.message}');
       return Left(ServerFailure(message: e.message ?? 'Unknown server error.'));
     } catch (e) {
+      print('[CircleRepository] Error general: $e');
       return Left(ServerFailure(message: e.toString()));
     }
   }
 
   @override
   Future<Either<Failure, void>> joinCircle(String invitationCode) async {
+    print('[CircleRepository] joinCircle llamado con código: $invitationCode');
+    
     try {
       final String uid = firebaseAuth.currentUser?.uid ?? '';
       if (uid.isEmpty) {

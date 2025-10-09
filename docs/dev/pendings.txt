@@ -1,15 +1,108 @@
--------------------------------------------------
-28/09
+05/10 - ACTUALIZADO
+📋 PENDIENTES 🔄 (1/10 restantes):
 
- Email válido + usuario existe → Envía correo + SnackBar verde
+8. Pantalla de configuración ✅
+Trigger: Al darle tap al engranaje (⚙️) del modal de emojis
+Funcionalidades implementadas:
+✅ Cambiar su nombre (usuario) - Campo editable con botón guardar
+✅ Cambiar el nombre del Círculo (cualquier miembro puede hacerlo) - Campo editable con botón guardar  
+✅ Salir del círculo - Botón con confirmación y navegación
+✅ Diseño dark theme consistente con cards seccionales
+✅ Navegación desde ⚙️ del modal de estados
+✅ Feedback háptico y visual con SnackBars
+✅ Integración directa con Firebase Auth y Firestore
+✅ CRÍTICO: Email protegido (solo lectura), nickname editable
+✅ CRÍTICO: Cancelación de notificaciones al salir del círculo
 
- Email válido + usuario NO existe → SnackBar rojo "No existe ninguna cuenta"
+9. Indicador de app ✅
+✅ Implementado: Badge rojo en ícono de app cuando hay cambios de estado
+✅ Comportamiento: Similar al indicador de WhatsApp (sin mostrar cantidad)
+✅ Detección automática: Listener de cambios de estado en círculo
+✅ Auto-limpieza: Badge se quita cuando usuario ve la app
+✅ Integración: AppBadgeService + StatusService + lifecycle management
+✅ Dependencia: app_badge_plus package para compatibilidad multiplataforma
 
- Email inválido → SnackBar rojo "Por favor ingresa un correo válido"
+10. Menú de 3 puntos actualizado ✅
+✅ Cambiar el menú actual por:
+  - Cerrar Sesión (primer lugar)
+  - Configuración (navega a pantalla de configuración)
+  - Salir del Círculo (último lugar)
+✅ Navegación funcional a SettingsPage desde menú
+✅ Íconos y colores apropiados para cada opción
 
- Email válido pero con error de red/Firebase
+11. No todos los emojis del modal están mapeados correctamente para ser guardados en Firestore
+Por ejemplo si se elije el emoji "traveling" se guarda "fine", lo cual es un error
+
+12. No es necesario que al actualizar un estado se refleje inmediatamente en la notificación persistente
+
+13. No es necesario que al actualizar un estado se muestre el SnackBar de confirmación
+
+14.  Quick Actions 
+No salen todos los emojis ver la manera de implementarlos de ser posible
+ 
+15. Hacer de la funcionalidad un comportamineto muy silencioso:
+- No hacer exo con la barra de Notificaciones (solo la inicial al entrar al círculo)
+- No abrir la app si se abre el modal desde la notificación
+
+16. Cuando se envía el estado SOS se debe enviar, además, del emoji de estado, la posición del usuario 
+vía el GPS para que los demás miembros del círculo puedan verla y haciendo clic en ella abrir un 
+Google Maps asociado a la misma
 
 ---
+
+04/10
+IMPLEMENTADAS ✅:
+✅ quita el FAB de la pantalla de Login, ya no es necesario
+✅ coloca el modal que aparece desde la notificación en tema oscuro transparente
+✅ guarda concordancia entre los modales siguientes: el que abre desde la app y el que se abre desde las Notificaciones. Los dos deben de tener los mismos íconos en sus mismas ubicaciones y en el tema oscuro transparente
+✅ utiliza la siguiente distribución para el grid de 3x4 de emojis del modal:
+
+// Fila 1: Estados de disponibilidad básica
+available(🟢), busy(🔴), away(🟡), focus(🎯)
+
+// Fila 2: Estados emocionales/físicos
+happy(😊), tired(😴), stressed(😰), sad(😢)
+
+// Fila 3: Estados de actividad/ubicación
+traveling(✈️), meeting(👥), studying(📚), eating(🍽️)
+
+// Fila 4: Configuración y ayuda
+settings(⚙️), [empty], [empty], sos(🆘)
+
+✅ CRÍTICO: arreglar que al abrir la app luego de haber estado minimizada un rato, el usuario aparece como que cerró la sesión y tiene que volver a autenticarse, sin embargo sigue apareciendo la notificación cuando debió cerrarse junto con la sesión del usuario. Se genera un estado inconsistente que no debe ocurrir.
+✅ Dentro de la pantalla del círculo y sus miembros colocar un FAB para permitir un envío rápido del estado "available" (🟢) sin necesidad de abrir el modal. El botón debe tener el mismo estilo que los botones del Login/Registro
+
+PENDIENTES 🔄:
+🔄 al darle tap al engranaje debe enviarnos a una pantalla de configuración del usuario (aún no disponible) que permita lo siguiente:
+  - cambiar su nombre
+  - cambiar el nombre del Círculo (cualquier miembro puede hacerlo)
+  - salir del círculo
+
+🔄 en el ícono de la app cada vez que haya un cambio de estado, deberá de aparece un indicador (círculo pequeño en rojo) sobre el mismo. Similar a como aparece en el WhatsApp. No es necesario que en el indicador se muestre cuántos cambiaron su estado, porque no tiene sentido, sino únicamente indicarle al usuario que hubo un cambio de estado de algún miembro del Círculo
+
+🔄 cambiar el menú de los 3 puntos:
+    - Configuración (que es la pantalla referenciada desde el modal de emojis)
+    - Cerrar sesión
+
+>>>>>>>>
+## Estados de Disponibilidad (Palabras Representativas):
+
+1. **available** - libre, disponible, listo para cualquier cosa
+2. **busy** - ocupado (meeting, work, lunch, studying, etc.)
+3. **away** - ausente, no está, fuera de la oficina/casa
+4. **break** - en descanso, pausa, coffee break
+5. **focus** - concentrado, no molestar, modo deep work
+6. **offline** - desconectado, no disponible digitalmente
+7. **traveling** - en movimiento, commuting, en ruta
+8. **meeting** - en reunión, junta, call (si quieres ser más específico)
+9. **urgent** - necesito ayuda, emergencia, contactar ASAP
+10. **flexible** - semi-disponible, puede interrumpirse si es importante
+
+Cada palabra funciona como un **paraguas** que cubre múltiples actividades específicas, manteniendo tu grid simple pero funcional.
+
+
+-------------------------------------------------
+28/09
 Los 4 casos están cubiertos correctamente:
 
 ✅ CASO 1: Email válido + usuario existe → sendPasswordResetEmail() funciona → SnackBar verde
@@ -18,3 +111,6 @@ Los 4 casos están cubiertos correctamente:
 ✅ CASO 4: Problemas de red → Captura network-request-failed y errores generales → SnackBar rojo
 
 -------------------------------------------------
+
+errores de Google API Manager que podrían estar relacionados con Firebase/Google Services:
+
