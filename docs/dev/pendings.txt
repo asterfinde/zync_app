@@ -1,5 +1,17 @@
-05/10 - ACTUALIZADO
-📋 PENDIENTES 🔄 (1/10 restantes):
+10/10 - ACTUALIZADO
+📋 PENDIENTES 🔄 (2/17 restantes):
+
+🚨 CRÍTICO: Mejoras en estabilidad WSL2-VSCode ⏳
+PROBLEMA: Desconexiones frecuentes de Copilot/VSCode con WSL2 interrumpen procesos de desarrollo
+IMPACTO: Alto - Pérdida de contexto y trabajo en progreso
+SOLUCIONES A IMPLEMENTAR:
+- Monitoreo automático de conexión WSL2-VSCode
+- Scripts de reconexión automática
+- Backup automático de estado de trabajo cada X minutos
+- Configuración de timeouts más robustos
+- Implementar herramientas de debugging de conexión WSL
+- Considerar migración a desarrollo nativo Linux si persiste
+URGENCIA: Alta - Afecta directamente la productividad del desarrollo
 
 8. Pantalla de configuración ✅
 Trigger: Al darle tap al engranaje (⚙️) del modal de emojis
@@ -30,15 +42,32 @@ Funcionalidades implementadas:
 ✅ Navegación funcional a SettingsPage desde menú
 ✅ Íconos y colores apropiados para cada opción
 
-11. No todos los emojis del modal están mapeados correctamente para ser guardados en Firestore
-Por ejemplo si se elije el emoji "traveling" se guarda "fine", lo cual es un error
+11. No todos los emojis del modal están mapeados correctamente para ser guardados en Firestore ✅
+✅ Corregido mapeo dinámico usando StatusType.values completo
+✅ Eliminado switch/case hardcodeado de 6 estados por lookup dinámico
+✅ Todos los 16 StatusType emojis ahora se mapean correctamente
+✅ Fix crítico: "traveling" ahora se guarda como "traveling", no "fine"
+IMPLEMENTACIÓN: Reemplazado hardcoded emoji mapping con StatusType enum completo
 
-12. No es necesario que al actualizar un estado se refleje inmediatamente en la notificación persistente
+12. No es necesario que al actualizar un estado se refleje inmediatamente en la notificación persistente ✅
+✅ Notificación persistente ahora es estática (no se actualiza automáticamente)
+✅ Solo se muestra la notificación inicial al entrar al círculo
+✅ Comportamiento silencioso implementado según Point 15
+IMPLEMENTACIÓN: StatusService._updatePersistentNotification() deshabilitado
 
-13. No es necesario que al actualizar un estado se muestre el SnackBar de confirmación
+13. No es necesario que al actualizar un estado se muestre el SnackBar de confirmación ✅
+✅ SnackBars eliminados del StatusSelectorOverlay
+✅ Reemplazados por feedback háptico únicamente (HapticFeedback)
+✅ Comportamiento completamente silencioso
+IMPLEMENTACIÓN: _showSuccessFeedback() y _showErrorFeedback() solo usan logs + haptic
 
-14.  Quick Actions 
-No salen todos los emojis ver la manera de implementarlos de ser posible
+14. Quick Actions ✅ 
+✅ Implementado sistema de Quick Actions personalizable por usuario
+✅ Usuario puede seleccionar sus 4 emojis favoritos de los 16 disponibles
+✅ Nuevo QuickActionsPreferencesService para persistencia
+✅ Nueva QuickActionsConfigWidget integrada en Settings
+✅ Soporte completo para todos los StatusType emojis (limitado a 4 por OS)
+IMPLEMENTACIÓN: Sistema completo de preferencias + UI + integración settings
  
 15. Hacer de la funcionalidad un comportamineto muy silencioso: ✅ 
 ✅ No hacer eco con la barra de Notificaciones (solo la inicial al entrar al círculo)
@@ -53,6 +82,21 @@ nueva architecture para modal transparente, feedback solo háptico
 16. Cuando se envía el estado SOS se debe enviar, además, del emoji de estado, la posición del usuario 
 vía el GPS para que los demás miembros del círculo puedan verla y haciendo clic en ella abrir un 
 Google Maps asociado a la misma
+
+17. 🚨 CRÍTICO: Estabilidad WSL2-VSCode ⏳
+PROBLEMA: Desconexiones frecuentes de Copilot/extensiones con WSL2 interrumpen desarrollo
+SÍNTOMAS: 
+- Pérdida de contexto de Copilot a mitad de implementaciones
+- Desconexión inesperada de extensiones Flutter/Dart
+- Necesidad de restart constante de VSCode
+IMPACTO: Alto - Pérdida de productividad y trabajo en progreso
+SOLUCIONES A EVALUAR:
+✅ Implementar scripts de auto-backup de estado cada 5 mins
+✅ Configurar watchdog de conexión WSL2
+✅ Mejorar configuración de timeouts y memory allocation
+✅ Crear workflow de recovery post-desconexión
+✅ Documentar pasos de debugging para futuras ocurrencias
+URGENCIA: Máxima - Bloquea desarrollo eficiente
 
 ---
 
