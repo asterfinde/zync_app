@@ -191,40 +191,41 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
             ),
           ),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 16), // Reducido de 20 a 16
 
-          // Quick Actions seleccionadas (preview)
+          // Quick Actions seleccionadas (preview más compacto)
           if (_selectedQuickActions.isNotEmpty) ...[
             Text(
               'Quick Actions seleccionadas:',
               style: TextStyle(
                 color: Colors.grey[300],
-                fontSize: 14,
+                fontSize: 13, // Reducido de 14 a 13
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6), // Reducido de 8 a 6
             Wrap(
-              spacing: 8,
+              spacing: 6, // Reducido de 8 a 6
+              runSpacing: 4,
               children: _selectedQuickActions.map((status) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Reducido
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16), // Reducido de 20 a 16
                     border: Border.all(color: Colors.blue, width: 1),
                   ),
                   child: Text(
-                    '${status.emoji} ${status.description}',
+                    '${status.emoji} ${status.shortDescription}', // Usar shortDescription
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 11, // Reducido de 12 a 11
                     ),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12), // Reducido de 16 a 12
           ],
 
           // Grid de todos los emojis disponibles
@@ -232,70 +233,79 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
             'Emojis disponibles (toca para seleccionar):',
             style: TextStyle(
               color: Colors.grey[300],
-              fontSize: 14,
+              fontSize: 13, // Reducido de 14 a 13
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8), // Reducido de 12 a 8
           
-          // Grid 4x4 de emojis
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
+          // Grid sincronizado con StatusSelectorOverlay (13 elementos)
+          // Ahora con mejor manejo de overflow
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxHeight: 300, // Altura máxima para prevenir overflow
             ),
-            itemCount: _availableStatuses.length,
-            itemBuilder: (context, index) {
-              final status = _availableStatuses[index];
-              final isSelected = _selectedQuickActions.contains(status);
-              
-              return GestureDetector(
-                onTap: () => _toggleSelection(status),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isSelected 
-                        ? Colors.blue.withOpacity(0.3)
-                        : Colors.grey[800],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                mainAxisSpacing: 6, // Reducido de 8 a 6
+                crossAxisSpacing: 6, // Reducido de 8 a 6
+                childAspectRatio: 1.0, // Elementos cuadrados
+              ),
+              itemCount: _availableStatuses.length,
+              itemBuilder: (context, index) {
+                final status = _availableStatuses[index];
+                final isSelected = _selectedQuickActions.contains(status);
+                
+                return GestureDetector(
+                  onTap: () => _toggleSelection(status),
+                  child: Container(
+                    decoration: BoxDecoration(
                       color: isSelected 
-                          ? Colors.blue
-                          : Colors.grey[600]!,
-                      width: isSelected ? 2 : 1,
+                          ? Colors.blue.withOpacity(0.3)
+                          : Colors.grey[800],
+                      borderRadius: BorderRadius.circular(8), // Reducido de 12 a 8
+                      border: Border.all(
+                        color: isSelected 
+                            ? Colors.blue
+                            : Colors.grey[600]!,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          status.emoji,
+                          style: const TextStyle(fontSize: 20), // Reducido de 24 a 20
+                        ),
+                        const SizedBox(height: 2), // Reducido de 4 a 2
+                        Flexible(
+                          child: Text(
+                            status.shortDescription, // Usar shortDescription como el modal
+                            style: TextStyle(
+                              fontSize: 8, // Reducido de 10 a 8
+                              color: isSelected ? Colors.white : Colors.grey[400],
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1, // Solo 1 línea para evitar overflow
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        status.emoji,
-                        style: const TextStyle(fontSize: 24),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        status.description,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isSelected ? Colors.white : Colors.grey[400],
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 16), // Reducido de 20 a 16
 
-          // Botones de acción
+          // Botones de acción (más compactos)
           Row(
             children: [
               Expanded(
@@ -304,13 +314,13 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey[700],
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10), // Reducido de 12 a 10
                   ),
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Reset'),
+                  icon: const Icon(Icons.refresh, size: 16), // Reducido de 18 a 16
+                  label: const Text('Reset', style: TextStyle(fontSize: 13)), // Reducido
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10), // Reducido de 12 a 10
               Expanded(
                 flex: 2,
                 child: ElevatedButton.icon(
@@ -320,17 +330,20 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10), // Reducido de 12 a 10
                   ),
                   icon: _isSaving 
                       ? const SizedBox(
-                          width: 18, height: 18,
+                          width: 16, height: 16, // Reducido de 18 a 16
                           child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white,
                           ),
                         )
-                      : const Icon(Icons.save, size: 18),
-                  label: Text(_isSaving ? 'Guardando...' : 'Guardar'),
+                      : const Icon(Icons.save, size: 16), // Reducido de 18 a 16
+                  label: Text(
+                    _isSaving ? 'Guardando...' : 'Guardar',
+                    style: const TextStyle(fontSize: 13), // Reducido
+                  ),
                 ),
               ),
             ],
