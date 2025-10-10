@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:zync_app/features/circle/domain_old/entities/user_status.dart';
 import 'app_badge_service.dart';
+import 'gps_service.dart';
 import 'dart:async';
 import 'dart:developer';
 
@@ -82,6 +83,7 @@ class StatusService {
     log('[StatusService] Status listener disposed');
   }
   /// Actualiza el estado del usuario actual en su círculo
+  /// Point 16: Incluye ubicación GPS cuando se envía estado SOS
   /// 
   /// Throws [Exception] si:
   /// - Usuario no está autenticado
@@ -108,6 +110,18 @@ class StatusService {
         throw Exception('Usuario no está en ningún círculo');
       }
 
+      // Point 16: Obtener ubicación GPS si es estado SOS
+      Coordinates? coordinates;
+      if (newStatus == StatusType.sos) {
+        log('[StatusService] 🆘 Estado SOS detectado - obteniendo ubicación GPS...');
+        coordinates = await GPSService.getCurrentLocation();
+        if (coordinates != null) {
+          log('[StatusService] 📍 Ubicación GPS obtenida para SOS: ${coordinates.latitude}, ${coordinates.longitude}');
+        } else {
+          log('[StatusService] ⚠️ No se pudo obtener ubicación GPS para SOS');
+        }
+      }
+
       // Actualizar el estado en el círculo
       final batch = FirebaseFirestore.instance.batch();
       
@@ -117,6 +131,15 @@ class StatusService {
         'statusType': newStatus.name,
         'timestamp': FieldValue.serverTimestamp(),
       };
+      
+      // Point 16: Agregar coordenadas GPS si están disponibles (solo para SOS)
+      if (coordinates != null) {
+        statusData['coordinates'] = {
+          'latitude': coordinates.latitude,
+          'longitude': coordinates.longitude,
+        };
+        log('[StatusService] 🗺️ Coordenadas GPS agregadas al estado SOS');
+      }
       
       batch.update(
         FirebaseFirestore.instance.collection('circles').doc(circleId),
@@ -130,19 +153,29 @@ class StatusService {
           .collection('statusEvents')
           .doc();
           
-      batch.set(historyRef, {
+      final historyData = {
         'uid': user.uid,
         'statusType': newStatus.name,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+      
+      // Point 16: Incluir coordenadas en historial para SOS
+      if (coordinates != null) {
+        historyData['coordinates'] = {
+          'latitude': coordinates.latitude,
+          'longitude': coordinates.longitude,
+        };
+      }
+      
+      batch.set(historyRef, historyData);
       
       await batch.commit();
-      log('[StatusService] ✅ Estado actualizado exitosamente');
+      log('[StatusService] ✅ Estado actualizado exitosamente${coordinates != null ? ' con GPS' : ''}');
       
       // Actualizar notificación persistente con nuevo estado
       await _updatePersistentNotification(newStatus);
       
-      return StatusUpdateResult.success(newStatus);
+      return StatusUpdateResult.success(newStatus, coordinates);
       
     } catch (e) {
       log('[StatusService] Error actualizando estado: $e');
@@ -167,21 +200,25 @@ class StatusService {
 }
 
 /// Resultado de la actualización de estado
+/// Point 16: Incluye coordenadas GPS para estados SOS
 class StatusUpdateResult {
   final bool isSuccess;
   final StatusType? status;
   final String? errorMessage;
+  final Coordinates? coordinates; // Point 16: Coordenadas GPS para SOS
 
   StatusUpdateResult._({
     required this.isSuccess,
     this.status,
     this.errorMessage,
+    this.coordinates,
   });
 
-  factory StatusUpdateResult.success(StatusType status) {
+  factory StatusUpdateResult.success(StatusType status, [Coordinates? coordinates]) {
     return StatusUpdateResult._(
       isSuccess: true,
       status: status,
+      coordinates: coordinates,
     );
   }
 

@@ -85,11 +85,22 @@ IMPLEMENTACIÓN: Sistema completo corregido + grids sincronizados
 ✅ FIXED: Cambios desde notificaciones/Quick Actions ahora actualizan UI
 IMPLEMENTACIÓN: StatusService._updatePersistentNotification() deshabilitado + UI refresh mechanism
 
-16. Cuando se envía el estado SOS se debe enviar, además, del emoji de estado, la posición del usuario 
+16. Cuando se envía el estado SOS se debe enviar, además, del emoji de estado, la posición del usuario ✅
 vía el GPS para que los demás miembros del círculo puedan verla y haciendo clic en ella abrir un 
 Google Maps asociado a la misma
+✅ Implementado GPSService con captura automática de ubicación para estados SOS
+✅ StatusService actualizado para incluir coordenadas GPS en estados SOS  
+✅ InCircleView con indicador GPS rojo y card especial para SOS con ubicación
+✅ Integración con Google Maps - toque abre ubicación exacta
+✅ Feedback especial en EmojiModal para SOS con/sin GPS
+✅ Permisos de ubicación agregados en AndroidManifest
+✅ Fallback graceful si GPS no está disponible
+✅ Timeout de 10s optimizado para emergencias
+✅ url_launcher agregado para apertura de Google Maps
+IMPLEMENTACIÓN: Funcionalidad completa GPS + SOS con UX optimizada para emergencias
 
-17. 🚨 CRÍTICO: Cuando la app se minimiza y se quiere volver a utilizarla ocurre el siguiente comportamiento errado:
+17. 🚨 CRÍTICO: Minimización de la app
+Cuando la app se minimiza y se quiere volver a utilizarla ocurre el siguiente comportamiento errado:
 - la pantalla se pone totalmente negra
 - se cierra de manera automática la sesión del usuario
 - se abre en la pantalla de Login/Registro

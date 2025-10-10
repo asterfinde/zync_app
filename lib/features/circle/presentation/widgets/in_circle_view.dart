@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/firebase_circle_service.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
 import '../../../../core/widgets/emoji_modal.dart';
+import '../../../../core/services/gps_service.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
-import '../../domain_old/entities/user_status.dart'; // Para StatusType
+import '../../domain_old/entities/user_status.dart';
 
 class InCircleView extends ConsumerWidget {
   final Circle circle;
@@ -320,16 +322,47 @@ class InCircleView extends ConsumerWidget {
                                     SizedBox(
                                       width: 40,
                                       height: 40,
-                                      child: StreamBuilder<Map<String, String>>(
+                                      child: StreamBuilder<Map<String, Map<String, dynamic>>>(
                                         stream: _getMemberStatusStream(circle.id),
                                         builder: (context, snapshot) {
-                                          final statusEmojis = snapshot.data ?? {};
-                                          final emoji = statusEmojis[memberId] ?? '😊';
-                                          return Center(
-                                            child: Text(
-                                              emoji,
-                                              style: const TextStyle(fontSize: 28),
-                                            ),
+                                          final memberInfo = snapshot.data ?? {};
+                                          final info = memberInfo[memberId];
+                                          final emoji = info?['emoji'] ?? '😊';
+                                          final hasGPS = info?['hasGPS'] ?? false;
+                                          
+                                          // Point 16: Stack para emoji + indicador GPS
+                                          return Stack(
+                                            children: [
+                                              Center(
+                                                child: Text(
+                                                  emoji,
+                                                  style: const TextStyle(fontSize: 28),
+                                                ),
+                                              ),
+                                              // Point 16: Indicador GPS para SOS
+                                              if (hasGPS)
+                                                Positioned(
+                                                  bottom: 0,
+                                                  right: 0,
+                                                  child: Container(
+                                                    width: 16,
+                                                    height: 16,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.red,
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                        color: Colors.white,
+                                                        width: 2,
+                                                      ),
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.location_on,
+                                                      size: 10,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           );
                                         },
                                       ),
@@ -381,20 +414,72 @@ class InCircleView extends ConsumerWidget {
                                   ],
                                 );
 
-                                // Envolver con GestureDetector solo si es el usuario actual
+                                // Point 16: Envolver con funcionalidad apropiada
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: isCurrentUser 
-                                    ? GestureDetector(
-                                        onLongPress: () {
-                                          // Mostrar feedback haptic
-                                          HapticFeedback.mediumImpact();
-                                          // Abrir bottom sheet para cambiar estado
-                                          showEmojiStatusBottomSheet(context);
-                                        },
-                                        child: memberRow,
-                                      )
-                                    : memberRow,
+                                  child: StreamBuilder<Map<String, Map<String, dynamic>>>(
+                                    stream: _getMemberStatusStream(circle.id),
+                                    builder: (context, snapshot) {
+                                      final memberInfo = snapshot.data ?? {};
+                                      final info = memberInfo[memberId];
+                                      final hasGPS = info?['hasGPS'] ?? false;
+                                      final coordinates = info?['coordinates'] as Map<String, dynamic>?;
+                                      
+                                      if (isCurrentUser) {
+                                        // Usuario actual: cambiar estado con long press
+                                        return GestureDetector(
+                                          onLongPress: () {
+                                            HapticFeedback.mediumImpact();
+                                            showEmojiStatusBottomSheet(context);
+                                          },
+                                          child: memberRow,
+                                        );
+                                      } else if (hasGPS && coordinates != null) {
+                                        // Point 16: Miembro con SOS + GPS: abrir Google Maps
+                                        return GestureDetector(
+                                          onTap: () => _openGoogleMaps(context, coordinates, nickname),
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: Colors.red.withOpacity(0.3),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            padding: const EdgeInsets.all(8),
+                                            child: Column(
+                                              children: [
+                                                memberRow,
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.location_on,
+                                                      size: 16,
+                                                      color: Colors.red,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Toca para ver ubicación SOS',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.red[300],
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        // Miembro normal: sin interacción
+                                        return memberRow;
+                                      }
+                                    },
+                                  ),
                                 );
                               }).toList(),
                             );
@@ -479,13 +564,14 @@ class InCircleView extends ConsumerWidget {
   }
 
   /// Stream que escucha cambios en el estado de los miembros del círculo
-  Stream<Map<String, String>> _getMemberStatusStream(String circleId) {
+  /// Point 16: Incluye información de coordenadas GPS para estados SOS
+  Stream<Map<String, Map<String, dynamic>>> _getMemberStatusStream(String circleId) {
     return FirebaseFirestore.instance
         .collection('circles')
         .doc(circleId)
         .snapshots()
         .map((snapshot) {
-      final Map<String, String> statusEmojis = {};
+      final Map<String, Map<String, dynamic>> memberInfo = {};
       
       if (snapshot.exists && snapshot.data() != null) {
         final memberStatus = snapshot.data()!['memberStatus'] as Map<String, dynamic>?;
@@ -494,8 +580,10 @@ class InCircleView extends ConsumerWidget {
           memberStatus.forEach((memberId, statusData) {
             if (statusData is Map<String, dynamic>) {
               final statusType = statusData['statusType'] as String?;
+              final coordinates = statusData['coordinates'] as Map<String, dynamic>?;
               
               // Mapear el statusType a emoji usando StatusType dinámico
+              String emoji = '😊';
               if (statusType != null) {
                 try {
                   print('[InCircleView] 🔍 DEBUG - Buscando: "$statusType"');
@@ -509,22 +597,28 @@ class InCircleView extends ConsumerWidget {
                       return StatusType.fine;
                     },
                   );
-                  statusEmojis[memberId] = statusEnum.emoji;
+                  emoji = statusEnum.emoji;
                   print('[InCircleView] ✅ Mapeado: $statusType → ${statusEnum.emoji} (${statusEnum.name})');
                 } catch (e) {
                   // Fallback si hay error en el mapeo
-                  statusEmojis[memberId] = '😊';
+                  emoji = '😊';
                   print('[InCircleView] ❌ Error mapeando $statusType: $e');
                 }
-              } else {
-                statusEmojis[memberId] = '😊'; // Default si statusType es null
               }
+              
+              // Point 16: Almacenar información completa incluyendo coordenadas
+              memberInfo[memberId] = {
+                'emoji': emoji,
+                'statusType': statusType,
+                'coordinates': coordinates,
+                'hasGPS': coordinates != null && statusType == 'sos',
+              };
             }
           });
         }
       }
       
-      return statusEmojis;
+      return memberInfo;
     });
   }
 
@@ -535,6 +629,65 @@ class InCircleView extends ConsumerWidget {
         content: Text('¡Código copiado al portapapeles!'),
         duration: Duration(seconds: 2),
         backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  /// Point 16: Abrir Google Maps con la ubicación SOS del miembro
+  void _openGoogleMaps(BuildContext context, Map<String, dynamic> coordinates, String memberName) async {
+    try {
+      final latitude = coordinates['latitude'] as double?;
+      final longitude = coordinates['longitude'] as double?;
+      
+      if (latitude == null || longitude == null) {
+        _showError(context, 'Coordenadas GPS no válidas');
+        return;
+      }
+      
+      // Crear URL de Google Maps con etiqueta personalizada para SOS
+      final url = GPSService.generateSOSLocationUrl(
+        Coordinates(latitude: latitude, longitude: longitude),
+        memberName,
+      );
+      
+      final uri = Uri.parse(url);
+      
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication, // Abrir en app de mapas
+        );
+        
+        // Feedback visual
+        HapticFeedback.lightImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Text('Abriendo ubicación SOS de $memberName'),
+              ],
+            ),
+            backgroundColor: Colors.red[600],
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        _showError(context, 'No se pudo abrir la aplicación de mapas');
+      }
+    } catch (e) {
+      print('[InCircleView] Error abriendo Google Maps: $e');
+      _showError(context, 'Error al abrir la ubicación: $e');
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
       ),
     );
   }

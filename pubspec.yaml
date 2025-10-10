@@ -55,6 +55,8 @@ dependencies:
   flutter_local_notifications: ^17.2.2
   # Badge en ícono de aplicación
   app_badge_plus: ^1.1.6
+  # Point 16: URL launcher para abrir Google Maps
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
