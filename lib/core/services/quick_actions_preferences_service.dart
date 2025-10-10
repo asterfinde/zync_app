@@ -100,14 +100,19 @@ class QuickActionsPreferencesService {
   }
 
   /// Obtiene todos los StatusTypes disponibles para Quick Actions
-  /// Excluye settings que no son válidos para Quick Actions
+  /// SINCRONIZADO con StatusSelectorOverlay - Solo los 13 elementos del modal principal
   static List<StatusType> getAvailableStatusTypes() {
-    // Devolver todos los StatusTypes disponibles (16 opciones)
-    return StatusType.values.where((status) {
-      // Excluir tipos que no tienen sentido como Quick Action
-      // Todos los StatusType actuales son válidos para Quick Actions
-      return true;
-    }).toList();
+    // EXACTAMENTE los mismos elementos que StatusSelectorOverlay (Point 14 grid consistency fix)
+    return [
+      // Fila 1: Estados de disponibilidad básica
+      StatusType.available, StatusType.busy, StatusType.away, StatusType.focus,
+      // Fila 2: Estados emocionales/físicos  
+      StatusType.happy, StatusType.tired, StatusType.stressed, StatusType.sad,
+      // Fila 3: Estados de actividad/ubicación
+      StatusType.traveling, StatusType.meeting, StatusType.studying, StatusType.eating,
+      // Fila 4: Solo SOS (sin elementos heredados/duplicados)
+      StatusType.sos,
+    ];
   }
 
   /// Verifica si las Quick Actions actuales son las por defecto
