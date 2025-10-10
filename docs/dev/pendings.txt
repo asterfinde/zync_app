@@ -73,15 +73,17 @@ IMPLEMENTACIÓN: _showSuccessFeedback() y _showErrorFeedback() solo usan logs + 
 ✅ FIXED: Solo 13 elementos consistentes en ambos grids (config + modal)
 IMPLEMENTACIÓN: Sistema completo corregido + grids sincronizados
  
-15. Hacer de la funcionalidad un comportamineto muy silencioso: ✅ 
+15. Hacer de la funcionalidad un comportamineto muy silencioso: ✅ CORREGIDO
 ✅ No hacer eco con la barra de Notificaciones (solo la inicial al entrar al círculo)
 ✅ No abrir la app si se abre el modal desde la notificación
 ✅ Eliminados SnackBars del StatusSelectorOverlay (solo haptic feedback)
 ✅ Notificación persistente ahora es estática (no se actualiza con cambios)
 ✅ Nueva StatusModalActivity transparente evita abrir app completa
 ✅ StatusModalService para comunicación Flutter-Android
-IMPLEMENTACIÓN: StatusService._updatePersistentNotification() deshabilitado, 
-nueva architecture para modal transparente, feedback solo háptico
+✅ FIXED: UI refresh después de cambios desde modales externos
+✅ FIXED: Sincronización Firebase ↔ UI via StatusService._notifyUIRefresh()
+✅ FIXED: Cambios desde notificaciones/Quick Actions ahora actualizan UI
+IMPLEMENTACIÓN: StatusService._updatePersistentNotification() deshabilitado + UI refresh mechanism
 
 16. Cuando se envía el estado SOS se debe enviar, además, del emoji de estado, la posición del usuario 
 vía el GPS para que los demás miembros del círculo puedan verla y haciendo clic en ella abrir un 

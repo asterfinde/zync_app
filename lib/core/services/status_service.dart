@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:zync_app/features/circle/domain_old/entities/user_status.dart';
-import 'package:zync_app/features/circle/services/firebase_circle_service.dart';
 import 'app_badge_service.dart';
 import 'dart:async';
 import 'dart:developer';
@@ -140,9 +139,6 @@ class StatusService {
       await batch.commit();
       log('[StatusService] ✅ Estado actualizado exitosamente');
       
-      // POINT 15 FIX: Forzar refresh de la UI después de actualizar desde modal externo
-      _notifyUIRefresh();
-      
       // Actualizar notificación persistente con nuevo estado
       await _updatePersistentNotification(newStatus);
       
@@ -151,19 +147,6 @@ class StatusService {
     } catch (e) {
       log('[StatusService] Error actualizando estado: $e');
       return StatusUpdateResult.error(e.toString());
-    }
-  }
-
-  /// Notifica a la UI que debe refrescarse después de actualización de estado
-  /// Point 15 FIX: Asegura que cambios desde modales externos se reflejen en la UI
-  static void _notifyUIRefresh() {
-    try {
-      // Forzar refresh del stream del FirebaseCircleService
-      FirebaseCircleService.forceRefresh();
-      log('[StatusService] 🔄 UI refresh signal sent to circle streams');
-    } catch (e) {
-      log('[StatusService] Error notifying UI refresh: $e');
-      // No lanzamos excepción para no afectar el flujo principal
     }
   }
 
