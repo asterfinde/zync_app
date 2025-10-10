@@ -3,6 +3,7 @@ import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../widgets/status_selector_overlay.dart';
 import '../../features/circle/domain_old/entities/user_status.dart';
+import 'status_modal_service.dart';
 
 /// Coordinador de funcionalidad silenciosa - Integra sin romper lo existente
 class SilentFunctionalityCoordinator {
@@ -27,6 +28,9 @@ class SilentFunctionalityCoordinator {
       
       await NotificationService.initialize();
       await QuickActionsService.initialize();
+      
+      // Point 15: Inicializar servicio del modal transparente
+      await StatusModalService.initialize();
       
       // 2. Configurar el handler para la notificación persistente
       NotificationService.setQuickActionTapHandler(_handleQuickActionTap);

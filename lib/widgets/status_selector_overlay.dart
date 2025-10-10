@@ -114,33 +114,26 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
     }
   }
 
-  /// Muestra feedback de éxito
+  /// Muestra feedback de éxito (SILENCIOSO - Point 15)
   void _showSuccessFeedback(StatusType status) {
     if (!mounted) return;
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${status.emoji} Estado actualizado'),
-        duration: const Duration(milliseconds: 1500),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    // Point 15: Eliminar SnackBar para comportamiento silencioso
+    log('[StatusSelectorOverlay] ✅ Estado actualizado silenciosamente: ${status.emoji}');
+    
+    // Solo mostrar feedback háptico
+    HapticFeedback.lightImpact();
   }
 
-  /// Muestra feedback de error
+  /// Muestra feedback de error (SILENCIOSO - Point 15)
   void _showErrorFeedback(String error) {
     if (!mounted) return;
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error: $error'),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    // Point 15: Solo log para errores, sin SnackBar
+    log('[StatusSelectorOverlay] ❌ Error silencioso: $error');
+    
+    // Feedback háptico de error
+    HapticFeedback.heavyImpact();
   }
 
   /// Cierra el modal con animación

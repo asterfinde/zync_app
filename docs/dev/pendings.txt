@@ -40,9 +40,15 @@ Por ejemplo si se elije el emoji "traveling" se guarda "fine", lo cual es un err
 14.  Quick Actions 
 No salen todos los emojis ver la manera de implementarlos de ser posible
  
-15. Hacer de la funcionalidad un comportamineto muy silencioso:
-- No hacer exo con la barra de Notificaciones (solo la inicial al entrar al círculo)
-- No abrir la app si se abre el modal desde la notificación
+15. Hacer de la funcionalidad un comportamineto muy silencioso: ✅ 
+✅ No hacer eco con la barra de Notificaciones (solo la inicial al entrar al círculo)
+✅ No abrir la app si se abre el modal desde la notificación
+✅ Eliminados SnackBars del StatusSelectorOverlay (solo haptic feedback)
+✅ Notificación persistente ahora es estática (no se actualiza con cambios)
+✅ Nueva StatusModalActivity transparente evita abrir app completa
+✅ StatusModalService para comunicación Flutter-Android
+IMPLEMENTACIÓN: StatusService._updatePersistentNotification() deshabilitado, 
+nueva architecture para modal transparente, feedback solo háptico
 
 16. Cuando se envía el estado SOS se debe enviar, además, del emoji de estado, la posición del usuario 
 vía el GPS para que los demás miembros del círculo puedan verla y haciendo clic en ella abrir un 
