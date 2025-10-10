@@ -6,6 +6,7 @@ import '../../../../features/auth/presentation/provider/auth_provider.dart';
 import '../../../../features/auth/presentation/provider/auth_state.dart';
 import '../../../../features/auth/presentation/pages/auth_final_page.dart';
 import '../../../../notifications/notification_service.dart';
+import '../../../../core/widgets/quick_actions_config_widget.dart';
 
 /// Pantalla de configuración del usuario
 /// Permite cambiar nombre de usuario, nombre del círculo y salir del círculo
@@ -448,6 +449,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 24),
+
+                    // Sección: Quick Actions (Point 14)
+                    const QuickActionsConfigWidget(),
 
                     const SizedBox(height: 24),
 

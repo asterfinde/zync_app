@@ -1,39 +1,58 @@
 import 'package:quick_actions/quick_actions.dart';
 import '../core/services/status_service.dart';
+import '../core/services/quick_actions_preferences_service.dart';
 import '../features/circle/domain_old/entities/user_status.dart';
 import 'dart:developer';
 
 class QuickActionsService {
   static const QuickActions _quickActions = QuickActions();
   
-  /// Inicializa las Quick Actions según el plan del MD
+  /// Inicializa las Quick Actions según las preferencias del usuario
   static Future<void> initialize() async {
     await _setupQuickActions();
     await _setupQuickActionHandler();
   }
 
-  /// Configura las 6 quick actions principales
+  /// Configura las Quick Actions según las preferencias del usuario (Point 14)
+  /// Permite hasta 4 emojis personalizables por el usuario
   static Future<void> _setupQuickActions() async {
+    try {
+      // Obtener las 4 Quick Actions configuradas por el usuario
+      final userQuickActions = await QuickActionsPreferencesService.getUserQuickActions();
+      
+      // Convertir a ShortcutItems
+      final shortcutItems = userQuickActions.map((status) {
+        return ShortcutItem(
+          type: status.toString().split('.').last, // 'available', 'busy', etc.
+          localizedTitle: '${status.emoji} ${status.description}',
+        );
+      }).toList();
+      
+      await _quickActions.setShortcutItems(shortcutItems);
+      
+      log('[QuickActionsService] ✅ Quick Actions configuradas: ${userQuickActions.map((s) => s.emoji).join(', ')}');
+      
+    } catch (e) {
+      log('[QuickActionsService] ❌ Error configurando Quick Actions: $e');
+      // Fallback a configuración por defecto en caso de error
+      await _setupDefaultQuickActions();
+    }
+  }
+  
+  /// Configuración de fallback con Quick Actions por defecto
+  static Future<void> _setupDefaultQuickActions() async {
     await _quickActions.setShortcutItems([
       const ShortcutItem(
-        type: 'leave',
-        localizedTitle: '🚶‍♂️ Saliendo',
+        type: 'available',
+        localizedTitle: '� Disponible',
       ),
       const ShortcutItem(
         type: 'busy',
-        localizedTitle: '🔥 Ocupado',
+        localizedTitle: '� Ocupado',
       ),
       const ShortcutItem(
-        type: 'fine',
-        localizedTitle: '😊 Bien',
-      ),
-      const ShortcutItem(
-        type: 'sad',
-        localizedTitle: '😢 Mal',
-      ),
-      const ShortcutItem(
-        type: 'ready',
-        localizedTitle: '✅ Listo',
+        type: 'away',
+        localizedTitle: '🟡 Ausente',
       ),
       const ShortcutItem(
         type: 'sos',
@@ -70,23 +89,17 @@ class QuickActionsService {
     }
   }
 
-  /// Convierte el string de acción a StatusType
+  /// Convierte el string de acción a StatusType (actualizado para Point 14)
+  /// Soporta todos los StatusType disponibles, no solo los 6 legacy
   static StatusType? _parseStatusType(String actionType) {
-    switch (actionType) {
-      case 'leave':
-        return StatusType.leave;
-      case 'busy':
-        return StatusType.busy;
-      case 'fine':
-        return StatusType.fine;
-      case 'sad':
-        return StatusType.sad;
-      case 'ready':
-        return StatusType.ready;
-      case 'sos':
-        return StatusType.sos;
-      default:
-        return null;
+    try {
+      // Buscar el StatusType que coincida con el actionType
+      return StatusType.values.firstWhere(
+        (status) => status.toString().split('.').last == actionType,
+      );
+    } catch (e) {
+      log('[QuickActionsService] ❌ StatusType no encontrado: $actionType');
+      return null;
     }
   }
 
@@ -99,16 +112,33 @@ class QuickActionsService {
     }
   }
 
-  /// Actualiza las quick actions con configuración personalizada
-  static Future<void> updateQuickActions(List<StatusType> enabledStatuses) async {
-    final shortcutItems = enabledStatuses.map((status) {
-      return ShortcutItem(
-        type: status.name,
-        localizedTitle: status.description,
-        icon: status.iconName,
-      );
-    }).toList();
+  /// Actualiza las Quick Actions cuando el usuario cambia su configuración
+  /// Point 14: Permite configuración personalizada de 4 Quick Actions
+  static Future<void> updateUserQuickActions(List<StatusType> newQuickActions) async {
+    try {
+      if (newQuickActions.length != 4) {
+        log('[QuickActionsService] ❌ Error: Debe haber exactamente 4 Quick Actions');
+        return;
+      }
+      
+      // Guardar las nuevas preferencias
+      final saved = await QuickActionsPreferencesService.saveUserQuickActions(newQuickActions);
+      
+      if (saved) {
+        // Actualizar las Quick Actions del sistema
+        await _setupQuickActions();
+        log('[QuickActionsService] ✅ Quick Actions actualizadas por el usuario');
+      } else {
+        log('[QuickActionsService] ❌ Error guardando preferencias de Quick Actions');
+      }
+      
+    } catch (e) {
+      log('[QuickActionsService] ❌ Error actualizando Quick Actions: $e');
+    }
+  }
 
-    await _quickActions.setShortcutItems(shortcutItems);
+  /// Método legacy mantenido para compatibilidad
+  static Future<void> updateQuickActions(List<StatusType> enabledStatuses) async {
+    await updateUserQuickActions(enabledStatuses);
   }
 }
