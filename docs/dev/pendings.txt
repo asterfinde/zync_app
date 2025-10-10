@@ -89,7 +89,12 @@ IMPLEMENTACIÓN: StatusService._updatePersistentNotification() deshabilitado + U
 vía el GPS para que los demás miembros del círculo puedan verla y haciendo clic en ella abrir un 
 Google Maps asociado a la misma
 
-17. 🚨 CRÍTICO: Estabilidad WSL2-VSCode ⏳
+17. 🚨 CRÍTICO: Cuando la app se minimiza y se quiere volver a utilizarla ocurre el siguiente comportamiento errado:
+- la pantalla se pone totalmente negra
+- se cierra de manera automática la sesión del usuario
+- se abre en la pantalla de Login/Registro
+
+18. 🚨 CRÍTICO: Estabilidad WSL2-VSCode ⏳
 PROBLEMA: Desconexiones frecuentes de Copilot/extensiones con WSL2 interrumpen desarrollo
 SÍNTOMAS: 
 - Pérdida de contexto de Copilot a mitad de implementaciones
