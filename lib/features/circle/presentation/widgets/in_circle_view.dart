@@ -8,6 +8,7 @@ import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
 import '../../../../core/widgets/emoji_modal.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
+import '../../domain_old/entities/user_status.dart'; // Para StatusType
 
 class InCircleView extends ConsumerWidget {
   final Circle circle;
@@ -494,28 +495,29 @@ class InCircleView extends ConsumerWidget {
             if (statusData is Map<String, dynamic>) {
               final statusType = statusData['statusType'] as String?;
               
-              // Mapear el statusType a emoji
-              switch (statusType) {
-                case 'leave':
-                  statusEmojis[memberId] = '🚶‍♂️';
-                  break;
-                case 'busy':
-                  statusEmojis[memberId] = '🔥';
-                  break;
-                case 'fine':
+              // Mapear el statusType a emoji usando StatusType dinámico
+              if (statusType != null) {
+                try {
+                  print('[InCircleView] 🔍 DEBUG - Buscando: "$statusType"');
+                  print('[InCircleView] 🔍 DEBUG - Disponibles: ${StatusType.values.map((s) => s.name).toList()}');
+                  
+                  // Buscar el StatusType que coincida
+                  final statusEnum = StatusType.values.firstWhere(
+                    (status) => status.name == statusType,
+                    orElse: () {
+                      print('[InCircleView] ⚠️ orElse - "$statusType" no encontrado');
+                      return StatusType.fine;
+                    },
+                  );
+                  statusEmojis[memberId] = statusEnum.emoji;
+                  print('[InCircleView] ✅ Mapeado: $statusType → ${statusEnum.emoji} (${statusEnum.name})');
+                } catch (e) {
+                  // Fallback si hay error en el mapeo
                   statusEmojis[memberId] = '😊';
-                  break;
-                case 'sad':
-                  statusEmojis[memberId] = '😢';
-                  break;
-                case 'ready':
-                  statusEmojis[memberId] = '✅';
-                  break;
-                case 'sos':
-                  statusEmojis[memberId] = '🆘';
-                  break;
-                default:
-                  statusEmojis[memberId] = '😊';
+                  print('[InCircleView] ❌ Error mapeando $statusType: $e');
+                }
+              } else {
+                statusEmojis[memberId] = '😊'; // Default si statusType es null
               }
             }
           });

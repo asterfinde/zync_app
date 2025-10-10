@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:zync_app/features/circle/domain_old/entities/user_status.dart';
-import '../../notifications/notification_service.dart';
 import 'app_badge_service.dart';
 import 'dart:async';
 import 'dart:developer';
@@ -152,9 +151,14 @@ class StatusService {
   }
 
   /// Actualiza la notificación persistente con el nuevo estado
+  /// Point 15: DESHABILITADO - No hacer eco con la barra de notificaciones
   static Future<void> _updatePersistentNotification(StatusType status) async {
     try {
-      await NotificationService.showQuickActionNotification(currentStatus: status);
+      // Point 15: Comportamiento silencioso - NO actualizar notificación
+      // Solo mantener la notificación inicial para acceso rápido
+      log('[StatusService] 🔇 Actualización silenciosa - notificación persistente sin cambios');
+      
+      // await NotificationService.showQuickActionNotification(currentStatus: status);
     } catch (e) {
       log('[StatusService] Error actualizando notificación persistente: $e');
       // No lanzamos la excepción para no afectar el flujo principal

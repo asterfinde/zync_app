@@ -40,6 +40,17 @@
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="true"/>
 
+        <!-- Point 15: Activity transparente para modal sin abrir app completa -->
+        <activity
+            android:name=".StatusModalActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:noHistory="true"/>
+
         <receiver
             android:name=".ShowQuickStatusReceiver"
             android:exported="true"/>

@@ -101,9 +101,11 @@ class MainActivity: FlutterActivity() {
     private fun showPersistentNotification() {
         createNotificationChannel()
         
-        val intent = Intent(this, MainActivity::class.java).apply {
+        // Point 15: Usar StatusModalActivity en lugar de MainActivity
+        // Esto evita abrir la app completa, solo el modal transparente
+        val intent = Intent(this, StatusModalActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("open_emoji_modal", true)
+            putExtra("open_status_modal", true)
         }
         
         val pendingIntent = PendingIntent.getActivity(

@@ -88,14 +88,12 @@ class NotificationService {
     log('[NotificationService] Silent notification shown for ${status.description}');
   }
 
-  /// Muestra notificación persistente para cambiar estado - MEJORADA
+  /// Muestra notificación persistente para cambiar estado - Point 15: ESTÁTICA
   static Future<void> showQuickActionNotification({StatusType? currentStatus}) async {
     await _ensureInitialized();
 
-    // Texto dinámico basado en estado actual
-    final statusText = currentStatus != null 
-        ? '${currentStatus.emoji} ${currentStatus.description}'
-        : 'Tap to change your status';
+    // Point 15: Texto estático - no hacer eco con cambios
+    const statusText = 'Tap to change your status';
 
     const androidDetails = AndroidNotificationDetails(
       'zync_quick_actions',
@@ -131,7 +129,7 @@ class NotificationService {
       payload: 'quick_action_tap',
     );
 
-    log('[NotificationService] 🔔 Persistent notification updated: $statusText');
+    log('[NotificationService] � Point 15: Notificación estática mostrada (no eco): $statusText');
     log('[NotificationService] 🔔 Notification ID: 9999, Ongoing: true, Importance: HIGH');
   }
 
