@@ -61,13 +61,17 @@ IMPLEMENTACIÓN: StatusService._updatePersistentNotification() deshabilitado
 ✅ Comportamiento completamente silencioso
 IMPLEMENTACIÓN: _showSuccessFeedback() y _showErrorFeedback() solo usan logs + haptic
 
-14. Quick Actions ✅ 
+14. Quick Actions ✅ CORREGIDO
 ✅ Implementado sistema de Quick Actions personalizable por usuario
-✅ Usuario puede seleccionar sus 4 emojis favoritos de los 16 disponibles
+✅ Usuario puede seleccionar sus 4 emojis favoritos de los 13 disponibles
 ✅ Nuevo QuickActionsPreferencesService para persistencia
 ✅ Nueva QuickActionsConfigWidget integrada en Settings
 ✅ Soporte completo para todos los StatusType emojis (limitado a 4 por OS)
-IMPLEMENTACIÓN: Sistema completo de preferencias + UI + integración settings
+✅ FIXED: Grid inconsistencias - Sincronizado con StatusSelectorOverlay
+✅ FIXED: Eliminados elementos duplicados/heredados (fine, ready, leave, etc.)
+✅ FIXED: Overflow RenderFlex - Layout optimizado con spacing reducido
+✅ FIXED: Solo 13 elementos consistentes en ambos grids (config + modal)
+IMPLEMENTACIÓN: Sistema completo corregido + grids sincronizados
  
 15. Hacer de la funcionalidad un comportamineto muy silencioso: ✅ 
 ✅ No hacer eco con la barra de Notificaciones (solo la inicial al entrar al círculo)
