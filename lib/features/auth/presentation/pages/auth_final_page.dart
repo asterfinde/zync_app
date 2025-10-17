@@ -4,7 +4,8 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
+// import 'package:zync_app/features/circle/presentation/pages/home_page.dart'; // COMENTADO - Testing Point 17
+import 'package:zync_app/dev_test/test_members_page.dart'; // TEMPORAL - Testing Point 17
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
 
@@ -59,7 +60,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           }
           
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => HomePage()),
+            // MaterialPageRoute(builder: (_) => HomePage()), // ORIGINAL - Testing Point 17
+            MaterialPageRoute(builder: (_) => const TestMembersPage()), // TEMPORAL - Testing Point 17
           );
         }
       } else {
@@ -120,7 +122,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         }
         
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomePage()),
+          // MaterialPageRoute(builder: (_) => HomePage()), // ORIGINAL - Testing Point 17
+          MaterialPageRoute(builder: (_) => const TestMembersPage()), // TEMPORAL - Testing Point 17
         );
       }
     } on FirebaseAuthException catch (e) {
