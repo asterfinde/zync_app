@@ -14,13 +14,13 @@ class MockData {
   /// Obtener lista de miembros mock
   static List<Map<String, dynamic>> getMockMembers() {
     return [
-      // Usuario 1: Current user (available) - Para testing de updates
+      // Usuario 1: Current user (fine) - Para testing de updates
       {
         'userId': 'mock_user_1',
         'nickname': 'Tú (Current User)',
         'email': 'current@test.com',
         'name': 'Usuario Actual',
-        'status': 'available',
+        'status': 'fine',
         'gpsLatitude': null,
         'gpsLongitude': null,
         'lastUpdate': DateTime.now(),
@@ -85,6 +85,42 @@ class MockData {
         'gpsLongitude': null,
         'lastUpdate': DateTime.now().subtract(Duration(minutes: 20)),
       },
+
+      // Usuario 7: Away
+      {
+        'userId': 'mock_user_7',
+        'nickname': 'Pedro',
+        'email': 'pedro@test.com',
+        'name': 'Pedro Martínez',
+        'status': 'away',
+        'gpsLatitude': null,
+        'gpsLongitude': null,
+        'lastUpdate': DateTime.now().subtract(Duration(minutes: 25)),
+      },
+
+      // Usuario 8: Focus
+      {
+        'userId': 'mock_user_8',
+        'nickname': 'Laura',
+        'email': 'laura@test.com',
+        'name': 'Laura Sánchez',
+        'status': 'focus',
+        'gpsLatitude': null,
+        'gpsLongitude': null,
+        'lastUpdate': DateTime.now().subtract(Duration(minutes: 30)),
+      },
+
+      // Usuario 9: Studying
+      {
+        'userId': 'mock_user_9',
+        'nickname': 'Diego',
+        'email': 'diego@test.com',
+        'name': 'Diego Fernández',
+        'status': 'studying',
+        'gpsLatitude': null,
+        'gpsLongitude': null,
+        'lastUpdate': DateTime.now().subtract(Duration(minutes: 35)),
+      },
     ];
   }
 
@@ -104,19 +140,26 @@ class MockData {
   /// Obtener nombre legible del status
   static String getStatusLabel(String status) {
     final labels = {
-      'available': 'Disponible',
+      'fine': 'Todo bien',
+      'sos': 'EMERGENCIA SOS',
+      'meeting': 'En reunión',
+      'ready': 'Listo',
+      'leave': 'Saliendo',
+      'happy': 'Feliz',
+      'sad': 'Triste',
       'busy': 'Ocupado',
+      'sleepy': 'Con sueño',
+      'excited': 'Emocionado',
+      'thinking': 'Pensando',
+      'worried': 'Preocupado',
+      'available': 'Disponible',
       'away': 'Ausente',
       'focus': 'Concentrado',
-      'happy': 'Feliz',
       'tired': 'Cansado',
       'stressed': 'Estresado',
-      'sad': 'Triste',
       'traveling': 'Viajando',
-      'meeting': 'En reunión',
       'studying': 'Estudiando',
       'eating': 'Comiendo',
-      'sos': 'EMERGENCIA SOS',
     };
     return labels[status] ?? status;
   }

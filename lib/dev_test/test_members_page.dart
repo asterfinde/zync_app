@@ -54,12 +54,12 @@ class _TestMembersPageState extends State<TestMembersPage> {
     HapticFeedback.mediumImpact();
   }
 
-  /// Update to available (FAB action)
-  void _updateToAvailable() {
-    _updateCurrentUserStatus('available');
+  /// Update to fine (FAB action)
+  void _updateToFine() {
+    _updateCurrentUserStatus('fine');
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Estado actualizado a Disponible'),
+        content: Text('✅ Estado actualizado a Todo Bien'),
         duration: Duration(seconds: 1),
       ),
     );
@@ -67,16 +67,24 @@ class _TestMembersPageState extends State<TestMembersPage> {
 
   /// Abrir Google Maps con coordenadas
   Future<void> _openGoogleMaps(double lat, double lng) async {
-    final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+    // Usar formato de coordenadas directo para mejor compatibilidad
+    final url = 'https://www.google.com/maps?q=$lat,$lng';
     final uri = Uri.parse(url);
 
+    print('🗺️ Opening Google Maps: $url');
+
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final canLaunch = await canLaunchUrl(uri);
+      print('🗺️ Can launch URL: $canLaunch');
+      
+      if (canLaunch) {
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        print('🗺️ Launch result: $launched');
       } else {
+        print('❌ Cannot launch URL: $url');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No se pudo abrir Google Maps')),
+            const SnackBar(content: Text('❌ No se pudo abrir Google Maps')),
           );
         }
       }
@@ -84,7 +92,7 @@ class _TestMembersPageState extends State<TestMembersPage> {
       print('❌ Error opening Google Maps: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('❌ Error: $e')),
         );
       }
     }
@@ -105,7 +113,7 @@ class _TestMembersPageState extends State<TestMembersPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Cambiar estado',
+                'Cambiar tu estado',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: Colors.white,
                     ),
@@ -115,14 +123,21 @@ class _TestMembersPageState extends State<TestMembersPage> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _buildStatusChip('available'),
-                  _buildStatusChip('busy'),
-                  _buildStatusChip('happy'),
-                  _buildStatusChip('tired'),
-                  _buildStatusChip('meeting'),
+                  _buildStatusChip('fine'),
                   _buildStatusChip('sos'),
+                  _buildStatusChip('meeting'),
+                  _buildStatusChip('ready'),
+                  _buildStatusChip('leave'),
+                  _buildStatusChip('happy'),
+                  _buildStatusChip('sad'),
+                  _buildStatusChip('busy'),
+                  _buildStatusChip('sleepy'),
+                  _buildStatusChip('excited'),
+                  _buildStatusChip('thinking'),
+                  _buildStatusChip('worried'),
                 ],
               ),
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -162,13 +177,6 @@ class _TestMembersPageState extends State<TestMembersPage> {
       appBar: AppBar(
         title: const Text('🧪 Test Members List'),
         backgroundColor: Colors.deepPurple,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.emoji_emotions),
-            onPressed: _showStatusMenu,
-            tooltip: 'Cambiar estado',
-          ),
-        ],
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
@@ -181,15 +189,16 @@ class _TestMembersPageState extends State<TestMembersPage> {
             key: ValueKey('${member['userId']}_${member['status']}'),
             member: member,
             isCurrentUser: isCurrentUser,
+            onTap: isCurrentUser ? _showStatusMenu : null,
             onOpenMaps: (lat, lng) => _openGoogleMaps(lat, lng),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _updateToAvailable,
-        icon: const Icon(Icons.check_circle),
-        label: const Text('Disponible'),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _updateToFine,
+        tooltip: 'Estado: Todo Bien',
         backgroundColor: Colors.green,
+        child: const Icon(Icons.check_circle, size: 32),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
@@ -203,12 +212,14 @@ class _TestMembersPageState extends State<TestMembersPage> {
 class _MemberListItem extends StatelessWidget {
   final Map<String, dynamic> member;
   final bool isCurrentUser;
+  final VoidCallback? onTap;
   final Function(double, double)? onOpenMaps;
 
   const _MemberListItem({
     super.key,
     required this.member,
     required this.isCurrentUser,
+    this.onTap,
     this.onOpenMaps,
   });
 
@@ -221,7 +232,10 @@ class _MemberListItem extends StatelessWidget {
     final hasGPS = MockData.hasGPS(member);
     final isSOS = status == 'sos';
 
-    return Card(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: isSOS ? Colors.red.shade900.withOpacity(0.3) : Colors.grey[850],
       child: Padding(
@@ -364,6 +378,7 @@ class _MemberListItem extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
