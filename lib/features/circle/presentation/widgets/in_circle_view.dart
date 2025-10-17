@@ -106,7 +106,7 @@ class InCircleView extends ConsumerWidget {
           child: Container(
             color: Colors.black,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 100.0), // Padding inferior extra para FAB
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -305,8 +305,11 @@ class InCircleView extends ConsumerWidget {
                             
                             final nicknames = snapshot.data ?? {};
                             
-                            return Column(
-                              children: circle.members.asMap().entries.map((entry) {
+                            return ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 400), // Altura máxima para scroll
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  children: circle.members.asMap().entries.map((entry) {
                                 final index = entry.key;
                                 final memberId = entry.value;
                                 final isFirst = index == 0;
@@ -482,6 +485,8 @@ class InCircleView extends ConsumerWidget {
                                   ),
                                 );
                               }).toList(),
+                                ),
+                              ),
                             );
                           },
                         ),

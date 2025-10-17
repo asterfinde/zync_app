@@ -97,15 +97,18 @@ Google Maps asociado a la misma
 ✅ Fallback graceful si GPS no está disponible
 ✅ Timeout de 10s optimizado para emergencias
 ✅ url_launcher agregado para apertura de Google Maps
-IMPLEMENTACIÓN: Funcionalidad completa GPS + SOS con UX optimizada para emergencias
 
-17. 🚨 CRÍTICO: Minimización de la app
+17. El FAB (Floating Action Button) que permite enviar el estado "available" (🟢) sin abrir
+ el modal, se sobrepone a la lista de miembros del círculo y no permite verlos todos ✅
+- Evaluar crear un widget para la lista de miembros y colocar debajo el FAB (quizás en un footer)
+
+18. 🚨 CRÍTICO: Minimización de la app
 Cuando la app se minimiza y se quiere volver a utilizarla ocurre el siguiente comportamiento errado:
 - la pantalla se pone totalmente negra
 - se cierra de manera automática la sesión del usuario
 - se abre en la pantalla de Login/Registro
 
-18. 🚨 CRÍTICO: Estabilidad WSL2-VSCode ⏳
+19. 🚨 CRÍTICO: Estabilidad WSL2-VSCode ⏳
 PROBLEMA: Desconexiones frecuentes de Copilot/extensiones con WSL2 interrumpen desarrollo
 SÍNTOMAS: 
 - Pérdida de contexto de Copilot a mitad de implementaciones
@@ -119,6 +122,57 @@ SOLUCIONES A EVALUAR:
 ✅ Crear workflow de recovery post-desconexión
 ✅ Documentar pasos de debugging para futuras ocurrencias
 URGENCIA: Máxima - Bloquea desarrollo eficiente
+
+20. 🔧 Toolset de Scripts WSL2-Android Connection ⏳
+PROBLEMA: Conexión de dispositivos Android a WSL2 para desarrollo Flutter es frágil
+CONTEXTO: Windows 11 24H2 cambió sintaxis usbipd y comportamiento de firewall
+NECESIDAD: Toolset robusto de scripts para diagnóstico y solución rápida
+COMPONENTES REQUERIDOS:
+📋 Script de diagnóstico completo:
+  - Verificar versión de Windows 11 y actualizaciones
+  - Detectar sintaxis correcta de usbipd (nueva vs legacy)
+  - Validar reglas de firewall para puerto TCP 3240
+  - Comprobar estado de servicio usbipd
+  - Listar dispositivos conectados y su BUSID
+  - Test de conectividad WSL ↔ Windows (puerto 3240)
+  - Verificar perfiles de red (Public/Private/Domain)
+
+🔧 Script de reparación automática:
+  - Auto-detección de sintaxis usbipd correcta
+  - Creación automática de reglas firewall necesarias
+  - Reinicio de servicios usbipd cuando sea necesario
+  - Alternativa: Setup automático de ADB over Wi-Fi
+  - Rollback de cambios si algo falla
+
+📚 Documentación de troubleshooting:
+  - Guía de errores comunes y soluciones
+  - Changelog de breaking changes de usbipd
+  - Procedimientos para actualizaciones de Windows 11
+  - Configuración de antivirus de terceros
+  - Alternativas (ADB Wi-Fi, scrcpy, vysor)
+
+✅ RESUELTO EN ESTA SESIÓN:
+  - Identificado breaking change: `usbipd wsl attach` → `usbipd attach --wsl`
+  - Creado fix_usbipd_firewall.ps1 (script PowerShell completo)
+  - Creado FIX_USBIPD_FIREWALL_GUIDE.md (guía de troubleshooting)
+  - Conexión funcionando correctamente con nueva sintaxis
+
+🔄 PENDIENTE:
+  - Crear script de diagnóstico rápido (check-android-connection.ps1)
+  - Actualizar conectar_android.ps1 con sintaxis nueva y fallbacks
+  - Agregar detección automática de versión usbipd
+  - Documentar procedimiento de ADB over Wi-Fi como alternativa
+  - Crear script de limpieza de reglas firewall obsoletas
+
+PRIORIDAD: Media-Alta - Herramienta de productividad esencial
+IMPACTO: Reduce tiempo de debugging de conectividad de horas a minutos
+ARCHIVOS CREADOS:
+  - fix_usbipd_firewall.ps1 (resolución de firewall)
+  - FIX_USBIPD_FIREWALL_GUIDE.md (documentación completa)
+
+Revisar cuáles serán finalmente los archivos que se necesitarían obligatoriamente
+en caso de problemas, borrar el resto que no se utilizaran
+
 
 ---
 
@@ -184,5 +238,40 @@ Los 4 casos están cubiertos correctamente:
 
 -------------------------------------------------
 
-errores de Google API Manager que podrían estar relacionados con Firebase/Google Services:
+PROMPT PARA CONTINUAR SESIÓN SIGUIENTE
+CONTEXTO INMEDIATO - PROBLEMA ACTIVO: Estamos trabajando en solucionar el FAB (FloatingActionButton) que se sobrepone a la lista de miembros en la vista del círculo. El problema persiste a pesar del fix de padding implementado.
+
+ESTADO ACTUAL:
+
+Archivo afectado: in_circle_view.dart
+FAB ubicado en: home_page.dart (posición: FloatingActionButtonLocation.centerFloat)
+Fix intentado: Cambio de padding de EdgeInsets.all(24.0) a EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 100.0) en el SingleChildScrollView - NO funcionó
+PROGRESO COMPLETADO EN ESTA SESIÓN:
+
+✅ Point 16 SOS GPS: Completamente funcional - captura GPS, muestra ubicación, abre Google Maps
+✅ Emoji corrupto fix: Corregido StatusType.fine="😊" y StatusType.leave="🚶‍♂️"
+✅ Scroll en lista de miembros: Implementado pero FAB sigue tapando contenido
+🔄 FAB overlap: Padding no resolvió el problema - necesita solución alternativa
+PRÓXIMOS PASOS SUGERIDOS:
+
+Evaluar cambio de posición del FAB: De centerFloat a endFloat o endTop
+Considerar Scaffold con bottomNavigationBar: Para evitar superposición
+Implementar Column con Expanded: Reestructurar layout para separar FAB del scroll
+Usar SafeArea con margin dinámico: Calcular altura del FAB + padding
+ARCHIVOS CLAVE PARA LA SESIÓN:
+
+in_circle_view.dart (lista de miembros)
+home_page.dart (FAB + Scaffold)
+user_status.dart (StatusType enum corregido)
+COMANDO PARA VERIFICAR ESTADO:
+
+RAMA ACTUAL: 
+feature/point16-sos-gps
+
+COMPORTAMIENTO ESPERADO: 
+Colocar un Scroll en la lista de miembros del Círculo.
+El FAB debe permitir scroll completo de la lista sin tapar el último miembro. 
+El Usuario debe poder ver todos los miembros del círculo sin interferencia del botón flotante.
+Verificar la funcionalidad completa del Point 16 SOS GPS:
+La app captura GPS, muestra ubicación y permite: copiar las coordenadas o abrir Google Maps
 

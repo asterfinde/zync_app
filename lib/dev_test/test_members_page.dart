@@ -98,46 +98,52 @@ class _TestMembersPageState extends State<TestMembersPage> {
     }
   }
 
-  /// Mostrar menú de cambio de estado
+  /// Mostrar menú de cambio de estado (ESTILO APP ORIGINAL)
   void _showStatusMenu() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.grey[900],
+      backgroundColor: const Color(0xFF1E1E1E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Cambiar tu estado',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                    ),
+              // Handle visual
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _buildStatusChip('fine'),
-                  _buildStatusChip('sos'),
-                  _buildStatusChip('meeting'),
-                  _buildStatusChip('ready'),
-                  _buildStatusChip('leave'),
-                  _buildStatusChip('happy'),
-                  _buildStatusChip('sad'),
-                  _buildStatusChip('busy'),
-                  _buildStatusChip('sleepy'),
-                  _buildStatusChip('excited'),
-                  _buildStatusChip('thinking'),
-                  _buildStatusChip('worried'),
-                ],
+              
+              // Grid 3x2 de estados (ESTILO ORIGINAL)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.0,
+                ),
+                itemCount: 6, // Solo 6 estados principales
+                itemBuilder: (context, index) {
+                  // Estados principales en orden original
+                  final statusList = ['leave', 'busy', 'fine', 'sad', 'ready', 'sos'];
+                  final status = statusList[index];
+                  
+                  return _buildStatusChip(status);
+                },
               ),
-              const SizedBox(height: 16),
+              
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
             ],
           ),
         );
@@ -145,29 +151,61 @@ class _TestMembersPageState extends State<TestMembersPage> {
     );
   }
 
-  /// Chip de estado para el modal
+  /// Chip de estado para el modal (ESTILO ORIGINAL)
   Widget _buildStatusChip(String status) {
     final emoji = MockData.getEmojiForStatus(status);
     final label = MockData.getStatusLabel(status);
-    final isCurrentStatus = members
-        .firstWhere((m) => m['userId'] == currentUserId)['status'] == status;
+    final currentStatus = members.firstWhere((m) => m['userId'] == currentUserId)['status'];
+    final isCurrentStatus = currentStatus == status;
 
-    return ChoiceChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 8),
-          Text(label),
-        ],
-      ),
-      selected: isCurrentStatus,
-      onSelected: (selected) {
-        if (selected) {
-          _updateCurrentUserStatus(status);
-          Navigator.pop(context);
-        }
+    return GestureDetector(
+      onTap: () {
+        _updateCurrentUserStatus(status);
+        Navigator.pop(context);
       },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: isCurrentStatus 
+              ? const Color(0xFF1CE4B3).withOpacity(0.15) 
+              : const Color(0xFF2C2C2C),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isCurrentStatus 
+                ? const Color(0xFF1CE4B3) 
+                : Colors.grey[700]!,
+            width: isCurrentStatus ? 2 : 1,
+          ),
+          boxShadow: isCurrentStatus ? [
+            BoxShadow(
+              color: const Color(0xFF1CE4B3).withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ] : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              emoji,
+              style: const TextStyle(fontSize: 32),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: isCurrentStatus ? const Color(0xFF1CE4B3) : Colors.grey[300],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -194,13 +232,45 @@ class _TestMembersPageState extends State<TestMembersPage> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _updateToFine,
-        tooltip: 'Estado: Todo Bien',
-        backgroundColor: Colors.green,
-        child: const Icon(Icons.check_circle, size: 32),
+      // Footer estilo app original (sin traslape)
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 8,
+          bottom: MediaQuery.of(context).padding.bottom + 8,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: ElevatedButton.icon(
+            onPressed: _updateToFine,
+            icon: const Icon(Icons.check_circle, size: 24),
+            label: const Text(
+              'Todo Bien',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

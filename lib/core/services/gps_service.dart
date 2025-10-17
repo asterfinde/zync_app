@@ -34,10 +34,12 @@ class GPSService {
         return null;
       }
       
-      // Obtener ubicación con configuración optimizada para SOS
+      // Obtener ubicación con configuración optimizada para SOS (API actualizada)
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10), // Timeout para emergencias
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10), // Timeout para emergencias
+        ),
       );
       
       final coordinates = Coordinates(
@@ -81,7 +83,28 @@ class GPSService {
   }
   
   /// Generar enlace con etiqueta personalizada para SOS
+  /// Point 16 FIX: URL más compatible con múltiples apps de mapas
   static String generateSOSLocationUrl(Coordinates coordinates, String userName) {
-    return 'https://maps.google.com/?q=${coordinates.latitude},${coordinates.longitude}&query_place_id=SOS-$userName';
+    return 'geo:${coordinates.latitude},${coordinates.longitude}?q=${coordinates.latitude},${coordinates.longitude}(SOS%20-%20$userName)';
+  }
+  
+  /// URLs de fallback para diferentes apps de mapas
+  /// Point 16 FIX: URLs más compatibles para Android
+  static List<String> generateFallbackMapUrls(Coordinates coordinates, String userName) {
+    final lat = coordinates.latitude.toStringAsFixed(6);
+    final lng = coordinates.longitude.toStringAsFixed(6);
+    
+    return [
+      // Google Maps app directo (más confiable)
+      'google.navigation:q=$lat,$lng',
+      // Formato geo: con zoom
+      'geo:$lat,$lng?z=16',
+      // Google Maps web
+      'https://maps.google.com/?q=$lat,$lng',
+      // Waze (si está instalado)
+      'waze://?ll=$lat,$lng&navigate=yes',
+      // Maps genérico de Android
+      'geo:0,0?q=$lat,$lng(SOS - $userName)',
+    ];
   }
 }

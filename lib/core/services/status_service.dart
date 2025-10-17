@@ -141,6 +141,9 @@ class StatusService {
         log('[StatusService] 🗺️ Coordenadas GPS agregadas al estado SOS');
       }
       
+      log('[StatusService] 📤 Enviando a Firestore - Circle: $circleId');
+      log('[StatusService] 📤 StatusData completo: $statusData');
+      
       batch.update(
         FirebaseFirestore.instance.collection('circles').doc(circleId),
         {'memberStatus.${user.uid}': statusData}
