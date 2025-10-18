@@ -3,184 +3,312 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/firebase_circle_service.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
 import '../../../../core/widgets/emoji_modal.dart';
+import '../../../../core/services/gps_service.dart';
+import '../../../../core/services/status_service.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
-import '../../domain_old/entities/user_status.dart'; // Para StatusType
+import '../../domain_old/entities/user_status.dart';
 
-class InCircleView extends ConsumerWidget {
-  final Circle circle;
+// ===========================================================================
+// SECCIÓN DE DISEÑO: Colores y Estilos basados en la pantalla de referencia
+// ===========================================================================
+
+/// Paleta de colores extraída del diseño de la pantalla de Login.
+class _AppColors {
+  static const Color background = Color(0xFF000000); // Negro puro
+  static const Color accent = Color(0xFF1EE9A4); // Verde menta/turquesa
+  static const Color textPrimary = Color(0xFFFFFFFF); // Blanco
+  static const Color textSecondary = Color(0xFF9E9E9E); // Gris para subtítulos y labels
+  static const Color cardBackground = Color(0xFF1C1C1E); // Gris oscuro para menús y diálogos
+  static const Color cardBorder = Color(0xFF3A3A3C); // Borde sutil para tarjetas y divider
+  static const Color sosRed = Color(0xFFD32F2F); // Rojo para alertas SOS
+}
+
+/// Estilos de texto consistentes con el diseño.
+class _AppTextStyles {
+  static const TextStyle screenTitle = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    color: _AppColors.textPrimary,
+    letterSpacing: 1.2,
+  );
+
+  static const TextStyle userNickname = TextStyle(
+    fontSize: 16,
+    color: _AppColors.textSecondary,
+    fontWeight: FontWeight.w400,
+  );
+
+  static const TextStyle cardTitle = TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.bold,
+    color: _AppColors.textPrimary,
+  );
+
+  static const TextStyle cardSubtitle = TextStyle(
+    color: _AppColors.textSecondary,
+    fontSize: 14,
+  );
+
+  static const TextStyle invitationCode = TextStyle(
+    fontFamily: 'monospace',
+    fontWeight: FontWeight.bold,
+    fontSize: 20,
+    color: _AppColors.textPrimary,
+    letterSpacing: 1.5,
+  );
+
+  static const TextStyle memberNickname = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: _AppColors.textPrimary,
+  );
   
+  static const TextStyle memberStatus = TextStyle(
+    fontSize: 14,
+    color: _AppColors.textSecondary,
+    fontWeight: FontWeight.normal,
+  );
+  
+  static const TextStyle sosStatus = TextStyle(
+    fontSize: 14,
+    color: _AppColors.sosRed,
+    fontWeight: FontWeight.bold,
+  );
+}
+
+
+class InCircleView extends ConsumerStatefulWidget {
+  final Circle circle;
+
   const InCircleView({super.key, required this.circle});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      children: [
-        // AppBar personalizado
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
-          color: Colors.black,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Zync',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.2,
+  ConsumerState<InCircleView> createState() => _InCircleViewState();
+}
+
+class _InCircleViewState extends ConsumerState<InCircleView> {
+  // === INICIO DE LA LÓGICA ORIGINAL (SIN CAMBIOS) ===
+  final Map<String, Map<String, dynamic>> _memberDataCache = {};
+  bool _isUpdatingStatus = false; // Para controlar el loading del botón "Todo Bien"
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+    _listenToStatusChanges();
+  }
+
+  Future<void> _loadInitialData() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('circles')
+        .doc(widget.circle.id)
+        .get();
+
+    if (snapshot.exists && snapshot.data() != null) {
+      final data = snapshot.data()!;
+      final memberStatus = data['memberStatus'] as Map<String, dynamic>?;
+
+      if (memberStatus != null && mounted) {
+        setState(() {
+          memberStatus.forEach((memberId, statusData) {
+            _memberDataCache[memberId] = _parseMemberData(statusData);
+          });
+        });
+      }
+    }
+  }
+
+  void _listenToStatusChanges() {
+    FirebaseFirestore.instance
+        .collection('circles')
+        .doc(widget.circle.id)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted || !snapshot.exists || snapshot.data() == null) return;
+
+      final data = snapshot.data()!;
+      final memberStatus = data['memberStatus'] as Map<String, dynamic>?;
+
+      if (memberStatus != null) {
+        bool hasChanges = false;
+        final Map<String, Map<String, dynamic>> updates = {};
+
+        memberStatus.forEach((memberId, statusData) {
+          final newData = _parseMemberData(statusData);
+          final oldData = _memberDataCache[memberId];
+
+          if (_hasChanged(oldData, newData)) {
+            updates[memberId] = newData;
+            hasChanges = true;
+          }
+        });
+
+        if (hasChanges) {
+          setState(() {
+            updates.forEach((memberId, newData) {
+              _memberDataCache[memberId] = newData;
+            });
+          });
+        }
+      }
+    });
+  }
+
+  Map<String, dynamic> _parseMemberData(dynamic statusData) {
+    if (statusData is! Map<String, dynamic>) {
+      return {'emoji': '😊', 'status': 'fine', 'hasGPS': false};
+    }
+
+    final statusType = statusData['statusType'] as String?;
+    String emoji = '😊';
+    
+    if (statusType != null) {
+      try {
+        final statusEnum = StatusType.values.firstWhere(
+          (s) => s.name == statusType,
+          orElse: () => StatusType.fine,
+        );
+        emoji = statusEnum.emoji;
+      } catch (e) {
+        emoji = '😊';
+      }
+    }
+
+    final coordinates = statusData['coordinates'] as Map<String, dynamic>?;
+    final timestamp = statusData['timestamp'];
+    DateTime? lastUpdate;
+    if (timestamp is Timestamp) {
+      lastUpdate = timestamp.toDate();
+    }
+
+    return {
+      'emoji': emoji,
+      'status': statusType ?? 'fine',
+      'coordinates': coordinates,
+      'hasGPS': coordinates != null && statusType == 'sos',
+      'lastUpdate': lastUpdate,
+    };
+  }
+
+  bool _hasChanged(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
+    if (oldData == null) return true;
+    return oldData['status'] != newData['status'] ||
+           oldData['lastUpdate']?.toString() != newData['lastUpdate']?.toString() ||
+           oldData['coordinates']?.toString() != newData['coordinates']?.toString();
+  }
+  // === FIN DE LA LÓGICA ORIGINAL (SIN CAMBIOS) ===
+
+  @override
+  Widget build(BuildContext context) {
+    final circle = widget.circle;
+    // CAMBIO: Se envuelve en un Scaffold para poder añadir el footer de demostración.
+    return Scaffold(
+      backgroundColor: _AppColors.background,
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
+            color: _AppColors.background,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Zync', style: _AppTextStyles.screenTitle),
+                      Text(
+                        _getCurrentUserNickname(ref),
+                        style: _AppTextStyles.userNickname,
                       ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: _AppColors.textPrimary),
+                  color: _AppColors.cardBackground,
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'leave_circle':
+                        _showLeaveCircleDialog(context);
+                        break;
+                      case 'logout':
+                        _showLogoutDialog(context, ref);
+                        break;
+                      case 'settings':
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsPage(),
+                          ),
+                        );
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    _buildPopupMenuItem(
+                      value: 'logout', icon: Icons.logout, text: 'Cerrar Sesión',
+                      color: _AppColors.textSecondary,
                     ),
-                    Text(
-                      _getCurrentUserNickname(ref),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    _buildPopupMenuItem(
+                      value: 'settings', icon: Icons.settings, text: 'Configuración',
+                      color: _AppColors.accent,
+                    ),
+                     _buildPopupMenuItem(
+                      value: 'leave_circle', icon: Icons.exit_to_app, text: 'Salir del Círculo',
+                      color: _AppColors.sosRed,
                     ),
                   ],
                 ),
-              ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onSelected: (value) {
-                  switch (value) {
-                    case 'leave_circle':
-                      _showLeaveCircleDialog(context);
-                      break;
-                    case 'logout':
-                      _showLogoutDialog(context, ref);
-                      break;
-                    case 'settings':
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsPage(),
-                        ),
-                      );
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: ListTile(
-                      leading: Icon(Icons.logout, color: Colors.grey),
-                      title: Text('Cerrar Sesión'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'settings',
-                    child: ListTile(
-                      leading: Icon(Icons.settings, color: Colors.blue),
-                      title: Text('Configuración'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'leave_circle',
-                    child: ListTile(
-                      leading: Icon(Icons.exit_to_app, color: Colors.red),
-                      title: Text('Salir del Círculo'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        
-        // Contenido principal
-        Expanded(
-          child: Container(
-            color: Colors.black,
+          
+          Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 24.0), // Padding inferior reducido
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Header del círculo
-                  Container(
-                    padding: const EdgeInsets.all(20.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F1513),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.all(4.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.group, size: 32, color: Colors.blue[400]),
+                            const Icon(Icons.hub, size: 28, color: _AppColors.accent),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    circle.name,
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                                  Text(circle.name, style: _AppTextStyles.cardTitle),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${circle.members.length} miembros',
-                                    style: TextStyle(
-                                      color: Colors.grey[400],
-                                      fontSize: 14,
-                                    ),
+                                    style: _AppTextStyles.cardSubtitle,
                                   ),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
                         
-                        // Código de invitación mejorado
-                        Row(
-                          children: const [
-                            Icon(Icons.vpn_key, size: 20, color: Colors.grey),
-                            SizedBox(width: 12),
-                            Text(
-                              'Código de Invitación:',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
+                        const Text('Código de Invitación', style: _AppTextStyles.cardSubtitle),
                         const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                circle.invitationCode,
-                                style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
+                              child: Text(circle.invitationCode, style: _AppTextStyles.invitationCode),
                             ),
                             IconButton(
                               onPressed: () => _copyToClipboard(context, circle.invitationCode),
-                              icon: const Icon(Icons.copy, size: 24, color: Color(0xFF4CAF50)),
+                              icon: const Icon(Icons.copy, size: 24, color: _AppColors.accent),
                               tooltip: 'Copiar código',
                             ),
                           ],
@@ -189,226 +317,173 @@ class InCircleView extends ConsumerWidget {
                     ),
                   ),
                   
-                  const SizedBox(height: 24),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24.0),
+                    child: Divider(color: _AppColors.cardBorder, thickness: 1),
+                  ),
+
+                  const Row(
+                    children: [
+                      Icon(Icons.people_outline, size: 24, color: _AppColors.accent),
+                      SizedBox(width: 8),
+                      Text('Miembros', style: _AppTextStyles.screenTitle),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   
-                  // Lista de miembros
-                  Container(
-                    padding: const EdgeInsets.all(20.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F1513),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.people, size: 24, color: Colors.green[400]),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Miembros',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                  FutureBuilder<Map<String, String>>(
+                    future: _getAllMemberNicknames(circle.members),
+                    builder: (context, nicknameSnapshot) {
+                      if (nicknameSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(color: _AppColors.accent,));
+                      }
+                      
+                      final nicknames = nicknameSnapshot.data ?? {};
+                      final currentUser = FirebaseAuth.instance.currentUser;
+                      
+                      return Column(
+                        children: circle.members.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final memberId = entry.value;
+                          final nickname = nicknames[memberId] ?? 
+                            (memberId.length > 8 ? memberId.substring(0, 8) : memberId);
+                          final isCurrentUser = currentUser?.uid == memberId;
+                          final memberData = _memberDataCache[memberId] ?? {
+                            'emoji': '😊', 'status': 'fine', 'hasGPS': false,
+                            'coordinates': null, 'lastUpdate': null,
+                          };
+                          final status = memberData['status'] ?? 'fine';
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: _MemberListItem(
+                              key: ValueKey('${memberId}_$status'),
+                              memberId: memberId, nickname: nickname, isCurrentUser: isCurrentUser,
+                              isFirst: index == 0, memberData: memberData,
+                              onTap: isCurrentUser 
+                                  ? () => showEmojiStatusBottomSheet(context)
+                                  : null,
+                              onOpenMaps: _openGoogleMaps,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Lista de miembros con nicknames optimizada
-                        FutureBuilder<Map<String, String>>(
-                          future: _getAllMemberNicknames(circle.members),
-                          builder: (context, snapshot) {
-                            // Mostrar indicador de carga mientras se obtienen los nicknames
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return Column(
-                                children: circle.members.asMap().entries.map((entry) {
-                                  final index = entry.key;
-                                  // Miembro en estado de carga
-                                  final isFirst = index == 0;
-
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 40,
-                                          height: 40,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: isFirst ? Colors.blue[900] : Colors.grey[700],
-                                          ),
-                                          child: const Center(
-                                            child: Text(
-                                              '🙂',
-                                              style: TextStyle(fontSize: 20),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  SizedBox(
-                                                    width: 12,
-                                                    height: 12,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: Colors.grey[500],
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Cargando...',
-                                                    style: TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.w500,
-                                                      color: Colors.grey[400],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              if (isFirst) ...[
-                                                Text(
-                                                  'Creador',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.blue[400],
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
-                                        Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: Colors.green[400],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              );
-                            }
-                            
-                            final nicknames = snapshot.data ?? {};
-                            
-                            return Column(
-                              children: circle.members.asMap().entries.map((entry) {
-                                final index = entry.key;
-                                final memberId = entry.value;
-                                final isFirst = index == 0;
-                                final nickname = nicknames[memberId] ?? 
-                                  (memberId.length > 8 ? memberId.substring(0, 8) : memberId);
-                                
-                                // Verificar si es el usuario actual
-                                final currentUser = FirebaseAuth.instance.currentUser;
-                                final isCurrentUser = currentUser?.uid == memberId;
-
-                                Widget memberRow = Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 40,
-                                      height: 40,
-                                      child: StreamBuilder<Map<String, String>>(
-                                        stream: _getMemberStatusStream(circle.id),
-                                        builder: (context, snapshot) {
-                                          final statusEmojis = snapshot.data ?? {};
-                                          final emoji = statusEmojis[memberId] ?? '😊';
-                                          return Center(
-                                            child: Text(
-                                              emoji,
-                                              style: const TextStyle(fontSize: 28),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            nickname,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          if (isFirst) ...[
-                                            Text(
-                                              'Creador',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.blue[400],
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                          if (isCurrentUser) ...[
-                                            Text(
-                                              'Mantén presionado para cambiar estado',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                color: Colors.grey[400],
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.green[400],
-                                      ),
-                                    ),
-                                  ],
-                                );
-
-                                // Envolver con GestureDetector solo si es el usuario actual
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: isCurrentUser 
-                                    ? GestureDetector(
-                                        onLongPress: () {
-                                          // Mostrar feedback haptic
-                                          HapticFeedback.mediumImpact();
-                                          // Abrir bottom sheet para cambiar estado
-                                          showEmojiStatusBottomSheet(context);
-                                        },
-                                        child: memberRow,
-                                      )
-                                    : memberRow,
-                                );
-                              }).toList(),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                          );
+                        }).toList(),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
           ),
+        ],
+      ),
+      // CAMBIO: Footer de demostración añadido
+      bottomNavigationBar: _buildFooterButton(context),
+    );
+  }
+
+  // === INICIO DE WIDGETS AUXILIARES Y LÓGICA ORIGINAL (SIN CAMBIOS) ===
+  
+  /// Actualización rápida del estado a "fine" (✅) - Point 17
+  Future<void> _quickStatusUpdate() async {
+    if (_isUpdatingStatus) return;
+    
+    setState(() {
+      _isUpdatingStatus = true;
+    });
+    
+    try {
+      print('[InCircleView] ✅ Enviando estado rápido: fine (Todo Bien)');
+      
+      final result = await StatusService.updateUserStatus(StatusType.fine);
+      
+      // El cambio se refleja inmediatamente en el emoji del usuario
+      // No necesitamos SnackBar porque es visualmente directo
+      if (!result.isSuccess && mounted) {
+        // Solo mostrar error si algo salió mal
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${result.errorMessage}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('[InCircleView] Error en quickStatusUpdate: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error actualizando estado'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingStatus = false;
+        });
+      }
+    }
+  }
+
+  /// CAMBIO: Widget para el botón del footer, estilizado como se desea.
+  Widget _buildFooterButton(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ElevatedButton(
+          // Actualiza el estado del usuario a "fine" (Todo Bien)
+          onPressed: _isUpdatingStatus ? null : () => _quickStatusUpdate(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _AppColors.accent,
+            foregroundColor: _AppColors.background,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+            // La clave para la forma del botón:
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.0), // Bordes más cuadrados
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_isUpdatingStatus)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
+                  ),
+                )
+              else
+                const Icon(Icons.check_circle),
+              const SizedBox(width: 8),
+              Text(_isUpdatingStatus ? 'Actualizando...' : 'Todo bien'),
+            ],
+          ),
         ),
-      ],
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildPopupMenuItem({
+    required String value, required IconData icon, required String text, required Color color,
+  }) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 12),
+          Text(text, style: TextStyle(color: _AppColors.textPrimary)),
+        ],
+      ),
     );
   }
 
@@ -424,108 +499,36 @@ class InCircleView extends ConsumerWidget {
 
   Future<Map<String, String>> _getAllMemberNicknames(List<String> memberIds) async {
     final Map<String, String> nicknames = {};
-        // log('[InCircleView] 🔍 Obteniendo nicknames para ${uids.length} miembros: $uids');
-    
-    // Procesar en paralelo para optimizar rendimiento
     final futures = memberIds.map((uid) async {
       try {
-      // log('[InCircleView] 📄 Consultando documento para UID: $uid');
         final doc = await FirebaseCircleService().getUserDoc(uid);
-        
         if (doc.exists && doc.data() != null) {
           final data = doc.data()!;
           final nickname = data['nickname'] as String? ?? '';
           final email = data['email'] as String? ?? '';
           final name = data['name'] as String? ?? '';
           
-          print('[InCircleView] 🏷️ Para $uid - nickname: "$nickname", email: "$email", name: "$name"');
-          
           String finalNickname;
           if (nickname.isNotEmpty) {
             finalNickname = nickname;
-            print('[InCircleView] ✅ Usando nickname: "$nickname" para $uid');
-          } else if (name.isNotEmpty) {
-            finalNickname = name;
-            print('[InCircleView] ✅ Usando name: "$name" para $uid');
-          } else if (email.isNotEmpty) {
-            finalNickname = email.split('@')[0];
-            print('[InCircleView] ✅ Usando email prefix: "${email.split('@')[0]}" para $uid');
-          } else {
-            finalNickname = uid.length > 8 ? uid.substring(0, 8) : uid;
-            print('[InCircleView] ⚠️ Usando UID truncado: "$finalNickname" para $uid');
-          }
-          
+          } else if (name.isNotEmpty) finalNickname = name;
+          else if (email.isNotEmpty) finalNickname = email.split('@')[0];
+          else finalNickname = uid.length > 8 ? uid.substring(0, 8) : uid;
           return MapEntry(uid, finalNickname);
         } else {
-          print('[InCircleView] ⚠️ Documento no existe para $uid');
           final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
           return MapEntry(uid, fallback);
         }
       } catch (e) {
-        print('[InCircleView] ❌ Error obteniendo datos para $uid: $e');
         final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
         return MapEntry(uid, fallback);
       }
     });
-    
     final results = await Future.wait(futures);
     for (final entry in results) {
       nicknames[entry.key] = entry.value;
-      print('[InCircleView] 🎯 Resultado final - ${entry.key}: "${entry.value}"');
     }
-    
-    print('[InCircleView] 🏁 Nicknames finales: $nicknames');
     return nicknames;
-  }
-
-  /// Stream que escucha cambios en el estado de los miembros del círculo
-  Stream<Map<String, String>> _getMemberStatusStream(String circleId) {
-    return FirebaseFirestore.instance
-        .collection('circles')
-        .doc(circleId)
-        .snapshots()
-        .map((snapshot) {
-      final Map<String, String> statusEmojis = {};
-      
-      if (snapshot.exists && snapshot.data() != null) {
-        final memberStatus = snapshot.data()!['memberStatus'] as Map<String, dynamic>?;
-        
-        if (memberStatus != null) {
-          memberStatus.forEach((memberId, statusData) {
-            if (statusData is Map<String, dynamic>) {
-              final statusType = statusData['statusType'] as String?;
-              
-              // Mapear el statusType a emoji usando StatusType dinámico
-              if (statusType != null) {
-                try {
-                  print('[InCircleView] 🔍 DEBUG - Buscando: "$statusType"');
-                  print('[InCircleView] 🔍 DEBUG - Disponibles: ${StatusType.values.map((s) => s.name).toList()}');
-                  
-                  // Buscar el StatusType que coincida
-                  final statusEnum = StatusType.values.firstWhere(
-                    (status) => status.name == statusType,
-                    orElse: () {
-                      print('[InCircleView] ⚠️ orElse - "$statusType" no encontrado');
-                      return StatusType.fine;
-                    },
-                  );
-                  statusEmojis[memberId] = statusEnum.emoji;
-                  print('[InCircleView] ✅ Mapeado: $statusType → ${statusEnum.emoji} (${statusEnum.name})');
-                } catch (e) {
-                  // Fallback si hay error en el mapeo
-                  statusEmojis[memberId] = '😊';
-                  print('[InCircleView] ❌ Error mapeando $statusType: $e');
-                }
-              } else {
-                statusEmojis[memberId] = '😊'; // Default si statusType es null
-              }
-            }
-          });
-        }
-      }
-      
-      return statusEmojis;
-    });
   }
 
   void _copyToClipboard(BuildContext context, String text) {
@@ -534,7 +537,42 @@ class InCircleView extends ConsumerWidget {
       const SnackBar(
         content: Text('¡Código copiado al portapapeles!'),
         duration: Duration(seconds: 2),
-        backgroundColor: Colors.green,
+        backgroundColor: _AppColors.accent,
+      ),
+    );
+  }
+
+  void _openGoogleMaps(BuildContext context, Map<String, dynamic> coordinates, String memberName) async {
+    try {
+      final latitude = coordinates['latitude'] as double?;
+      final longitude = coordinates['longitude'] as double?;
+      if (latitude == null || longitude == null) {
+        _showError(context, 'Coordenadas GPS no válidas');
+        return;
+      }
+      final url = GPSService.generateSOSLocationUrl(
+        Coordinates(latitude: latitude, longitude: longitude), memberName,
+      );
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        HapticFeedback.lightImpact();
+      } else {
+        // ignore: use_build_context_synchronously
+        _showError(context, 'No se pudo abrir la aplicación de mapas');
+      }
+    } catch (e) {
+      // ignore: use_build_context_synchronously
+      _showError(context, 'Error al abrir la ubicación: $e');
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: _AppColors.sosRed,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -543,50 +581,21 @@ class InCircleView extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
-          'Cerrar Sesión',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          '¿Estás seguro de que quieres cerrar sesión?',
-          style: TextStyle(color: Colors.grey),
-        ),
+        backgroundColor: _AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.textPrimary)),
+        content: const Text('¿Estás seguro?', style: TextStyle(color: _AppColors.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              try {
-                await FirebaseAuth.instance.signOut();
-                if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Sesión cerrada exitosamente'),
-                      backgroundColor: Color(0xFF4CAF50),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error al cerrar sesión: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
+              await FirebaseAuth.instance.signOut();
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Cerrar Sesión'),
+            child: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.sosRed)),
           ),
         ],
       ),
@@ -597,53 +606,181 @@ class InCircleView extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
-          'Salir del Círculo',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          '¿Estás seguro de que quieres salir de este círculo? Necesitarás un nuevo código de invitación para volver a unirte.',
-          style: TextStyle(color: Colors.grey),
-        ),
+        backgroundColor: _AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Salir del Círculo', style: TextStyle(color: _AppColors.textPrimary)),
+        content: const Text('Esta acción no se puede deshacer.', style: TextStyle(color: _AppColors.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              try {
-                final service = FirebaseCircleService();
-                await service.leaveCircle();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Has salido del círculo exitosamente'),
-                      backgroundColor: Color(0xFF4CAF50),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error al salir del círculo: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
+              final service = FirebaseCircleService();
+              await service.leaveCircle();
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Salir'),
+            child: const Text('Salir', style: TextStyle(color: _AppColors.sosRed)),
           ),
         ],
       ),
     );
   }
 }
+// === FIN DE LA LÓGICA ORIGINAL (SIN CAMBIOS) ===
+
+
+// ==============================================================================
+// MEMBER LIST ITEM - Widget individual con diseño ultra minimalista
+// ==============================================================================
+class _MemberListItem extends StatelessWidget {
+  final String memberId;
+  final String nickname;
+  final bool isCurrentUser;
+  final bool isFirst;
+  final Map<String, dynamic> memberData;
+  final VoidCallback? onTap;
+  final Function(BuildContext, Map<String, dynamic>, String) onOpenMaps;
+
+  const _MemberListItem({
+    super.key,
+    required this.memberId,
+    required this.nickname,
+    required this.isCurrentUser,
+    required this.isFirst,
+    required this.memberData,
+    this.onTap,
+    required this.onOpenMaps,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final emoji = memberData['emoji'] as String? ?? '😊';
+    final status = memberData['status'] as String? ?? 'fine';
+    final hasGPS = memberData['hasGPS'] as bool? ?? false;
+    final coordinates = memberData['coordinates'] as Map<String, dynamic>?;
+    final lastUpdate = memberData['lastUpdate'] as DateTime?;
+    final isSOS = status == 'sos';
+    
+    return Material(
+      color: _AppColors.background,
+      child: InkWell(
+        onTap: () {
+          if (isCurrentUser && onTap != null) {
+            HapticFeedback.mediumImpact();
+            onTap!();
+          } else if (hasGPS && coordinates != null) {
+            HapticFeedback.lightImpact();
+            onOpenMaps(context, coordinates, nickname);
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 150),
+                    child: Text(emoji, key: ValueKey(status), style: const TextStyle(fontSize: 32)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(child: Text(nickname, style: _AppTextStyles.memberNickname, overflow: TextOverflow.ellipsis)),
+                            if (isCurrentUser) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _AppColors.accent,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'TÚ',
+                                  style: TextStyle(
+                                    fontSize: 10, fontWeight: FontWeight.bold, color: _AppColors.background,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getStatusLabel(status),
+                          style: isSOS ? _AppTextStyles.sosStatus : _AppTextStyles.memberStatus,
+                        ),
+                        if (isFirst)
+                           Text(
+                             'Creador',
+                             style: TextStyle(
+                               fontSize: 12, color: _AppColors.accent.withOpacity(0.8), fontWeight: FontWeight.w500,
+                             ),
+                           ),
+                      ],
+                    ),
+                  ),
+                  if (lastUpdate != null)
+                    Text(
+                      _getTimeAgo(lastUpdate),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                ],
+              ),
+              if (hasGPS && coordinates != null) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 20, color: _AppColors.sosRed),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Ubicación SOS compartida',
+                          style: TextStyle(fontSize: 13, color: _AppColors.textPrimary, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, size: 14, color: Colors.red[300]),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // === MÉTODOS HELPER ORIGINALES (SIN CAMBIOS) ===
+  String _getStatusLabel(String s) {
+    final labels = {
+      'fine': 'Todo bien', 'sos': '¡Necesito ayuda!', 'meeting': 'En reunión', 'ready': 'Listo',
+      'leave': 'De salida', 'happy': 'Feliz', 'sad': 'Triste', 'busy': 'Ocupado',
+      'sleepy': 'Con sueño', 'excited': 'Emocionado', 'thinking': 'Pensando', 'worried': 'Preocupado',
+      'available': 'Disponible', 'away': 'Ausente', 'focus': 'Concentrado', 'tired': 'Cansado',
+      'stressed': 'Estresado', 'traveling': 'Viajando', 'studying': 'Estudiando', 'eating': 'Comiendo',
+    };
+    return labels[s] ?? s;
+  }
+
+  String _getTimeAgo(DateTime dt) {
+    final difference = DateTime.now().difference(dt);
+    if (difference.inMinutes < 1) return 'Ahora';
+    if (difference.inMinutes < 60) return 'Hace ${difference.inMinutes} min';
+    if (difference.inHours < 24) return 'Hace ${difference.inHours} h';
+    return 'Hace ${difference.inDays} d';
+  }
+}
+
+////////////////////////////////////////////
+

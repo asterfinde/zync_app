@@ -88,6 +88,7 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
       'memberStatus': {creatorId: initialStatus},
     };
 
+    log("[CircleDataSource] 🎯 REGISTRO - Estableciendo status inicial 'fine' para usuario $creatorId");
     log("[CircleDataSource] Iniciando transacción batch para crear círculo ${newCircleRef.id}");
     final batch = _firestore.batch();
     batch.set(newCircleRef, newCircleData);
@@ -150,6 +151,8 @@ class CircleRemoteDataSourceImpl implements CircleRemoteDataSource {
         'statusType': 'fine',
         'timestamp': FieldValue.serverTimestamp(),
       };
+
+      log("[CircleDataSource] 🎯 UNIRSE - Estableciendo status inicial 'fine' para usuario $userId");
 
       transaction.update(circleRef, {
         'members': currentMembers,

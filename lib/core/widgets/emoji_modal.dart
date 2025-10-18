@@ -52,21 +52,64 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
       if (mounted) {
         Navigator.of(context).pop();
         
-        // Mostrar confirmación sutil
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(newStatus.emoji),
-                const SizedBox(width: 8),
-                Text('Estado actualizado: ${newStatus.description}'),
-              ],
+        // Point 16: Mensaje especial para SOS con GPS
+        if (newStatus == StatusType.sos && result.coordinates != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.sos, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.location_on, color: Colors.white, size: 16),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '🆘 SOS enviado con ubicación GPS a tu círculo',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
             ),
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.green[700],
-          ),
-        );
+          );
+        } else if (newStatus == StatusType.sos) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.sos, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '🆘 SOS enviado (sin ubicación GPS disponible)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        } else {
+          // Mostrar confirmación sutil para otros estados
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(newStatus.emoji),
+                  const SizedBox(width: 8),
+                  Text('Estado actualizado: ${newStatus.description}'),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.green[700],
+            ),
+          );
+        }
       }
     } else {
       // Manejar error - MISMA UX que antes

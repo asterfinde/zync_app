@@ -22,10 +22,10 @@ enum StatusType {
   eating("🍽️", "Comiendo", "ic_status_eating"),
   
   // Estados heredados (compatibilidad)
-  fine("�", "Bien", "ic_status_fine"),
+  fine("😊", "Bien", "ic_status_fine"),
   sos("🆘", "SOS", "ic_status_sos"),
   ready("✅", "Listo", "ic_status_ready"),
-  leave("�‍♂️", "Saliendo", "ic_status_leave"),
+  leave("🚶‍♂️", "Saliendo", "ic_status_leave"),
   sleepy("😴", "Con sueño", "ic_status_sleepy"),
   excited("🎉", "Emocionado", "ic_status_excited"),
   thinking("🤔", "Pensando", "ic_status_thinking"),
