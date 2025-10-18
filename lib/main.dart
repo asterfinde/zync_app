@@ -11,7 +11,7 @@ import 'package:zync_app/core/di/injection_container.dart' as di;
 // import 'package:zync_app/features/auth/presentation/provider/auth_state.dart';
 // import 'package:zync_app/features/auth/presentation/pages/sign_in_page.dart';
 // import 'package:zync_app/dev_auth_test/dev_auth_test_page.dart';
-import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
+import 'package:zync_app/features/auth/presentation/pages/auth_wrapper.dart';
 // import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
 // import 'package:zync_app/features/circle/services/quick_status_service.dart'; // COMENTADO TEMPORALMENTE
 import 'package:zync_app/core/widgets/status_widget.dart';
@@ -20,7 +20,6 @@ import 'package:zync_app/quick_actions/quick_actions_service.dart';
 import 'package:zync_app/notifications/notification_service.dart';
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/app_badge_service.dart';
-import 'package:zync_app/core/services/status_service.dart';
 
 import 'core/global_keys.dart';
 
@@ -96,45 +95,29 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     print('>>> App Lifecycle State: $state');
     
-    // Cuando la app vuelve del background, verificar estado de auth
+    // El AuthWrapper ahora maneja la autenticación automáticamente
+    // Solo necesitamos actualizar el badge cuando la app regresa
     if (state == AppLifecycleState.resumed) {
       _handleAppResumed();
     }
   }
 
   Future<void> _handleAppResumed() async {
-    print('>>> App resumed - verificando estado de auth y notificación');
+    print('>>> App resumed - actualizando badge si es necesario');
     
-    // Verificar si Firebase Auth sigue teniendo un usuario
-    final currentUser = Firebase.apps.isNotEmpty 
-        ? FirebaseAuth.instance.currentUser 
-        : null;
-        
-    print('>>> Firebase Auth user: ${currentUser?.uid}');
-    
-    // Si hay usuario, inicializar listener de estados para badge
-    if (currentUser != null) {
-      try {
-        await StatusService.initializeStatusListener();
-        // Marcar como visto cuando el usuario abre la app
+    try {
+      // Marcar como visto cuando el usuario regresa a la app
+      // Solo si hay un usuario autenticado (el AuthWrapper se encargará de esto)
+      final currentUser = Firebase.apps.isNotEmpty 
+          ? FirebaseAuth.instance.currentUser 
+          : null;
+          
+      if (currentUser != null) {
         await AppBadgeService.markAsSeen();
-        print('>>> ✅ Status listener y badge inicializados');
-      } catch (e) {
-        print('>>> ❌ Error inicializando status listener: $e');
+        print('>>> ✅ Badge actualizado');
       }
-    }
-    
-    // Si no hay usuario pero la funcionalidad silenciosa está activa, desactivarla
-    if (currentUser == null && _silentFunctionalityReady) {
-      print('>>> 🚨 Estado inconsistente detectado: Sin usuario pero funcionalidad activa');
-      try {
-        await SilentFunctionalityCoordinator.deactivateAfterLogout();
-        await StatusService.disposeStatusListener();
-        await AppBadgeService.clearBadge();
-        print('>>> ✅ Funcionalidad silenciosa desactivada por estado inconsistente');
-      } catch (e) {
-        print('>>> ❌ Error desactivando funcionalidad silenciosa: $e');
-      }
+    } catch (e) {
+      print('>>> ❌ Error actualizando badge: $e');
     }
   }
 
@@ -185,7 +168,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       theme: baseTheme,
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       home: _firebaseReady
-          ? const AuthFinalPage()
+          ? const AuthWrapper()
           : const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }
