@@ -100,7 +100,7 @@ Google Maps asociado a la misma
 
 17. El FAB (Floating Action Button) que permite enviar el estado "available" (🟢) sin abrir
  el modal, se sobrepone a la lista de miembros del círculo y no permite verlos todos ✅
-- Evaluar crear un widget para la lista de miembros y colocar debajo el FAB (quizás en un footer)
+✅ Evaluar crear un widget para la lista de miembros y colocar debajo el FAB (quizás en un footer)
 
 18. 🚨 CRÍTICO: Minimización de la app
 Cuando la app se minimiza y se quiere volver a utilizarla ocurre el siguiente comportamiento errado:
@@ -108,7 +108,11 @@ Cuando la app se minimiza y se quiere volver a utilizarla ocurre el siguiente co
 - se cierra de manera automática la sesión del usuario
 - se abre en la pantalla de Login/Registro
 
-19. 🚨 CRÍTICO: Estabilidad WSL2-VSCode ⏳
+++++++++++++++++++++++++++++++++++++++++++
+PROBLEMAS DE CONFIGURACIÓN DEL ENTORNO
+++++++++++++++++++++++++++++++++++++++++++
+
+1. 🚨 CRÍTICO: Estabilidad WSL2-VSCode ⏳
 PROBLEMA: Desconexiones frecuentes de Copilot/extensiones con WSL2 interrumpen desarrollo
 SÍNTOMAS: 
 - Pérdida de contexto de Copilot a mitad de implementaciones
@@ -123,7 +127,7 @@ SOLUCIONES A EVALUAR:
 ✅ Documentar pasos de debugging para futuras ocurrencias
 URGENCIA: Máxima - Bloquea desarrollo eficiente
 
-20. 🔧 Toolset de Scripts WSL2-Android Connection ⏳
+2. 🔧 Toolset de Scripts WSL2-Android Connection ⏳
 PROBLEMA: Conexión de dispositivos Android a WSL2 para desarrollo Flutter es frágil
 CONTEXTO: Windows 11 24H2 cambió sintaxis usbipd y comportamiento de firewall
 NECESIDAD: Toolset robusto de scripts para diagnóstico y solución rápida
@@ -173,8 +177,17 @@ ARCHIVOS CREADOS:
 Revisar cuáles serán finalmente los archivos que se necesitarían obligatoriamente
 en caso de problemas, borrar el resto que no se utilizaran
 
+3. 🚨 CRÍTICO: Crear conexión Wifi ADB como alternativa ⏳
+PROBLEMA: Conexión USB a WSL2 es frágil y propensa a fallos
 
----
+4. 🚨 CRÍTICO: Mejoras en abrir VSCode ⏳
+PROBLEMA: Si VSCode se abre desde WSL2 o desde un script aparece un warning indicando que las actualizaciones
+no serán posibles porque se esta utilizando fuera de su alcance ¿?]
+Sin embargo, cuando se abre desde el ícono del escritorio y se busca o carga el proyecto WSL2
+funciona correctamente. Hay que investigar por qué ocurre esto y cómo solucionarlo
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>
 
 04/10
 IMPLEMENTADAS ✅:
