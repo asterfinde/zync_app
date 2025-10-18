@@ -15,16 +15,26 @@ import 'package:zync_app/core/services/app_badge_service.dart';
 /// - Detecta si hay un usuario autenticado en Firebase Auth
 /// - Si está autenticado → HomePage
 /// - Si NO está autenticado → AuthFinalPage
-class AuthWrapper extends StatelessWidget {
+/// 
+/// OPTIMIZACIÓN: Usa StatefulWidget para evitar re-inicializar servicios
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isSilentFunctionalityInitialized = false;
+  String? _lastAuthenticatedUserId;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Mostrar loading mientras se verifica el estado de autenticación
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // Mostrar loading SOLO en la conexión inicial (no en rebuilds)
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Scaffold(
             backgroundColor: Colors.black,
             body: Center(
@@ -58,19 +68,25 @@ class AuthWrapper extends StatelessWidget {
 
         if (user != null) {
           // Usuario autenticado → ir a HomePage
-          print('✅ [AuthWrapper] Usuario autenticado detectado: ${user.uid}');
-          print('✅ [AuthWrapper] Email: ${user.email}');
           
-          // Inicializar funcionalidad silenciosa si el usuario está autenticado
-          _initializeSilentFunctionalityIfNeeded();
+          // OPTIMIZACIÓN: Solo inicializar si el usuario cambió o es la primera vez
+          if (_lastAuthenticatedUserId != user.uid) {
+            print('✅ [AuthWrapper] Usuario autenticado: ${user.uid}');
+            _lastAuthenticatedUserId = user.uid;
+            _initializeSilentFunctionalityIfNeeded(user.uid);
+          }
           
           return const HomePage();
         } else {
           // Usuario NO autenticado → mostrar pantalla de login
-          print('🔴 [AuthWrapper] No hay usuario autenticado');
           
-          // Asegurar que la funcionalidad silenciosa esté desactivada
-          _cleanupSilentFunctionalityIfNeeded();
+          // OPTIMIZACIÓN: Solo limpiar si había un usuario antes
+          if (_lastAuthenticatedUserId != null) {
+            print('🔴 [AuthWrapper] Usuario desautenticado');
+            _lastAuthenticatedUserId = null;
+            _isSilentFunctionalityInitialized = false;
+            _cleanupSilentFunctionalityIfNeeded();
+          }
           
           return const AuthFinalPage();
         }
@@ -79,47 +95,59 @@ class AuthWrapper extends StatelessWidget {
   }
 
   /// Inicializa la funcionalidad silenciosa si el usuario está autenticado
-  /// Solo se ejecuta una vez al detectar usuario autenticado
-  void _initializeSilentFunctionalityIfNeeded() async {
-    try {
-      print('🟢 [AuthWrapper] Inicializando funcionalidad silenciosa...');
-      
-      // Activar funcionalidad silenciosa
-      await SilentFunctionalityCoordinator.activateAfterLogin();
-      print('🟢 [AuthWrapper] Funcionalidad silenciosa activada');
-      
-      // Inicializar listener de estados para badge
-      await StatusService.initializeStatusListener();
-      print('🟢 [AuthWrapper] Status listener inicializado');
-      
-      // Marcar como visto cuando el usuario regresa a la app
-      await AppBadgeService.markAsSeen();
-      print('🟢 [AuthWrapper] Badge marcado como visto');
-      
-    } catch (e) {
-      print('❌ [AuthWrapper] Error inicializando funcionalidad silenciosa: $e');
+  /// OPTIMIZACIÓN: Se ejecuta en background, NO bloquea la UI
+  void _initializeSilentFunctionalityIfNeeded(String userId) {
+    // Evitar re-inicializar si ya está inicializado
+    if (_isSilentFunctionalityInitialized) {
+      print('⚡ [AuthWrapper] Funcionalidad silenciosa ya inicializada, saltando...');
+      return;
     }
+
+    // Ejecutar en background para NO bloquear la UI
+    Future.microtask(() async {
+      try {
+        print('🟢 [AuthWrapper] Inicializando funcionalidad silenciosa en background...');
+        
+        // Activar funcionalidad silenciosa
+        await SilentFunctionalityCoordinator.activateAfterLogin();
+        
+        // Inicializar listener de estados para badge
+        await StatusService.initializeStatusListener();
+        
+        // Marcar como visto cuando el usuario regresa a la app
+        await AppBadgeService.markAsSeen();
+        
+        _isSilentFunctionalityInitialized = true;
+        print('🟢 [AuthWrapper] Funcionalidad silenciosa inicializada exitosamente');
+        
+      } catch (e) {
+        print('❌ [AuthWrapper] Error inicializando funcionalidad silenciosa: $e');
+      }
+    });
   }
 
   /// Limpia la funcionalidad silenciosa cuando no hay usuario autenticado
-  void _cleanupSilentFunctionalityIfNeeded() async {
-    try {
-      print('🔴 [AuthWrapper] Limpiando funcionalidad silenciosa...');
-      
-      // Desactivar funcionalidad silenciosa
-      await SilentFunctionalityCoordinator.deactivateAfterLogout();
-      print('🔴 [AuthWrapper] Funcionalidad silenciosa desactivada');
-      
-      // Limpiar listener de estados
-      await StatusService.disposeStatusListener();
-      print('🔴 [AuthWrapper] Status listener limpiado');
-      
-      // Limpiar badge
-      await AppBadgeService.clearBadge();
-      print('🔴 [AuthWrapper] Badge limpiado');
-      
-    } catch (e) {
-      print('❌ [AuthWrapper] Error limpiando funcionalidad silenciosa: $e');
-    }
+  /// OPTIMIZACIÓN: Se ejecuta en background, NO bloquea la UI
+  void _cleanupSilentFunctionalityIfNeeded() {
+    // Ejecutar en background para NO bloquear la UI
+    Future.microtask(() async {
+      try {
+        print('🔴 [AuthWrapper] Limpiando funcionalidad silenciosa en background...');
+        
+        // Desactivar funcionalidad silenciosa
+        await SilentFunctionalityCoordinator.deactivateAfterLogout();
+        
+        // Limpiar listener de estados
+        await StatusService.disposeStatusListener();
+        
+        // Limpiar badge
+        await AppBadgeService.clearBadge();
+        
+        print('🔴 [AuthWrapper] Funcionalidad silenciosa limpiada exitosamente');
+        
+      } catch (e) {
+        print('❌ [AuthWrapper] Error limpiando funcionalidad silenciosa: $e');
+      }
+    });
   }
 }
