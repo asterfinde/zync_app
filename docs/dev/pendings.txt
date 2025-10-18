@@ -98,11 +98,17 @@ Google Maps asociado a la misma
 ✅ Timeout de 10s optimizado para emergencias
 ✅ url_launcher agregado para apertura de Google Maps
 
-17. El FAB (Floating Action Button) que permite enviar el estado "available" (🟢) sin abrir
- el modal, se sobrepone a la lista de miembros del círculo y no permite verlos todos ✅
+17. Traslape del FAB con la lista de miembros del círculo ✅
+El FAB (Floating Action Button) que permite enviar el estado "available" (🟢) sin abrir
+el modal, se sobrepone a la lista de miembros del círculo y no permite verlos todos ✅
 ✅ Evaluar crear un widget para la lista de miembros y colocar debajo el FAB (quizás en un footer)
+ 
+18. Recarga innecesaria de la lista de miembros al cambiar el estado ✅
+PROBLEMA: El "bug" ocurre cuando se hace el cambio de estado mencionado se recarga toda la
+lista de miembros y eso es un overflow a la base de datos y es absolutamente innecesario
 
-18. 🚨 CRÍTICO: Minimización de la app
+
+19. 🚨 CRÍTICO: Minimización de la app
 Cuando la app se minimiza y se quiere volver a utilizarla ocurre el siguiente comportamiento errado:
 - la pantalla se pone totalmente negra
 - se cierra de manera automática la sesión del usuario
