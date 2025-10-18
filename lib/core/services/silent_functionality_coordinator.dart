@@ -10,17 +10,16 @@ class SilentFunctionalityCoordinator {
   static bool _isInitialized = false;
   static BuildContext? _context;
 
-  /// Inicializa toda la funcionalidad silenciosa - SOLO SERVICIOS BASE
-  static Future<void> initialize(BuildContext context) async {
+  /// Inicializa SOLO los servicios base (sin BuildContext)
+  /// Se debe llamar en main() ANTES de runApp()
+  static Future<void> initializeServices() async {
     print('');
-    print('=== SILENT COORDINATOR INITIALIZE CALLED ===');
-    print('[SilentCoordinator] 🚀 INICIO del método initialize() - _isInitialized: $_isInitialized');
+    print('=== SILENT COORDINATOR INITIALIZE SERVICES CALLED ===');
+    print('[SilentCoordinator] 🚀 INICIO initializeServices() - _isInitialized: $_isInitialized');
     if (_isInitialized) {
       print('[SilentCoordinator] ⚠️ Ya está inicializado, saliendo...');
       return;
     }
-    
-    _context = context;
     
     try {
       // 1. Inicializar servicios existentes (sin romper nada)
@@ -39,11 +38,22 @@ class SilentFunctionalityCoordinator {
       // await NotificationService.showQuickActionNotification();
       
       _isInitialized = true;
-      print('[SilentCoordinator] ✅ Servicios base inicializados (sin notificación)');
+      print('[SilentCoordinator] ✅ Servicios base inicializados exitosamente');
       
     } catch (e) {
-      print('[SilentCoordinator] Error inicializando: $e');
+      print('[SilentCoordinator] ❌ Error inicializando servicios: $e');
       rethrow;
+    }
+  }
+
+  /// Inicializa toda la funcionalidad silenciosa con BuildContext
+  /// DEPRECADO: Usar initializeServices() en main() + setContext() después
+  static Future<void> initialize(BuildContext context) async {
+    print('[SilentCoordinator] ⚠️ initialize() con BuildContext es deprecado');
+    _context = context;
+    
+    if (!_isInitialized) {
+      await initializeServices();
     }
   }
 
@@ -54,7 +64,8 @@ class SilentFunctionalityCoordinator {
     print('[SilentCoordinator] 🔓 MÉTODO activateAfterLogin() EJECUTÁNDOSE');
     
     if (!_isInitialized) {
-      print('[SilentCoordinator] ⚠️ Servicios no inicializados, inicializando primero...');
+      print('[SilentCoordinator] ❌ ERROR: Servicios NO inicializados');
+      print('[SilentCoordinator] ❌ Debes llamar initializeServices() en main() antes de runApp()');
       return;
     }
     
@@ -67,7 +78,7 @@ class SilentFunctionalityCoordinator {
       print('[SilentCoordinator] ✅ Funcionalidad silenciosa ACTIVADA después del login');
       
     } catch (e) {
-      print('[SilentCoordinator] Error activando después del login: $e');
+      print('[SilentCoordinator] ❌ Error activando después del login: $e');
     }
   }
 

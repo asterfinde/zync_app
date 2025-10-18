@@ -1,7 +1,6 @@
 // lib/main.dart
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -60,6 +59,11 @@ void main() async {
   await AppBadgeService.initialize();
   print('>>> App Badge Service initialized');
   
+  // Inicializar Silent Functionality Coordinator ANTES de runApp
+  // Esto asegura que esté listo cuando AuthWrapper lo necesite
+  await SilentFunctionalityCoordinator.initializeServices();
+  print('>>> Silent Functionality Coordinator services initialized');
+  
   runApp(const ProviderScope(child: MyApp()));
   print('>>> Después de runApp');
 }
@@ -73,7 +77,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   bool _firebaseReady = false;
-  bool _silentFunctionalityReady = false;
 
   @override
   void initState() {
@@ -93,31 +96,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    print('>>> App Lifecycle State: $state');
     
-    // El AuthWrapper ahora maneja la autenticación automáticamente
-    // Solo necesitamos actualizar el badge cuando la app regresa
+    // El AuthWrapper maneja toda la lógica de autenticación y reactivación
+    // No hacemos nada aquí para evitar duplicaciones
     if (state == AppLifecycleState.resumed) {
-      _handleAppResumed();
-    }
-  }
-
-  Future<void> _handleAppResumed() async {
-    print('>>> App resumed - actualizando badge si es necesario');
-    
-    try {
-      // Marcar como visto cuando el usuario regresa a la app
-      // Solo si hay un usuario autenticado (el AuthWrapper se encargará de esto)
-      final currentUser = Firebase.apps.isNotEmpty 
-          ? FirebaseAuth.instance.currentUser 
-          : null;
-          
-      if (currentUser != null) {
-        await AppBadgeService.markAsSeen();
-        print('>>> ✅ Badge actualizado');
-      }
-    } catch (e) {
-      print('>>> ❌ Error actualizando badge: $e');
+      print('>>> App resumed');
     }
   }
 
@@ -126,28 +109,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     while (Firebase.apps.isEmpty) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
-    setState(() {
-      _firebaseReady = true;
-    });
     
-    // Inicializar funcionalidad silenciosa una vez que Firebase esté listo
-    _initializeSilentFunctionality();
-  }
-
-  Future<void> _initializeSilentFunctionality() async {
-    try {
-      // Esperar un poco para que el widget tree esté completamente construido
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      if (mounted) {
-        await SilentFunctionalityCoordinator.initialize(context);
-        setState(() {
-          _silentFunctionalityReady = true;
-        });
-        print('>>> Silent Functionality initialized: $_silentFunctionalityReady');
-      }
-    } catch (e) {
-      print('>>> Error initializing Silent Functionality: $e');
+    if (mounted) {
+      setState(() {
+        _firebaseReady = true;
+      });
     }
   }
 

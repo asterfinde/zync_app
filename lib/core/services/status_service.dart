@@ -10,12 +10,22 @@ import 'dart:developer';
 /// Extraído de EmojiStatusBottomSheet para reutilización en widgets
 class StatusService {
   static StreamSubscription<DocumentSnapshot>? _circleStatusListener;
+  static bool _isListenerInitialized = false;
   
   /// Inicializar el listener de cambios de estado para badge
   static Future<void> initializeStatusListener() async {
+    // Evitar re-inicializar si ya está activo
+    if (_isListenerInitialized && _circleStatusListener != null) {
+      log('[StatusService] ⚡ Status listener ya está inicializado, saltando...');
+      return;
+    }
+    
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        log('[StatusService] ⚠️ No hay usuario autenticado, saltando inicialización');
+        return;
+      }
       
       // Obtener el circleId del usuario
       final userDoc = await FirebaseFirestore.instance
@@ -24,7 +34,10 @@ class StatusService {
           .get();
           
       final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId == null) return;
+      if (circleId == null) {
+        log('[StatusService] ⚠️ Usuario sin círculo, saltando listener');
+        return;
+      }
       
       // Cancelar listener anterior si existe
       await _circleStatusListener?.cancel();
@@ -35,10 +48,12 @@ class StatusService {
           .doc(circleId)
           .snapshots()
           .listen(_handleCircleStatusChange);
-          
-      log('[StatusService] Status listener initialized for circle: $circleId');
+      
+      _isListenerInitialized = true;
+      log('[StatusService] ✅ Status listener initialized for circle: $circleId');
     } catch (e) {
-      log('[StatusService] Error initializing status listener: $e');
+      log('[StatusService] ❌ Error initializing status listener: $e');
+      _isListenerInitialized = false;
     }
   }
   
@@ -80,6 +95,7 @@ class StatusService {
   static Future<void> disposeStatusListener() async {
     await _circleStatusListener?.cancel();
     _circleStatusListener = null;
+    _isListenerInitialized = false;
     log('[StatusService] Status listener disposed');
   }
   /// Actualiza el estado del usuario actual en su círculo

@@ -95,33 +95,36 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   /// Inicializa la funcionalidad silenciosa si el usuario está autenticado
-  /// OPTIMIZACIÓN: Se ejecuta en background, NO bloquea la UI
+  /// OPTIMIZACIÓN: Solo se llama UNA VEZ cuando cambia el usuario
   void _initializeSilentFunctionalityIfNeeded(String userId) {
-    // Evitar re-inicializar si ya está inicializado
+    // Evitar re-inicializar si ya está inicializado para este usuario
     if (_isSilentFunctionalityInitialized) {
-      print('⚡ [AuthWrapper] Funcionalidad silenciosa ya inicializada, saltando...');
+      print('⚡ [AuthWrapper] Funcionalidad silenciosa ya inicializada para este usuario, saltando...');
       return;
     }
 
-    // Ejecutar en background para NO bloquear la UI
+    // Marcar inmediatamente para evitar llamadas duplicadas
+    _isSilentFunctionalityInitialized = true;
+
+    // Ejecutar activación en background sin await
     Future.microtask(() async {
       try {
-        print('🟢 [AuthWrapper] Inicializando funcionalidad silenciosa en background...');
+        print('🟢 [AuthWrapper] Activando funcionalidad silenciosa...');
         
-        // Activar funcionalidad silenciosa
+        // Solo activar la notificación persistente (los servicios ya están inicializados en main.dart)
         await SilentFunctionalityCoordinator.activateAfterLogin();
         
-        // Inicializar listener de estados para badge
+        // Inicializar listener de estados para badge (solo si no está inicializado)
         await StatusService.initializeStatusListener();
         
-        // Marcar como visto cuando el usuario regresa a la app
+        // Marcar como visto
         await AppBadgeService.markAsSeen();
         
-        _isSilentFunctionalityInitialized = true;
-        print('🟢 [AuthWrapper] Funcionalidad silenciosa inicializada exitosamente');
+        print('✅ [AuthWrapper] Funcionalidad silenciosa activada');
         
       } catch (e) {
-        print('❌ [AuthWrapper] Error inicializando funcionalidad silenciosa: $e');
+        print('❌ [AuthWrapper] Error activando funcionalidad silenciosa: $e');
+        _isSilentFunctionalityInitialized = false; // Reintentar si falló
       }
     });
   }
