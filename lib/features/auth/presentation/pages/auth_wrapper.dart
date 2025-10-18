@@ -7,6 +7,7 @@ import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
 import 'package:zync_app/core/services/app_badge_service.dart';
+import 'package:zync_app/core/services/initialization_service.dart';
 
 /// AuthWrapper: Verifica el estado de autenticación y muestra la pantalla correcta
 /// 
@@ -106,12 +107,26 @@ class _AuthWrapperState extends State<AuthWrapper> {
     // Marcar inmediatamente para evitar llamadas duplicadas
     _isSilentFunctionalityInitialized = true;
 
-    // Ejecutar activación en background sin await
+    // Ejecutar activación en background sin await (NO BLOQUEAR UI)
     Future.microtask(() async {
       try {
-        print('🟢 [AuthWrapper] Activando funcionalidad silenciosa...');
+        print('🟢 [AuthWrapper] Activando funcionalidad silenciosa en background...');
         
-        // Solo activar la notificación persistente (los servicios ya están inicializados en main.dart)
+        // OPTIMIZACIÓN: Esperar a que InitializationService termine
+        // antes de activar (evita race conditions)
+        int retries = 0;
+        while (!InitializationService.isInitialized && retries < 50) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          retries++;
+        }
+        
+        if (!InitializationService.isInitialized) {
+          print('⚠️ [AuthWrapper] Timeout esperando InitializationService');
+          _isSilentFunctionalityInitialized = false;
+          return;
+        }
+        
+        // Solo activar la notificación persistente (los servicios ya están inicializados)
         await SilentFunctionalityCoordinator.activateAfterLogin();
         
         // Inicializar listener de estados para badge (solo si no está inicializado)
@@ -120,7 +135,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Marcar como visto
         await AppBadgeService.markAsSeen();
         
-        print('✅ [AuthWrapper] Funcionalidad silenciosa activada');
+        print('✅ [AuthWrapper] Funcionalidad silenciosa activada en background');
         
       } catch (e) {
         print('❌ [AuthWrapper] Error activando funcionalidad silenciosa: $e');
