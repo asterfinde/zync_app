@@ -98,47 +98,31 @@ Google Maps asociado a la misma
 ✅ Timeout de 10s optimizado para emergencias
 ✅ url_launcher agregado para apertura de Google Maps
 
-17. Traslape del FAB con la lista de miembros del círculo ✅
-PROBLEMA:El FAB (Floating Action Button) que permite enviar el estado "available" (🟢) sin abrir
+✅ 17. Traslape del FAB con la lista de miembros del círculo 
+PROBLEMA: El FAB (Floating Action Button) que permite enviar el estado "available" (🟢) sin abrir
 el modal, se sobrepone a la lista de miembros del círculo y no permite verlos todos ✅
-✅ Evaluar crear un widget para la lista de miembros y colocar debajo el FAB (quizás en un footer)
+Evaluar crear un widget para la lista de miembros y colocar debajo el FAB (quizás en un footer)
  
-18. Recarga innecesaria de la lista de miembros al cambiar el estado ✅
+✅ 18. Recarga innecesaria de la lista de miembros al cambiar el estado 
 PROBLEMA: El "bug" ocurre cuando se hace el cambio de estado mencionado se recarga toda la
 lista de miembros y eso es un overflow a la base de datos y es absolutamente innecesario
 
-19. Mejoramiento de la UI de la pantalla de Configuración ✅
+✅ 19. Mejoramiento de la UI de la pantalla de Configuración 
 PROBLEMA: La pantalla de configuración actual es muy básica y poco amigable
 
-20. 🚨 CRÍTICO: Minimización de la app ✅
-✅ RESUELTO: Implementado AuthWrapper que verifica estado de autenticación
-✅ Usuario autenticado + minimizar → HomePage directamente (SIN pedir login)
-✅ Usuario NO autenticado → AuthFinalPage (pantalla login)
-✅ Funcionalidad silenciosa se gestiona automáticamente
-✅ Elimina pantallas negras y cierres de sesión falsos
-IMPLEMENTACIÓN:
-- NUEVO: lib/features/auth/presentation/pages/auth_wrapper.dart
-- MODIFICADO: lib/main.dart (usa AuthWrapper con StreamBuilder<User?>)
-- StreamBuilder escucha FirebaseAuth.authStateChanges() en tiempo real
-- Redirige automáticamente según estado de autenticación
-BENEFICIOS:
-- Sin re-autenticaciones innecesarias
-- Experiencia de usuario fluida al minimizar/regresar
-- Estado siempre consistente entre Firebase Auth y UI
-- Gestión automática de notificaciones y badge
-TESTING:
-✅ Minimizar + regresar → HomePage directo
-✅ Primera instalación → AuthFinalPage
-✅ Logout → AuthFinalPage + limpieza completa
-✅ Reinicio dispositivo → HomePage (sesión persistente)
-DOCUMENTACIÓN: docs/dev/point20-solution-minimization.md
-COMMIT: e0a21c3
-FECHA: 18/Oct/2025
+20. 🚨 CRÍTICO: Minimización de la app 
+PROBLEMA: Al minimizar la app (botón home o multitarea) y luego volver a abrirla,
+la app se reinicia desde cero en lugar de mantener el estado anterior
 
-21. 🚨 CRÍTICO: Cierre falso-positivo al finalizar la sesión de usuario
-PROBLEMA: Al cerrar la sesión de usuario, la aplicación no debería:
+✅ 21. 🚨 CRÍTICO: Cierre falso-positivo al finalizar la sesión de usuario 
+PROBLEMA: Al cerrar la sesión de usuario, la aplicación debería:
 - cerrar la sesión del usuario (verificar si esto se hace realmente)
 - retornar a la pantalla de Login/Registro
+
+22. Todas las ventanas de la app deben de ser responsive, incluyendo el modal de emoji
+PROBLEMA: Al girar el dispositivo el modal produce un overflow porque se ensancha mucho más
+que el tamaño permitido
+
 
 ++++++++++++++++++++++++++++++++++++++++++
 PROBLEMAS DE CONFIGURACIÓN DEL ENTORNO

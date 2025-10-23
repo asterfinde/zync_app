@@ -1,4 +1,4 @@
-import 'package:zync_app/core/di/injection_container.dart' as di;
+// Se mantiene por si acaso
 import 'package:zync_app/core/widgets/status_widget.dart';
 import 'package:zync_app/widgets/widget_service.dart';
 import 'package:zync_app/quick_actions/quick_actions_service.dart';
@@ -9,60 +9,65 @@ import 'package:zync_app/core/services/app_badge_service.dart';
 /// Servicio centralizado de inicialización
 /// Se ejecuta en BACKGROUND para no bloquear el splash screen
 class InitializationService {
-  static bool _isInitialized = false;
+  static bool _areNonDIServicesInitialized = false; // <-- CAMBIAR NOMBRE VARIABLE
   
-  /// Inicializa todos los servicios de la app en background
-  /// OPTIMIZACIÓN: Se ejecuta DESPUÉS de mostrar el splash screen
-  static Future<void> initializeAllServices() async {
-    if (_isInitialized) {
-      print('⚡ [InitService] Servicios ya inicializados, saltando...');
+  // --- INICIO DE LA MODIFICACIÓN ---
+  /// Inicializa los servicios que NO son de DI en background
+  /// OPTIMIZACIÓN: Se ejecuta DESPUÉS de mostrar el splash screen y en un Isolate separado
+  static Future<void> initializeNonDIServices() async { // <-- CAMBIAR NOMBRE FUNCIÓN
+    if (_areNonDIServicesInitialized) { // <-- USAR NUEVA VARIABLE
+      print('⚡ [InitService] Servicios (no DI) ya inicializados, saltando...');
       return;
     }
     
     try {
-      print('🚀 [InitService] INICIO de inicialización de servicios');
+      print('🚀 [InitService - BG Isolate] INICIO de inicialización de servicios (no DI)');
       final startTime = DateTime.now();
       
-      // 1. Dependency Injection
-      print('  📦 [InitService] Inicializando DI...');
-      await di.init();
-      
-      // 2. Status Widget Service
-      print('  🎨 [InitService] Inicializando Status Widget...');
+      // --- DI YA NO SE INICIALIZA AQUÍ ---
+      // print('  📦 [InitService] Inicializando DI...'); 
+      // await di.init(); // <-- ELIMINADO
+
+      // 1. Status Widget Service
+      print('  🎨 [InitService - BG Isolate] Inicializando Status Widget...');
       await StatusWidgetService.initialize();
       
-      // 3. Widget Service (home widgets)
-      print('  📱 [InitService] Inicializando Widget Service...');
+      // 2. Widget Service (home widgets)
+      print('  📱 [InitService - BG Isolate] Inicializando Widget Service...');
       await WidgetService.initialize();
       
-      // 4. Quick Actions Service
-      print('  ⚡ [InitService] Inicializando Quick Actions...');
+      // 3. Quick Actions Service
+      print('  ⚡ [InitService - BG Isolate] Inicializando Quick Actions...');
       await QuickActionsService.initialize();
       
-      // 5. Notification Service
-      print('  🔔 [InitService] Inicializando Notifications...');
+      // 4. Notification Service
+      print('  🔔 [InitService - BG Isolate] Inicializando Notifications...');
       await NotificationService.initialize();
       
-      // 6. App Badge Service
-      print('  🔴 [InitService] Inicializando App Badge...');
+      // 5. App Badge Service
+      print('  🔴 [InitService - BG Isolate] Inicializando App Badge...');
       await AppBadgeService.initialize();
       
-      // 7. Silent Functionality Coordinator
-      print('  🤫 [InitService] Inicializando Silent Coordinator...');
+      // 6. Silent Functionality Coordinator
+      print('  🤫 [InitService - BG Isolate] Inicializando Silent Coordinator...');
       await SilentFunctionalityCoordinator.initializeServices();
       
-      _isInitialized = true;
+      _areNonDIServicesInitialized = true; // <-- USAR NUEVA VARIABLE
       
       final duration = DateTime.now().difference(startTime);
-      print('✅ [InitService] Todos los servicios inicializados en ${duration.inMilliseconds}ms');
+      print('✅ [InitService - BG Isolate] Servicios (no DI) inicializados en ${duration.inMilliseconds}ms');
       
     } catch (e, stackTrace) {
-      print('❌ [InitService] Error durante inicialización: $e');
+      print('❌ [InitService - BG Isolate] Error durante inicialización (no DI): $e');
       print('Stack trace: $stackTrace');
       rethrow;
     }
   }
   
-  /// Verifica si los servicios están inicializados
-  static bool get isInitialized => _isInitialized;
+  /// Verifica si los servicios (no DI) están inicializados
+  static bool get areNonDIServicesInitialized => _areNonDIServicesInitialized; // <-- CAMBIAR NOMBRE GETTER
+  // --- FIN DE LA MODIFICACIÓN ---
+
+  // Mantener por compatibilidad con AuthWrapper
+  static bool get isInitialized => _areNonDIServicesInitialized; 
 }

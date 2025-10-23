@@ -7,7 +7,12 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
-    <!-- Point 16: Permisos para GPS/ubicación -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -27,9 +32,9 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme"
+                />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -45,7 +50,6 @@
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="true"/>
 
-        <!-- Point 15: Activity transparente para modal sin abrir app completa -->
         <activity
             android:name=".StatusModalActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
@@ -60,14 +64,10 @@
             android:name=".ShowQuickStatusReceiver"
             android:exported="true"/>
 
-        <!-- ===================== INICIO DE LA SOLUCIÓN ===================== -->
-        <!-- Esta etiqueta desactiva la inicialización automática de Firebase -->
-        <!-- para que tu código en main.dart tenga el control total. -->
         <provider
             android:name="com.google.firebase.provider.FirebaseInitProvider"
             android:authorities="${applicationId}.firebaseinitprovider"
             tools:node="remove" />
-        <!-- ====================== FIN DE LA SOLUCIÓN ====================== -->
 
         <meta-data
             android:name="flutterEmbedding"
@@ -81,13 +81,13 @@
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:exported="false"
             android:stopWithTask="false"
-            android:foregroundServiceType="specialUse" >
+            
+            android:foregroundServiceType="location|specialUse" >
+            
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Este servicio mantiene una notificación con accesos directos para que el usuario pueda comunicar su estado rápidamente a su círculo de confianza en situaciones de emergencia o cotidianas."/>
         </service>
-
-        <!-- Widget Provider -->
         <receiver android:name=".ZyncStatusWidget"
             android:exported="true">
             <intent-filter>
@@ -104,7 +104,6 @@
             <data android:mimeType="text/plain"/>
         </intent>
         
-        <!-- Point 16: Queries para url_launcher (Google Maps, navegadores, etc) -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
