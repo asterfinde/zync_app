@@ -7,7 +7,6 @@ import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
 import 'package:zync_app/core/services/app_badge_service.dart';
-import 'package:zync_app/core/services/initialization_service.dart';
 
 /// AuthWrapper: Verifica el estado de autenticación y muestra la pantalla correcta
 /// 
@@ -107,26 +106,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
     // Marcar inmediatamente para evitar llamadas duplicadas
     _isSilentFunctionalityInitialized = true;
 
-    // Ejecutar activación en background sin await (NO BLOQUEAR UI)
+    // CACHE-FIRST: Ejecutar activación en background sin await (NO BLOQUEAR UI)
+    // InitializationService ya se inicializó en main.dart, no necesitamos esperar
     Future.microtask(() async {
       try {
         print('🟢 [AuthWrapper] Activando funcionalidad silenciosa en background...');
         
-        // OPTIMIZACIÓN: Esperar a que InitializationService termine
-        // antes de activar (evita race conditions)
-        int retries = 0;
-        while (!InitializationService.isInitialized && retries < 50) {
-          await Future.delayed(const Duration(milliseconds: 100));
-          retries++;
-        }
-        
-        if (!InitializationService.isInitialized) {
-          print('⚠️ [AuthWrapper] Timeout esperando InitializationService');
-          _isSilentFunctionalityInitialized = false;
-          return;
-        }
-        
-        // Solo activar la notificación persistente (los servicios ya están inicializados)
+        // Solo activar la notificación persistente (los servicios ya están inicializados en main.dart)
         await SilentFunctionalityCoordinator.activateAfterLogin();
         
         // Inicializar listener de estados para badge (solo si no está inicializado)

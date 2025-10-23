@@ -83,7 +83,16 @@ class PersistentCache {
     }
     
     try {
-      await _prefs?.setString('cache_member_data', jsonEncode(data));
+      // Convertir DateTime a String antes de serializar
+      final serializable = data.map((key, value) {
+        final copy = Map<String, dynamic>.from(value);
+        if (copy['lastUpdate'] is DateTime) {
+          copy['lastUpdate'] = (copy['lastUpdate'] as DateTime).toIso8601String();
+        }
+        return MapEntry(key, copy);
+      });
+      
+      await _prefs?.setString('cache_member_data', jsonEncode(serializable));
       print('💾 [PersistentCache] Member data guardado (${data.length} items)');
     } catch (e) {
       print('❌ [PersistentCache] Error guardando member data: $e');
@@ -105,9 +114,19 @@ class PersistentCache {
       }
       
       final decoded = jsonDecode(json) as Map<String, dynamic>;
-      final result = decoded.map((key, value) => 
-        MapEntry(key, Map<String, dynamic>.from(value as Map))
-      );
+      final result = decoded.map((key, value) {
+        final map = Map<String, dynamic>.from(value as Map);
+        // Convertir String de vuelta a DateTime si existe
+        if (map['lastUpdate'] is String) {
+          try {
+            map['lastUpdate'] = DateTime.parse(map['lastUpdate'] as String);
+          } catch (e) {
+            print('⚠️ [PersistentCache] Error parseando DateTime: $e');
+            map['lastUpdate'] = null;
+          }
+        }
+        return MapEntry(key, map);
+      });
       print('✅ [PersistentCache] Member data cargado (${result.length} items)');
       return result;
     } catch (e) {
