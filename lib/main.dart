@@ -6,8 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:zync_app/firebase_options.dart';
 import 'package:zync_app/features/auth/presentation/pages/auth_wrapper.dart';
-import 'package:zync_app/core/splash/splash_screen.dart';
-import 'package:zync_app/core/services/initialization_service.dart';
 import 'package:zync_app/core/di/injection_container.dart' as di;
 import 'package:zync_app/core/cache/persistent_cache.dart'; // CACHE PERSISTENTE
 
@@ -85,11 +83,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       title: 'Zync App',
       theme: baseTheme,
       scaffoldMessengerKey: rootScaffoldMessengerKey,
-      home: OptimizedSplashScreen(
-        // Ahora solo inicializa los *otros* servicios en background
-        onInitialize: InitializationService.initializeNonDIServices, // <-- CAMBIAR NOMBRE DE FUNCIÓN
-        child: const AuthWrapper(),
-      ),
+      // CACHE-FIRST: Eliminar splash screen, mostrar AuthWrapper directamente
+      // El cache hará que la UI aparezca instantáneamente
+      home: const AuthWrapper(),
     );
   }
 }
