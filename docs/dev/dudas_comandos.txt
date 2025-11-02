@@ -1,0 +1,63 @@
+Cómo revisas si no hay errores sin correr ningún test?
+Por qué compilas con flutter build apk --debug 2>&1  
+
+Bien, ADB funciona. Ahora vamos a hacer un build directo desde Android Studio (más rápido que compilar todo):
+
+Copilot volví a perder la conexión del VSCode con WSL2 
+la conexión del dispositivo Android con WSL2 está estable
+datainfers@LENOVO-DF:~/projects/zync_app$ adb devices
+List of devices attached
+R58W315389R     device
+
+Por qué pasa esto? Quizás porque WSL2 está ejecutando variso comandos a la vez, pero sería absurdo no?
+
+
+[2025-11-02 17:40:56.382] Extension version: 0.104.3
+[2025-11-02 17:40:56.382] L10N bundle: none
+[2025-11-02 17:40:56.397] authorityHierarchy: wsl+ubuntu-24.04
+[2025-11-02 17:40:56.397] WSL extension activating for a local WSL instance
+[2025-11-02 17:40:56.469] Resolving wsl+ubuntu-24.04, resolveAttempt: 1
+[2025-11-02 17:40:56.470] NodeExecServer run: C:\WINDOWS\System32\wsl.exe --status
+[2025-11-02 17:40:56.476] Download in background is enabled
+[2025-11-02 17:40:56.529] WSL feature installed: true (wsl --status)
+[2025-11-02 17:40:56.529] WSL command encoding: utf16le
+[2025-11-02 17:40:56.529] NodeExecServer run: C:\WINDOWS\System32\wsl.exe --list --verbose
+[2025-11-02 17:40:56.581] 1 distros found
+[2025-11-02 17:40:56.582] Starting VS Code Server inside WSL (wsl2)
+[2025-11-02 17:40:56.582] Windows build: 26200. Multi distro support: available. WSL path support: enabled
+[2025-11-02 17:40:56.583] Scriptless setup: false
+[2025-11-02 17:40:56.583] No shell environment set or found for current distro.
+[2025-11-02 17:40:56.691] WSL daemon log file: 
+[2025-11-02 17:40:56.694] Probing if server is already installed: if [ -d ~/.vscode-server/bin/7d842fb85a0275a4a8e4d7e040d2625abbf7f084 ]; then printf 'install-found '; fi; if [ -f /etc/alpine-release ]; then printf 'alpine-'; fi; uname -m;
+[2025-11-02 17:40:56.694] NodeExecServer run: C:\WINDOWS\System32\wsl.exe -d Ubuntu-24.04 -e sh -c if [ -d ~/.vscode-server/bin/7d842fb85a0275a4a8e4d7e040d2625abbf7f084 ]; then printf 'install-found '; fi; if [ -f /etc/alpine-release ]; then printf 'alpine-'; fi; uname -m;
+[2025-11-02 17:40:56.757] Unable to detect if server is already installed: Error: Failed to probe if server is already installed: code: Failed to probe if server is already installed: code: 4294967295, , Error catastr fico 
+[2025-11-02 17:40:56.757] C digo de error: Wsl/Service/E_UNEXPECTED
+[2025-11-02 17:40:56.757] 
+[2025-11-02 17:40:56.758] NodeExecServer run: C:\WINDOWS\System32\wsl.exe -d Ubuntu-24.04 sh -c '"$VSCODE_WSL_EXT_LOCATION/scripts/wslServer.sh" 7d842fb85a0275a4a8e4d7e040d2625abbf7f084 stable code-server .vscode-server --host=127.0.0.1 --port=0 --connection-token=3107343806-3456899770-3946172818-558699265 --use-host-proxy --without-browser-env-var --disable-websocket-compression --accept-server-license-terms --telemetry-level=all'
+[2025-11-02 17:40:56.826] Error catastr fico 
+[2025-11-02 17:40:56.826] C digo de error: Wsl/Service/E_UNEXPECTED
+[2025-11-02 17:40:56.826] 
+[2025-11-02 17:40:56.826] For help with startup problems, go to https://code.visualstudio.com/docs/remote/troubleshooting#_wsl-tips
+
+2025-11-02 12:41:40.304 [error] [Window] VS Code Server for WSL closed unexpectedly.: CodeExpectedError: VS Code Server for WSL closed unexpectedly.
+    at Wkt.sb (vscode-file://vscode-app/c:/Users/dante/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/workbench/workbench.desktop.main.js:3820:15716)
+    at async Wkt.rb (vscode-file://vscode-app/c:/Users/dante/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/workbench/workbench.desktop.main.js:3820:15082)
+    at async Wkt.fc (vscode-file://vscode-app/c:/Users/dante/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/workbench/workbench.desktop.main.js:3826:3611)
+    at async vscode-file://vscode-app/c:/Users/dante/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/workbench/workbench.desktop.main.js:30:82978
+
+
+----
+PS
+wsl --shutdown
+wsl --update
+
+bash
+cd ~/projects/zync_app
+
+adb devices
+
+code .
+
+bash
+cd ~/projects/zync_app
+flutter run -t lib/main_minimal_test.dart

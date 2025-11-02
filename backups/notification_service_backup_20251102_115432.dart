@@ -1,0 +1,262 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../features/circle/domain_old/entities/user_status.dart';
+import 'dart:developer';
+
+class NotificationService {
+  static final FlutterLocalNotificationsPlugin _notifications = 
+      FlutterLocalNotificationsPlugin();
+  
+  static bool _isInitialized = false;
+
+  /// Inicializa el servicio de notificaciones
+  static Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    // Configuración para Android
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    
+    // Configuración para iOS  
+    const iosSettings = DarwinInitializationSettings(
+      requestSoundPermission: true,
+      requestBadgePermission: true,
+      requestAlertPermission: true,
+    );
+
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _notifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationTapped,
+    );
+
+    // NUEVO: Solicitar permisos explícitamente
+    await _requestNotificationPermissions();
+    
+    // NUEVO: Crear canal de notificaciones
+    await _createNotificationChannel();
+
+    _isInitialized = true;
+    log('[NotificationService] ✅ Initialized successfully with permissions');
+  }
+
+  /// Muestra una notificación silenciosa con acción de estado
+  static Future<void> showSilentNotification(StatusType status) async {
+    await _ensureInitialized();
+
+    const androidDetails = AndroidNotificationDetails(
+      'zync_status_channel',
+      'Status Updates',
+      channelDescription: 'Silent status update notifications',
+      importance: Importance.low,
+      priority: Priority.low,
+      silent: true,
+      showWhen: false,
+      ongoing: false,
+      autoCancel: true,
+      actions: [
+        AndroidNotificationAction(
+          'quick_status',
+          'Quick Status',
+          showsUserInterface: false,
+        ),
+      ],
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: false,
+      presentBadge: false,
+      presentSound: false,
+      interruptionLevel: InterruptionLevel.passive,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notifications.show(
+      status.hashCode,
+      'Zync Status Updated',
+      '${status.emoji} ${status.description}',
+      notificationDetails,
+      payload: 'status_update:${status.name}',
+    );
+
+    log('[NotificationService] Silent notification shown for ${status.description}');
+  }
+
+  /// Muestra notificación persistente para cambiar estado - Point 15: ESTÁTICA
+  static Future<void> showQuickActionNotification({StatusType? currentStatus}) async {
+    await _ensureInitialized();
+
+    // Point 15: Texto estático - no hacer eco con cambios
+    const statusText = 'Tap to change your status';
+
+    const androidDetails = AndroidNotificationDetails(
+      'zync_quick_actions',
+      'Quick Status Access',
+      channelDescription: 'Quick access to status changes',
+      importance: Importance.high, // CAMBIO: HIGH para que sea visible
+      priority: Priority.high,     // CAMBIO: HIGH para que aparezca arriba
+      silent: false,              // CAMBIO: false para que sea visible
+      ongoing: true,
+      autoCancel: false,
+      showWhen: false,
+      visibility: NotificationVisibility.public, // NUEVO: Forzar visibilidad pública
+      // Removemos actions para evitar confusión - modal manejará todo
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: false,
+      presentBadge: false,
+      presentSound: false,
+      interruptionLevel: InterruptionLevel.passive,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notifications.show(
+      9999, // ID fijo para la notificación persistente
+      'Zync Status',
+      statusText,
+      notificationDetails,
+      payload: 'quick_action_tap',
+    );
+
+    log('[NotificationService] � Point 15: Notificación estática mostrada (no eco): $statusText');
+    log('[NotificationService] 🔔 Notification ID: 9999, Ongoing: true, Importance: HIGH');
+  }
+
+  /// Cancela todas las notificaciones
+  static Future<void> cancelAll() async {
+    await _notifications.cancelAll();
+    log('[NotificationService] All notifications cancelled');
+  }
+
+  /// Cancela la notificación de quick actions
+  static Future<void> cancelQuickActionNotification() async {
+    await _ensureInitialized();
+    await _notifications.cancel(9999);
+    log('[NotificationService] 🚫 Persistent notification cancelled (ID: 9999)');
+  }
+
+  /// Handler para cuando se toca una notificación
+  static void _onNotificationTapped(NotificationResponse response) {
+    log('[NotificationService] Notification tapped: ${response.payload}');
+    
+    // Si es la notificación persistente (ID 9999), abrir modal
+    if (response.id == 9999) {
+      _handleQuickActionTap();
+      return;
+    }
+    
+    if (response.actionId != null) {
+      _handleNotificationAction(response.actionId!);
+    } else if (response.payload != null) {
+      _handleNotificationPayload(response.payload!);
+    }
+  }
+
+  /// Callback para manejar tap en notificación persistente
+  static void Function()? _onQuickActionTap;
+  
+  /// Registra callback para el tap en notificación persistente
+  static void setQuickActionTapHandler(void Function() onTap) {
+    _onQuickActionTap = onTap;
+  }
+
+  /// Maneja el tap en la notificación persistente
+  static void _handleQuickActionTap() {
+    log('[NotificationService] Quick action notification tapped');
+    _onQuickActionTap?.call();
+  }
+
+  /// Maneja las acciones de las notificaciones
+  static void _handleNotificationAction(String actionId) {
+    log('[NotificationService] Handling action: $actionId');
+    
+    // Las acciones se manejarán a través del NotificationActions
+    // Este método puede expandirse para manejar diferentes tipos de acciones
+  }
+
+  /// Maneja el payload de las notificaciones
+  static void _handleNotificationPayload(String payload) {
+    log('[NotificationService] Handling payload: $payload');
+    
+    if (payload.startsWith('status_update:')) {
+      final statusName = payload.split(':')[1];
+      log('[NotificationService] Status update payload: $statusName');
+    }
+  }
+
+  /// Solicita permisos de notificación
+  static Future<void> _requestNotificationPermissions() async {
+    // Para Android 13+ (API 33+) - Solicitar permiso explícito
+    final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+      log('[NotificationService] 🔔 Android notification permissions requested');
+    }
+    
+    // Para iOS
+    final iosImplementation = _notifications.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    
+    if (iosImplementation != null) {
+      await iosImplementation.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      log('[NotificationService] 🔔 iOS notification permissions requested');
+    }
+  }
+
+  /// Crea el canal de notificaciones para Android
+  static Future<void> _createNotificationChannel() async {
+    const channel = AndroidNotificationChannel(
+      'zync_quick_actions',
+      'Quick Status Access',
+      description: 'Quick access to status changes',
+      importance: Importance.high,
+      enableVibration: false,
+      playSound: false,
+    );
+
+    final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidImplementation != null) {
+      await androidImplementation.createNotificationChannel(channel);
+      log('[NotificationService] 🔔 Notification channel created: ${channel.id}');
+    }
+  }
+
+  /// Asegura que el servicio esté inicializado
+  static Future<void> _ensureInitialized() async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+  }
+
+  /// Solicita permisos de notificación (principalmente para iOS)
+  static Future<bool> requestPermissions() async {
+    await _ensureInitialized();
+    
+    final result = await _notifications
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+    
+    return result ?? true; // En Android siempre retorna true
+  }
+}

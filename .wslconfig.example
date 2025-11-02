@@ -1,0 +1,88 @@
+# .wslconfig - Configuración optimizada para WSL2
+# 
+# INSTRUCCIONES:
+# 1. Copia este archivo a: C:\Users\TuUsuario\.wslconfig (en Windows, no en WSL2)
+# 2. Edita los valores según tu hardware (RAM disponible, CPU, etc.)
+# 3. Ejecuta en PowerShell: wsl --shutdown
+# 4. Espera 10 segundos y vuelve a abrir WSL2
+#
+# Documentación completa: https://learn.microsoft.com/en-us/windows/wsl/wsl-config
+
+[wsl2]
+
+# MEMORIA
+# Recomendado: 50-60% de tu RAM total
+# Ejemplo: Si tienes 16GB de RAM → memory=8GB
+memory=8GB
+
+# PROCESADORES
+# Recomendado: Dejar 1-2 cores para Windows
+# Ejemplo: Si tienes 8 cores → processors=6
+processors=4
+
+# SWAP
+# Espacio adicional en disco cuando se agota la RAM
+# Recomendado: 25% de la memoria asignada
+swap=2GB
+
+# LOCALIZACIÓN DEL SWAP
+# Cambia esto a tu unidad más rápida (preferiblemente SSD)
+# swapFile=D:\\wsl-swap.vhdx
+
+# TIEMPO DE INACTIVIDAD
+# Tiempo antes de suspender WSL2 cuando Windows está inactivo
+# 7200000ms = 2 horas (suficiente para sesiones de desarrollo)
+vmIdleTimeout=7200000
+
+# THRESHOLD DE INACTIVIDAD
+# Tiempo de inactividad antes de considerar el sistema "idle"
+# 7200000ms = 2 horas
+idleThreshold=7200000
+
+# RECLAMACIÓN DE MEMORIA
+# Desactivar para evitar que WSL2 se suspenda agresivamente
+# gradual = libera memoria lentamente
+# disabled = nunca libera memoria (mejor para desarrollo)
+autoMemoryReclaim=disabled
+
+# NETWORKING
+# Modo de red (NAT es más estable)
+# networkingMode=NAT
+
+# KERNEL PERSONALIZADO (Opcional)
+# Si compilaste un kernel personalizado
+# kernel=C:\\custom-kernel\\bzImage
+
+# PARÁMETROS DEL KERNEL (Opcional)
+# Para debugging avanzado
+# kernelCommandLine=vsyscall=emulate
+
+# LOCALHOST FORWARDING
+# Permitir que Windows acceda a servicios en WSL2 via localhost
+# localhostForwarding=true
+
+# SAFE MODE
+# Si WSL2 no inicia después de cambios, intenta con:
+# safeMode=true
+
+# ========================================
+# NOTAS IMPORTANTES:
+# ========================================
+#
+# 1. Después de cambiar este archivo, DEBES reiniciar WSL2:
+#    wsl --shutdown
+#
+# 2. Para verificar que los cambios se aplicaron:
+#    wsl --list --verbose
+#    wsl -e free -h  (ver memoria asignada)
+#
+# 3. Si WSL2 no inicia después de cambios:
+#    - Comenta todas las líneas con #
+#    - Ejecuta wsl --shutdown
+#    - Descomenta línea por línea para identificar el problema
+#
+# 4. Ubicación de este archivo en Windows:
+#    %USERPROFILE%\.wslconfig
+#    (Ejemplo: C:\Users\datainfers\.wslconfig)
+#
+# 5. NO uses este archivo en WSL2, debe estar en Windows

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/firebase_circle_service.dart';
 import '../widgets/in_circle_view.dart';
 import '../widgets/no_circle_view.dart';
+import '../../../../core/services/session_cache_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,6 +14,28 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _service = FirebaseCircleService();
+
+  @override
+  void initState() {
+    super.initState();
+    // FASE 2B: Guardar sesión PROACTIVAMENTE al llegar a HomePage
+    _saveSessionProactively();
+  }
+  
+  /// Guardar sesión inmediatamente (no esperar a minimizar)
+  void _saveSessionProactively() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      SessionCacheService.saveSession(
+        userId: user.uid,
+        email: user.email ?? '',
+      ).then((_) {
+        print('✅ [HomePage] Sesión guardada proactivamente');
+      }).catchError((e) {
+        print('❌ [HomePage] Error guardando sesión: $e');
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

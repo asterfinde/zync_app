@@ -225,7 +225,7 @@ Write-Host "    lsusb" -ForegroundColor Gray
 Write-Host "    adb devices" -ForegroundColor Gray
 Write-Host ""
 Write-Host "4️⃣  Para debugging avanzado, usa:" -ForegroundColor White
-Write-Host "    usbipd wsl attach --busid 1-2 --log-level debug" -ForegroundColor Gray
+Write-Host "    usbipd attach --wsl --busid 1-2 --log-level debug" -ForegroundColor Gray
 Write-Host ""
 Write-Host "═══════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
