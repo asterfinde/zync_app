@@ -11,7 +11,7 @@ import 'package:zync_app/core/di/injection_container.dart' as di;
 import 'package:zync_app/core/cache/persistent_cache.dart'; // CACHE PERSISTENTE
 import 'package:zync_app/core/utils/performance_tracker.dart'; // PERFORMANCE TRACKING
 import 'package:zync_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
-import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario)
+import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
 
 import 'core/global_keys.dart';
 
@@ -39,14 +39,15 @@ void main() async {
   PerformanceTracker.end('SessionCache Init');
   print('✅ [main] SessionCache inicializado (bloqueante).');
   
-  // 🔍 DEBUG: Verificar si hay estado nativo disponible
+  // 🔍 Verificar si hay estado nativo disponible (solo Android)
   try {
     final nativeUserId = await NativeStateBridge.getUserId();
     if (nativeUserId != null && nativeUserId.isNotEmpty) {
-      print('🚀 [main] Estado nativo encontrado: $nativeUserId (prioridad sobre SessionCache)');
+      print('🚀 [main] Estado nativo encontrado: $nativeUserId');
     }
   } catch (e) {
-    print('⚠️ [main] No se pudo leer estado nativo (Android only): $e');
+    // Esperado en iOS o si falla la lectura
+    print('ℹ️ [main] NativeState no disponible (Android only): $e');
   }
 
   // 🎯 RENDERIZAR UI (con cache ya disponible)
@@ -95,33 +96,31 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     
     if (state == AppLifecycleState.paused) {
-      // 📱 App minimizada
-      print('📱 [App] Went to background - Guardando sesión en múltiples capas...');
+      // 📱 App minimizada - Guardar en múltiples capas
+      print('📱 [App] Went to background - Guardando en NativeState + SessionCache...');
       PerformanceTracker.onAppPaused();
       
       final user = FirebaseAuth.instance.currentUser;
       print('🔍 [App] Usuario actual: ${user?.uid ?? "NULL"}');
       
       if (user != null) {
-        // 🚀 PRIORIDAD 1: Native State (Kotlin/Room SQLite) - MÁS RÁPIDO
-        // Nota: MainActivity.onPause() también guarda, esta es sincronización extra desde Flutter
-        print('📤 [App] 1. Guardando en NativeState (Kotlin/Room)...');
+        // 🚀 Capa 1: NativeState (Kotlin/Room) - MÁS RÁPIDO (~5-10ms)
+        // Nota: MainActivity.onPause() también guarda automáticamente
         NativeStateBridge.setUserId(
           userId: user.uid,
           email: user.email ?? '',
         ).then((_) {
-          print('✅ [App] NativeState guardado (~5-10ms)');
+          print('✅ [App] NativeState guardado');
         }).catchError((e) {
-          print('⚠️ [App] Error en NativeState (esperado en iOS): $e');
+          print('ℹ️ [App] NativeState skip (esperado en iOS): $e');
         });
         
-        // 🔄 PRIORIDAD 2: SessionCache (Flutter SharedPreferences) - FALLBACK
-        print('📤 [App] 2. Guardando en SessionCache (fallback)...');
+        // 🔄 Capa 2: SessionCache (Flutter SharedPreferences) - FALLBACK (~20-30ms)
         SessionCacheService.saveSession(
           userId: user.uid,
           email: user.email ?? '',
         ).then((_) {
-          print('✅ [App] SessionCache guardado (~20-30ms)');
+          print('✅ [App] SessionCache guardado');
         }).catchError((e) {
           print('❌ [App] Error guardando SessionCache: $e');
         });
