@@ -69,7 +69,7 @@ Restart-Service usbipd -Force
 usbipd list
 
 # Conectar (reemplaza 1-2 con tu BUSID)
-usbipd wsl attach --busid 1-2
+usbipd attach --wsl --busid 1-2
 ```
 
 ---
@@ -134,7 +134,7 @@ Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
 
 **Ver logs detallados de usbipd:**
 ```powershell
-usbipd wsl attach --busid 1-2 --log-level debug
+usbipd attach --wsl --busid 1-2 --log-level debug
 ```
 
 **Ver procesos escuchando en puerto 3240:**
@@ -216,7 +216,7 @@ Después de ejecutar el script, verifica:
 - [ ] Servicio usbipd está corriendo
 - [ ] Puerto 3240 tiene listener activo (netstat)
 - [ ] Reglas de firewall creadas y habilitadas
-- [ ] `usbipd wsl attach` completa sin warning de firewall
+- [ ] `usbipd attach --wsl` completa sin warning de firewall
 - [ ] `lsusb` en WSL muestra el dispositivo Android
 - [ ] `adb devices` lista el dispositivo correctamente
 - [ ] `flutter devices` detecta el dispositivo (si usas Flutter)

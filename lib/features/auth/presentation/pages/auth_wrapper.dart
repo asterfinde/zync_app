@@ -7,6 +7,7 @@ import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
 import 'package:zync_app/core/services/app_badge_service.dart';
+import 'package:zync_app/core/services/session_cache_service.dart';
 
 /// AuthWrapper: Verifica el estado de autenticación y muestra la pantalla correcta
 /// 
@@ -30,6 +31,54 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    // FASE 2B: UI Optimista - Intentar restaurar desde cache primero
+    return FutureBuilder<Map<String, String>?>(
+      future: SessionCacheService.restoreSession(),
+      builder: (context, cacheSnapshot) {
+        // Si hay sesión cacheada, mostrar HomePage INMEDIATAMENTE
+        if (cacheSnapshot.connectionState == ConnectionState.done &&
+            cacheSnapshot.hasData &&
+            cacheSnapshot.data != null) {
+          final cachedUserId = cacheSnapshot.data!['userId'];
+          
+          if (cachedUserId != null && cachedUserId.isNotEmpty) {
+            print('⚡ [AuthWrapper] Usando sesión cacheada: $cachedUserId');
+            
+            // Inicializar servicios en background si es necesario
+            if (_lastAuthenticatedUserId != cachedUserId) {
+              _lastAuthenticatedUserId = cachedUserId;
+              _initializeSilentFunctionalityIfNeeded(cachedUserId);
+            }
+            
+            // Mostrar HomePage con verificación en background
+            return Stack(
+              children: [
+                const HomePage(),
+                // Verificar autenticación real en background
+                _BackgroundAuthVerification(
+                  onInvalidSession: () {
+                    if (mounted) {
+                      SessionCacheService.clearSession();
+                      setState(() {
+                        _lastAuthenticatedUserId = null;
+                        _isSilentFunctionalityInitialized = false;
+                      });
+                    }
+                  },
+                ),
+              ],
+            );
+          }
+        }
+        
+        // Si no hay cache o aún está cargando, usar StreamBuilder normal
+        return _buildStreamAuth();
+      },
+    );
+  }
+  
+  /// StreamBuilder normal para autenticación (fallback cuando no hay cache)
+  Widget _buildStreamAuth() {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
@@ -147,11 +196,59 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Limpiar badge
         await AppBadgeService.clearBadge();
         
+        // FASE 2B: Limpiar sesión cacheada
+        await SessionCacheService.clearSession();
+        
         print('🔴 [AuthWrapper] Funcionalidad silenciosa limpiada exitosamente');
         
       } catch (e) {
         print('❌ [AuthWrapper] Error limpiando funcionalidad silenciosa: $e');
       }
     });
+  }
+}
+
+/// Widget invisible que verifica autenticación en background
+/// 
+/// FASE 2B: Mientras mostramos HomePage con cache, verificamos si la sesión
+/// de Firebase es válida. Si no lo es, limpiamos y volvemos a login.
+class _BackgroundAuthVerification extends StatefulWidget {
+  final VoidCallback onInvalidSession;
+  
+  const _BackgroundAuthVerification({
+    required this.onInvalidSession,
+  });
+
+  @override
+  State<_BackgroundAuthVerification> createState() => _BackgroundAuthVerificationState();
+}
+
+class _BackgroundAuthVerificationState extends State<_BackgroundAuthVerification> {
+  @override
+  void initState() {
+    super.initState();
+    _verifyAuth();
+  }
+
+  Future<void> _verifyAuth() async {
+    // Esperar un momento para no interrumpir la UI
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // Verificar si el usuario de Firebase es válido
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (user == null) {
+      // Sesión cache inválida, limpiar y volver a login
+      print('⚠️ [BackgroundAuth] Sesión cache inválida, limpiando...');
+      widget.onInvalidSession();
+    } else {
+      print('✅ [BackgroundAuth] Sesión verificada: ${user.uid}');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Widget invisible
+    return const SizedBox.shrink();
   }
 }

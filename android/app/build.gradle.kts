@@ -4,6 +4,8 @@ plugins {
     id("com.google.gms.google-services")
     // END: FlutterFire Configuration
     id("kotlin-android")
+    // Room plugin for Kotlin annotation processing (KAPT)
+    id("kotlin-kapt")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -51,4 +53,13 @@ flutter {
 dependencies {
     // Core library desugaring for Java 8 APIs
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    
+    // Room SQLite Database
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
+    
+    // Coroutines (para Room)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }

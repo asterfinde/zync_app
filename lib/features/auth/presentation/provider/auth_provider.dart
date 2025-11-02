@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase;
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart';
+import '../../../../core/services/native_state_bridge.dart'; // FASE 3: Sincronización Flutter↔Kotlin
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/sign_in_or_register.dart';
 import '../../domain/usecases/sign_out.dart';
@@ -56,6 +57,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
           (user) {
             log("[AuthNotifier] [STREAM] getCurrentUser SUCCESS. user: $user");
             if (user != null) {
+              // 🚀 FASE 3: Sincronizar estado con Kotlin nativo
+              log("[AuthNotifier] [STREAM] 📤 Sincronizando estado con Kotlin: ${user.id}");
+              NativeStateBridge.setUserId(
+                userId: user.id,
+                email: user.email,
+                circleId: user.circleId ?? '',
+              ).catchError((e) {
+                log("[AuthNotifier] [STREAM] ⚠️ Error sincronizando con Kotlin: $e");
+              });
+              
               log("[AuthNotifier] [STREAM] User details fetched successfully. State -> Authenticated. user.nickname: ${user.nickname}, user.email: ${user.email}");
               state = Authenticated(user);
             } else {
@@ -67,6 +78,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       } else {
         // Si el stream emite null tras la inicialización, avanzar a Unauthenticated
         log("[AuthNotifier] Stream reported no user. State -> Unauthenticated");
+        
+        // 🚀 FASE 3: Limpiar estado nativo (logout)
+        log("[AuthNotifier] 🧹 Limpiando estado nativo de Kotlin...");
+        try {
+          await NativeStateBridge.setUserId(userId: '');
+          log("[AuthNotifier] 🧹 Estado nativo limpiado correctamente");
+        } catch (e) {
+          log("[AuthNotifier] ⚠️ Error limpiando estado nativo: $e");
+        }
         
         // NUEVO: Desactivar funcionalidad silenciosa cuando el usuario se desloguea
         log("[AuthNotifier] 🔴 Usuario deslogueado vía stream, desactivando funcionalidad silenciosa...");
@@ -120,6 +140,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
           (freshUser) async {
             log("[AuthNotifier] [ACTION] getCurrentUser tras login/registro SUCCESS. freshUser: $freshUser");
             if (freshUser != null) {
+              // 🚀 FASE 3: Sincronizar estado con Kotlin tras login/registro
+              log("[AuthNotifier] [ACTION] 📤 Sincronizando estado con Kotlin: ${freshUser.id}");
+              NativeStateBridge.setUserId(
+                userId: freshUser.id,
+                email: freshUser.email,
+                circleId: freshUser.circleId ?? '',
+              ).catchError((e) {
+                log("[AuthNotifier] [ACTION] ⚠️ Error sincronizando con Kotlin: $e");
+              });
+              
               log("[AuthNotifier] [ACTION] Usuario recargado tras login/registro. State -> Authenticated. Nickname: ${freshUser.nickname}, Email: ${freshUser.email}");
               state = Authenticated(freshUser);
             } else {

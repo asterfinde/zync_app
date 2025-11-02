@@ -116,7 +116,25 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     
     // ==================== CACHE-FIRST PATTERN ====================
     // PASO 1: Cargar cache PRIMERO (sin await, sincrónico desde memoria)
-    _loadFromCache();
+    // 🚀 LAZY: Solo cargar si cache está inicializado, si no, esperar postFrameCallback
+    if (PersistentCache.isInitialized) {
+      _loadFromCache();
+    } else {
+      // Cache NO inicializado aún, esperar postFrameCallback
+      print('⏳ [InCircleView] Cache no listo, esperando inicialización...');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (PersistentCache.isInitialized) {
+          _loadFromCache();
+        } else {
+          // Reintentar después
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted && PersistentCache.isInitialized) {
+              _loadFromCache();
+            }
+          });
+        }
+      });
+    }
     
     // PASO 2: Iniciar listeners de Firebase (no bloquean)
     _listenToStatusChanges();

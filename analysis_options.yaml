@@ -8,3 +8,4 @@ analyzer:
     - lib/features/circle/**/*_backup.dart
     - lib/core/widgets/*_backup.dart
     - scripts/seed.dart
+    - backups/**

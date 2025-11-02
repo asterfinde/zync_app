@@ -1,0 +1,9 @@
+# === INICIO DEL DÍA ===
+cd /home/datainfers/projects/zync_app
+./start_dev_session.sh
+./prevent_sleep_from_wsl.sh
+
+# === FIN DEL DÍA ===
+cd /home/datainfers/projects/zync_app
+./stop_dev_session.sh
+./restore_sleep_from_wsl.sh

@@ -1,0 +1,135 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║           🚨 POINT 20 - INSTRUCCIONES RÁPIDAS 🚨             ║
+║                                                               ║
+║              Última actualización: 01/11/2025                 ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+📋 OBJETIVO: Validar si SessionCache resuelve el bug de minimización
+
+⏱️  TIEMPO: 10-15 minutos
+
+═══════════════════════════════════════════════════════════════
+
+🚀 PASO 1: EJECUTAR APP DE PRUEBAS
+
+Comando:
+  flutter run -t lib/main_minimal_test.dart
+
+Esperar a que la app se instale y abra.
+
+═══════════════════════════════════════════════════════════════
+
+📱 PASO 2: OBSERVAR LOGS INICIALES
+
+En la consola, buscar:
+  🚀 [TEST] ========== INICIO main() ==========
+  ⏱️ [TEST] Firebase Init: XXms
+  ⏱️ [TEST] SessionCache Init: XXms
+  ⏱️ [TEST] Total Init: XXms
+
+Anotar estos tiempos.
+
+═══════════════════════════════════════════════════════════════
+
+📉 PASO 3: MINIMIZAR LA APP
+
+1. Presionar botón HOME del celular
+2. En la consola, buscar:
+   📉 [TEST] ========== APP MINIMIZADA ==========
+   ⏱️ [TEST] Cache Save: XXms
+   💾 [TEST] Sesión guardada: user123
+
+3. ¿Apareció "Sesión guardada"? ___________
+
+═══════════════════════════════════════════════════════════════
+
+⏰ PASO 4: ESPERAR
+
+Esperar 5-10 segundos (simular uso normal)
+
+═══════════════════════════════════════════════════════════════
+
+📈 PASO 5: MAXIMIZAR LA APP
+
+1. Abrir app desde recientes/multitarea
+2. En la consola, buscar:
+   📈 [TEST] ========== APP MAXIMIZADA ==========
+   ⏱️ [TEST] Cache Restore: XXms
+   ⏱️ [TEST] Firebase Auth Check: XXms
+   ⏱️ [TEST] Total Resume: XXms
+   ✅ [TEST] Cache válido y sincronizado
+
+3. Anotar estos tiempos:
+   - Cache Restore: _____ ms
+   - Firebase Auth Check: _____ ms
+   - Total Resume: _____ ms (CRÍTICO)
+
+═══════════════════════════════════════════════════════════════
+
+📊 PASO 6: REVISAR PANTALLA DE LA APP
+
+¿Resume Count incrementó? ___________
+¿Session Cache muestra User ID? ___________
+¿Se mantuvieron las métricas anteriores? ___________
+
+═══════════════════════════════════════════════════════════════
+
+🔍 PASO 7: BUSCAR LOGS DE MAINACTIVITY (Android)
+
+En la consola, buscar:
+  D/MainActivity: onCreate() - App iniciada
+
+¿Apareció al maximizar? ___________ (Si apareció = MainActivity destruida)
+
+═══════════════════════════════════════════════════════════════
+
+✅ PASO 8: ANALIZAR RESULTADOS
+
+Total Resume: _____ ms
+
+Si es < 500ms:
+  ✅ LA SOLUCIÓN FUNCIONA
+  → Ver FASE 3A en docs/dev/point20_plan_011125.md
+  → Aplicar al main.dart original
+
+Si es > 1000ms:
+  ❌ LA SOLUCIÓN NO FUNCIONA
+  → Ver FASE 3B en docs/dev/point20_plan_011125.md
+  → Aplicar optimizaciones adicionales
+
+Si MainActivity NO se destruyó:
+  ✅ NO ES UN BUG DE CÓDIGO
+  → Cerrar Point 20 como específico del dispositivo
+
+═══════════════════════════════════════════════════════════════
+
+📋 CHECKLIST FINAL
+
+[ ] App minimal ejecutada
+[ ] Logs de INICIO capturados
+[ ] App minimizada correctamente
+[ ] Logs de MINIMIZACIÓN capturados
+[ ] Esperé 5-10 segundos
+[ ] App maximizada correctamente
+[ ] Logs de MAXIMIZACIÓN capturados
+[ ] Total Resume medido: _____ ms
+[ ] MainActivity destruida? _____
+[ ] Decisión tomada (A/B/C): _____
+
+═══════════════════════════════════════════════════════════════
+
+📁 DOCUMENTACIÓN COMPLETA
+
+Plan detallado:    docs/dev/point20_plan_011125.md
+Resumen ejecutivo: docs/dev/point20_resumen_ejecutivo.md
+BACKLOG:           docs/dev/BACKLOG.md (línea 219)
+
+═══════════════════════════════════════════════════════════════
+
+🚀 COMANDO RÁPIDO:
+
+  flutter run -t lib/main_minimal_test.dart
+
+═══════════════════════════════════════════════════════════════

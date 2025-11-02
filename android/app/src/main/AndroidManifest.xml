@@ -1,18 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.datainfers.zync">
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -22,19 +17,25 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+        <!-- MainActivity: Configuración optimizada para preservar estado -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            
+            android:stateNotNeeded="false"
+            android:alwaysRetainTaskState="true"
+            android:excludeFromRecents="false"
+            android:finishOnTaskLaunch="false">
+            
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
-                android:resource="@style/NormalTheme"
-                />
+                android:resource="@style/NormalTheme" />
+                
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -77,23 +78,40 @@
             android:name="flutter_geolocator_foreground_service"
             android:value="false" />
 
+        <!-- Servicio foreground para ubicación -->
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:exported="false"
             android:stopWithTask="false"
-            
-            android:foregroundServiceType="location|specialUse" >
+            android:foregroundServiceType="location|specialUse">
             
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Este servicio mantiene una notificación con accesos directos para que el usuario pueda comunicar su estado rápidamente a su círculo de confianza en situaciones de emergencia o cotidianas."/>
+                android:value="Mantiene notificación con accesos rápidos para comunicar estado de emergencia al círculo de confianza"/>
         </service>
+
+        <!-- Servicio keep-alive para mantener proceso vivo (patrón WhatsApp/Telegram) -->
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse">
+            
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Mantiene la app lista para uso instantáneo"/>
+        </service>
+
+        <!-- Widget de estado -->
         <receiver android:name=".ZyncStatusWidget"
             android:exported="true">
+            
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-            <meta-data android:name="android.appwidget.provider"
+            
+            <meta-data 
+                android:name="android.appwidget.provider"
                 android:resource="@xml/zync_status_widget" />
         </receiver>
     </application>
