@@ -15,11 +15,11 @@ class NotificationService {
     // Configuración para Android
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     
-    // Configuración para iOS (solo solicitar permisos en iOS, no en Android)
+    // Configuración para iOS  
     const iosSettings = DarwinInitializationSettings(
-      requestSoundPermission: false, // Point 21: Silencioso
-      requestBadgePermission: false,
-      requestAlertPermission: false,
+      requestSoundPermission: true,
+      requestBadgePermission: true,
+      requestAlertPermission: true,
     );
 
     const initSettings = InitializationSettings(
@@ -32,14 +32,14 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    // Point 21: NO solicitar permisos - se declaran en AndroidManifest.xml
-    // El permiso POST_NOTIFICATIONS se maneja automáticamente en Android
+    // NUEVO: Solicitar permisos explícitamente
+    await _requestNotificationPermissions();
     
-    // Crear canal de notificaciones (silencioso)
+    // NUEVO: Crear canal de notificaciones
     await _createNotificationChannel();
 
     _isInitialized = true;
-    log('[NotificationService] ✅ Initialized successfully (silent mode)');
+    log('[NotificationService] ✅ Initialized successfully with permissions');
   }
 
   /// Muestra una notificación silenciosa con acción de estado
@@ -121,22 +121,16 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    try {
-      await _notifications.show(
-        9999, // ID fijo para la notificación persistente
-        'Zync Status',
-        statusText,
-        notificationDetails,
-        payload: 'quick_action_tap',
-      );
+    await _notifications.show(
+      9999, // ID fijo para la notificación persistente
+      'Zync Status',
+      statusText,
+      notificationDetails,
+      payload: 'quick_action_tap',
+    );
 
-      log('[NotificationService] 🔕 Point 15: Notificación estática mostrada (no eco): $statusText');
-      log('[NotificationService] 🔔 Notification ID: 9999, Ongoing: true, Importance: HIGH');
-    } catch (e) {
-      // Point 21: Fallback silencioso - usuario puede haber denegado permisos
-      log('[NotificationService] ⚠️ No se pudo mostrar notificación (permisos denegados?): $e');
-      log('[NotificationService] 🔕 App continuará funcionando sin notificaciones persistentes');
-    }
+    log('[NotificationService] � Point 15: Notificación estática mostrada (no eco): $statusText');
+    log('[NotificationService] 🔔 Notification ID: 9999, Ongoing: true, Importance: HIGH');
   }
 
   /// Cancela todas las notificaciones
@@ -201,31 +195,45 @@ class NotificationService {
     }
   }
 
-  // Point 21: Método eliminado - ya no solicitamos permisos manualmente
-  // Los permisos se declaran en AndroidManifest.xml y se otorgan automáticamente
+  /// Solicita permisos de notificación
+  static Future<void> _requestNotificationPermissions() async {
+    // Para Android 13+ (API 33+) - Solicitar permiso explícito
+    final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+      log('[NotificationService] 🔔 Android notification permissions requested');
+    }
+    
+    // Para iOS
+    final iosImplementation = _notifications.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    
+    if (iosImplementation != null) {
+      await iosImplementation.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      log('[NotificationService] 🔔 iOS notification permissions requested');
+    }
+  }
 
-  /// Crea el canal de notificaciones para Android (completamente silencioso)
+  /// Crea el canal de notificaciones para Android
   static Future<void> _createNotificationChannel() async {
     const channel = AndroidNotificationChannel(
       'zync_quick_actions',
       'Quick Status Access',
       description: 'Quick access to status changes',
-      importance: Importance.low, // Point 21: LOW para no molestar
+      importance: Importance.high,
       enableVibration: false,
       playSound: false,
-      showBadge: false, // Point 21: Sin badge
     );
 
     final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     
     if (androidImplementation != null) {
-      try {
-        await androidImplementation.createNotificationChannel(channel);
-        log('[NotificationService] 🔔 Silent notification channel created: ${channel.id}');
-      } catch (e) {
-        // Point 21: Fallback silencioso si no hay permisos
-        log('[NotificationService] ⚠️ Could not create channel (permissions may be denied): $e');
-      }
+      await androidImplementation.createNotificationChannel(channel);
+      log('[NotificationService] 🔔 Notification channel created: ${channel.id}');
     }
   }
 
@@ -237,24 +245,18 @@ class NotificationService {
   }
 
   /// Solicita permisos de notificación (principalmente para iOS)
-  /// Point 21: En Android no hace nada - permisos en AndroidManifest.xml
   static Future<bool> requestPermissions() async {
     await _ensureInitialized();
     
-    // Point 21: En Android retornamos true directamente (permisos en manifest)
-    // Solo procesamos permisos en iOS si es necesario
-    final iosImplementation = _notifications
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    final result = await _notifications
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
     
-    if (iosImplementation != null) {
-      final result = await iosImplementation.requestPermissions(
-        alert: false, // Point 21: Silencioso
-        badge: false,
-        sound: false,
-      );
-      return result ?? true;
-    }
-    
-    return true; // Android: permisos automáticos del manifest
+    return result ?? true; // En Android siempre retorna true
   }
 }

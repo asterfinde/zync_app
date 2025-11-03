@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Point 21: Para MethodChannel
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../widgets/status_selector_overlay.dart';
@@ -90,31 +89,15 @@ class SilentFunctionalityCoordinator {
     print('[SilentCoordinator] 🔒 MÉTODO deactivateAfterLogout() EJECUTÁNDOSE');
     
     try {
-      // Point 21: Limpieza exhaustiva de TODAS las notificaciones
-      print('[SilentCoordinator] 🔒 Usuario deslogueado - Limpieza completa iniciada');
+      print('[SilentCoordinator] 🔒 Usuario deslogueado - Desactivando notificación persistente');
       
-      // 1. Cancelar la notificación persistente de Quick Actions
-      print('[SilentCoordinator] 1/3 Cancelando notificación persistente...');
+      // Cancelar la notificación persistente
       await NotificationService.cancelQuickActionNotification();
       
-      // 2. Cancelar TODAS las notificaciones del sistema
-      print('[SilentCoordinator] 2/3 Cancelando TODAS las notificaciones...');
-      await NotificationService.cancelAll();
-      
-      // 3. Detener KeepAliveService (Point 21: CRÍTICO)
-      print('[SilentCoordinator] 3/3 Deteniendo KeepAliveService...');
-      try {
-        const keepAliveChannel = MethodChannel('zync/keep_alive');
-        await keepAliveChannel.invokeMethod('stop');
-        print('[SilentCoordinator] ✅ KeepAliveService detenido exitosamente');
-      } catch (e) {
-        print('[SilentCoordinator] ⚠️ No se pudo detener KeepAliveService: $e');
-      }
-      
-      print('[SilentCoordinator] ✅ Funcionalidad silenciosa DESACTIVADA completamente');
+      print('[SilentCoordinator] ✅ Funcionalidad silenciosa DESACTIVADA después del logout');
       
     } catch (e) {
-      print('[SilentCoordinator] ❌ Error desactivando después del logout: $e');
+      print('[SilentCoordinator] Error desactivando después del logout: $e');
     }
   }
 

@@ -180,9 +180,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   /// Limpia la funcionalidad silenciosa cuando no hay usuario autenticado
-  /// OPTIMIZACIÓN: Se ejecuta en background, NO bloquea la UI
+  /// Point 21: Limpiar cache SÍNCRONO primero, luego resto en background
   void _cleanupSilentFunctionalityIfNeeded() {
-    // Ejecutar en background para NO bloquear la UI
+    // Point 21: Limpiar cache INMEDIATAMENTE (síncrono) para evitar pantalla transitoria
+    // Esto previene que al reabrir la app se lea cache viejo y muestre HomePage momentáneamente
+    SessionCacheService.clearSession().then((_) {
+      print('🛡️ [AuthWrapper] Cache limpiado INMEDIATAMENTE');
+    }).catchError((e) {
+      print('⚠️ [AuthWrapper] Error limpiando cache: $e');
+    });
+    
+    // Ejecutar resto de limpieza en background para NO bloquear la UI
     Future.microtask(() async {
       try {
         print('🔴 [AuthWrapper] Limpiando funcionalidad silenciosa en background...');
@@ -195,9 +203,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         
         // Limpiar badge
         await AppBadgeService.clearBadge();
-        
-        // FASE 2B: Limpiar sesión cacheada
-        await SessionCacheService.clearSession();
         
         print('🔴 [AuthWrapper] Funcionalidad silenciosa limpiada exitosamente');
         
