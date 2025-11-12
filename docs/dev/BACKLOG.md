@@ -337,7 +337,11 @@ El área de Notificaciones tiene un comportamiento "aleatorio":
 
 ### ⏸️ Point 22 - Responsividad de la App
 
-**Prioridad:**⏸️ n de ser responsive, incluyendo el modal de emoji. Al girar el dispositivo el modal produce un overflow porque se ensancha mucho más que el tamaño permitido.
+**Prioridad:** Media  
+**Estado:** ⏸️ PENDIENTE
+
+#### Problema
+La app necesita ser responsive, incluyendo el modal de emoji. Al girar el dispositivo el modal produce un overflow porque se ensancha mucho más que el tamaño permitido.
 
 
 ---

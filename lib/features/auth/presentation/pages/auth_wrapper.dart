@@ -162,7 +162,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         print('🟢 [AuthWrapper] Activando funcionalidad silenciosa en background...');
         
         // Solo activar la notificación persistente (los servicios ya están inicializados en main.dart)
-        await SilentFunctionalityCoordinator.activateAfterLogin();
+        await SilentFunctionalityCoordinator.activateAfterLogin(context);
         
         // Inicializar listener de estados para badge (solo si no está inicializado)
         await StatusService.initializeStatusListener();
@@ -180,7 +180,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   /// Limpia la funcionalidad silenciosa cuando no hay usuario autenticado
-  /// Point 21: Limpiar cache SÍNCRONO primero, luego resto en background
+  /// Point 21 FASE 1: Limpiar cache y listeners, PERO NO desactivar notificación
+  /// La notificación permanece activa hasta logout MANUAL desde Settings
   void _cleanupSilentFunctionalityIfNeeded() {
     // Point 21: Limpiar cache INMEDIATAMENTE (síncrono) para evitar pantalla transitoria
     // Esto previene que al reabrir la app se lea cache viejo y muestre HomePage momentáneamente
@@ -193,21 +194,20 @@ class _AuthWrapperState extends State<AuthWrapper> {
     // Ejecutar resto de limpieza en background para NO bloquear la UI
     Future.microtask(() async {
       try {
-        print('🔴 [AuthWrapper] Limpiando funcionalidad silenciosa en background...');
+        print('🔴 [AuthWrapper] Limpiando listeners y cache en background...');
         
-        // Desactivar funcionalidad silenciosa
-        await SilentFunctionalityCoordinator.deactivateAfterLogout();
+        // Point 21 FASE 1: NO llamar deactivateAfterLogout() aquí
+        // La notificación debe permanecer hasta logout MANUAL desde Settings
         
-        // Limpiar listener de estados
+        // Solo limpiar listeners y estado local
         await StatusService.disposeStatusListener();
-        
-        // Limpiar badge
         await AppBadgeService.clearBadge();
         
-        print('🔴 [AuthWrapper] Funcionalidad silenciosa limpiada exitosamente');
+        print('🔴 [AuthWrapper] Listeners y cache limpiados exitosamente');
+        print('💡 [AuthWrapper] Notificación permanece activa (logout manual desde Settings)');
         
       } catch (e) {
-        print('❌ [AuthWrapper] Error limpiando funcionalidad silenciosa: $e');
+        print('❌ [AuthWrapper] Error limpiando listeners: $e');
       }
     });
   }

@@ -59,10 +59,12 @@ class SilentFunctionalityCoordinator {
   }
 
   /// Activa la funcionalidad silenciosa DESPUÉS del login exitoso
-  static Future<void> activateAfterLogin() async {
+  static Future<void> activateAfterLogin(BuildContext context) async {
     print('');
     print('=== ACTIVATE AFTER LOGIN CALLED ===');
     print('[SilentCoordinator] 🔓 MÉTODO activateAfterLogin() EJECUTÁNDOSE');
+    
+    _context = context;
     
     if (!_isInitialized) {
       print('[SilentCoordinator] ❌ ERROR: Servicios NO inicializados');
@@ -71,19 +73,142 @@ class SilentFunctionalityCoordinator {
     }
     
     try {
-      print('[SilentCoordinator] 🔓 Usuario autenticado - Activando notificación persistente');
+      final hasPermission = await NotificationService.requestPermissions();
       
-      // Mostrar notificación persistente ahora que el usuario está logueado
-      await NotificationService.showQuickActionNotification();
-      
-      print('[SilentCoordinator] ✅ Funcionalidad silenciosa ACTIVADA después del login');
-      
+      if (hasPermission) {
+        print('[SilentCoordinator] ✅ Permisos de notificación otorgados');
+        print('[SilentCoordinator] Mostrando notificación persistente...');
+        await NotificationService.showQuickActionNotification();
+        print('[SilentCoordinator] ✅ Funcionalidad silenciosa ACTIVADA');
+      } else {
+        print('[SilentCoordinator] ⚠️ Permisos de notificación denegados');
+        print('[SilentCoordinator] 💡 Mostrando diálogo para guiar al usuario...');
+        
+        // FASE 5 FIX: Mostrar diálogo explicativo y abrir Settings
+        if (context.mounted) {
+          _showNotificationPermissionDialog(context);
+        }
+      }
     } catch (e) {
-      print('[SilentCoordinator] ❌ Error activando después del login: $e');
+      print('[SilentCoordinator] ❌ Error solicitando permisos: $e');
     }
+    
+    print('');
+  }
+  
+  /// Point 21 FASE 5: Muestra diálogo cuando las notificaciones están bloqueadas
+  static void _showNotificationPermissionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Usuario debe tomar acción
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.notifications_off, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Notificaciones Bloqueadas'),
+          ],
+        ),
+        content: const Text(
+          'Para usar la función de cambio rápido de estado, '
+          'necesitas habilitar las notificaciones.\n\n'
+          '¿Quieres abrir la configuración ahora?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              print('[SilentCoordinator] 🚫 Usuario omitió habilitar notificaciones');
+              _showNotificationsDisabledInfo(context);
+            },
+            child: const Text('Ahora No'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              print('[SilentCoordinator] 🔧 Abriendo Settings de Android...');
+              await NotificationService.openNotificationSettings();
+              
+              // FASE 5 UX: Esperar un momento y verificar si habilitó notificaciones
+              await Future.delayed(const Duration(seconds: 2));
+              await _checkAndNotifyPermissionStatus(context);
+            },
+            child: const Text('Abrir Configuración'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// FASE 5 UX: Verifica el estado de permisos después de que el usuario vuelve de Settings
+  static Future<void> _checkAndNotifyPermissionStatus(BuildContext context) async {
+    if (!context.mounted) return;
+    
+    try {
+      final hasPermission = await NotificationService.hasPermission();
+      
+      if (hasPermission) {
+        print('[SilentCoordinator] ✅ Usuario habilitó notificaciones - mostrando notificación');
+        await NotificationService.showQuickActionNotification();
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Notificaciones habilitadas - Cambio rápido disponible'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        print('[SilentCoordinator] ⚠️ Usuario NO habilitó notificaciones');
+        _showNotificationsDisabledInfo(context);
+      }
+    } catch (e) {
+      print('[SilentCoordinator] ❌ Error verificando permisos: $e');
+    }
+  }
+  
+  /// FASE 5 UX: Muestra mensaje informativo cuando notificaciones están deshabilitadas
+  static void _showNotificationsDisabledInfo(BuildContext context) {
+    if (!context.mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Cambio rápido no disponible sin notificaciones.\n'
+                'Puedes habilitarlas en Settings → Notificaciones.',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.orange.shade700,
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Habilitar',
+          textColor: Colors.white,
+          onPressed: () async {
+            await NotificationService.openNotificationSettings();
+            await Future.delayed(const Duration(seconds: 2));
+            if (context.mounted) {
+              await _checkAndNotifyPermissionStatus(context);
+            }
+          },
+        ),
+      ),
+    );
   }
 
   /// Desactiva la funcionalidad silenciosa DESPUÉS del logout
+  /// ⚠️ IMPORTANTE (Point 21 FASE 1): Este método SOLO debe llamarse desde LOGOUT MANUAL en Settings
+  /// NO debe llamarse automáticamente desde AuthWrapper ni otros lugares
   static Future<void> deactivateAfterLogout() async {
     print('');
     print('=== DEACTIVATE AFTER LOGOUT CALLED ===');
@@ -118,36 +243,48 @@ class SilentFunctionalityCoordinator {
     }
   }
 
-  static void _handleQuickActionTap() {
-    print('[SilentCoordinator] 🎯 Tap en notificación detectado');
+  /// Point 21 FASE 5: Abrir modal SIN abrir la app completa
+  /// Usa StatusModalActivity nativa para comportamiento transparente
+  static void _handleQuickActionTap() async {
+    print('[SilentCoordinator] 🎯 Tap en notificación detectado - FASE 5');
     
-    if (_context == null || !_isInitialized) {
-      print('[SilentCoordinator] ❌ Context no disponible o no inicializado');
-      print('[SilentCoordinator] ❌ _context: $_context, _isInitialized: $_isInitialized');
+    if (!_isInitialized) {
+      print('[SilentCoordinator] ❌ No inicializado');
       return;
     }
 
-    if (!_context!.mounted) {
-      print('[SilentCoordinator] ❌ Context no está mounted, buscando context válido...');
-      return;
-    }
-
-    print('[SilentCoordinator] ✅ Abriendo modal de selección de estado');
-    Navigator.of(_context!).push(
-      PageRouteBuilder(
-        opaque: false, // Permite transparencia
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return StatusSelectorOverlay(
-            onClose: () {
-              print('[SilentCoordinator] Modal cerrado por usuario');
+    try {
+      print('[SilentCoordinator] 🚀 Abriendo StatusModalActivity (modal transparente)...');
+      
+      // FASE 5: Abrir activity nativa transparente en lugar de usar Navigator
+      // Esto evita abrir la app completa
+      await StatusModalService.openModal();
+      
+      print('[SilentCoordinator] ✅ StatusModalActivity iniciada');
+      
+    } catch (e) {
+      print('[SilentCoordinator] ❌ Error abriendo modal transparente: $e');
+      print('[SilentCoordinator] 🚨 Fallback: Intentando abrir con Navigator...');
+      
+      // Fallback: usar el método anterior si falla
+      if (_context != null && _context!.mounted) {
+        Navigator.of(_context!).push(
+          PageRouteBuilder(
+            opaque: false,
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return StatusSelectorOverlay(
+                onClose: () {
+                  print('[SilentCoordinator] Modal cerrado por usuario');
+                },
+              );
             },
-          );
-        },
-      ),
-    ).catchError((error) {
-        print('[SilentCoordinator] ❌ Error al mostrar overlay');
-        return null;
-    });
+          ),
+        ).catchError((error) {
+          print('[SilentCoordinator] ❌ Error en fallback: $error');
+          return null;
+        });
+      }
+    }
   }
 
   /// Actualiza el contexto desde fuera del coordinador

@@ -15,6 +15,10 @@ import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Nat
 
 import 'core/global_keys.dart';
 
+// Point 21 FASE 5: NavigatorKey global para acceso al contexto desde servicios
+// Necesario para StatusModalService cuando se abre desde notificaciones
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -162,6 +166,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Zync App',
       theme: baseTheme,
+      navigatorKey: navigatorKey, // Point 21 FASE 5: Para acceso desde StatusModalService
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       // CACHE-FIRST: Eliminar splash screen, mostrar AuthWrapper directamente
       // El cache hará que la UI aparezca instantáneamente

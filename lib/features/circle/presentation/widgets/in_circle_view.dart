@@ -13,6 +13,7 @@ import '../../../auth/presentation/provider/auth_state.dart';
 import '../../../../core/widgets/emoji_modal.dart';
 import '../../../../core/services/gps_service.dart';
 import '../../../../core/services/status_service.dart';
+import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 21 FASE 1
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../domain_old/entities/user_status.dart';
 // CACHE-FIRST: Importar caches
@@ -731,8 +732,37 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           TextButton(
             onPressed: () async {
               Navigator.of(context).pop(); // Cerrar diálogo primero
-              await FirebaseAuth.instance.signOut();
-              // La navegación debería manejarse por el AuthWrapper al detectar el cambio de estado
+              
+              // Point 21 FASE 1 FIX: Llamar explícitamente a deactivateAfterLogout
+              // para evitar que se cuelgue después de recovery
+              try {
+                print('🔴 [LOGOUT] Iniciando logout desde InCircleView...');
+                
+                // 1. Desactivar funcionalidad silenciosa PRIMERO (con timeout)
+                print('🔴 [LOGOUT] Desactivando funcionalidad silenciosa...');
+                await SilentFunctionalityCoordinator.deactivateAfterLogout()
+                    .timeout(const Duration(seconds: 3), onTimeout: () {
+                  print('⚠️ [LOGOUT] Timeout en deactivateAfterLogout - continuando...');
+                });
+                
+                // 2. Cerrar sesión de Firebase
+                print('🔴 [LOGOUT] Cerrando sesión de Firebase...');
+                await FirebaseAuth.instance.signOut();
+                
+                print('✅ [LOGOUT] Logout completado exitosamente');
+                
+                // 3. Navegar a pantalla de login (por si AuthWrapper no responde)
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                }
+                
+              } catch (e) {
+                print('❌ [LOGOUT] Error durante logout: $e');
+                // Intentar navegar de todas formas
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                }
+              }
             },
             child: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.sosRed)),
           ),

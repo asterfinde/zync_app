@@ -1,6 +1,10 @@
 import 'dart:developer';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../widgets/status_selector_overlay.dart'; // Corregido: lib/widgets/
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../main.dart'; // Para acceder al navigatorKey global
 
 /// Servicio para manejar la nueva StatusModalActivity transparente (Point 15)
 /// Permite abrir modales sin mostrar la app completa
@@ -45,17 +49,82 @@ class StatusModalService {
     }
   }
 
-  /// Abre el modal de estados (llamado desde Android)
+  /// Contexto global para el modal (se establece cuando se abre la activity)
+  static BuildContext? _modalContext;
+  
+  /// Establece el contexto para el modal
+  static void setModalContext(BuildContext context) {
+    _modalContext = context;
+    log('[StatusModalService] 📍 Contexto establecido');
+  }
+
+  /// Point 21 FASE 5: Abre el modal de estados (llamado desde Android)
+  /// Llamado automáticamente cuando StatusModalActivity se abre
   static Future<void> _openStatusModal() async {
     try {
-      log('[StatusModalService] 🚀 Abriendo modal desde notificación');
+      log('[StatusModalService] 🚀 [FASE 5] Abriendo modal desde notificación');
       
-      // TODO: Aquí abrir el StatusSelectorOverlay
-      // Por ahora solo logueamos
-      log('[StatusModalService] ✅ Modal abierto silenciosamente');
+      // Verificar autenticación
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        log('[StatusModalService] ❌ Usuario no autenticado - cerrando activity');
+        await _closeModal();
+        return;
+      }
       
-    } catch (e) {
+      // Esperar para asegurar que Flutter esté completamente listo
+      await Future.delayed(const Duration(milliseconds: 150));
+      
+      // FASE 5: Obtener contexto del navigatorKey global
+      // StatusModalActivity comparte el mismo engine que MainActivity
+      final context = navigatorKey.currentContext;
+      
+      if (context == null || !context.mounted) {
+        log('[StatusModalService] ❌ NavigatorKey context no disponible');
+        
+        // Reintentar una vez más
+        await Future.delayed(const Duration(milliseconds: 200));
+        
+        final retryContext = navigatorKey.currentContext;
+        if (retryContext == null || !retryContext.mounted) {
+          log('[StatusModalService] ❌ Context aún no disponible - cerrando activity');
+          await _closeModal();
+          return;
+        }
+      }
+      
+      final finalContext = navigatorKey.currentContext!;
+      log('[StatusModalService] ✅ Context disponible - mostrando overlay');
+      
+      // Abrir el StatusSelectorOverlay
+      Navigator.of(finalContext).push(
+        PageRouteBuilder(
+          opaque: false, // Transparente
+          barrierDismissible: true,
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return StatusSelectorOverlay(
+              onClose: () async {
+                log('[StatusModalService] Modal cerrado por usuario');
+                // Cerrar la activity nativa
+                await closeModal();
+              },
+            );
+          },
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            // Animación de fade in
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+        ),
+      );
+      
+      log('[StatusModalService] ✅ Modal abierto exitosamente');
+      
+    } catch (e, stackTrace) {
       log('[StatusModalService] ❌ Error abriendo modal: $e');
+      log('[StatusModalService] Stack: $stackTrace');
     }
   }
 
@@ -77,5 +146,29 @@ class StatusModalService {
   /// Método público para cerrar desde Flutter
   static Future<void> closeModal() async {
     await _closeModal();
+  }
+  
+  /// Point 21 FASE 5: Abre StatusModalActivity desde Flutter
+  /// Permite abrir el modal SIN abrir la app completa
+  static Future<void> openModal() async {
+    try {
+      log('[StatusModalService] 🚀 Solicitando apertura de StatusModalActivity...');
+      
+      // Verificar que el usuario esté autenticado antes de abrir
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        log('[StatusModalService] ❌ Usuario no autenticado - no se puede abrir modal');
+        return;
+      }
+      
+      // Llamar a Android para abrir StatusModalActivity
+      await _channel.invokeMethod('openModal');
+      
+      log('[StatusModalService] ✅ StatusModalActivity solicitada');
+      
+    } catch (e) {
+      log('[StatusModalService] ❌ Error solicitando modal: $e');
+      rethrow;
+    }
   }
 }

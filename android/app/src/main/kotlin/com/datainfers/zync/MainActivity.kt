@@ -113,7 +113,8 @@ class MainActivity: FlutterActivity() {
         super.onDestroy()
         Log.d(TAG, "onDestroy() - Activity destruida")
         
-        // 🚀 FASE 1: Seguridad - asegurar keep-alive activo
+        // Point 21 FASE 1: SIEMPRE mantener keep-alive activo
+        // El logout manual se manejará desde Flutter (Settings)
         if (!isKeepAliveRunning) {
             Log.d(TAG, "⚠️ [NATIVO] Keep-alive no estaba corriendo - iniciando desde onDestroy()")
             KeepAliveService.start(this)
@@ -149,6 +150,27 @@ class MainActivity: FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        // Point 21 FASE 5: Handler para abrir StatusModalActivity desde Flutter
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/status_modal").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openModal" -> {
+                    Log.d(TAG, "[FASE 5] Abriendo StatusModalActivity desde Flutter...")
+                    try {
+                        val intent = Intent(this, StatusModalActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                        Log.d(TAG, "[FASE 5] StatusModalActivity iniciada exitosamente")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[FASE 5] Error abriendo StatusModalActivity: ${e.message}")
+                        result.error("OPEN_MODAL_ERROR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
         
         // 🚀 FASE 1: Canal para Native State (Flutter ↔ Kotlin)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NATIVE_STATE_CHANNEL).setMethodCallHandler { call, result ->
@@ -191,18 +213,20 @@ class MainActivity: FlutterActivity() {
                 "start" -> {
                     Log.d(TAG, "🟢 Flutter solicita iniciar keep-alive service")
                     KeepAliveService.start(this)
+                    isKeepAliveRunning = true
                     result.success(true)
                 }
                 "stop" -> {
-                    Log.d(TAG, "🔴 Flutter solicita detener keep-alive service")
+                    Log.d(TAG, "🔴 Flutter solicita detener keep-alive service (LOGOUT MANUAL)")
                     KeepAliveService.stop(this)
+                    isKeepAliveRunning = false
                     result.success(true)
                 }
                 else -> result.notImplemented()
             }
         }
         
-        // Canal existente para notificaciones
+        // Point 21 FASE 5: Canal para notificaciones (apunta a StatusModalActivity)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "requestNotificationPermission" -> {
@@ -210,11 +234,33 @@ class MainActivity: FlutterActivity() {
                     result.success("Permisos solicitados")
                 }
                 "showNotification" -> {
+                    Log.d(TAG, "[FASE 5] Creando notificación nativa persistente")
                     if (hasNotificationPermission()) {
                         showPersistentNotification()
-                        result.success("Notificación mostrada")
+                        result.success("✅ Notificación mostrada - tap abre StatusModalActivity")
                     } else {
                         result.error("NO_PERMISSION", "Permisos de notificación requeridos", null)
+                    }
+                }
+                "openNotificationSettings" -> {
+                    Log.d(TAG, "[FASE 5] 🔧 Abriendo Settings de notificaciones...")
+                    try {
+                        val intent = Intent().apply {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                action = android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                                putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+                            } else {
+                                action = android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                                data = android.net.Uri.parse("package:$packageName")
+                            }
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                        Log.d(TAG, "[FASE 5] ✅ Settings abierto exitosamente")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[FASE 5] ❌ Error abriendo Settings: ${e.message}")
+                        result.error("SETTINGS_ERROR", e.message, null)
                     }
                 }
                 else -> result.notImplemented()
