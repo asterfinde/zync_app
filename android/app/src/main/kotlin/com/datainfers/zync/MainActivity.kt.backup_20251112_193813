@@ -29,9 +29,6 @@ class MainActivity: FlutterActivity() {
     
     // Current user (sincronizado con Flutter)
     private var currentUserId: String? = null
-    
-    // Point 1.1: Bandera para evitar reiniciar servicios durante logout manual
-    private var isManualLogoutInProgress = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,12 +72,6 @@ class MainActivity: FlutterActivity() {
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "onPause() - App minimizada/pausada")
-        
-        // Point 1.1: NO reiniciar keep-alive si hay logout manual en progreso
-        if (isManualLogoutInProgress) {
-            Log.d(TAG, "⚠️ [LOGOUT] Logout manual en progreso - NO reiniciando KeepAliveService")
-            return
-        }
         
         // 🚀 FASE 1: Iniciar keep-alive NATIVO (no esperar a Flutter)
         if (!isKeepAliveRunning) {
@@ -231,12 +222,6 @@ class MainActivity: FlutterActivity() {
                     isKeepAliveRunning = false
                     result.success(true)
                 }
-                "setManualLogoutFlag" -> {
-                    val inProgress = call.argument<Boolean>("inProgress") ?: false
-                    isManualLogoutInProgress = inProgress
-                    Log.d(TAG, "🔒 [LOGOUT] Bandera de logout manual = $inProgress")
-                    result.success(true)
-                }
                 else -> result.notImplemented()
             }
         }
@@ -255,34 +240,6 @@ class MainActivity: FlutterActivity() {
                         result.success("✅ Notificación mostrada - tap abre StatusModalActivity")
                     } else {
                         result.error("NO_PERMISSION", "Permisos de notificación requeridos", null)
-                    }
-                }
-                "cancelNotification" -> {
-                    Log.d(TAG, "[LOGOUT] 🔴 Cancelando notificación persistente (ID: $NOTIFICATION_ID)...")
-                    try {
-                        NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
-                        Log.d(TAG, "[LOGOUT] ✅ Notificación cancelada exitosamente")
-                        result.success(true)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "[LOGOUT] ❌ Error cancelando notificación: ${e.message}")
-                        result.error("CANCEL_ERROR", e.message, null)
-                    }
-                }
-                "cancelAllNotifications" -> {
-                    Log.d(TAG, "[LOGOUT] 🔴🔴🔴 Cancelando TODAS las notificaciones...")
-                    try {
-                        // 1. Cancelar notificación persistente de MainActivity
-                        NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
-                        Log.d(TAG, "[LOGOUT] ✅ Notificación MainActivity cancelada (ID: $NOTIFICATION_ID)")
-                        
-                        // 2. Cancelar TODAS las notificaciones del sistema
-                        NotificationManagerCompat.from(this).cancelAll()
-                        Log.d(TAG, "[LOGOUT] ✅ TODAS las notificaciones del sistema canceladas")
-                        
-                        result.success(true)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "[LOGOUT] ❌ Error cancelando todas las notificaciones: ${e.message}")
-                        result.error("CANCEL_ALL_ERROR", e.message, null)
                     }
                 }
                 "openNotificationSettings" -> {

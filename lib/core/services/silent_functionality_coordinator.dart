@@ -10,6 +10,7 @@ import 'status_modal_service.dart';
 class SilentFunctionalityCoordinator {
   static bool _isInitialized = false;
   static BuildContext? _context;
+  static bool _isManualLogoutInProgress = false; // Point 1.1: Bandera para evitar reactivación
 
   /// Inicializa SOLO los servicios base (sin BuildContext)
   /// Se debe llamar en main() ANTES de runApp()
@@ -64,6 +65,12 @@ class SilentFunctionalityCoordinator {
     print('=== ACTIVATE AFTER LOGIN CALLED ===');
     print('[SilentCoordinator] 🔓 MÉTODO activateAfterLogin() EJECUTÁNDOSE');
     
+    // Point 1.1: NO activar si hay un logout manual en progreso
+    if (_isManualLogoutInProgress) {
+      print('[SilentCoordinator] ⚠️ Logout manual en progreso - BLOQUEANDO activación');
+      return;
+    }
+    
     _context = context;
     
     if (!_isInitialized) {
@@ -80,6 +87,19 @@ class SilentFunctionalityCoordinator {
         print('[SilentCoordinator] Mostrando notificación persistente...');
         await NotificationService.showQuickActionNotification();
         print('[SilentCoordinator] ✅ Funcionalidad silenciosa ACTIVADA');
+        
+        // Point 1.1: Resetear bandera de logout manual (usuario hizo login exitoso)
+        _isManualLogoutInProgress = false;
+        print('[SilentCoordinator] 🔓 Bandera Dart de logout manual RESETEADA');
+        
+        // Point 1.1: Resetear también en el lado NATIVO
+        try {
+          const keepAliveChannel = MethodChannel('zync/keep_alive');
+          await keepAliveChannel.invokeMethod('setManualLogoutFlag', {'inProgress': false});
+          print('[SilentCoordinator] 🔓 Bandera nativa de logout RESETEADA');
+        } catch (e) {
+          print('[SilentCoordinator] ⚠️ Error reseteando bandera nativa: $e');
+        }
       } else {
         print('[SilentCoordinator] ⚠️ Permisos de notificación denegados');
         print('[SilentCoordinator] 💡 Mostrando diálogo para guiar al usuario...');
@@ -207,12 +227,24 @@ class SilentFunctionalityCoordinator {
   }
 
   /// Desactiva la funcionalidad silenciosa DESPUÉS del logout
-  /// ⚠️ IMPORTANTE (Point 21 FASE 1): Este método SOLO debe llamarse desde LOGOUT MANUAL en Settings
+  /// ⚠️ IMPORTANTE (Point 1.1): Este método SOLO debe llamarse desde LOGOUT MANUAL en Settings
   /// NO debe llamarse automáticamente desde AuthWrapper ni otros lugares
   static Future<void> deactivateAfterLogout() async {
     print('');
     print('=== DEACTIVATE AFTER LOGOUT CALLED ===');
     print('[SilentCoordinator] 🔒 MÉTODO deactivateAfterLogout() EJECUTÁNDOSE');
+    
+    // Point 1.1: Marcar que hay un logout manual en progreso (Dart)
+    _isManualLogoutInProgress = true;
+    
+    // Point 1.1: Marcar también en el lado NATIVO (Android)
+    try {
+      const keepAliveChannel = MethodChannel('zync/keep_alive');
+      await keepAliveChannel.invokeMethod('setManualLogoutFlag', {'inProgress': true});
+      print('[SilentCoordinator] 🔒 Bandera nativa de logout activada');
+    } catch (e) {
+      print('[SilentCoordinator] ⚠️ Error activando bandera nativa: $e');
+    }
     
     try {
       // Point 1.1: Limpieza exhaustiva - ORDEN CRÍTICO
@@ -239,8 +271,14 @@ class SilentFunctionalityCoordinator {
       print('[SilentCoordinator] ✅ Proceso de limpieza completado');
       print('[SilentCoordinator] ✅ KeepAliveService destruido + Notificaciones canceladas');
       
+      // Point 1.1: Mantener la bandera activa para evitar reactivación por AuthWrapper
+      // Se reseteará solo cuando el usuario haga login nuevamente
+      print('[SilentCoordinator] 🔒 Bandera de logout manual ACTIVA - bloqueará reactivaciones');
+      
     } catch (e) {
       print('[SilentCoordinator] ❌ Error en proceso de limpieza: $e');
+      // Resetear bandera si hubo error para permitir reintentos
+      _isManualLogoutInProgress = false;
     }
   }
 
