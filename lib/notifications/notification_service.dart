@@ -122,8 +122,52 @@ class NotificationService {
   /// Cancela la notificación de quick actions
   static Future<void> cancelQuickActionNotification() async {
     await _ensureInitialized();
+    
+    try {
+      // Cancelar notificación nativa de Android
+      const platform = MethodChannel('mini_emoji/notification');
+      await platform.invokeMethod('cancelNotification');
+      log('[NotificationService] ✅ Notificación nativa cancelada desde Android');
+    } catch (e) {
+      log('[NotificationService] ⚠️ Error cancelando notificación nativa: $e');
+    }
+    
+    // Cancelar también cualquier notificación Flutter local
     await _notifications.cancel(9999);
     log('[NotificationService] Quick action notification cancelled');
+  }
+  
+  /// Point 1.1: Cancela TODAS las notificaciones de forma agresiva (incluye KeepAliveService)
+  static Future<void> cancelAllNotificationsAggressive() async {
+    await _ensureInitialized();
+    
+    log('[NotificationService] 🔴🔴🔴 CANCELACIÓN AGRESIVA: Eliminando TODAS las notificaciones...');
+    
+    try {
+      // 1. Cancelar todas las notificaciones Flutter locales
+      await _notifications.cancelAll();
+      log('[NotificationService] ✅ Notificaciones Flutter canceladas');
+    } catch (e) {
+      log('[NotificationService] ⚠️ Error cancelando notificaciones Flutter: $e');
+    }
+    
+    try {
+      // 2. Llamar al método nativo que cancela TODAS (MainActivity + KeepAliveService)
+      const platform = MethodChannel('mini_emoji/notification');
+      await platform.invokeMethod('cancelAllNotifications');
+      log('[NotificationService] ✅ Método nativo cancelAllNotifications() ejecutado');
+      log('[NotificationService] ✅ TODAS las notificaciones eliminadas (incluye MainActivity y KeepAliveService)');
+    } catch (e) {
+      log('[NotificationService] ⚠️ Error llamando método nativo cancelAllNotifications: $e');
+      // Intentar método antiguo como fallback
+      try {
+        const platform = MethodChannel('mini_emoji/notification');
+        await platform.invokeMethod('cancelNotification');
+        log('[NotificationService] ⚠️ Fallback: Usó método antiguo cancelNotification');
+      } catch (e2) {
+        log('[NotificationService] ❌ Error en fallback: $e2');
+      }
+    }
   }
   
   /// Point 21 FASE 5: Abre la configuración de notificaciones de Android

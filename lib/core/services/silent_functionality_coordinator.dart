@@ -215,31 +215,32 @@ class SilentFunctionalityCoordinator {
     print('[SilentCoordinator] 🔒 MÉTODO deactivateAfterLogout() EJECUTÁNDOSE');
     
     try {
-      // Point 21: Limpieza exhaustiva de TODAS las notificaciones
-      print('[SilentCoordinator] 🔒 Usuario deslogueado - Limpieza completa iniciada');
+      // Point 1.1: Limpieza exhaustiva - ORDEN CRÍTICO
+      print('[SilentCoordinator] 🔒 Usuario deslogueado - Iniciando limpieza...');
       
-      // 1. Cancelar la notificación persistente de Quick Actions
-      print('[SilentCoordinator] 1/3 Cancelando notificación persistente...');
-      await NotificationService.cancelQuickActionNotification();
-      
-      // 2. Cancelar TODAS las notificaciones del sistema
-      print('[SilentCoordinator] 2/3 Cancelando TODAS las notificaciones...');
-      await NotificationService.cancelAll();
-      
-      // 3. Detener KeepAliveService (Point 21: CRÍTICO)
-      print('[SilentCoordinator] 3/3 Deteniendo KeepAliveService...');
+      // PASO 1: Detener KeepAliveService PRIMERO (esto auto-cancela su notificación en onDestroy)
+      print('[SilentCoordinator] PASO 1/3: Deteniendo KeepAliveService...');
       try {
         const keepAliveChannel = MethodChannel('zync/keep_alive');
         await keepAliveChannel.invokeMethod('stop');
-        print('[SilentCoordinator] ✅ KeepAliveService detenido exitosamente');
+        print('[SilentCoordinator] ✅ KeepAliveService.stop() llamado');
       } catch (e) {
-        print('[SilentCoordinator] ⚠️ No se pudo detener KeepAliveService: $e');
+        print('[SilentCoordinator] ❌ Error deteniendo KeepAliveService: $e');
       }
       
-      print('[SilentCoordinator] ✅ Funcionalidad silenciosa DESACTIVADA completamente');
+      // PASO 2: Esperar más tiempo para que onDestroy() se ejecute completamente
+      print('[SilentCoordinator] PASO 2/3: Esperando 1.5 segundos para que onDestroy complete...');
+      await Future.delayed(const Duration(milliseconds: 1500));
+      
+      // PASO 3: Cancelar TODAS las notificaciones restantes (limpieza final)
+      print('[SilentCoordinator] PASO 3/3: Cancelación final de notificaciones restantes...');
+      await NotificationService.cancelAllNotificationsAggressive();
+      
+      print('[SilentCoordinator] ✅ Proceso de limpieza completado');
+      print('[SilentCoordinator] ✅ KeepAliveService destruido + Notificaciones canceladas');
       
     } catch (e) {
-      print('[SilentCoordinator] ❌ Error desactivando después del logout: $e');
+      print('[SilentCoordinator] ❌ Error en proceso de limpieza: $e');
     }
   }
 

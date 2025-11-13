@@ -46,7 +46,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         if (mounted) {
           // Activar funcionalidad silenciosa después del login exitoso
           print('🟢 [LOGIN] Login exitoso, activando funcionalidad silenciosa...');
-          await SilentFunctionalityCoordinator.activateAfterLogin();
+          await SilentFunctionalityCoordinator.activateAfterLogin(context);
           print('🟢 [LOGIN] activateAfterLogin completado');
           
           // Inicializar listener de estados para badge
@@ -107,7 +107,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       if (mounted) {
         // Activar funcionalidad silenciosa después del registro exitoso
         print('🟢 [REGISTER] Registro exitoso, activando funcionalidad silenciosa...');
-        await SilentFunctionalityCoordinator.activateAfterLogin();
+        await SilentFunctionalityCoordinator.activateAfterLogin(context);
         print('🟢 [REGISTER] activateAfterLogin completado');
         
         // Inicializar listener de estados para badge
