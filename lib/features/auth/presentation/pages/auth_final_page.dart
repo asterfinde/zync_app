@@ -62,9 +62,15 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (newContext) {
-              // Point 2: Verificar permisos DESPUÉS de navegar (usando el nuevo contexto)
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _checkNotificationPermissionsInContext(newContext);
+              // Point 2: Verificar permisos DESPUÉS de navegar
+              Future.delayed(const Duration(milliseconds: 300), () {
+                print('🔔 [POINT 2] Verificando permisos después de navegación (LOGIN)...');
+                print('🔔 [POINT 2] Context mounted: ${newContext.mounted}');
+                if (newContext.mounted) {
+                  _checkNotificationPermissionsInContext(newContext);
+                } else {
+                  print('❌ [POINT 2] Context NO mounted - no se puede mostrar modal');
+                }
               });
               return HomePage();
             }),
@@ -129,9 +135,15 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (newContext) {
-            // Point 2: Verificar permisos DESPUÉS de navegar (usando el nuevo contexto)
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _checkNotificationPermissionsInContext(newContext);
+            // Point 2: Verificar permisos DESPUÉS de navegar
+            Future.delayed(const Duration(milliseconds: 300), () {
+              print('🔔 [POINT 2] Verificando permisos después de navegación (REGISTER)...');
+              print('🔔 [POINT 2] Context mounted: ${newContext.mounted}');
+              if (newContext.mounted) {
+                _checkNotificationPermissionsInContext(newContext);
+              } else {
+                print('❌ [POINT 2] Context NO mounted - no se puede mostrar modal');
+              }
             });
             return HomePage();
           }),
@@ -173,34 +185,60 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
 
   // Point 2: Verificar permisos de notificación después del login/registro
   Future<void> _checkNotificationPermissionsInContext(BuildContext checkContext) async {
+    print('');
+    print('=== [POINT 2] INICIANDO VERIFICACIÓN DE PERMISOS ===');
+    print('[POINT 2] Context mounted: ${checkContext.mounted}');
+    
     try {
+      print('[POINT 2] Llamando a NotificationService.hasPermission()...');
       final hasPermission = await NotificationService.hasPermission();
       
-      print('🔍 [PERMISOS] Estado de permisos de notificación: $hasPermission');
+      print('[POINT 2] 🔍 Resultado hasPermission: $hasPermission');
+      print('[POINT 2] Context aún mounted: ${checkContext.mounted}');
       
-      if (!hasPermission && checkContext.mounted) {
-        print('⚠️ [PERMISOS] Permisos denegados - mostrando modal informativo');
-        await _showPermissionDeniedDialogInContext(checkContext);
+      if (!hasPermission) {
+        print('[POINT 2] ⚠️ Permisos DENEGADOS - Intentando mostrar modal...');
+        
+        if (checkContext.mounted) {
+          print('[POINT 2] ✅ Context mounted - Mostrando modal informativo');
+          await _showPermissionDeniedDialogInContext(checkContext);
+          print('[POINT 2] ✅ Modal mostrado exitosamente');
+        } else {
+          print('[POINT 2] ❌ Context NO mounted - No se puede mostrar modal');
+        }
       } else {
-        print('✅ [PERMISOS] Permisos concedidos - modo Silent funcionará correctamente');
+        print('[POINT 2] ✅ Permisos concedidos - modo Silent funcionará correctamente');
       }
-    } catch (e) {
-      print('❌ [PERMISOS] Error verificando permisos: $e');
+    } catch (e, stackTrace) {
+      print('[POINT 2] ❌ ERROR verificando permisos: $e');
+      print('[POINT 2] ❌ StackTrace: $stackTrace');
     }
+    
+    print('=== [POINT 2] FIN VERIFICACIÓN DE PERMISOS ===');
+    print('');
   }
 
   // Point 2: Modal informativo cuando los permisos están denegados
   Future<void> _showPermissionDeniedDialogInContext(BuildContext dialogContext) async {
+    print('[POINT 2 MODAL] 📦 Iniciando showDialog...');
+    print('[POINT 2 MODAL] Context: ${dialogContext.mounted}');
+    
     return showDialog<void>(
       context: dialogContext,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
+        print('[POINT 2 MODAL] 🎪 Builder ejecutado - Modal construyéndose');
         return AlertDialog(
           title: const Row(
             children: [
               Icon(Icons.notifications_off, color: Colors.orange, size: 28),
               SizedBox(width: 12),
-              Text('Permisos de Notificación'),
+              Expanded(
+                child: Text(
+                  'Permisos de Notificación',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
             ],
           ),
           content: const SingleChildScrollView(
@@ -231,8 +269,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           actions: [
             TextButton(
               onPressed: () {
+                print('[POINT 2 MODAL] 🔴 Usuario presionó botón CERRAR');
                 Navigator.of(dialogContext).pop();
-                print('🔴 [PERMISOS] Usuario cerró el modal sin activar permisos');
+                print('[POINT 2 MODAL] 🔴 Modal cerrado - Usuario NO activó permisos');
               },
               child: const Text(
                 'Cerrar',
@@ -241,14 +280,15 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
             ),
             ElevatedButton.icon(
               onPressed: () async {
+                print('[POINT 2 MODAL] 🟢 Usuario presionó botón PERMITIR');
                 Navigator.of(dialogContext).pop();
-                print('🟢 [PERMISOS] Usuario eligió abrir configuración');
+                print('[POINT 2 MODAL] 🔧 Abriendo configuración del sistema...');
                 
                 try {
                   await AppSettings.openAppSettings(type: AppSettingsType.notification);
-                  print('✅ [PERMISOS] Configuración de notificaciones abierta');
+                  print('[POINT 2 MODAL] ✅ Configuración de notificaciones abierta exitosamente');
                 } catch (e) {
-                  print('❌ [PERMISOS] Error abriendo configuración: $e');
+                  print('[POINT 2 MODAL] ❌ Error abriendo configuración: $e');
                 }
               },
               icon: const Icon(Icons.settings),

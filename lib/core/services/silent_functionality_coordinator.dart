@@ -102,12 +102,8 @@ class SilentFunctionalityCoordinator {
         }
       } else {
         print('[SilentCoordinator] ⚠️ Permisos de notificación denegados');
-        print('[SilentCoordinator] 💡 Mostrando diálogo para guiar al usuario...');
-        
-        // FASE 5 FIX: Mostrar diálogo explicativo y abrir Settings
-        if (context.mounted) {
-          _showNotificationPermissionDialog(context);
-        }
+        print('[SilentCoordinator] 💡 Point 2: El modal se mostrará después de navegar a HomePage');
+        // Point 2: NO mostrar modal aquí - se mostrará en auth_final_page después de navegar
       }
     } catch (e) {
       print('[SilentCoordinator] ❌ Error solicitando permisos: $e');

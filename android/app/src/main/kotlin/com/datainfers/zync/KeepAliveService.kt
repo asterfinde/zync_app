@@ -21,11 +21,20 @@ class KeepAliveService : Service() {
         
         fun start(context: Context) {
             Log.d(TAG, "🟢 Iniciando servicio keep-alive")
-            val intent = Intent(context, KeepAliveService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                val intent = Intent(context, KeepAliveService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                Log.d(TAG, "✅ Servicio keep-alive iniciado exitosamente")
+            } catch (e: IllegalStateException) {
+                // Android 12+ (API 31+): No se puede iniciar foreground service desde background
+                Log.w(TAG, "⚠️ No se pudo iniciar servicio (Android 12+ restricción): ${e.message}")
+            } catch (e: Exception) {
+                // Cualquier otra excepción
+                Log.e(TAG, "❌ Error iniciando servicio: ${e.message}", e)
             }
         }
         

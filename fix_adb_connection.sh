@@ -18,6 +18,7 @@ NC='\033[0m' # No Color
 
 # Configuración
 ADB_PATH="/mnt/c/platform-tools/adb.exe"
+ADB_DIR="/mnt/c/platform-tools"
 DEFAULT_DEVICE="192.168.1.50:5555"
 DEVICE="${1:-$DEFAULT_DEVICE}"
 
@@ -26,29 +27,22 @@ echo -e "${BLUE}║         Script de Sanación ADB - Zync App                 �
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Paso 1: Matar todos los procesos ADB (excepto este script)
-echo -e "${YELLOW}[1/6]${NC} Matando procesos ADB conflictivos..."
-# Matar procesos ADB de Windows primero
-powershell.exe "Stop-Process -Name 'adb' -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
-sleep 1
-echo -e "${GREEN}✓${NC} Procesos ADB terminados"
-
-# Paso 2: Matar servidor ADB
-echo -e "${YELLOW}[2/6]${NC} Deteniendo servidor ADB..."
+# Paso 1: Matar servidor ADB
+echo -e "${YELLOW}[1/5]${NC} Deteniendo servidor ADB..."
 cd /mnt/c/platform-tools
-./adb.exe kill-server 2>/dev/null || true
-sleep 2
+$ADB_PATH kill-server 2>/dev/null || true
+sleep 3
 echo -e "${GREEN}✓${NC} Servidor ADB detenido"
 
-# Paso 3: Iniciar servidor ADB limpio
-echo -e "${YELLOW}[3/6]${NC} Iniciando servidor ADB limpio..."
-./adb.exe start-server
+# Paso 2: Iniciar servidor ADB limpio
+echo -e "${YELLOW}[2/5]${NC} Iniciando servidor ADB limpio..."
+$ADB_PATH start-server
 sleep 2
 echo -e "${GREEN}✓${NC} Servidor ADB iniciado"
 
-# Paso 4: Conectar al dispositivo
-echo -e "${YELLOW}[4/6]${NC} Conectando a dispositivo ${DEVICE}..."
-CONNECT_OUTPUT=$(./adb.exe connect $DEVICE 2>&1)
+# Paso 3: Conectar al dispositivo
+echo -e "${YELLOW}[3/5]${NC} Conectando a dispositivo ${DEVICE}..."
+CONNECT_OUTPUT=$($ADB_PATH connect $DEVICE 2>&1)
 
 if [[ $CONNECT_OUTPUT == *"connected"* ]] || [[ $CONNECT_OUTPUT == *"already connected"* ]]; then
     echo -e "${GREEN}✓${NC} Dispositivo conectado: $DEVICE"
@@ -63,9 +57,9 @@ else
     exit 1
 fi
 
-# Paso 5: Verificar conexión y eliminar emuladores offline
-echo -e "${YELLOW}[5/6]${NC} Verificando dispositivos conectados y eliminando emuladores offline..."
-DEVICES_OUTPUT=$(./adb.exe devices)
+# Paso 4: Verificar conexión y eliminar emuladores offline
+echo -e "${YELLOW}[4/5]${NC} Verificando dispositivos conectados y eliminando emuladores offline..."
+DEVICES_OUTPUT=$($ADB_PATH devices | tr -d '\r')  # Eliminar Windows carriage returns
 echo "$DEVICES_OUTPUT"
 
 # Eliminar emuladores offline (emulator-5554, emulator-5556, etc.)
@@ -76,30 +70,38 @@ if [ -n "$OFFLINE_EMULATORS" ]; then
     while IFS= read -r emulator; do
         if [ -n "$emulator" ]; then
             echo -e "  ${YELLOW}→${NC} Desconectando $emulator..."
-            ./adb.exe -s "$emulator" emu kill 2>/dev/null || true
-            ./adb.exe disconnect "$emulator" 2>/dev/null || true
+            $ADB_PATH -s "$emulator" emu kill 2>/dev/null || true
+            $ADB_PATH disconnect "$emulator" 2>/dev/null || true
         fi
     done <<< "$OFFLINE_EMULATORS"
     
     # Verificar de nuevo después de limpiar
     sleep 2
-    DEVICES_OUTPUT=$(./adb.exe devices)
+    DEVICES_OUTPUT=$($ADB_PATH devices | tr -d '\r')
     echo -e "${GREEN}✓${NC} Emuladores offline eliminados"
     echo "$DEVICES_OUTPUT"
 fi
 
-# Verificar que solo haya un dispositivo y no esté offline
+# Verificar que solo haya un dispositivo y no esté offline (SIEMPRE actualizar conteo)
 DEVICE_COUNT=$(echo "$DEVICES_OUTPUT" | grep -c "device$" || true)
 OFFLINE_COUNT=$(echo "$DEVICES_OUTPUT" | grep -c "offline" || true)
 
+# Si no hay dispositivos reales conectados, el contador será 0 o vacío
+if [ -z "$DEVICE_COUNT" ] || [ "$DEVICE_COUNT" = "0" ]; then
+    DEVICE_COUNT=0
+fi
+if [ -z "$OFFLINE_COUNT" ] || [ "$OFFLINE_COUNT" = "0" ]; then
+    OFFLINE_COUNT=0
+fi
+
 if [ $OFFLINE_COUNT -gt 0 ]; then
     echo -e "${YELLOW}⚠${NC} Todavía hay dispositivos offline. Reintentando limpieza..."
-    ./adb.exe kill-server
+    $ADB_PATH kill-server
     sleep 2
-    ./adb.exe start-server
+    $ADB_PATH start-server
     sleep 2
-    ./adb.exe connect $DEVICE
-    DEVICES_OUTPUT=$(./adb.exe devices)
+    $ADB_PATH connect $DEVICE
+    DEVICES_OUTPUT=$($ADB_PATH devices)
     DEVICE_COUNT=$(echo "$DEVICES_OUTPUT" | grep -c "device$" || true)
 fi
 
@@ -112,8 +114,8 @@ else
     echo -e "${YELLOW}⚠${NC} Múltiples dispositivos detectados ($DEVICE_COUNT)"
 fi
 
-# Paso 6: Verificar con Flutter
-echo -e "${YELLOW}[6/6]${NC} Verificando visibilidad en Flutter..."
+# Paso 5: Verificar con Flutter
+echo -e "${YELLOW}[5/5]${NC} Verificando visibilidad en Flutter..."
 cd /home/datainfers/projects/zync_app
 FLUTTER_DEVICES=$(flutter devices 2>&1)
 

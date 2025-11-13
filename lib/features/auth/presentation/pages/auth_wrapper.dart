@@ -8,6 +8,8 @@ import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
 import 'package:zync_app/core/services/app_badge_service.dart';
 import 'package:zync_app/core/services/session_cache_service.dart';
+import 'package:zync_app/notifications/notification_service.dart';
+import 'package:app_settings/app_settings.dart';
 
 /// AuthWrapper: Verifica el estado de autenticación y muestra la pantalla correcta
 /// 
@@ -172,11 +174,132 @@ class _AuthWrapperState extends State<AuthWrapper> {
         
         print('✅ [AuthWrapper] Funcionalidad silenciosa activada en background');
         
+        // Point 2: Verificar permisos después de activar funcionalidad silenciosa
+        await _checkNotificationPermissionsAfterAutoLogin(context);
+        
       } catch (e) {
         print('❌ [AuthWrapper] Error activando funcionalidad silenciosa: $e');
         _isSilentFunctionalityInitialized = false; // Reintentar si falló
       }
     });
+  }
+
+  // Point 2: Verificar permisos de notificación después del auto-login
+  Future<void> _checkNotificationPermissionsAfterAutoLogin(BuildContext checkContext) async {
+    // Esperar un poco para que la UI esté completamente renderizada
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    if (!checkContext.mounted) {
+      print('[POINT 2 AUTO] Context no mounted - cancelando verificación');
+      return;
+    }
+    
+    print('');
+    print('=== [POINT 2 AUTO] VERIFICACIÓN DE PERMISOS (AUTO-LOGIN) ===');
+    
+    try {
+      final hasPermission = await NotificationService.hasPermission();
+      
+      print('[POINT 2 AUTO] 🔍 Resultado hasPermission: $hasPermission');
+      
+      if (!hasPermission && checkContext.mounted) {
+        print('[POINT 2 AUTO] ⚠️ Permisos DENEGADOS - Mostrando modal informativo');
+        await _showPermissionDeniedDialog(checkContext);
+      } else {
+        print('[POINT 2 AUTO] ✅ Permisos concedidos - modo Silent funcionará correctamente');
+      }
+    } catch (e, stackTrace) {
+      print('[POINT 2 AUTO] ❌ ERROR verificando permisos: $e');
+      print('[POINT 2 AUTO] ❌ StackTrace: $stackTrace');
+    }
+    
+    print('=== [POINT 2 AUTO] FIN VERIFICACIÓN ===');
+    print('');
+  }
+  
+  // Point 2: Modal informativo cuando los permisos están denegados
+  Future<void> _showPermissionDeniedDialog(BuildContext dialogContext) async {
+    print('[POINT 2 MODAL AUTO] 📦 Iniciando showDialog...');
+    
+    return showDialog<void>(
+      context: dialogContext,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        print('[POINT 2 MODAL AUTO] 🎪 Builder ejecutado - Modal construyéndose');
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.notifications_off, color: Colors.orange, size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Permisos de Notificación',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Los permisos de notificación están desactivados.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Sin permisos de notificación, el modo Silent no funcionará correctamente.',
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Para activar los permisos:',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 8),
+                Text('1. Toca "Permitir"'),
+                Text('2. Busca "Notificaciones" en la configuración'),
+                Text('3. Activa las notificaciones para Zync'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                print('[POINT 2 MODAL AUTO] 🔴 Usuario presionó botón CERRAR');
+                Navigator.of(context).pop();
+                print('[POINT 2 MODAL AUTO] 🔴 Modal cerrado - Usuario NO activó permisos');
+              },
+              child: const Text(
+                'Cerrar',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                print('[POINT 2 MODAL AUTO] 🟢 Usuario presionó botón PERMITIR');
+                Navigator.of(context).pop();
+                print('[POINT 2 MODAL AUTO] 🔧 Abriendo configuración del sistema...');
+                
+                try {
+                  await AppSettings.openAppSettings(type: AppSettingsType.notification);
+                  print('[POINT 2 MODAL AUTO] ✅ Configuración de notificaciones abierta exitosamente');
+                } catch (e) {
+                  print('[POINT 2 MODAL AUTO] ❌ Error abriendo configuración: $e');
+                }
+              },
+              icon: const Icon(Icons.settings),
+              label: const Text('Permitir'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Limpia la funcionalidad silenciosa cuando no hay usuario autenticado

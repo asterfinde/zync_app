@@ -124,10 +124,11 @@ class MainActivity: FlutterActivity() {
         
         // Point 21 FASE 1: SIEMPRE mantener keep-alive activo
         // El logout manual se manejará desde Flutter (Settings)
+        // NOTA: En Android 12+ esto puede fallar silenciosamente, y está bien
         if (!isKeepAliveRunning) {
-            Log.d(TAG, "⚠️ [NATIVO] Keep-alive no estaba corriendo - iniciando desde onDestroy()")
+            Log.d(TAG, "⚠️ [NATIVO] Keep-alive no estaba corriendo - intentando iniciar desde onDestroy()")
             KeepAliveService.start(this)
-            isKeepAliveRunning = true
+            // NO marcar isKeepAliveRunning = true porque puede haber fallado
         }
     }
     

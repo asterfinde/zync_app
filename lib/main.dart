@@ -12,6 +12,7 @@ import 'package:zync_app/core/cache/persistent_cache.dart'; // CACHE PERSISTENTE
 import 'package:zync_app/core/utils/performance_tracker.dart'; // PERFORMANCE TRACKING
 import 'package:zync_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
 import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
+import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
 
 import 'core/global_keys.dart';
 
@@ -42,6 +43,10 @@ void main() async {
   await SessionCacheService.init();
   PerformanceTracker.end('SessionCache Init');
   print('✅ [main] SessionCache inicializado (bloqueante).');
+  
+  // Point 2: Inicializar servicios de notificación ANTES de runApp()
+  await SilentFunctionalityCoordinator.initializeServices();
+  print('✅ [main] SilentFunctionalityCoordinator inicializado.');
   
   // 🔍 Verificar si hay estado nativo disponible (solo Android)
   try {
