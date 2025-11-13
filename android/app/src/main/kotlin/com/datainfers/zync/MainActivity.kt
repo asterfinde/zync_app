@@ -368,8 +368,8 @@ class MainActivity: FlutterActivity() {
         )
 
         val notification = NotificationCompat.Builder(this, "emoji_channel")
-            .setContentTitle("🎯 Mini Emoji App")
-            .setContentText("Toca para abrir modal de emojis")
+            .setContentTitle("Zync")
+            .setContentText("Toca para cambiar tu estado")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
@@ -390,10 +390,10 @@ class MainActivity: FlutterActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 "emoji_channel",
-                "Mini Emoji Notifications",
+                "Zync Quick Actions",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Notificaciones para abrir modal de emojis"
+                description = "Notificación persistente para cambio rápido de estado"
                 enableLights(true)
                 enableVibration(false)
                 setShowBadge(true)

@@ -16,8 +16,10 @@ class KeepAliveService : Service() {
     
     companion object {
         private const val TAG = "KeepAliveService"
-        private const val CHANNEL_ID = "zync_keep_alive"
-        private const val NOTIFICATION_ID = 999
+        // Usar el mismo canal e ID que la notificación persistente de MainActivity
+        // para que SOLO exista una notificación visible
+        private const val CHANNEL_ID = "emoji_channel"
+        private const val NOTIFICATION_ID = 12345
         
         fun start(context: Context) {
             Log.d(TAG, "🟢 Iniciando servicio keep-alive")

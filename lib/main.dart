@@ -13,6 +13,7 @@ import 'package:zync_app/core/utils/performance_tracker.dart'; // PERFORMANCE TR
 import 'package:zync_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
 import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
+import 'package:zync_app/notifications/notification_service.dart'; // Point 2: Notification Service
 
 import 'core/global_keys.dart';
 
@@ -143,6 +144,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       PerformanceTracker.start('App Maximization');
       PerformanceTracker.onAppResumed();
       
+      // Point 2: Verificar permisos al regresar (usuario pudo haberlos activado en Settings)
+      _checkPermissionsOnResume();
+      
       // Esperar a que UI esté lista
       WidgetsBinding.instance.addPostFrameCallback((_) {
         PerformanceTracker.end('App Maximization');
@@ -153,6 +157,36 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           debugPrint(report);
         });
       });
+    }
+  }
+
+  // Point 2: Verificar permisos al regresar del background
+  // Detecta si el usuario activó permisos en Settings
+  Future<void> _checkPermissionsOnResume() async {
+    // Solo verificar si hay un usuario autenticado
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('[App Resume] No hay usuario autenticado - skip verificación permisos');
+      return;
+    }
+    
+    print('[App Resume] 🔍 Verificando permisos de notificación...');
+    
+    try {
+      final hasPermission = await NotificationService.hasPermission();
+      
+      if (hasPermission) {
+        print('[App Resume] ✅ Permisos CONCEDIDOS - Verificando si notificación está activa...');
+        
+        // Activar notificación persistente si no está activa
+        // El servicio internamente verifica si ya está activa
+        await NotificationService.showQuickActionNotification();
+        print('[App Resume] ✅ Notificación persistente activada/verificada');
+      } else {
+        print('[App Resume] ⚠️ Permisos aún DENEGADOS - notificación no disponible');
+      }
+    } catch (e) {
+      print('[App Resume] ❌ Error verificando permisos: $e');
     }
   }
 
