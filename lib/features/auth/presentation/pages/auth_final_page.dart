@@ -7,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
+import 'package:zync_app/notifications/notification_service.dart'; // Point 2
+import 'package:app_settings/app_settings.dart'; // Point 2
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});
@@ -59,7 +61,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           }
           
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => HomePage()),
+            MaterialPageRoute(builder: (newContext) {
+              // Point 2: Verificar permisos DESPUÉS de navegar (usando el nuevo contexto)
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _checkNotificationPermissionsInContext(newContext);
+              });
+              return HomePage();
+            }),
           );
         }
       } else {
@@ -120,7 +128,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         }
         
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomePage()),
+          MaterialPageRoute(builder: (newContext) {
+            // Point 2: Verificar permisos DESPUÉS de navegar (usando el nuevo contexto)
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _checkNotificationPermissionsInContext(newContext);
+            });
+            return HomePage();
+          }),
         );
       }
     } on FirebaseAuthException catch (e) {
@@ -155,6 +169,99 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       default:
         return 'Error inesperado de autenticación.';
     }
+  }
+
+  // Point 2: Verificar permisos de notificación después del login/registro
+  Future<void> _checkNotificationPermissionsInContext(BuildContext checkContext) async {
+    try {
+      final hasPermission = await NotificationService.hasPermission();
+      
+      print('🔍 [PERMISOS] Estado de permisos de notificación: $hasPermission');
+      
+      if (!hasPermission && checkContext.mounted) {
+        print('⚠️ [PERMISOS] Permisos denegados - mostrando modal informativo');
+        await _showPermissionDeniedDialogInContext(checkContext);
+      } else {
+        print('✅ [PERMISOS] Permisos concedidos - modo Silent funcionará correctamente');
+      }
+    } catch (e) {
+      print('❌ [PERMISOS] Error verificando permisos: $e');
+    }
+  }
+
+  // Point 2: Modal informativo cuando los permisos están denegados
+  Future<void> _showPermissionDeniedDialogInContext(BuildContext dialogContext) async {
+    return showDialog<void>(
+      context: dialogContext,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.notifications_off, color: Colors.orange, size: 28),
+              SizedBox(width: 12),
+              Text('Permisos de Notificación'),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Los permisos de notificación están desactivados.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Sin permisos de notificación, el modo Silent no funcionará correctamente.',
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Para activar los permisos:',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 8),
+                Text('1. Toca "Permitir"'),
+                Text('2. Busca "Notificaciones" en la configuración'),
+                Text('3. Activa las notificaciones para Zync'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                print('🔴 [PERMISOS] Usuario cerró el modal sin activar permisos');
+              },
+              child: const Text(
+                'Cerrar',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                print('🟢 [PERMISOS] Usuario eligió abrir configuración');
+                
+                try {
+                  await AppSettings.openAppSettings(type: AppSettingsType.notification);
+                  print('✅ [PERMISOS] Configuración de notificaciones abierta');
+                } catch (e) {
+                  print('❌ [PERMISOS] Error abriendo configuración: $e');
+                }
+              },
+              icon: const Icon(Icons.settings),
+              label: const Text('Permitir'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
 

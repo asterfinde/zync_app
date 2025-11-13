@@ -43,6 +43,18 @@
   - Navegación directa a settings del sistema
   - No garantiza concesión de permisos (depende del usuario)
 
+### Tests
+- ☐ Test 1: Login con permisos ✅ → NO modal → HomePage + notificación
+- ☐ Test 2: Login sin permisos ⚠️ → SÍ modal → Texto correcto
+- ☐ Test 3: Botón Cerrar → Modal cierra → HomePage sin notificación
+- ☐ Test 4: Botón Permitir → Abre Settings Android → Permisos activables
+- ☐ Test 5: Registro con permisos ✅ → NO modal → HomePage + notificación
+- ☐ Test 6: Registro sin permisos ⚠️ → SÍ modal → Texto correcto
+- ☐ Test 7: Logs correctos → Estados claros en consola
+- ☐ Test 8: Modal bloqueado → No cierra tocando fuera
+- ☐ Test 9: Point 1 intacto → Logout cancela TODO
+
+
 ## 3. Sistema de Notificaciones Permanentes
 
 ### 3.1. Comportamiento Post-Autenticación

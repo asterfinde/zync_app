@@ -57,6 +57,8 @@ dependencies:
   app_badge_plus: ^1.1.6
   # Point 16: URL launcher para abrir Google Maps
   url_launcher: ^6.3.0
+  # Point 2: Abrir configuración del SO para permisos
+  app_settings: ^5.1.1
 
 dev_dependencies:
   flutter_test:
