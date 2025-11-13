@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart';
+import '../../../settings/presentation/pages/settings_page.dart';
 import 'create_circle_view.dart';
 import 'join_circle_view.dart';
 
@@ -135,25 +136,29 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ],
                 ),
               ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onSelected: (value) {
-                  switch (value) {
-                    case 'logout':
-                      _showLogoutDialog(context);
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: ListTile(
-                      leading: Icon(Icons.logout, color: Colors.grey),
-                      title: Text('Cerrar Sesión'),
-                      contentPadding: EdgeInsets.zero,
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsPage(),
                     ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1CE7E8),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.settings, size: 18),
+                label: const Text('Ajustes'),
               ),
             ],
           ),

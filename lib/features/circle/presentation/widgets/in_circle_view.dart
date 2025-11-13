@@ -363,33 +363,29 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: _AppColors.textPrimary),
-                  color: _AppColors.cardBackground,
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'leave_circle':
-                        _showLeaveCircleDialog(context);
-                        break;
-                      case 'settings':
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsPage(),
-                          ),
-                        );
-                        break;
-                    }
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsPage(),
+                      ),
+                    );
                   },
-                  itemBuilder: (context) => [
-                    _buildPopupMenuItem(
-                      value: 'settings', icon: Icons.settings, text: 'Configuración',
-                      color: _AppColors.accent,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1CE7E8),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
-                    _buildPopupMenuItem(
-                      value: 'leave_circle', icon: Icons.exit_to_app, text: 'Salir del Círculo',
-                      color: _AppColors.sosRed,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
-                  ],
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.settings, size: 18),
+                  label: const Text('Ajustes'),
                 ),
               ],
             ),

@@ -620,8 +620,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           ElevatedButton.icon(
                             onPressed: () => _showLogoutDialog(context, ref),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _AppColors.sosRed,
-                              foregroundColor: _AppColors.textPrimary,
+                              backgroundColor: const Color(0xFFFFC401), // Ámbar
+                              foregroundColor: Colors.black,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -630,7 +630,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             icon: const Icon(Icons.logout),
                             label: const Text(
                               'Cerrar Sesión',
-                              style: _AppTextStyles.destructiveButton,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                         ],
