@@ -14,6 +14,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
+import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
@@ -32,6 +34,12 @@ class MainActivity: FlutterActivity() {
     
     // Point 1.1: Bandera para evitar reiniciar servicios durante logout manual
     private var isManualLogoutInProgress = false
+
+    // Point 4: Engine cacheado para modal instantáneo
+    companion object {
+        const val MODAL_ENGINE_ID = "status_modal_engine"
+        private var isModalEngineWarmedUp = false
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -200,12 +208,20 @@ class MainActivity: FlutterActivity() {
                         Log.d(TAG, "📤 [FLUTTER→KOTLIN] Sincronizando userId: $userId")
                         currentUserId = userId
                         NativeStateManager.saveUserState(this, userId, email, circleId)
+                        
+                        // Point 4: Pre-calentar engine para modal instantáneo
+                        warmUpModalEngine()
+                        
                         result.success(true)
                     } else {
                         // Logout - limpiar estado
                         Log.d(TAG, "🧹 [FLUTTER→KOTLIN] Limpiando estado (logout)")
                         currentUserId = null
                         NativeStateManager.clear(this)
+                        
+                        // Point 4: Destruir engine cacheado al hacer logout
+                        destroyModalEngine()
+                        
                         result.success(true)
                     }
                 }
@@ -406,6 +422,67 @@ class MainActivity: FlutterActivity() {
             }
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+        }
+    }
+    
+    // Point 4: Pre-calentar Flutter Engine para modal instantáneo
+    private fun warmUpModalEngine() {
+        if (isModalEngineWarmedUp) {
+            Log.d(TAG, " [MODAL] Engine ya está pre-calentado")
+            return
+        }
+        
+        try {
+            Log.d(TAG, " [MODAL] Pre-calentando Flutter Engine...")
+            val startTime = System.currentTimeMillis()
+            
+            // Crear un nuevo Flutter Engine
+            val flutterEngine = FlutterEngine(applicationContext)
+            
+            // Inicializar Dart VM (esto toma tiempo)
+            flutterEngine.dartExecutor.executeDartEntrypoint(
+                DartExecutor.DartEntrypoint.createDefault()
+            )
+            
+            // Cachear el engine para reutilizarlo
+            FlutterEngineCache
+                .getInstance()
+                .put(MODAL_ENGINE_ID, flutterEngine)
+            
+            val duration = System.currentTimeMillis() - startTime
+            isModalEngineWarmedUp = true
+            
+            Log.d(TAG, " [MODAL] Engine pre-calentado en ${duration}ms - Modal será instantáneo")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, " [MODAL] Error pre-calentando engine: ${e.message}")
+        }
+    }
+    
+    // Point 4: Destruir engine cacheado al hacer logout
+    private fun destroyModalEngine() {
+        if (!isModalEngineWarmedUp) {
+            Log.d(TAG, " [MODAL] Engine no estaba pre-calentado")
+            return
+        }
+        
+        try {
+            Log.d(TAG, " [MODAL] Destruyendo engine cacheado...")
+            
+            val cachedEngine = FlutterEngineCache
+                .getInstance()
+                .get(MODAL_ENGINE_ID)
+            
+            if (cachedEngine != null) {
+                FlutterEngineCache.getInstance().remove(MODAL_ENGINE_ID)
+                cachedEngine.destroy()
+                Log.d(TAG, " [MODAL] Engine destruido exitosamente")
+            }
+            
+            isModalEngineWarmedUp = false
+            
+        } catch (e: Exception) {
+            Log.e(TAG, " [MODAL] Error destruyendo engine: ${e.message}")
         }
     }
 }

@@ -106,7 +106,13 @@ class KeepAliveService : Service() {
     }
     
     private fun createNotification(): Notification {
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        // Point 4: Abrir StatusModalActivity en lugar de MainActivity
+        // Esto muestra solo el modal de emojis sin abrir la app completa
+        val intent = Intent(this, StatusModalActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("open_status_modal", true)
+        }
+        
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,

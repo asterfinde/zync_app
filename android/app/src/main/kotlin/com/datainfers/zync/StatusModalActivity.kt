@@ -2,6 +2,7 @@ package com.datainfers.zync
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
@@ -22,6 +23,12 @@ class StatusModalActivity : FlutterActivity() {
         Log.d(TAG, "[FASE 5] onCreate - abriendo modal transparente")
         super.onCreate(savedInstanceState)
         
+        // Point 4: Configurar ventana para mostrarse SOBRE otras apps
+        // Esto permite que el modal sea visible incluso cuando la app está minimizada
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        
         // Configurar como overlay transparente
         window.setFlags(
             android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
@@ -32,6 +39,12 @@ class StatusModalActivity : FlutterActivity() {
             android.view.WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             android.view.WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
         )
+        
+        // Point 4: Traer la activity al frente
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
     }
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -89,5 +102,22 @@ class StatusModalActivity : FlutterActivity() {
     override fun onDestroy() {
         Log.d(TAG, "[FASE 5] onDestroy - modal cerrado")
         super.onDestroy()
+    }
+    
+    // Point 4: Usar engine cacheado para apertura instantánea
+    override fun provideFlutterEngine(context: android.content.Context): FlutterEngine? {
+        Log.d(TAG, "[MODAL] Buscando engine cacheado...")
+        
+        val cachedEngine = FlutterEngineCache
+            .getInstance()
+            .get(MainActivity.MODAL_ENGINE_ID)
+        
+        if (cachedEngine != null) {
+            Log.d(TAG, "⚡ [MODAL] Usando engine pre-calentado - apertura instantánea!")
+            return cachedEngine
+        } else {
+            Log.w(TAG, "⚠️ [MODAL] Engine no encontrado - creando nuevo (lento)")
+            return super.provideFlutterEngine(context)
+        }
     }
 }
