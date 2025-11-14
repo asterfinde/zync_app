@@ -82,9 +82,15 @@ class MainActivity: FlutterActivity() {
             return
         }
         
+        // Point 2 FIX: Solo iniciar keep-alive si hay un usuario autenticado
+        if (currentUserId == null) {
+            Log.d(TAG, "⚠️ [NATIVO] No hay usuario autenticado - NO iniciando KeepAliveService")
+            return
+        }
+        
         // 🚀 FASE 1: Iniciar keep-alive NATIVO (no esperar a Flutter)
         if (!isKeepAliveRunning) {
-            Log.d(TAG, "🟢 [NATIVO] Iniciando keep-alive service desde onPause()")
+            Log.d(TAG, "🟢 [NATIVO] Iniciando keep-alive service desde onPause() para usuario: $currentUserId")
             KeepAliveService.start(this)
             isKeepAliveRunning = true
         }
