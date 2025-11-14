@@ -59,8 +59,21 @@ class KeepAliveService : Service() {
         val notification = createNotification()
         startForeground(NOTIFICATION_ID, notification)
         
-        // START_STICKY: Android reiniciará el servicio si lo mata
+        // Point 3.1: START_STICKY garantiza que Android reinicie el servicio si lo mata
+        // Esto mantiene la notificación persistente incluso si el sistema necesita memoria
         return START_STICKY
+    }
+    
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d(TAG, "⚠️ onTaskRemoved() - Usuario cerró app desde recientes")
+        
+        // Point 3.1: Reiniciar el servicio para mantener la notificación activa
+        // Esto garantiza que la notificación persista incluso cuando la app está cerrada
+        val restartServiceIntent = Intent(applicationContext, KeepAliveService::class.java)
+        applicationContext.startService(restartServiceIntent)
+        
+        Log.d(TAG, "✅ Servicio programado para reinicio automático")
     }
     
     override fun onBind(intent: Intent?): IBinder? {
@@ -70,6 +83,9 @@ class KeepAliveService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy() - Servicio destruido")
+        
+        // Point 3.1: Si el servicio se destruye inesperadamente (no por logout manual),
+        // Android lo reiniciará automáticamente gracias a START_STICKY
     }
     
     private fun createNotificationChannel() {
