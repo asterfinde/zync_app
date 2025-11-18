@@ -8,6 +8,7 @@ import '../../../../features/auth/presentation/pages/auth_final_page.dart';
 import '../../../../notifications/notification_service.dart';
 import '../../../../core/widgets/quick_actions_config_widget.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
+import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout
 
 // ===========================================================================
 // SECCIÓN DE DISEÑO: Colores y Estilos basados en la pantalla de referencia
@@ -92,6 +93,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     super.initState();
     debugPrint('[SettingsPage] 🔧 Inicializando pantalla de configuración');
     _loadCurrentInfo();
+    
+    // Cargar datos de Firebase DESPUÉS del primer frame (no bloquear)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadFirebaseDataInBackground();
+    });
   }
 
   @override
@@ -101,8 +107,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     super.dispose();
   }
 
-  /// Carga la información actual del usuario y círculo
-  void _loadCurrentInfo() async {
+  /// Carga la información actual del usuario y círculo (SÍNCRONO)
+  void _loadCurrentInfo() {
     try {
       final authState = ref.read(authProvider);
       
@@ -110,21 +116,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         _userId = authState.user.uid;
         _userEmail = authState.user.email;
         
-        // Obtener nickname desde Firestore (NO desde email)
-        await _loadUserNickname();
+        // OPTIMIZACIÓN: Usar datos del authProvider inmediatamente (cache-first)
+        _currentUserName = authState.user.nickname.isNotEmpty 
+            ? authState.user.nickname 
+            : authState.user.email.split('@')[0];
+        _userNameController.text = _currentUserName ?? '';
         
-        debugPrint('[SettingsPage] 🔧 Usuario cargado: nickname=[$_currentUserName], email=[$_userEmail] (ID: $_userId)');
-        
-        // Obtener información del círculo directamente de Firebase
-        await _loadCircleInfo();
+        debugPrint('[SettingsPage] ⚡ Usuario cargado desde cache: nickname=[$_currentUserName]');
       }
     } catch (e) {
       debugPrint('[SettingsPage] ❌ Error cargando información: $e');
+    }
+  }
+  
+  /// Carga datos de Firebase en background (ASÍNCRONO - no bloquea UI)
+  Future<void> _loadFirebaseDataInBackground() async {
+    try {
+      // Cargar datos de Firebase sin bloquear
+      await _loadUserNickname();
+      await _loadCircleInfo();
+    } catch (e) {
+      debugPrint('[SettingsPage] ❌ Error cargando datos de Firebase: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Error cargando datos: ${e.toString()}'),
-            backgroundColor: _AppColors.sosRed, // <-- CAMBIO DE UI
+            backgroundColor: _AppColors.sosRed,
           ),
         );
       }
@@ -443,6 +460,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     print('⚠️ [LOGOUT] Timeout en deactivateAfterLogout, continuando...');
                   },
                 );
+                
+                // FIX: Limpiar SessionCache INMEDIATAMENTE para evitar parpadeo
+                print('🔴 [LOGOUT] Limpiando SessionCache...');
+                await SessionCacheService.clearSession();
                 
                 print('🔴 [LOGOUT] Paso 2/3: Cerrando sesión de Firebase...');
                 

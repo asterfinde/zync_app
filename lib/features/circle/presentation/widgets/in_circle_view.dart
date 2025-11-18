@@ -461,7 +461,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                   _isLoadingNicknames
                     ? const Center(child: CircularProgressIndicator(color: _AppColors.accent))
                     : Column(
-                        children: circle.members.asMap().entries.map((entry) {
+                        children: _getSortedMembers(circle.members).asMap().entries.map((entry) {
                           final index = entry.key;
                           final memberId = entry.value;
 
@@ -609,6 +609,26 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           : authState.user.email.split('@')[0];
     }
     return 'Usuario';
+  }
+
+  /// Ordena los miembros: usuario actual primero, resto alfabéticamente
+  List<String> _getSortedMembers(List<String> members) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) return members;
+
+    // Separar usuario actual del resto
+    final currentUserList = members.where((id) => id == currentUserId).toList();
+    final otherMembers = members.where((id) => id != currentUserId).toList();
+
+    // Ordenar otros miembros alfabéticamente por nickname
+    otherMembers.sort((a, b) {
+      final nicknameA = _memberNicknamesCache[a] ?? a;
+      final nicknameB = _memberNicknamesCache[b] ?? b;
+      return nicknameA.toLowerCase().compareTo(nicknameB.toLowerCase());
+    });
+
+    // Usuario actual primero, luego el resto ordenado
+    return [...currentUserList, ...otherMembers];
   }
 
   /// Obtiene todos los nicknames de los miembros (llamado desde _loadAllNicknames)

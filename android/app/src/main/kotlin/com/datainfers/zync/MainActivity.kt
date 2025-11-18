@@ -428,12 +428,12 @@ class MainActivity: FlutterActivity() {
     // Point 4: Pre-calentar Flutter Engine para modal instantáneo
     private fun warmUpModalEngine() {
         if (isModalEngineWarmedUp) {
-            Log.d(TAG, " [MODAL] Engine ya está pre-calentado")
+            Log.d(TAG, "⚡ [MODAL] Engine ya está pre-calentado")
             return
         }
         
         try {
-            Log.d(TAG, " [MODAL] Pre-calentando Flutter Engine...")
+            Log.d(TAG, "🔥 [MODAL] Pre-calentando Flutter Engine...")
             val startTime = System.currentTimeMillis()
             
             // Crear un nuevo Flutter Engine
@@ -444,6 +444,19 @@ class MainActivity: FlutterActivity() {
                 DartExecutor.DartEntrypoint.createDefault()
             )
             
+            // OPTIMIZACIÓN: Configurar canal de StatusModalService inmediatamente
+            // Esto reduce el tiempo de apertura del modal
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/status_modal")
+                .setMethodCallHandler { call, result ->
+                    when (call.method) {
+                        "closeModal" -> {
+                            Log.d(TAG, "[MODAL] Solicitud de cierre recibida")
+                            result.success(true)
+                        }
+                        else -> result.notImplemented()
+                    }
+                }
+            
             // Cachear el engine para reutilizarlo
             FlutterEngineCache
                 .getInstance()
@@ -452,10 +465,10 @@ class MainActivity: FlutterActivity() {
             val duration = System.currentTimeMillis() - startTime
             isModalEngineWarmedUp = true
             
-            Log.d(TAG, " [MODAL] Engine pre-calentado en ${duration}ms - Modal será instantáneo")
+            Log.d(TAG, "✅ [MODAL] Engine pre-calentado en ${duration}ms - Modal será instantáneo")
             
         } catch (e: Exception) {
-            Log.e(TAG, " [MODAL] Error pre-calentando engine: ${e.message}")
+            Log.e(TAG, "❌ [MODAL] Error pre-calentando engine: ${e.message}")
         }
     }
     

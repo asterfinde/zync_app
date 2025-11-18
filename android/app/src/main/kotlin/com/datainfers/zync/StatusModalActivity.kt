@@ -21,6 +21,10 @@ class StatusModalActivity : FlutterActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "[FASE 5] onCreate - abriendo modal transparente")
+        
+        // CRÍTICO: Configurar ventana ANTES de super.onCreate() para evitar que se vea MainActivity
+        window.setBackgroundDrawableResource(android.R.color.transparent)
+        
         super.onCreate(savedInstanceState)
         
         // Point 4: Configurar ventana para mostrarse SOBRE otras apps
@@ -104,20 +108,27 @@ class StatusModalActivity : FlutterActivity() {
         super.onDestroy()
     }
     
-    // Point 4: Usar engine cacheado para apertura instantánea
+    // Point 4: SIEMPRE crear engine nuevo para evitar mostrar in_circle_view
+    // Sacrificamos velocidad por limpieza visual
     override fun provideFlutterEngine(context: android.content.Context): FlutterEngine? {
-        Log.d(TAG, "[MODAL] Buscando engine cacheado...")
+        Log.d(TAG, "[MODAL] Creando engine nuevo y limpio...")
         
-        val cachedEngine = FlutterEngineCache
-            .getInstance()
-            .get(MainActivity.MODAL_ENGINE_ID)
+        // CRÍTICO: NO usar engine cacheado porque puede tener estado de navegación
+        // Crear un engine completamente nuevo cada vez
+        val newEngine = FlutterEngine(context.applicationContext)
         
-        if (cachedEngine != null) {
-            Log.d(TAG, "⚡ [MODAL] Usando engine pre-calentado - apertura instantánea!")
-            return cachedEngine
-        } else {
-            Log.w(TAG, "⚠️ [MODAL] Engine no encontrado - creando nuevo (lento)")
-            return super.provideFlutterEngine(context)
-        }
+        // Inicializar Dart VM
+        newEngine.dartExecutor.executeDartEntrypoint(
+            DartExecutor.DartEntrypoint.createDefault()
+        )
+        
+        Log.d(TAG, "✅ [MODAL] Engine nuevo creado - sin estado previo")
+        return newEngine
+    }
+    
+    // CRÍTICO: NO usar engine cacheado
+    override fun getCachedEngineId(): String? {
+        // Retornar null para forzar creación de engine nuevo
+        return null
     }
 }
