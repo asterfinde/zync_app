@@ -2,6 +2,7 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:zync_app/firebase_options.dart';
@@ -14,6 +15,8 @@ import 'package:zync_app/core/services/session_cache_service.dart'; // FASE 2B: 
 import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
 import 'package:zync_app/notifications/notification_service.dart'; // Point 2: Notification Service
+import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
+import 'package:zync_app/features/circle/domain_old/entities/user_status.dart'; // StatusType enum
 
 import 'core/global_keys.dart';
 
@@ -59,6 +62,37 @@ void main() async {
     // Esperado en iOS o si falla la lectura
     print('ℹ️ [main] NativeState no disponible (Android only): $e');
   }
+  
+  // 👆 Handler para recibir actualizaciones de estado desde EmojiDialogActivity nativo
+  const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
+  statusUpdateChannel.setMethodCallHandler((call) async {
+    if (call.method == 'updateStatus') {
+      final statusTypeName = call.arguments['statusType'] as String?;
+      print('👆 [NATIVE→FLUTTER] Recibido estado: $statusTypeName');
+      
+      if (statusTypeName != null) {
+        try {
+          // Convertir string a StatusType enum
+          final statusType = StatusType.values.firstWhere(
+            (e) => e.name == statusTypeName,
+            orElse: () => StatusType.available,
+          );
+          
+          // Actualizar en Firebase usando StatusService
+          final result = await StatusService.updateUserStatus(statusType);
+          
+          if (result.isSuccess) {
+            print('✅ [NATIVE→FLUTTER] Estado actualizado en Firebase: ${statusType.description}');
+          } else {
+            print('❌ [NATIVE→FLUTTER] Error actualizando estado: ${result.errorMessage}');
+          }
+        } catch (e) {
+          print('❌ [NATIVE→FLUTTER] Error procesando estado: $e');
+        }
+      }
+    }
+  });
+  print('✅ [main] Handler de estado nativo configurado.');
 
   // 🎯 RENDERIZAR UI (con cache ya disponible)
   runApp(const ProviderScope(child: MyApp()));

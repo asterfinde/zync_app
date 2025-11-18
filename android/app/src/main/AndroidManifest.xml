@@ -62,6 +62,17 @@
             android:finishOnTaskLaunch="true"
             android:noHistory="true"/>
 
+        <!-- EmojiDialogActivity: Modal nativo instantáneo (sin Flutter) -->
+        <activity
+            android:name=".EmojiDialogActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:noHistory="true"/>
+
         <receiver
             android:name=".ShowQuickStatusReceiver"
             android:exported="true"/>

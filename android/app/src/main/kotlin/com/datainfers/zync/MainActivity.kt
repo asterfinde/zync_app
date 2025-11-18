@@ -2,8 +2,10 @@ package com.datainfers.zync
 
 import android.Manifest
 import android.app.*
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -41,8 +43,39 @@ class MainActivity: FlutterActivity() {
         private var isModalEngineWarmedUp = false
     }
 
+    // BroadcastReceiver para actualizar estado sin abrir app
+    private val statusUpdateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.datainfers.zync.UPDATE_STATUS") {
+                val emoji = intent.getStringExtra("emoji")
+                val status = intent.getStringExtra("status")
+                
+                Log.d(TAG, "👆 [BROADCAST] Recibido estado: $emoji ($status)")
+                
+                if (emoji != null && status != null) {
+                    // Enviar a Flutter para actualizar en Firebase
+                    flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
+                        val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
+                        channel.invokeMethod("updateStatus", mapOf(
+                            "statusType" to status
+                        ))
+                        Log.d(TAG, "✅ [BROADCAST] Estado enviado a Flutter")
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Registrar BroadcastReceiver para actualizar estado sin abrir app
+        val filter = IntentFilter("com.datainfers.zync.UPDATE_STATUS")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(statusUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(statusUpdateReceiver, filter)
+        }
         
         // � FASE 1: Inicializar cache nativo ANTES de Flutter
         val cacheStart = System.currentTimeMillis()
@@ -136,6 +169,14 @@ class MainActivity: FlutterActivity() {
         super.onDestroy()
         Log.d(TAG, "onDestroy() - Activity destruida")
         
+        // Desregistrar BroadcastReceiver para evitar memory leaks
+        try {
+            unregisterReceiver(statusUpdateReceiver)
+            Log.d(TAG, "✅ [BROADCAST] Receiver desregistrado")
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ [BROADCAST] Error desregistrando receiver: ${e.message}")
+        }
+        
         // Point 21 FASE 1: SIEMPRE mantener keep-alive activo
         // El logout manual se manejará desde Flutter (Settings)
         // NOTA: En Android 12+ esto puede fallar silenciosamente, y está bien
@@ -162,7 +203,28 @@ class MainActivity: FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        Log.d(TAG, "Nueva intent recibida")
+        Log.d(TAG, "Nueva intent recibida: ${intent.action}")
+        
+        // Handler para actualización de estado desde EmojiDialogActivity
+        if (intent.action == "com.datainfers.zync.UPDATE_STATUS") {
+            val emoji = intent.getStringExtra("emoji")
+            val status = intent.getStringExtra("status")
+            
+            Log.d(TAG, "👆 [NATIVE] Recibido estado desde dialog: $emoji ($status)")
+            
+            if (emoji != null && status != null) {
+                // Enviar a Flutter para actualizar en Firebase
+                flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
+                    val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
+                    channel.invokeMethod("updateStatus", mapOf(
+                        "emoji" to emoji,
+                        "status" to status
+                    ))
+                    Log.d(TAG, "✅ [NATIVE] Estado enviado a Flutter")
+                }
+            }
+            return
+        }
         
         if (intent.getBooleanExtra("open_emoji_modal", false)) {
             flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
