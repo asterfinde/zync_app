@@ -2,6 +2,7 @@ package com.datainfers.zync
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -11,6 +12,10 @@ import android.view.Gravity
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 
 /**
  * Modal nativo de Android para selección de emojis
@@ -74,11 +79,21 @@ class EmojiDialogActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(12, 12, 12, 12)
                 
-                // Fondo gris redondeado (como Flutter)
+                // Fondo gris redondeado (EXACTO como Flutter)
                 background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#2A2A2A")) // Gris oscuro
-                    cornerRadius = 24f // Bordes redondeados
+                    setColor(Color.parseColor("#2C2C2C")) // Gris oscuro (igual a Flutter)
+                    cornerRadius = 16f * resources.displayMetrics.density // 16dp (igual a Flutter)
                 }
+                
+                // Ripple effect para feedback visual
+                foreground = android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(Color.parseColor("#1CE4B3")),
+                    null,
+                    GradientDrawable().apply {
+                        setColor(Color.WHITE)
+                        cornerRadius = 16f * resources.displayMetrics.density
+                    }
+                )
                 
                 // Tamaño del botón
                 val size = 180 // dp
@@ -89,29 +104,39 @@ class EmojiDialogActivity : Activity() {
                 }
             }
             
-            // Emoji (arriba)
+            // Emoji (arriba) - EXACTO como Flutter: 32sp
             val emojiView = TextView(this).apply {
                 text = emoji
-                textSize = 36f
+                textSize = 32f // Igual a Flutter
                 gravity = Gravity.CENTER
             }
             
-            // Label (abajo)
+            // Label (abajo) - EXACTO como Flutter: 11sp
             val labelView = TextView(this).apply {
                 text = label
-                textSize = 14f
+                textSize = 11f // Igual a Flutter
                 gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+                setTextColor(Color.parseColor("#B0B0B0")) // Gris claro (igual a Flutter)
                 setPadding(0, 8, 0, 0)
             }
             
             container.addView(emojiView)
             container.addView(labelView)
             
-            // Click listener
+            // Click listener con feedback visual
             container.setOnClickListener {
                 Log.d(TAG, "👆 [NATIVE] Estado seleccionado: $emoji $label ($statusType)")
-                updateUserStatus(emoji, statusType)
+                
+                // ✨ FEEDBACK VISUAL: Highlight temporal antes de cerrar
+                container.background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#1CE4B3")) // Verde accent
+                    cornerRadius = 16f * resources.displayMetrics.density
+                }
+                
+                // Esperar 200ms para que el usuario vea el feedback
+                container.postDelayed({
+                    updateUserStatus(emoji, statusType)
+                }, 200)
             }
             
             gridLayout.addView(container)
@@ -130,19 +155,45 @@ class EmojiDialogActivity : Activity() {
     }
     
     private fun updateUserStatus(emoji: String, status: String) {
-        Log.d(TAG, "🔥 [NATIVE] Actualizando estado: $emoji ($status)")
+        Log.d(TAG, "🔥 [HYBRID] Actualizando estado: $emoji ($status)")
         
-        // Enviar broadcast a MainActivity SIN abrirla
-        // Esto permite actualizar Firebase sin mostrar la app
+        val timestamp = System.currentTimeMillis()
+        
+        // 🚀 PASO 1: Broadcast inmediato (si app está viva, actualiza instantáneamente)
+        Log.d(TAG, "📡 [HYBRID] Paso 1/3 - Enviando broadcast inmediato")
         val intent = Intent("com.datainfers.zync.UPDATE_STATUS").apply {
             putExtra("emoji", emoji)
             putExtra("status", status)
-            setPackage(packageName) // Solo para esta app
+            setPackage(packageName)
         }
-        
         sendBroadcast(intent)
         
-        Log.d(TAG, "✅ [NATIVE] Broadcast enviado - cerrando dialog")
+        // 💾 PASO 2: Guardar en cache (backup por si app está cerrada)
+        Log.d(TAG, "💾 [HYBRID] Paso 2/3 - Guardando en cache")
+        val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("statusType", status)
+            .putString("emoji", emoji)
+            .putLong("timestamp", timestamp)
+            .apply()
+        
+        // 💼 PASO 3: Programar WorkManager como backup (verifica en 30s)
+        Log.d(TAG, "💼 [HYBRID] Paso 3/3 - Programando WorkManager backup")
+        val workData = Data.Builder()
+            .putString("statusType", status)
+            .putString("emoji", emoji)
+            .putLong("timestamp", timestamp)
+            .build()
+        
+        val workRequest = OneTimeWorkRequestBuilder<StatusUpdateWorker>()
+            .setInitialDelay(30, TimeUnit.SECONDS)
+            .setInputData(workData)
+            .addTag("status_update_$timestamp")
+            .build()
+        
+        WorkManager.getInstance(this).enqueue(workRequest)
+        
+        Log.d(TAG, "✅ [HYBRID] 3 pasos completados - cerrando dialog")
         finish()
     }
 }

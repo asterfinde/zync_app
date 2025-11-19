@@ -258,7 +258,36 @@ class MainActivity: FlutterActivity() {
             }
         }
         
-        // 🚀 FASE 1: Canal para Native State (Flutter ↔ Kotlin)
+        // � [HYBRID] Canal para leer/limpiar estado pendiente del cache
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/pending_status").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getPendingStatus" -> {
+                    val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+                    val statusType = prefs.getString("statusType", null)
+                    val timestamp = prefs.getLong("timestamp", 0L)
+                    
+                    if (statusType != null && timestamp > 0) {
+                        Log.d(TAG, "💾 [HYBRID] Estado pendiente encontrado: $statusType")
+                        result.success(mapOf(
+                            "statusType" to statusType,
+                            "timestamp" to timestamp
+                        ))
+                    } else {
+                        Log.d(TAG, "ℹ️ [HYBRID] No hay estado pendiente")
+                        result.success(null)
+                    }
+                }
+                "clearPendingStatus" -> {
+                    val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+                    prefs.edit().clear().apply()
+                    Log.d(TAG, "✅ [HYBRID] Cache de estado pendiente limpiado")
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        
+        // �🚀 FASE 1: Canal para Native State (Flutter ↔ Kotlin)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NATIVE_STATE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "setUserId" -> {

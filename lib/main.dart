@@ -71,47 +71,76 @@ void main() async {
       print('👆 [NATIVE→FLUTTER] Recibido estado: $statusTypeName');
       
       if (statusTypeName != null) {
-        try {
-          // Convertir string a StatusType enum
-          final statusType = StatusType.values.firstWhere(
-            (e) => e.name == statusTypeName,
-            orElse: () => StatusType.available,
-          );
-          
-          // Actualizar en Firebase usando StatusService
-          final result = await StatusService.updateUserStatus(statusType);
-          
-          if (result.isSuccess) {
-            print('✅ [NATIVE→FLUTTER] Estado actualizado en Firebase: ${statusType.description}');
-          } else {
-            print('❌ [NATIVE→FLUTTER] Error actualizando estado: ${result.errorMessage}');
-          }
-        } catch (e) {
-          print('❌ [NATIVE→FLUTTER] Error procesando estado: $e');
-        }
+        await _updateStatusFromNative(statusTypeName);
       }
     }
   });
   print('✅ [main] Handler de estado nativo configurado.');
+  
+  // 💾 [HYBRID] Verificar si hay estado pendiente del cache (app estaba cerrada)
+  try {
+    const platform = MethodChannel('com.datainfers.zync/pending_status');
+    final pendingStatus = await platform.invokeMethod('getPendingStatus');
+    
+    if (pendingStatus != null && pendingStatus is Map) {
+      final statusTypeName = pendingStatus['statusType'] as String?;
+      final timestamp = pendingStatus['timestamp'] as int?;
+      
+      if (statusTypeName != null && timestamp != null) {
+        print('💾 [HYBRID] Estado pendiente encontrado: $statusTypeName (timestamp: $timestamp)');
+        await _updateStatusFromNative(statusTypeName);
+        
+        // Limpiar cache después de actualizar
+        await platform.invokeMethod('clearPendingStatus');
+        print('✅ [HYBRID] Estado pendiente procesado y limpiado');
+      }
+    }
+  } catch (e) {
+    print('ℹ️ [HYBRID] No hay estado pendiente o error leyendo cache: $e');
+  }
+  
+  // 🎯 CRÍTICO: Inicializar GetIt ANTES de runApp()
+  // InCircleView usa authProvider que necesita GetIt desde el inicio
+  // (cache optimista hace que HomePage se renderice inmediatamente)
+  PerformanceTracker.start('DI Init');
+  await di.init();
+  PerformanceTracker.end('DI Init');
+  print('✅ [main] GetIt (DI) inicializado antes de runApp.');
 
   // 🎯 RENDERIZAR UI (con cache ya disponible)
   runApp(const ProviderScope(child: MyApp()));
+}
 
-  // ⏳ LAZY: Inicializar servicios NO críticos DESPUÉS del primer frame
+/// Helper para actualizar estado desde nativo (reutilizable)
+Future<void> _updateStatusFromNative(String statusTypeName) async {
+  try {
+    // Convertir string a StatusType enum
+    final statusType = StatusType.values.firstWhere(
+      (e) => e.name == statusTypeName,
+      orElse: () => StatusType.available,
+    );
+    
+    // Actualizar en Firebase usando StatusService
+    final result = await StatusService.updateUserStatus(statusType);
+    
+    if (result.isSuccess) {
+      print('✅ [NATIVE→FLUTTER] Estado actualizado en Firebase: ${statusType.description}');
+    } else {
+      print('❌ [NATIVE→FLUTTER] Error actualizando estado: ${result.errorMessage}');
+    }
+  } catch (e) {
+    print('❌ [NATIVE→FLUTTER] Error procesando estado: $e');
+  }
+
+  // ⏳ LAZY: Inicializar PersistentCache DESPUÉS del primer frame
+  // (GetIt ya fue inicializado antes de runApp)
   WidgetsBinding.instance.addPostFrameCallback((_) async {
-    print('🔄 [main] Inicializando servicios secundarios en background...');
+    print('🔄 [main] Inicializando PersistentCache en background...');
     
-    // DI en background
-    PerformanceTracker.start('DI Init');
-    await di.init(); 
-    PerformanceTracker.end('DI Init');
-    print('✅ [main] DI inicializado.');
-    
-    // Cache en background
     PerformanceTracker.start('Cache Init');
     await PersistentCache.init();
     PerformanceTracker.end('Cache Init');
-    print('✅ [main] Cache inicializado.');
+    print('✅ [main] PersistentCache inicializado.');
   });
 }
 
