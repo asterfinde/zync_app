@@ -352,13 +352,21 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
             child: Row(
               children: [
                 Expanded(
-                  child: Column(
+  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Zync', style: _AppTextStyles.screenTitle),
                       Text(
                         _getCurrentUserNickname(ref),
                         style: _AppTextStyles.userNickname,
+                      ),
+                      // 🔧 DEBUG: Timestamp de compilación (temporal)
+                      const Text(
+                        'Build: 2025-11-19 16:20 (v4 - NATIVE MODAL)',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: Color(0xFF666666),
+                        ),
                       ),
                     ],
                   ),

@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:zync_app/firebase_options.dart';
 import 'package:zync_app/features/auth/presentation/pages/auth_wrapper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:zync_app/core/di/injection_container.dart' as di;
+// import 'package:zync_app/core/di/injection_container.dart' as di; // 🔥 SIMPLIFICADO: Ya no se usa para Auth
 import 'package:zync_app/core/cache/persistent_cache.dart'; // CACHE PERSISTENTE
 import 'package:zync_app/core/utils/performance_tracker.dart'; // PERFORMANCE TRACKING
 import 'package:zync_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
@@ -99,13 +99,14 @@ void main() async {
     print('ℹ️ [HYBRID] No hay estado pendiente o error leyendo cache: $e');
   }
   
-  // 🎯 CRÍTICO: Inicializar GetIt ANTES de runApp()
-  // InCircleView usa authProvider que necesita GetIt desde el inicio
-  // (cache optimista hace que HomePage se renderice inmediatamente)
-  PerformanceTracker.start('DI Init');
-  await di.init();
-  PerformanceTracker.end('DI Init');
-  print('✅ [main] GetIt (DI) inicializado antes de runApp.');
+  // 🔥 SIMPLIFICADO: GetIt ya NO es necesario para Auth
+  // AuthProvider ahora usa AuthService vía Riverpod
+  // TODO: Eliminar GetIt completamente después de migrar Circle y otros features
+  // PerformanceTracker.start('DI Init');
+  // await di.init();
+  // PerformanceTracker.end('DI Init');
+  // print('✅ [main] GetIt (DI) inicializado antes de runApp.');
+  print('✅ [main] Auth usa AuthService (sin GetIt).');
 
   // 🎯 RENDERIZAR UI (con cache ya disponible)
   runApp(const ProviderScope(child: MyApp()));

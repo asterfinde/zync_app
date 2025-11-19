@@ -468,9 +468,10 @@ class MainActivity: FlutterActivity() {
     private fun showPersistentNotification() {
         createNotificationChannel()
         
-        val intent = Intent(this, StatusModalActivity::class.java).apply {
+        // 🔥 CAMBIO: Usar EmojiDialogActivity (nativo) en vez de StatusModalActivity (Flutter)
+        // Esto elimina el delay de 7s y usa el modal con bordes redondeados
+        val intent = Intent(this, EmojiDialogActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("open_status_modal", true)
         }
         
         val pendingIntent = PendingIntent.getActivity(
