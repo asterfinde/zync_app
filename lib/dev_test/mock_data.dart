@@ -5,7 +5,7 @@
 // Incluye usuario SOS con GPS para validar Point 16
 // ==============================================================================
 
-import '../features/circle/domain_old/entities/user_status.dart';
+import '../core/models/user_status.dart';
 
 class MockData {
   /// ID del usuario actual (para testing de updates)

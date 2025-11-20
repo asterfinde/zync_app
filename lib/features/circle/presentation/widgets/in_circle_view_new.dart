@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../services/firebase_circle_service.dart';
+import '../../../../services/circle_service.dart';
 
 class InCircleView extends StatelessWidget {
   const InCircleView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final service = FirebaseCircleService();
+    final service = CircleService();
     
     return StreamBuilder<Circle?>(
       stream: service.getUserCircleStream(),

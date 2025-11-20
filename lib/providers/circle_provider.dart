@@ -1,14 +1,14 @@
-// lib/features/circle/providers/simple_circle_provider.dart
+// lib/providers/circle_provider.dart
 
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/foundation.dart';
-import 'package:zync_app/features/circle/services/firebase_circle_service.dart';
+import 'package:zync_app/services/circle_service.dart';
 
 enum CircleStatus { initial, loading, loaded, error }
 
-class SimpleCircleProvider extends ChangeNotifier {
-  final FirebaseCircleService _service = FirebaseCircleService();
+class CircleProvider extends ChangeNotifier {
+  final CircleService _service = CircleService();
   
   // Estado
   CircleStatus _status = CircleStatus.initial;
@@ -23,25 +23,25 @@ class SimpleCircleProvider extends ChangeNotifier {
   bool get isLoading => _status == CircleStatus.loading;
   bool get hasCircle => _circle != null;
 
-  SimpleCircleProvider() {
+  CircleProvider() {
     _initializeCircleStream();
   }
 
   /// Inicializa el stream para escuchar cambios en el círculo del usuario
   void _initializeCircleStream() {
-    log('[SimpleCircleProvider] Inicializando stream del círculo');
+    log('[CircleProvider] Inicializando stream del círculo');
     
     _circleSubscription?.cancel();
     _circleSubscription = _service.getUserCircleStream().listen(
       (circle) {
-        log('[SimpleCircleProvider] Stream actualizado: ${circle?.name ?? 'null'}');
+        log('[CircleProvider] Stream actualizado: ${circle?.name ?? 'null'}');
         _circle = circle;
         _status = circle != null ? CircleStatus.loaded : CircleStatus.initial;
         _error = null;
         notifyListeners();
       },
       onError: (error) {
-        log('[SimpleCircleProvider] Stream error: $error');
+        log('[CircleProvider] Stream error: $error');
         _error = error.toString();
         _status = CircleStatus.error;
         notifyListeners();
@@ -58,7 +58,7 @@ class SimpleCircleProvider extends ChangeNotifier {
       return;
     }
 
-    log('[SimpleCircleProvider] Creando círculo: $name');
+    log('[CircleProvider] Creando círculo: $name');
     
     _status = CircleStatus.loading;
     _error = null;
@@ -66,10 +66,10 @@ class SimpleCircleProvider extends ChangeNotifier {
 
     try {
       await _service.createCircle(name.trim());
-      log('[SimpleCircleProvider] ✅ Círculo creado exitosamente');
+      log('[CircleProvider] ✅ Círculo creado exitosamente');
       // El stream se encargará de actualizar el estado
     } catch (e) {
-      log('[SimpleCircleProvider] Error creando círculo: $e');
+      log('[CircleProvider] Error creando círculo: $e');
       _error = e.toString();
       _status = CircleStatus.error;
       notifyListeners();
@@ -85,7 +85,7 @@ class SimpleCircleProvider extends ChangeNotifier {
       return;
     }
 
-    log('[SimpleCircleProvider] Uniéndose al círculo: $invitationCode');
+    log('[CircleProvider] Uniéndose al círculo: $invitationCode');
     
     _status = CircleStatus.loading;
     _error = null;
@@ -93,10 +93,10 @@ class SimpleCircleProvider extends ChangeNotifier {
 
     try {
       await _service.joinCircle(invitationCode.trim());
-      log('[SimpleCircleProvider] ✅ Unido al círculo exitosamente');
+      log('[CircleProvider] ✅ Unido al círculo exitosamente');
       // El stream se encargará de actualizar el estado
     } catch (e) {
-      log('[SimpleCircleProvider] Error uniéndose al círculo: $e');
+      log('[CircleProvider] Error uniéndose al círculo: $e');
       _error = e.toString();
       _status = CircleStatus.error;
       notifyListeners();
@@ -105,7 +105,7 @@ class SimpleCircleProvider extends ChangeNotifier {
 
   /// Refresca manualmente el círculo del usuario
   Future<void> refreshCircle() async {
-    log('[SimpleCircleProvider] Refrescando círculo...');
+    log('[CircleProvider] Refrescando círculo...');
     
     _status = CircleStatus.loading;
     notifyListeners();
@@ -115,9 +115,9 @@ class SimpleCircleProvider extends ChangeNotifier {
       _circle = circle;
       _status = circle != null ? CircleStatus.loaded : CircleStatus.initial;
       _error = null;
-      log('[SimpleCircleProvider] ✅ Círculo refrescado: ${circle?.name ?? 'null'}');
+      log('[CircleProvider] ✅ Círculo refrescado: ${circle?.name ?? 'null'}');
     } catch (e) {
-      log('[SimpleCircleProvider] Error refrescando círculo: $e');
+      log('[CircleProvider] Error refrescando círculo: $e');
       _error = e.toString();
       _status = CircleStatus.error;
     }

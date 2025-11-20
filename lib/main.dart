@@ -16,7 +16,7 @@ import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Nat
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
 import 'package:zync_app/notifications/notification_service.dart'; // Point 2: Notification Service
 import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
-import 'package:zync_app/features/circle/domain_old/entities/user_status.dart'; // StatusType enum
+import 'package:zync_app/core/models/user_status.dart'; // StatusType enum
 
 import 'core/global_keys.dart';
 

@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 // Asegúrate que las rutas de importación sean correctas para tu proyecto
-import '../../services/firebase_circle_service.dart';
+import '../../../../services/circle_service.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
 // Asumo que emoji_modal.dart exporta la función showEmojiStatusBottomSheet
@@ -14,7 +14,7 @@ import '../../../../core/widgets/emoji_modal.dart';
 import '../../../../core/services/gps_service.dart';
 import '../../../../core/services/status_service.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
-import '../../domain_old/entities/user_status.dart';
+import '../../../../core/models/user_status.dart';
 // CACHE-FIRST: Importar caches
 import '../../../../core/cache/in_memory_cache.dart';
 import '../../../../core/cache/persistent_cache.dart';
@@ -362,7 +362,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                       ),
                       // 🔧 DEBUG: Timestamp de compilación (temporal)
                       const Text(
-                        'Build: 2025-11-19 16:20 (v4 - NATIVE MODAL)',
+                        'Build: 2025-11-20 10:44 (v5 - GRID FIX)',
                         style: TextStyle(
                           fontSize: 9,
                           color: Color(0xFF666666),
@@ -643,7 +643,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   Future<Map<String, String>> _getAllMemberNicknames(List<String> memberIds) async {
     final Map<String, String> nicknames = {};
     // Usar un servicio real si existe, o mantener la lógica directa
-    final service = FirebaseCircleService(); // Asume que esta clase existe
+    final service = CircleService(); // Asume que esta clase existe
 
     final futures = memberIds.map((uid) async {
       try {
@@ -749,7 +749,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
             onPressed: () async {
                Navigator.of(context).pop(); // Cerrar diálogo primero
                try {
-                  final service = FirebaseCircleService(); // Asume que esta clase existe
+                  final service = CircleService(); // Asume que esta clase existe
                   await service.leaveCircle(); // Asume que este método existe
                   // La navegación debería manejarse por el StreamBuilder en HomePage al detectar circle == null
                } catch (e) {

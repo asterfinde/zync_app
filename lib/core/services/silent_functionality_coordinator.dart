@@ -3,7 +3,7 @@ import 'package:flutter/services.dart'; // Point 21: Para MethodChannel
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../widgets/status_selector_overlay.dart';
-import '../../features/circle/domain_old/entities/user_status.dart';
+import '../../core/models/user_status.dart';
 import 'status_modal_service.dart';
 
 /// Coordinador de funcionalidad silenciosa - Integra sin romper lo existente

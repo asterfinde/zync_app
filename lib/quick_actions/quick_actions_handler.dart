@@ -1,4 +1,4 @@
-import '../features/circle/domain_old/entities/user_status.dart';
+import '../core/models/user_status.dart';
 import 'quick_actions_service.dart';
 import 'dart:developer';
 

@@ -1,5 +1,5 @@
 import '../core/services/status_service.dart';
-import '../features/circle/domain_old/entities/user_status.dart';
+import '../core/models/user_status.dart';
 import 'notification_service.dart';
 import 'dart:developer';
 

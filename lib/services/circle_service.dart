@@ -1,4 +1,4 @@
-// lib/features/circle/services/firebase_circle_service.dart
+// lib/services/circle_service.dart
 
 import 'dart:async';
 import 'dart:developer';
@@ -29,7 +29,7 @@ class Circle {
   }
 }
 
-class FirebaseCircleService {
+class CircleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
@@ -38,7 +38,7 @@ class FirebaseCircleService {
 
   /// Crea un nuevo círculo para el usuario actual
   Future<String> createCircle(String name) async {
-    log('[FirebaseCircleService] Creando círculo: $name');
+    log('[CircleService] Creando círculo: $name');
     
     final user = _auth.currentUser;
     if (user == null) {
@@ -69,7 +69,7 @@ class FirebaseCircleService {
     });
 
     await batch.commit();
-    log('[FirebaseCircleService] ✅ Círculo creado exitosamente: ${circleRef.id}');
+    log('[CircleService] ✅ Círculo creado exitosamente: ${circleRef.id}');
     
     // Forzar actualización del stream
     _refreshController.add(null);
@@ -79,7 +79,7 @@ class FirebaseCircleService {
 
   /// Une al usuario actual a un círculo existente usando código de invitación
   Future<void> joinCircle(String invitationCode) async {
-    log('[FirebaseCircleService] Uniéndose al círculo con código: $invitationCode');
+    log('[CircleService] Uniéndose al círculo con código: $invitationCode');
     
     final user = _auth.currentUser;
     if (user == null) {
@@ -137,14 +137,14 @@ class FirebaseCircleService {
     // Forzar actualización del stream
     _refreshController.add(null);
       
-    log('[FirebaseCircleService] ✅ Usuario se unió al círculo exitosamente');
+    log('[CircleService] ✅ Usuario se unió al círculo exitosamente');
   }
 
   /// Obtiene el círculo actual del usuario
   Future<Circle?> getUserCircle() async {
     final user = _auth.currentUser;
     if (user == null) {
-      log('[FirebaseCircleService] Usuario no autenticado');
+      log('[CircleService] Usuario no autenticado');
       return null;
     }
 
@@ -152,29 +152,29 @@ class FirebaseCircleService {
       final userSnapshot = await _firestore.collection('users').doc(user.uid).get();
       
       if (!userSnapshot.exists) {
-        log('[FirebaseCircleService] Documento de usuario no existe');
+        log('[CircleService] Documento de usuario no existe');
         return null;
       }
 
       final circleId = userSnapshot.data()?['circleId'] as String?;
       
       if (circleId == null || circleId.isEmpty) {
-        log('[FirebaseCircleService] Usuario no tiene círculo asignado');
+        log('[CircleService] Usuario no tiene círculo asignado');
         return null;
       }
 
       final circleDoc = await _firestore.collection('circles').doc(circleId).get();
       
       if (!circleDoc.exists) {
-        log('[FirebaseCircleService] Círculo no existe: $circleId');
+        log('[CircleService] Círculo no existe: $circleId');
         return null;
       }
 
       final circle = Circle.fromFirestore(circleDoc);
-      log('[FirebaseCircleService] ✅ Círculo obtenido: ${circle.name}');
+      log('[CircleService] ✅ Círculo obtenido: ${circle.name}');
       return circle;
     } catch (e) {
-      log('[FirebaseCircleService] Error obteniendo círculo: $e');
+      log('[CircleService] Error obteniendo círculo: $e');
       return null;
     }
   }
@@ -183,7 +183,7 @@ class FirebaseCircleService {
   Stream<Circle?> getUserCircleStream() {
     final user = _auth.currentUser;
     if (user == null) {
-      log('[FirebaseCircleService] Usuario no autenticado para stream');
+      log('[CircleService] Usuario no autenticado para stream');
       return Stream.value(null);
     }
 
@@ -198,7 +198,7 @@ class FirebaseCircleService {
         // Función para procesar cambios en el documento del usuario
         void processUserSnapshot(DocumentSnapshot<Map<String, dynamic>> userSnapshot) async {
           if (!userSnapshot.exists) {
-            log('[FirebaseCircleService] Stream: Usuario no existe');
+            log('[CircleService] Stream: Usuario no existe');
             controller.add(null);
             return;
           }
@@ -206,12 +206,12 @@ class FirebaseCircleService {
           final circleId = userSnapshot.data()?['circleId'] as String?;
           
           if (circleId == null || circleId.isEmpty) {
-            log('[FirebaseCircleService] Stream: Usuario sin círculo');
+            log('[CircleService] Stream: Usuario sin círculo');
             controller.add(null);
             return;
           }
 
-          log('[FirebaseCircleService] Stream: Escuchando círculo $circleId');
+          log('[CircleService] Stream: Escuchando círculo $circleId');
           
           // Cancelar suscripción anterior del círculo si existe
           await circleSubscription?.cancel();
@@ -223,13 +223,13 @@ class FirebaseCircleService {
               .snapshots()
               .listen((circleSnapshot) {
             if (!circleSnapshot.exists) {
-              log('[FirebaseCircleService] Stream: Círculo no existe');
+              log('[CircleService] Stream: Círculo no existe');
               controller.add(null);
               return;
             }
 
             final circle = Circle.fromFirestore(circleSnapshot);
-            log('[FirebaseCircleService] Stream: ✅ Círculo actualizado: ${circle.name}');
+            log('[CircleService] Stream: ✅ Círculo actualizado: ${circle.name}');
             controller.add(circle);
           });
         }
@@ -243,7 +243,7 @@ class FirebaseCircleService {
 
         // Escuchar señales de refresh manual
         refreshSubscription = _refreshController.stream.listen((_) async {
-          log('[FirebaseCircleService] Stream: Refresh manual activado');
+          log('[CircleService] Stream: Refresh manual activado');
           final userDoc = await _firestore.collection('users').doc(user.uid).get();
           processUserSnapshot(userDoc);
         });
@@ -264,7 +264,7 @@ class FirebaseCircleService {
 
   /// Permite al usuario actual salir del círculo
   Future<void> leaveCircle() async {
-    log('[FirebaseCircleService] Usuario saliendo del círculo');
+    log('[CircleService] Usuario saliendo del círculo');
     
     final user = _auth.currentUser;
     if (user == null) {
@@ -304,11 +304,11 @@ class FirebaseCircleService {
         // Si es el último miembro, eliminar el círculo completamente
         if (members.isEmpty) {
           transaction.delete(circleRef);
-          log('[FirebaseCircleService] Círculo eliminado (último miembro salió)');
+          log('[CircleService] Círculo eliminado (último miembro salió)');
         } else {
           // Actualizar la lista de miembros del círculo
           transaction.update(circleRef, {'members': members});
-          log('[FirebaseCircleService] Usuario removido del círculo. Miembros restantes: ${members.length}');
+          log('[CircleService] Usuario removido del círculo. Miembros restantes: ${members.length}');
         }
         
         // Remover circleId del documento del usuario
@@ -320,9 +320,9 @@ class FirebaseCircleService {
       // Forzar actualización del stream
       _refreshController.add(null);
       
-      log('[FirebaseCircleService] Usuario salió del círculo exitosamente');
+      log('[CircleService] Usuario salió del círculo exitosamente');
     } catch (e) {
-      log('[FirebaseCircleService] Error al salir del círculo: $e');
+      log('[CircleService] Error al salir del círculo: $e');
       rethrow;
     }
   }
@@ -337,4 +337,3 @@ class FirebaseCircleService {
     _refreshController.close();
   }
 }
-

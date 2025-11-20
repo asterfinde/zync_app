@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../features/circle/domain_old/entities/user_status.dart';
+import '../../core/models/user_status.dart';
 import 'dart:convert';
 import 'dart:developer';
 

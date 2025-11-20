@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../features/circle/domain_old/entities/user_status.dart';
+import '../../core/models/user_status.dart';
 import '../../core/services/quick_actions_preferences_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 
@@ -410,7 +410,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
 
 // import 'package:flutter/material.dart';
 // import 'package:flutter/services.dart';
-// import '../../features/circle/domain_old/entities/user_status.dart';
+// import '../../core/models/user_status.dart';
 // import '../../core/services/quick_actions_preferences_service.dart';
 // import '../../quick_actions/quick_actions_service.dart';
 

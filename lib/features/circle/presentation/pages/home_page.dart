@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/firebase_circle_service.dart';
+import '../../../../services/circle_service.dart';
 import '../widgets/in_circle_view.dart';
 import '../widgets/no_circle_view.dart';
 import '../../../../core/services/session_cache_service.dart';
@@ -13,7 +13,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _service = FirebaseCircleService();
+  final _service = CircleService();
 
   @override
   void initState() {

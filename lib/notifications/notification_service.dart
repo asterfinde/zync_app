@@ -1,6 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart'; // Point 21 FASE 5: Para MethodChannel
-import '../features/circle/domain_old/entities/user_status.dart';
+import '../core/models/user_status.dart';
 import 'dart:developer';
 
 class NotificationService {
