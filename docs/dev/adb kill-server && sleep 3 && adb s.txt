@@ -1,0 +1,2 @@
+adb kill-server && sleep 3 && adb start-server && adb connect 192.168.1.50:5555
+flutter run -d 192.168.1.50:5555

@@ -1,6 +1,6 @@
 import 'package:home_widget/home_widget.dart';
 import '../core/services/status_service.dart';
-import '../features/circle/domain_old/entities/user_status.dart';
+import '../core/models/user_status.dart';
 import 'dart:developer';
 
 class WidgetService {

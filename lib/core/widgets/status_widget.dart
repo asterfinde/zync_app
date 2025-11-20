@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:quick_actions/quick_actions.dart';
-import '../../features/circle/domain_old/entities/user_status.dart';
+import '../../core/models/user_status.dart';
 import '../services/status_service.dart';
 
 /// Widget service for handling home screen widgets and quick actions

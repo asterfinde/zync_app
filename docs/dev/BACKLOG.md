@@ -303,7 +303,7 @@ Al minimizar la app (botón home o multitarea) y luego volver a abrirla, la app 
 **Estado:** ✅ COMPLETADO  
 **Última actualización:** 28/10/2024
 
-#### Problema
+#### Problema Original
 Al cerrar la sesión de usuario, la aplicación debería:
 - Cerrar la sesión del usuario (verificar si esto se hace realmente)
 - Retornar a la pantalla de Login/Registro
@@ -320,23 +320,37 @@ Implementado y validado.
 - [ ] Probar en dispositivo real
 
 
-
 ---
+
+### ⏸️ Point 21 - Manejo de las Notificaciones
+**Prioridad:** 🚨 CRÍTICO  
+**Estado:** ⏸️ PENDIENTE  
+**Última actualización:** 03/11/2025  
+**Rama:** `feature/point21-notifications-fix`
+
+#### Problema Original
+El área de Notificaciones tiene un comportamiento "aleatorio":
+- cuando se inicializa la app, el área pide correctamente los permisos para visualizarse, pero en otras ocasiones no. Zync es una smooth app que corre "silenciosamente" en segundo plano solo hasta que el usuario la cierre totalmente. Por lo tanto la activación de las Notificaciones debe de ser automática sin solicitar permiso alguno (por default)
+- cuando se cierra la app, las Notiifcaciones siguen "vivas" con un mensaje que no tiene sentido: "Listo para comparir ubicación". Esto genera confusión en el usuario porque la app se supone que estaba detenida. 
+- al hacer tap (scroll down) sobre las Notificaciones, se deberá abrir la misma ventana modal o una idéntica donde el usuario pueda elegir el emoji/estado que desea compartir. No se debe de abrir ninguna pantalla adicional de la app
+
 
 ### ⏸️ Point 22 - Responsividad de la App
 
-**Prioridad:**⏸️ n de ser responsive, incluyendo el modal de emoji. Al girar el dispositivo el modal produce un overflow porque se ensancha mucho más que el tamaño permitido.
+**Prioridad:** Media  
+**Estado:** ⏸️ PENDIENTE
+
+#### Problema
+La app necesita ser responsive, incluyendo el modal de emoji. Al girar el dispositivo el modal produce un overflow porque se ensancha mucho más que el tamaño permitido.
 
 
 ---
-
-
 ## **Entorno**
 
 ### ✅ [Android, WSL2] - Mejoras en Conexión Andoroid/WSL2
 
 **Prioridad:** 🚨 CRÍTICO  
-**Estado:** ✅ PENDIENTE  
+**Estado:** ✅ RESUELTO  
 
 #### Problema
 La conexión dispositivo Android con WSL2 se hace tediosa y no se logra de manera rápida y confiable
@@ -404,7 +418,7 @@ Desconexiones frecuentes de Copilot/VSCode Cascade/Windsurf con WSL2 interrumpen
 
 ---
 
-### ⏸️ Conexión WiFi ADB )opcional?)
+### ⏸️ Conexión WiFi ADB (opcional?)
 
 **Prioridad:** 🚨 CRÍTICO  
 **Estado:** ⏸️ PENDIENTE

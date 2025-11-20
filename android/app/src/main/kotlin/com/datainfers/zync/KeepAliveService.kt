@@ -16,16 +16,27 @@ class KeepAliveService : Service() {
     
     companion object {
         private const val TAG = "KeepAliveService"
-        private const val CHANNEL_ID = "zync_keep_alive"
-        private const val NOTIFICATION_ID = 999
+        // Usar el mismo canal e ID que la notificación persistente de MainActivity
+        // para que SOLO exista una notificación visible
+        private const val CHANNEL_ID = "emoji_channel"
+        private const val NOTIFICATION_ID = 12345
         
         fun start(context: Context) {
             Log.d(TAG, "🟢 Iniciando servicio keep-alive")
-            val intent = Intent(context, KeepAliveService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                val intent = Intent(context, KeepAliveService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                Log.d(TAG, "✅ Servicio keep-alive iniciado exitosamente")
+            } catch (e: IllegalStateException) {
+                // Android 12+ (API 31+): No se puede iniciar foreground service desde background
+                Log.w(TAG, "⚠️ No se pudo iniciar servicio (Android 12+ restricción): ${e.message}")
+            } catch (e: Exception) {
+                // Cualquier otra excepción
+                Log.e(TAG, "❌ Error iniciando servicio: ${e.message}", e)
             }
         }
         
@@ -48,8 +59,21 @@ class KeepAliveService : Service() {
         val notification = createNotification()
         startForeground(NOTIFICATION_ID, notification)
         
-        // START_STICKY: Android reiniciará el servicio si lo mata
+        // Point 3.1: START_STICKY garantiza que Android reinicie el servicio si lo mata
+        // Esto mantiene la notificación persistente incluso si el sistema necesita memoria
         return START_STICKY
+    }
+    
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d(TAG, "⚠️ onTaskRemoved() - Usuario cerró app desde recientes")
+        
+        // Point 3.1: Reiniciar el servicio para mantener la notificación activa
+        // Esto garantiza que la notificación persista incluso cuando la app está cerrada
+        val restartServiceIntent = Intent(applicationContext, KeepAliveService::class.java)
+        applicationContext.startService(restartServiceIntent)
+        
+        Log.d(TAG, "✅ Servicio programado para reinicio automático")
     }
     
     override fun onBind(intent: Intent?): IBinder? {
@@ -59,6 +83,9 @@ class KeepAliveService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy() - Servicio destruido")
+        
+        // Point 3.1: Si el servicio se destruye inesperadamente (no por logout manual),
+        // Android lo reiniciará automáticamente gracias a START_STICKY
     }
     
     private fun createNotificationChannel() {
@@ -79,7 +106,12 @@ class KeepAliveService : Service() {
     }
     
     private fun createNotification(): Notification {
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        // Point 4: Abrir EmojiDialogActivity (modal nativo instantáneo)
+        // NO usa Flutter - apertura en <100ms
+        val intent = Intent(this, EmojiDialogActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -89,7 +121,7 @@ class KeepAliveService : Service() {
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Zync")
-            .setContentText("Listo para compartir ubicación")
+            .setContentText("Toca para cambiar tu estado") // Point 21: Texto claro
             .setSmallIcon(android.R.drawable.ic_dialog_info) // Usar icono genérico por ahora
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW) // Prioridad baja = no molesta

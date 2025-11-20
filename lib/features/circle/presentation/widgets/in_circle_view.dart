@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 // Asegúrate que las rutas de importación sean correctas para tu proyecto
-import '../../services/firebase_circle_service.dart';
+import '../../../../services/circle_service.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
 // Asumo que emoji_modal.dart exporta la función showEmojiStatusBottomSheet
@@ -14,7 +14,7 @@ import '../../../../core/widgets/emoji_modal.dart';
 import '../../../../core/services/gps_service.dart';
 import '../../../../core/services/status_service.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
-import '../../domain_old/entities/user_status.dart';
+import '../../../../core/models/user_status.dart';
 // CACHE-FIRST: Importar caches
 import '../../../../core/cache/in_memory_cache.dart';
 import '../../../../core/cache/persistent_cache.dart';
@@ -352,7 +352,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
             child: Row(
               children: [
                 Expanded(
-                  child: Column(
+  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Zync', style: _AppTextStyles.screenTitle),
@@ -360,43 +360,40 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                         _getCurrentUserNickname(ref),
                         style: _AppTextStyles.userNickname,
                       ),
+                      // 🔧 DEBUG: Timestamp de compilación (temporal)
+                      const Text(
+                        'Build: 2025-11-20 10:44 (v5 - GRID FIX)',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: _AppColors.textPrimary),
-                  color: _AppColors.cardBackground,
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'leave_circle':
-                        _showLeaveCircleDialog(context);
-                        break;
-                      case 'logout':
-                        _showLogoutDialog(context, ref);
-                        break;
-                      case 'settings':
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsPage(),
-                          ),
-                        );
-                        break;
-                    }
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsPage(),
+                      ),
+                    );
                   },
-                  itemBuilder: (context) => [
-                    _buildPopupMenuItem(
-                      value: 'logout', icon: Icons.logout, text: 'Cerrar Sesión',
-                      color: _AppColors.textSecondary,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1CE7E8),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
-                    _buildPopupMenuItem(
-                      value: 'settings', icon: Icons.settings, text: 'Configuración',
-                      color: _AppColors.accent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
-                    _buildPopupMenuItem(
-                      value: 'leave_circle', icon: Icons.exit_to_app, text: 'Salir del Círculo',
-                      color: _AppColors.sosRed,
-                    ),
-                  ],
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.settings, size: 18),
+                  label: const Text('Ajustes'),
                 ),
               ],
             ),
@@ -472,7 +469,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                   _isLoadingNicknames
                     ? const Center(child: CircularProgressIndicator(color: _AppColors.accent))
                     : Column(
-                        children: circle.members.asMap().entries.map((entry) {
+                        children: _getSortedMembers(circle.members).asMap().entries.map((entry) {
                           final index = entry.key;
                           final memberId = entry.value;
 
@@ -622,11 +619,31 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     return 'Usuario';
   }
 
+  /// Ordena los miembros: usuario actual primero, resto alfabéticamente
+  List<String> _getSortedMembers(List<String> members) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) return members;
+
+    // Separar usuario actual del resto
+    final currentUserList = members.where((id) => id == currentUserId).toList();
+    final otherMembers = members.where((id) => id != currentUserId).toList();
+
+    // Ordenar otros miembros alfabéticamente por nickname
+    otherMembers.sort((a, b) {
+      final nicknameA = _memberNicknamesCache[a] ?? a;
+      final nicknameB = _memberNicknamesCache[b] ?? b;
+      return nicknameA.toLowerCase().compareTo(nicknameB.toLowerCase());
+    });
+
+    // Usuario actual primero, luego el resto ordenado
+    return [...currentUserList, ...otherMembers];
+  }
+
   /// Obtiene todos los nicknames de los miembros (llamado desde _loadAllNicknames)
   Future<Map<String, String>> _getAllMemberNicknames(List<String> memberIds) async {
     final Map<String, String> nicknames = {};
     // Usar un servicio real si existe, o mantener la lógica directa
-    final service = FirebaseCircleService(); // Asume que esta clase existe
+    final service = CircleService(); // Asume que esta clase existe
 
     final futures = memberIds.map((uid) async {
       try {
@@ -714,33 +731,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     );
   }
 
-  /// Muestra diálogo de confirmación para cerrar sesión
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.textPrimary)),
-        content: const Text('¿Estás seguro?', style: TextStyle(color: _AppColors.textSecondary)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop(); // Cerrar diálogo primero
-              await FirebaseAuth.instance.signOut();
-              // La navegación debería manejarse por el AuthWrapper al detectar el cambio de estado
-            },
-            child: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.sosRed)),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Muestra diálogo de confirmación para salir del círculo
   void _showLeaveCircleDialog(BuildContext context) {
     showDialog(
@@ -759,7 +749,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
             onPressed: () async {
                Navigator.of(context).pop(); // Cerrar diálogo primero
                try {
-                  final service = FirebaseCircleService(); // Asume que esta clase existe
+                  final service = CircleService(); // Asume que esta clase existe
                   await service.leaveCircle(); // Asume que este método existe
                   // La navegación debería manejarse por el StreamBuilder en HomePage al detectar circle == null
                } catch (e) {

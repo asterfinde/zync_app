@@ -2,18 +2,27 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:zync_app/firebase_options.dart';
 import 'package:zync_app/features/auth/presentation/pages/auth_wrapper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:zync_app/core/di/injection_container.dart' as di;
+// import 'package:zync_app/core/di/injection_container.dart' as di; // 🔥 SIMPLIFICADO: Ya no se usa para Auth
 import 'package:zync_app/core/cache/persistent_cache.dart'; // CACHE PERSISTENTE
 import 'package:zync_app/core/utils/performance_tracker.dart'; // PERFORMANCE TRACKING
 import 'package:zync_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
 import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
+import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
+import 'package:zync_app/notifications/notification_service.dart'; // Point 2: Notification Service
+import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
+import 'package:zync_app/core/models/user_status.dart'; // StatusType enum
 
 import 'core/global_keys.dart';
+
+// Point 21 FASE 5: NavigatorKey global para acceso al contexto desde servicios
+// Necesario para StatusModalService cuando se abre desde notificaciones
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +48,10 @@ void main() async {
   PerformanceTracker.end('SessionCache Init');
   print('✅ [main] SessionCache inicializado (bloqueante).');
   
+  // Point 2: Inicializar servicios de notificación ANTES de runApp()
+  await SilentFunctionalityCoordinator.initializeServices();
+  print('✅ [main] SilentFunctionalityCoordinator inicializado.');
+  
   // 🔍 Verificar si hay estado nativo disponible (solo Android)
   try {
     final nativeUserId = await NativeStateBridge.getUserId();
@@ -49,25 +62,86 @@ void main() async {
     // Esperado en iOS o si falla la lectura
     print('ℹ️ [main] NativeState no disponible (Android only): $e');
   }
+  
+  // 👆 Handler para recibir actualizaciones de estado desde EmojiDialogActivity nativo
+  const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
+  statusUpdateChannel.setMethodCallHandler((call) async {
+    if (call.method == 'updateStatus') {
+      final statusTypeName = call.arguments['statusType'] as String?;
+      print('👆 [NATIVE→FLUTTER] Recibido estado: $statusTypeName');
+      
+      if (statusTypeName != null) {
+        await _updateStatusFromNative(statusTypeName);
+      }
+    }
+  });
+  print('✅ [main] Handler de estado nativo configurado.');
+  
+  // 💾 [HYBRID] Verificar si hay estado pendiente del cache (app estaba cerrada)
+  try {
+    const platform = MethodChannel('com.datainfers.zync/pending_status');
+    final pendingStatus = await platform.invokeMethod('getPendingStatus');
+    
+    if (pendingStatus != null && pendingStatus is Map) {
+      final statusTypeName = pendingStatus['statusType'] as String?;
+      final timestamp = pendingStatus['timestamp'] as int?;
+      
+      if (statusTypeName != null && timestamp != null) {
+        print('💾 [HYBRID] Estado pendiente encontrado: $statusTypeName (timestamp: $timestamp)');
+        await _updateStatusFromNative(statusTypeName);
+        
+        // Limpiar cache después de actualizar
+        await platform.invokeMethod('clearPendingStatus');
+        print('✅ [HYBRID] Estado pendiente procesado y limpiado');
+      }
+    }
+  } catch (e) {
+    print('ℹ️ [HYBRID] No hay estado pendiente o error leyendo cache: $e');
+  }
+  
+  // 🔥 SIMPLIFICADO: GetIt ya NO es necesario para Auth
+  // AuthProvider ahora usa AuthService vía Riverpod
+  // TODO: Eliminar GetIt completamente después de migrar Circle y otros features
+  // PerformanceTracker.start('DI Init');
+  // await di.init();
+  // PerformanceTracker.end('DI Init');
+  // print('✅ [main] GetIt (DI) inicializado antes de runApp.');
+  print('✅ [main] Auth usa AuthService (sin GetIt).');
 
   // 🎯 RENDERIZAR UI (con cache ya disponible)
   runApp(const ProviderScope(child: MyApp()));
+}
 
-  // ⏳ LAZY: Inicializar servicios NO críticos DESPUÉS del primer frame
+/// Helper para actualizar estado desde nativo (reutilizable)
+Future<void> _updateStatusFromNative(String statusTypeName) async {
+  try {
+    // Convertir string a StatusType enum
+    final statusType = StatusType.values.firstWhere(
+      (e) => e.name == statusTypeName,
+      orElse: () => StatusType.available,
+    );
+    
+    // Actualizar en Firebase usando StatusService
+    final result = await StatusService.updateUserStatus(statusType);
+    
+    if (result.isSuccess) {
+      print('✅ [NATIVE→FLUTTER] Estado actualizado en Firebase: ${statusType.description}');
+    } else {
+      print('❌ [NATIVE→FLUTTER] Error actualizando estado: ${result.errorMessage}');
+    }
+  } catch (e) {
+    print('❌ [NATIVE→FLUTTER] Error procesando estado: $e');
+  }
+
+  // ⏳ LAZY: Inicializar PersistentCache DESPUÉS del primer frame
+  // (GetIt ya fue inicializado antes de runApp)
   WidgetsBinding.instance.addPostFrameCallback((_) async {
-    print('🔄 [main] Inicializando servicios secundarios en background...');
+    print('🔄 [main] Inicializando PersistentCache en background...');
     
-    // DI en background
-    PerformanceTracker.start('DI Init');
-    await di.init(); 
-    PerformanceTracker.end('DI Init');
-    print('✅ [main] DI inicializado.');
-    
-    // Cache en background
     PerformanceTracker.start('Cache Init');
     await PersistentCache.init();
     PerformanceTracker.end('Cache Init');
-    print('✅ [main] Cache inicializado.');
+    print('✅ [main] PersistentCache inicializado.');
   });
 }
 
@@ -134,6 +208,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       PerformanceTracker.start('App Maximization');
       PerformanceTracker.onAppResumed();
       
+      // Point 2: Verificar permisos al regresar (usuario pudo haberlos activado en Settings)
+      _checkPermissionsOnResume();
+      
       // Esperar a que UI esté lista
       WidgetsBinding.instance.addPostFrameCallback((_) {
         PerformanceTracker.end('App Maximization');
@@ -144,6 +221,36 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           debugPrint(report);
         });
       });
+    }
+  }
+
+  // Point 2: Verificar permisos al regresar del background
+  // Detecta si el usuario activó permisos en Settings
+  Future<void> _checkPermissionsOnResume() async {
+    // Solo verificar si hay un usuario autenticado
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('[App Resume] No hay usuario autenticado - skip verificación permisos');
+      return;
+    }
+    
+    print('[App Resume] 🔍 Verificando permisos de notificación...');
+    
+    try {
+      final hasPermission = await NotificationService.hasPermission();
+      
+      if (hasPermission) {
+        print('[App Resume] ✅ Permisos CONCEDIDOS - Verificando si notificación está activa...');
+        
+        // Activar notificación persistente si no está activa
+        // El servicio internamente verifica si ya está activa
+        await NotificationService.showQuickActionNotification();
+        print('[App Resume] ✅ Notificación persistente activada/verificada');
+      } else {
+        print('[App Resume] ⚠️ Permisos aún DENEGADOS - notificación no disponible');
+      }
+    } catch (e) {
+      print('[App Resume] ❌ Error verificando permisos: $e');
     }
   }
 
@@ -162,6 +269,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Zync App',
       theme: baseTheme,
+      navigatorKey: navigatorKey, // Point 21 FASE 5: Para acceso desde StatusModalService
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       // CACHE-FIRST: Eliminar splash screen, mostrar AuthWrapper directamente
       // El cache hará que la UI aparezca instantáneamente

@@ -2,8 +2,10 @@ package com.datainfers.zync
 
 import android.Manifest
 import android.app.*
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +16,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
+import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
@@ -29,9 +33,49 @@ class MainActivity: FlutterActivity() {
     
     // Current user (sincronizado con Flutter)
     private var currentUserId: String? = null
+    
+    // Point 1.1: Bandera para evitar reiniciar servicios durante logout manual
+    private var isManualLogoutInProgress = false
+
+    // Point 4: Engine cacheado para modal instantáneo
+    companion object {
+        const val MODAL_ENGINE_ID = "status_modal_engine"
+        private var isModalEngineWarmedUp = false
+    }
+
+    // BroadcastReceiver para actualizar estado sin abrir app
+    private val statusUpdateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.datainfers.zync.UPDATE_STATUS") {
+                val emoji = intent.getStringExtra("emoji")
+                val status = intent.getStringExtra("status")
+                
+                Log.d(TAG, "👆 [BROADCAST] Recibido estado: $emoji ($status)")
+                
+                if (emoji != null && status != null) {
+                    // Enviar a Flutter para actualizar en Firebase
+                    flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
+                        val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
+                        channel.invokeMethod("updateStatus", mapOf(
+                            "statusType" to status
+                        ))
+                        Log.d(TAG, "✅ [BROADCAST] Estado enviado a Flutter")
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Registrar BroadcastReceiver para actualizar estado sin abrir app
+        val filter = IntentFilter("com.datainfers.zync.UPDATE_STATUS")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(statusUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(statusUpdateReceiver, filter)
+        }
         
         // � FASE 1: Inicializar cache nativo ANTES de Flutter
         val cacheStart = System.currentTimeMillis()
@@ -73,9 +117,21 @@ class MainActivity: FlutterActivity() {
         super.onPause()
         Log.d(TAG, "onPause() - App minimizada/pausada")
         
+        // Point 1.1: NO reiniciar keep-alive si hay logout manual en progreso
+        if (isManualLogoutInProgress) {
+            Log.d(TAG, "⚠️ [LOGOUT] Logout manual en progreso - NO reiniciando KeepAliveService")
+            return
+        }
+        
+        // Point 2 FIX: Solo iniciar keep-alive si hay un usuario autenticado
+        if (currentUserId == null) {
+            Log.d(TAG, "⚠️ [NATIVO] No hay usuario autenticado - NO iniciando KeepAliveService")
+            return
+        }
+        
         // 🚀 FASE 1: Iniciar keep-alive NATIVO (no esperar a Flutter)
         if (!isKeepAliveRunning) {
-            Log.d(TAG, "🟢 [NATIVO] Iniciando keep-alive service desde onPause()")
+            Log.d(TAG, "🟢 [NATIVO] Iniciando keep-alive service desde onPause() para usuario: $currentUserId")
             KeepAliveService.start(this)
             isKeepAliveRunning = true
         }
@@ -113,11 +169,21 @@ class MainActivity: FlutterActivity() {
         super.onDestroy()
         Log.d(TAG, "onDestroy() - Activity destruida")
         
-        // 🚀 FASE 1: Seguridad - asegurar keep-alive activo
+        // Desregistrar BroadcastReceiver para evitar memory leaks
+        try {
+            unregisterReceiver(statusUpdateReceiver)
+            Log.d(TAG, "✅ [BROADCAST] Receiver desregistrado")
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ [BROADCAST] Error desregistrando receiver: ${e.message}")
+        }
+        
+        // Point 21 FASE 1: SIEMPRE mantener keep-alive activo
+        // El logout manual se manejará desde Flutter (Settings)
+        // NOTA: En Android 12+ esto puede fallar silenciosamente, y está bien
         if (!isKeepAliveRunning) {
-            Log.d(TAG, "⚠️ [NATIVO] Keep-alive no estaba corriendo - iniciando desde onDestroy()")
+            Log.d(TAG, "⚠️ [NATIVO] Keep-alive no estaba corriendo - intentando iniciar desde onDestroy()")
             KeepAliveService.start(this)
-            isKeepAliveRunning = true
+            // NO marcar isKeepAliveRunning = true porque puede haber fallado
         }
     }
     
@@ -137,7 +203,28 @@ class MainActivity: FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        Log.d(TAG, "Nueva intent recibida")
+        Log.d(TAG, "Nueva intent recibida: ${intent.action}")
+        
+        // Handler para actualización de estado desde EmojiDialogActivity
+        if (intent.action == "com.datainfers.zync.UPDATE_STATUS") {
+            val emoji = intent.getStringExtra("emoji")
+            val status = intent.getStringExtra("status")
+            
+            Log.d(TAG, "👆 [NATIVE] Recibido estado desde dialog: $emoji ($status)")
+            
+            if (emoji != null && status != null) {
+                // Enviar a Flutter para actualizar en Firebase
+                flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
+                    val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
+                    channel.invokeMethod("updateStatus", mapOf(
+                        "emoji" to emoji,
+                        "status" to status
+                    ))
+                    Log.d(TAG, "✅ [NATIVE] Estado enviado a Flutter")
+                }
+            }
+            return
+        }
         
         if (intent.getBooleanExtra("open_emoji_modal", false)) {
             flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
@@ -150,7 +237,57 @@ class MainActivity: FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
-        // 🚀 FASE 1: Canal para Native State (Flutter ↔ Kotlin)
+        // Point 21 FASE 5: Handler para abrir StatusModalActivity desde Flutter
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/status_modal").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openModal" -> {
+                    Log.d(TAG, "[FASE 5] Abriendo StatusModalActivity desde Flutter...")
+                    try {
+                        val intent = Intent(this, StatusModalActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                        Log.d(TAG, "[FASE 5] StatusModalActivity iniciada exitosamente")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[FASE 5] Error abriendo StatusModalActivity: ${e.message}")
+                        result.error("OPEN_MODAL_ERROR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+        
+        // � [HYBRID] Canal para leer/limpiar estado pendiente del cache
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/pending_status").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getPendingStatus" -> {
+                    val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+                    val statusType = prefs.getString("statusType", null)
+                    val timestamp = prefs.getLong("timestamp", 0L)
+                    
+                    if (statusType != null && timestamp > 0) {
+                        Log.d(TAG, "💾 [HYBRID] Estado pendiente encontrado: $statusType")
+                        result.success(mapOf(
+                            "statusType" to statusType,
+                            "timestamp" to timestamp
+                        ))
+                    } else {
+                        Log.d(TAG, "ℹ️ [HYBRID] No hay estado pendiente")
+                        result.success(null)
+                    }
+                }
+                "clearPendingStatus" -> {
+                    val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+                    prefs.edit().clear().apply()
+                    Log.d(TAG, "✅ [HYBRID] Cache de estado pendiente limpiado")
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        
+        // �🚀 FASE 1: Canal para Native State (Flutter ↔ Kotlin)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NATIVE_STATE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "setUserId" -> {
@@ -162,12 +299,20 @@ class MainActivity: FlutterActivity() {
                         Log.d(TAG, "📤 [FLUTTER→KOTLIN] Sincronizando userId: $userId")
                         currentUserId = userId
                         NativeStateManager.saveUserState(this, userId, email, circleId)
+                        
+                        // Point 4: Pre-calentar engine para modal instantáneo
+                        warmUpModalEngine()
+                        
                         result.success(true)
                     } else {
                         // Logout - limpiar estado
                         Log.d(TAG, "🧹 [FLUTTER→KOTLIN] Limpiando estado (logout)")
                         currentUserId = null
                         NativeStateManager.clear(this)
+                        
+                        // Point 4: Destruir engine cacheado al hacer logout
+                        destroyModalEngine()
+                        
                         result.success(true)
                     }
                 }
@@ -191,18 +336,26 @@ class MainActivity: FlutterActivity() {
                 "start" -> {
                     Log.d(TAG, "🟢 Flutter solicita iniciar keep-alive service")
                     KeepAliveService.start(this)
+                    isKeepAliveRunning = true
                     result.success(true)
                 }
                 "stop" -> {
-                    Log.d(TAG, "🔴 Flutter solicita detener keep-alive service")
+                    Log.d(TAG, "🔴 Flutter solicita detener keep-alive service (LOGOUT MANUAL)")
                     KeepAliveService.stop(this)
+                    isKeepAliveRunning = false
+                    result.success(true)
+                }
+                "setManualLogoutFlag" -> {
+                    val inProgress = call.argument<Boolean>("inProgress") ?: false
+                    isManualLogoutInProgress = inProgress
+                    Log.d(TAG, "🔒 [LOGOUT] Bandera de logout manual = $inProgress")
                     result.success(true)
                 }
                 else -> result.notImplemented()
             }
         }
         
-        // Canal existente para notificaciones
+        // Point 21 FASE 5: Canal para notificaciones (apunta a StatusModalActivity)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "requestNotificationPermission" -> {
@@ -210,11 +363,61 @@ class MainActivity: FlutterActivity() {
                     result.success("Permisos solicitados")
                 }
                 "showNotification" -> {
+                    Log.d(TAG, "[FASE 5] Creando notificación nativa persistente")
                     if (hasNotificationPermission()) {
                         showPersistentNotification()
-                        result.success("Notificación mostrada")
+                        result.success("✅ Notificación mostrada - tap abre StatusModalActivity")
                     } else {
                         result.error("NO_PERMISSION", "Permisos de notificación requeridos", null)
+                    }
+                }
+                "cancelNotification" -> {
+                    Log.d(TAG, "[LOGOUT] 🔴 Cancelando notificación persistente (ID: $NOTIFICATION_ID)...")
+                    try {
+                        NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
+                        Log.d(TAG, "[LOGOUT] ✅ Notificación cancelada exitosamente")
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[LOGOUT] ❌ Error cancelando notificación: ${e.message}")
+                        result.error("CANCEL_ERROR", e.message, null)
+                    }
+                }
+                "cancelAllNotifications" -> {
+                    Log.d(TAG, "[LOGOUT] 🔴🔴🔴 Cancelando TODAS las notificaciones...")
+                    try {
+                        // 1. Cancelar notificación persistente de MainActivity
+                        NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
+                        Log.d(TAG, "[LOGOUT] ✅ Notificación MainActivity cancelada (ID: $NOTIFICATION_ID)")
+                        
+                        // 2. Cancelar TODAS las notificaciones del sistema
+                        NotificationManagerCompat.from(this).cancelAll()
+                        Log.d(TAG, "[LOGOUT] ✅ TODAS las notificaciones del sistema canceladas")
+                        
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[LOGOUT] ❌ Error cancelando todas las notificaciones: ${e.message}")
+                        result.error("CANCEL_ALL_ERROR", e.message, null)
+                    }
+                }
+                "openNotificationSettings" -> {
+                    Log.d(TAG, "[FASE 5] 🔧 Abriendo Settings de notificaciones...")
+                    try {
+                        val intent = Intent().apply {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                action = android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                                putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+                            } else {
+                                action = android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                                data = android.net.Uri.parse("package:$packageName")
+                            }
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                        Log.d(TAG, "[FASE 5] ✅ Settings abierto exitosamente")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[FASE 5] ❌ Error abriendo Settings: ${e.message}")
+                        result.error("SETTINGS_ERROR", e.message, null)
                     }
                 }
                 else -> result.notImplemented()
@@ -265,9 +468,10 @@ class MainActivity: FlutterActivity() {
     private fun showPersistentNotification() {
         createNotificationChannel()
         
-        val intent = Intent(this, StatusModalActivity::class.java).apply {
+        // 🔥 CAMBIO: Usar EmojiDialogActivity (nativo) en vez de StatusModalActivity (Flutter)
+        // Esto elimina el delay de 7s y usa el modal con bordes redondeados
+        val intent = Intent(this, EmojiDialogActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("open_status_modal", true)
         }
         
         val pendingIntent = PendingIntent.getActivity(
@@ -278,8 +482,8 @@ class MainActivity: FlutterActivity() {
         )
 
         val notification = NotificationCompat.Builder(this, "emoji_channel")
-            .setContentTitle("🎯 Mini Emoji App")
-            .setContentText("Toca para abrir modal de emojis")
+            .setContentTitle("Zync")
+            .setContentText("Toca para cambiar tu estado")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
@@ -300,16 +504,90 @@ class MainActivity: FlutterActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 "emoji_channel",
-                "Mini Emoji Notifications",
+                "Zync Quick Actions",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Notificaciones para abrir modal de emojis"
+                description = "Notificación persistente para cambio rápido de estado"
                 enableLights(true)
                 enableVibration(false)
                 setShowBadge(true)
             }
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+        }
+    }
+    
+    // Point 4: Pre-calentar Flutter Engine para modal instantáneo
+    private fun warmUpModalEngine() {
+        if (isModalEngineWarmedUp) {
+            Log.d(TAG, "⚡ [MODAL] Engine ya está pre-calentado")
+            return
+        }
+        
+        try {
+            Log.d(TAG, "🔥 [MODAL] Pre-calentando Flutter Engine...")
+            val startTime = System.currentTimeMillis()
+            
+            // Crear un nuevo Flutter Engine
+            val flutterEngine = FlutterEngine(applicationContext)
+            
+            // Inicializar Dart VM (esto toma tiempo)
+            flutterEngine.dartExecutor.executeDartEntrypoint(
+                DartExecutor.DartEntrypoint.createDefault()
+            )
+            
+            // OPTIMIZACIÓN: Configurar canal de StatusModalService inmediatamente
+            // Esto reduce el tiempo de apertura del modal
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/status_modal")
+                .setMethodCallHandler { call, result ->
+                    when (call.method) {
+                        "closeModal" -> {
+                            Log.d(TAG, "[MODAL] Solicitud de cierre recibida")
+                            result.success(true)
+                        }
+                        else -> result.notImplemented()
+                    }
+                }
+            
+            // Cachear el engine para reutilizarlo
+            FlutterEngineCache
+                .getInstance()
+                .put(MODAL_ENGINE_ID, flutterEngine)
+            
+            val duration = System.currentTimeMillis() - startTime
+            isModalEngineWarmedUp = true
+            
+            Log.d(TAG, "✅ [MODAL] Engine pre-calentado en ${duration}ms - Modal será instantáneo")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ [MODAL] Error pre-calentando engine: ${e.message}")
+        }
+    }
+    
+    // Point 4: Destruir engine cacheado al hacer logout
+    private fun destroyModalEngine() {
+        if (!isModalEngineWarmedUp) {
+            Log.d(TAG, " [MODAL] Engine no estaba pre-calentado")
+            return
+        }
+        
+        try {
+            Log.d(TAG, " [MODAL] Destruyendo engine cacheado...")
+            
+            val cachedEngine = FlutterEngineCache
+                .getInstance()
+                .get(MODAL_ENGINE_ID)
+            
+            if (cachedEngine != null) {
+                FlutterEngineCache.getInstance().remove(MODAL_ENGINE_ID)
+                cachedEngine.destroy()
+                Log.d(TAG, " [MODAL] Engine destruido exitosamente")
+            }
+            
+            isModalEngineWarmedUp = false
+            
+        } catch (e: Exception) {
+            Log.e(TAG, " [MODAL] Error destruyendo engine: ${e.message}")
         }
     }
 }

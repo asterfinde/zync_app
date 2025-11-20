@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/global_keys.dart';
-import '../../services/firebase_circle_service.dart';
+import '../../../../services/circle_service.dart';
 
 class JoinCircleView extends ConsumerStatefulWidget {
   const JoinCircleView({super.key});
@@ -12,7 +12,7 @@ class JoinCircleView extends ConsumerStatefulWidget {
 
 class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
   final _joinController = TextEditingController();
-  final _service = FirebaseCircleService();
+  final _service = CircleService();
   bool _isFormValid = false;
 
   @override
@@ -70,7 +70,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
       }
       
       // Forzar actualización del stream
-      FirebaseCircleService.forceRefresh();
+      CircleService.forceRefresh();
       print('[JoinCircleView] Forced stream refresh after join');
       
       // Navegar de vuelta

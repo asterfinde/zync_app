@@ -1,7 +1,7 @@
 import 'package:quick_actions/quick_actions.dart';
 import '../core/services/status_service.dart';
 import '../core/services/quick_actions_preferences_service.dart';
-import '../features/circle/domain_old/entities/user_status.dart';
+import '../core/models/user_status.dart';
 import 'dart:developer';
 
 class QuickActionsService {

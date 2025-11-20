@@ -8,6 +8,8 @@ import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
 import 'package:zync_app/core/services/app_badge_service.dart';
 import 'package:zync_app/core/services/session_cache_service.dart';
+import 'package:zync_app/notifications/notification_service.dart';
+import 'package:app_settings/app_settings.dart';
 
 /// AuthWrapper: Verifica el estado de autenticación y muestra la pantalla correcta
 /// 
@@ -162,7 +164,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         print('🟢 [AuthWrapper] Activando funcionalidad silenciosa en background...');
         
         // Solo activar la notificación persistente (los servicios ya están inicializados en main.dart)
-        await SilentFunctionalityCoordinator.activateAfterLogin();
+        await SilentFunctionalityCoordinator.activateAfterLogin(context);
         
         // Inicializar listener de estados para badge (solo si no está inicializado)
         await StatusService.initializeStatusListener();
@@ -172,6 +174,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
         
         print('✅ [AuthWrapper] Funcionalidad silenciosa activada en background');
         
+        // Point 2: Verificar permisos después de activar funcionalidad silenciosa
+        await _checkNotificationPermissionsAfterAutoLogin(context);
+        
       } catch (e) {
         print('❌ [AuthWrapper] Error activando funcionalidad silenciosa: $e');
         _isSilentFunctionalityInitialized = false; // Reintentar si falló
@@ -179,30 +184,153 @@ class _AuthWrapperState extends State<AuthWrapper> {
     });
   }
 
+  // Point 2: Verificar permisos de notificación después del auto-login
+  Future<void> _checkNotificationPermissionsAfterAutoLogin(BuildContext checkContext) async {
+    // Esperar un poco para que la UI esté completamente renderizada
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    if (!checkContext.mounted) {
+      print('[POINT 2 AUTO] Context no mounted - cancelando verificación');
+      return;
+    }
+    
+    print('');
+    print('=== [POINT 2 AUTO] VERIFICACIÓN DE PERMISOS (AUTO-LOGIN) ===');
+    
+    try {
+      final hasPermission = await NotificationService.hasPermission();
+      
+      print('[POINT 2 AUTO] 🔍 Resultado hasPermission: $hasPermission');
+      
+      if (!hasPermission && checkContext.mounted) {
+        print('[POINT 2 AUTO] ⚠️ Permisos DENEGADOS - Mostrando modal informativo');
+        await _showPermissionDeniedDialog(checkContext);
+      } else {
+        print('[POINT 2 AUTO] ✅ Permisos concedidos - modo Silent funcionará correctamente');
+      }
+    } catch (e, stackTrace) {
+      print('[POINT 2 AUTO] ❌ ERROR verificando permisos: $e');
+      print('[POINT 2 AUTO] ❌ StackTrace: $stackTrace');
+    }
+    
+    print('=== [POINT 2 AUTO] FIN VERIFICACIÓN ===');
+    print('');
+  }
+  
+  // Point 2: Modal informativo cuando los permisos están denegados
+  Future<void> _showPermissionDeniedDialog(BuildContext dialogContext) async {
+    print('[POINT 2 MODAL AUTO] 📦 Iniciando showDialog...');
+    
+    return showDialog<void>(
+      context: dialogContext,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        print('[POINT 2 MODAL AUTO] 🎪 Builder ejecutado - Modal construyéndose');
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.notifications_off, color: Colors.orange, size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Permisos de Notificación',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Los permisos de notificación están desactivados.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Sin permisos de notificación, el modo Silent no funcionará correctamente.',
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Para activar los permisos:',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 8),
+                Text('1. Toca "Permitir"'),
+                Text('2. Busca "Notificaciones" en la configuración'),
+                Text('3. Activa las notificaciones para Zync'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                print('[POINT 2 MODAL AUTO] 🔴 Usuario presionó botón CERRAR');
+                Navigator.of(context).pop();
+                print('[POINT 2 MODAL AUTO] 🔴 Modal cerrado - Usuario NO activó permisos');
+              },
+              child: const Text(
+                'Cerrar',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                print('[POINT 2 MODAL AUTO] 🟢 Usuario presionó botón PERMITIR');
+                Navigator.of(context).pop();
+                print('[POINT 2 MODAL AUTO] 🔧 Abriendo configuración del sistema...');
+                
+                try {
+                  await AppSettings.openAppSettings(type: AppSettingsType.notification);
+                  print('[POINT 2 MODAL AUTO] ✅ Configuración de notificaciones abierta exitosamente');
+                } catch (e) {
+                  print('[POINT 2 MODAL AUTO] ❌ Error abriendo configuración: $e');
+                }
+              },
+              icon: const Icon(Icons.settings),
+              label: const Text('Permitir'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Limpia la funcionalidad silenciosa cuando no hay usuario autenticado
-  /// OPTIMIZACIÓN: Se ejecuta en background, NO bloquea la UI
+  /// Point 21 FASE 1: Limpiar cache y listeners, PERO NO desactivar notificación
+  /// La notificación permanece activa hasta logout MANUAL desde Settings
   void _cleanupSilentFunctionalityIfNeeded() {
-    // Ejecutar en background para NO bloquear la UI
+    // Point 21: Limpiar cache INMEDIATAMENTE (síncrono) para evitar pantalla transitoria
+    // Esto previene que al reabrir la app se lea cache viejo y muestre HomePage momentáneamente
+    SessionCacheService.clearSession().then((_) {
+      print('🛡️ [AuthWrapper] Cache limpiado INMEDIATAMENTE');
+    }).catchError((e) {
+      print('⚠️ [AuthWrapper] Error limpiando cache: $e');
+    });
+    
+    // Ejecutar resto de limpieza en background para NO bloquear la UI
     Future.microtask(() async {
       try {
-        print('🔴 [AuthWrapper] Limpiando funcionalidad silenciosa en background...');
+        print('🔴 [AuthWrapper] Limpiando listeners y cache en background...');
         
-        // Desactivar funcionalidad silenciosa
-        await SilentFunctionalityCoordinator.deactivateAfterLogout();
+        // Point 21 FASE 1: NO llamar deactivateAfterLogout() aquí
+        // La notificación debe permanecer hasta logout MANUAL desde Settings
         
-        // Limpiar listener de estados
+        // Solo limpiar listeners y estado local
         await StatusService.disposeStatusListener();
-        
-        // Limpiar badge
         await AppBadgeService.clearBadge();
         
-        // FASE 2B: Limpiar sesión cacheada
-        await SessionCacheService.clearSession();
-        
-        print('🔴 [AuthWrapper] Funcionalidad silenciosa limpiada exitosamente');
+        print('🔴 [AuthWrapper] Listeners y cache limpiados exitosamente');
+        print('💡 [AuthWrapper] Notificación permanece activa (logout manual desde Settings)');
         
       } catch (e) {
-        print('❌ [AuthWrapper] Error limpiando funcionalidad silenciosa: $e');
+        print('❌ [AuthWrapper] Error limpiando listeners: $e');
       }
     });
   }

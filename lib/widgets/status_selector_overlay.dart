@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../features/circle/domain_old/entities/user_status.dart';
+import '../core/models/user_status.dart';
 import '../core/services/status_service.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 

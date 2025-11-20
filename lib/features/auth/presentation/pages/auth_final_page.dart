@@ -7,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
+import 'package:zync_app/notifications/notification_service.dart'; // Point 2
+import 'package:app_settings/app_settings.dart'; // Point 2
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});
@@ -46,7 +48,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         if (mounted) {
           // Activar funcionalidad silenciosa después del login exitoso
           print('🟢 [LOGIN] Login exitoso, activando funcionalidad silenciosa...');
-          await SilentFunctionalityCoordinator.activateAfterLogin();
+          await SilentFunctionalityCoordinator.activateAfterLogin(context);
           print('🟢 [LOGIN] activateAfterLogin completado');
           
           // Inicializar listener de estados para badge
@@ -59,7 +61,19 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           }
           
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => HomePage()),
+            MaterialPageRoute(builder: (newContext) {
+              // Point 2: Verificar permisos DESPUÉS de navegar
+              Future.delayed(const Duration(milliseconds: 300), () {
+                print('🔔 [POINT 2] Verificando permisos después de navegación (LOGIN)...');
+                print('🔔 [POINT 2] Context mounted: ${newContext.mounted}');
+                if (newContext.mounted) {
+                  _checkNotificationPermissionsInContext(newContext);
+                } else {
+                  print('❌ [POINT 2] Context NO mounted - no se puede mostrar modal');
+                }
+              });
+              return HomePage();
+            }),
           );
         }
       } else {
@@ -107,7 +121,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       if (mounted) {
         // Activar funcionalidad silenciosa después del registro exitoso
         print('🟢 [REGISTER] Registro exitoso, activando funcionalidad silenciosa...');
-        await SilentFunctionalityCoordinator.activateAfterLogin();
+        await SilentFunctionalityCoordinator.activateAfterLogin(context);
         print('🟢 [REGISTER] activateAfterLogin completado');
         
         // Inicializar listener de estados para badge
@@ -120,7 +134,19 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         }
         
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => HomePage()),
+          MaterialPageRoute(builder: (newContext) {
+            // Point 2: Verificar permisos DESPUÉS de navegar
+            Future.delayed(const Duration(milliseconds: 300), () {
+              print('🔔 [POINT 2] Verificando permisos después de navegación (REGISTER)...');
+              print('🔔 [POINT 2] Context mounted: ${newContext.mounted}');
+              if (newContext.mounted) {
+                _checkNotificationPermissionsInContext(newContext);
+              } else {
+                print('❌ [POINT 2] Context NO mounted - no se puede mostrar modal');
+              }
+            });
+            return HomePage();
+          }),
         );
       }
     } on FirebaseAuthException catch (e) {
@@ -155,6 +181,127 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       default:
         return 'Error inesperado de autenticación.';
     }
+  }
+
+  // Point 2: Verificar permisos de notificación después del login/registro
+  Future<void> _checkNotificationPermissionsInContext(BuildContext checkContext) async {
+    print('');
+    print('=== [POINT 2] INICIANDO VERIFICACIÓN DE PERMISOS ===');
+    print('[POINT 2] Context mounted: ${checkContext.mounted}');
+    
+    try {
+      print('[POINT 2] Llamando a NotificationService.hasPermission()...');
+      final hasPermission = await NotificationService.hasPermission();
+      
+      print('[POINT 2] 🔍 Resultado hasPermission: $hasPermission');
+      print('[POINT 2] Context aún mounted: ${checkContext.mounted}');
+      
+      if (!hasPermission) {
+        print('[POINT 2] ⚠️ Permisos DENEGADOS - Intentando mostrar modal...');
+        
+        if (checkContext.mounted) {
+          print('[POINT 2] ✅ Context mounted - Mostrando modal informativo');
+          await _showPermissionDeniedDialogInContext(checkContext);
+          print('[POINT 2] ✅ Modal mostrado exitosamente');
+        } else {
+          print('[POINT 2] ❌ Context NO mounted - No se puede mostrar modal');
+        }
+      } else {
+        print('[POINT 2] ✅ Permisos concedidos - modo Silent funcionará correctamente');
+      }
+    } catch (e, stackTrace) {
+      print('[POINT 2] ❌ ERROR verificando permisos: $e');
+      print('[POINT 2] ❌ StackTrace: $stackTrace');
+    }
+    
+    print('=== [POINT 2] FIN VERIFICACIÓN DE PERMISOS ===');
+    print('');
+  }
+
+  // Point 2: Modal informativo cuando los permisos están denegados
+  Future<void> _showPermissionDeniedDialogInContext(BuildContext dialogContext) async {
+    print('[POINT 2 MODAL] 📦 Iniciando showDialog...');
+    print('[POINT 2 MODAL] Context: ${dialogContext.mounted}');
+    
+    return showDialog<void>(
+      context: dialogContext,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        print('[POINT 2 MODAL] 🎪 Builder ejecutado - Modal construyéndose');
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.notifications_off, color: Colors.orange, size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Permisos de Notificación',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Los permisos de notificación están desactivados.',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Sin permisos de notificación, el modo Silent no funcionará correctamente.',
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Para activar los permisos:',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 8),
+                Text('1. Toca "Permitir"'),
+                Text('2. Busca "Notificaciones" en la configuración'),
+                Text('3. Activa las notificaciones para Zync'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                print('[POINT 2 MODAL] 🔴 Usuario presionó botón CERRAR');
+                Navigator.of(dialogContext).pop();
+                print('[POINT 2 MODAL] 🔴 Modal cerrado - Usuario NO activó permisos');
+              },
+              child: const Text(
+                'Cerrar',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                print('[POINT 2 MODAL] 🟢 Usuario presionó botón PERMITIR');
+                Navigator.of(dialogContext).pop();
+                print('[POINT 2 MODAL] 🔧 Abriendo configuración del sistema...');
+                
+                try {
+                  await AppSettings.openAppSettings(type: AppSettingsType.notification);
+                  print('[POINT 2 MODAL] ✅ Configuración de notificaciones abierta exitosamente');
+                } catch (e) {
+                  print('[POINT 2 MODAL] ❌ Error abriendo configuración: $e');
+                }
+              },
+              icon: const Icon(Icons.settings),
+              label: const Text('Permitir'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
 

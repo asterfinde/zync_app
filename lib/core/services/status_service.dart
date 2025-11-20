@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:zync_app/features/circle/domain_old/entities/user_status.dart';
+import 'package:zync_app/core/models/user_status.dart';
 import 'app_badge_service.dart';
 import 'gps_service.dart';
 import 'dart:async';

@@ -7,6 +7,8 @@ import '../../../../features/auth/presentation/provider/auth_state.dart';
 import '../../../../features/auth/presentation/pages/auth_final_page.dart';
 import '../../../../notifications/notification_service.dart';
 import '../../../../core/widgets/quick_actions_config_widget.dart';
+import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
+import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout
 
 // ===========================================================================
 // SECCIÓN DE DISEÑO: Colores y Estilos basados en la pantalla de referencia
@@ -91,6 +93,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     super.initState();
     debugPrint('[SettingsPage] 🔧 Inicializando pantalla de configuración');
     _loadCurrentInfo();
+    
+    // Cargar datos de Firebase DESPUÉS del primer frame (no bloquear)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadFirebaseDataInBackground();
+    });
   }
 
   @override
@@ -100,8 +107,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     super.dispose();
   }
 
-  /// Carga la información actual del usuario y círculo
-  void _loadCurrentInfo() async {
+  /// Carga la información actual del usuario y círculo (SÍNCRONO)
+  void _loadCurrentInfo() {
     try {
       final authState = ref.read(authProvider);
       
@@ -109,21 +116,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         _userId = authState.user.uid;
         _userEmail = authState.user.email;
         
-        // Obtener nickname desde Firestore (NO desde email)
-        await _loadUserNickname();
+        // OPTIMIZACIÓN: Usar datos del authProvider inmediatamente (cache-first)
+        _currentUserName = authState.user.nickname.isNotEmpty 
+            ? authState.user.nickname 
+            : authState.user.email.split('@')[0];
+        _userNameController.text = _currentUserName ?? '';
         
-        debugPrint('[SettingsPage] 🔧 Usuario cargado: nickname=[$_currentUserName], email=[$_userEmail] (ID: $_userId)');
-        
-        // Obtener información del círculo directamente de Firebase
-        await _loadCircleInfo();
+        debugPrint('[SettingsPage] ⚡ Usuario cargado desde cache: nickname=[$_currentUserName]');
       }
     } catch (e) {
       debugPrint('[SettingsPage] ❌ Error cargando información: $e');
+    }
+  }
+  
+  /// Carga datos de Firebase en background (ASÍNCRONO - no bloquea UI)
+  Future<void> _loadFirebaseDataInBackground() async {
+    try {
+      // Cargar datos de Firebase sin bloquear
+      await _loadUserNickname();
+      await _loadCircleInfo();
+    } catch (e) {
+      debugPrint('[SettingsPage] ❌ Error cargando datos de Firebase: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Error cargando datos: ${e.toString()}'),
-            backgroundColor: _AppColors.sosRed, // <-- CAMBIO DE UI
+            backgroundColor: _AppColors.sosRed,
           ),
         );
       }
@@ -397,6 +415,94 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       }
     }
   }
+
+  /// Point 1 SPEC: Muestra diálogo de confirmación para cerrar sesión
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Evitar cerrar el diálogo accidentalmente durante el proceso
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: _AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.textPrimary)),
+        content: const Text('¿Estás seguro?', style: TextStyle(color: _AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              // 1. Cerrar el diálogo PRIMERO
+              Navigator.of(dialogContext).pop();
+              
+              // 2. Mostrar indicador de carga
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1EE9A4)),
+                    ),
+                  ),
+                );
+              }
+              
+              try {
+                // 3. Limpiar notificaciones y servicios (Point 1.1 - paso 2 y 3)
+                print('🔴 [LOGOUT] Iniciando proceso de logout desde Settings...');
+                print('🔴 [LOGOUT] Paso 1/3: Desactivando funcionalidad silenciosa...');
+                
+                await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
+                  const Duration(seconds: 10),
+                  onTimeout: () {
+                    print('⚠️ [LOGOUT] Timeout en deactivateAfterLogout, continuando...');
+                  },
+                );
+                
+                // FIX: Limpiar SessionCache INMEDIATAMENTE para evitar parpadeo
+                print('🔴 [LOGOUT] Limpiando SessionCache...');
+                await SessionCacheService.clearSession();
+                
+                print('🔴 [LOGOUT] Paso 2/3: Cerrando sesión de Firebase...');
+                
+                // 4. Invalidar sesión (Point 1.1 - paso 1)
+                await FirebaseAuth.instance.signOut().timeout(
+                  const Duration(seconds: 10),
+                  onTimeout: () {
+                    print('⚠️ [LOGOUT] Timeout en signOut, continuando...');
+                  },
+                );
+                
+                print('🔴 [LOGOUT] Paso 3/3: Redirigiendo a login...');
+                
+              } catch (e) {
+                print('❌ [LOGOUT] Error durante logout: $e');
+                // Continuar con navegación incluso si hay error
+              } finally {
+                // 5. SIEMPRE navegar a login (Point 1.1 - paso 4)
+                // Garantizar que la navegación ocurra sin importar errores anteriores
+                if (context.mounted) {
+                  // Cerrar indicador de carga si existe
+                  Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+                  
+                  // Navegar a AuthFinalPage
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+                    (route) => false,
+                  );
+                  
+                  print('✅ [LOGOUT] Logout completado exitosamente');
+                }
+              }
+            },
+            child: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.sosRed)),
+          ),
+        ],
+      ),
+    );
+  }
   // --- FIN DE LÓGICA (SIN CAMBIOS) ---
 
 
@@ -505,6 +611,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     // Sección: Quick Actions (Point 14)
                     // Pásame el código de este widget para aplicarle los estilos
                     const QuickActionsConfigWidget(),
+
+                    const SizedBox(height: 24),
+
+                    // Point 1 SPEC: Sección Cerrar Sesión
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: _AppColors.sosRed.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _AppColors.sosRed.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Sesión',
+                            style: _AppTextStyles.destructiveLabel,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Cerrar sesión eliminará todas las notificaciones activas y te redirigirá al login.',
+                            style: _AppTextStyles.textBody,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => _showLogoutDialog(context, ref),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFFC401), // Ámbar
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.logout),
+                            label: const Text(
+                              'Cerrar Sesión',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     const SizedBox(height: 24),
 

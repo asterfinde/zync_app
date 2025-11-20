@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/services/gps_service.dart';
 import '../core/services/status_service.dart';
-import '../features/circle/domain_old/entities/user_status.dart';
+import '../core/models/user_status.dart';
 
 class SOSGPSTestWidget extends StatefulWidget {
   const SOSGPSTestWidget({super.key});
