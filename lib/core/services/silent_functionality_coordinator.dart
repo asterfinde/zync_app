@@ -4,44 +4,46 @@ import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../widgets/status_selector_overlay.dart';
 import '../../core/models/user_status.dart';
+import '../../services/circle_service.dart';
 import 'status_modal_service.dart';
 
 /// Coordinador de funcionalidad silenciosa - Integra sin romper lo existente
 class SilentFunctionalityCoordinator {
   static bool _isInitialized = false;
   static BuildContext? _context;
-  static bool _isManualLogoutInProgress = false; // Point 1.1: Bandera para evitar reactivación
+  static bool _isManualLogoutInProgress =
+      false; // Point 1.1: Bandera para evitar reactivación
 
   /// Inicializa SOLO los servicios base (sin BuildContext)
   /// Se debe llamar en main() ANTES de runApp()
   static Future<void> initializeServices() async {
     print('');
     print('=== SILENT COORDINATOR INITIALIZE SERVICES CALLED ===');
-    print('[SilentCoordinator] 🚀 INICIO initializeServices() - _isInitialized: $_isInitialized');
+    print(
+        '[SilentCoordinator] 🚀 INICIO initializeServices() - _isInitialized: $_isInitialized');
     if (_isInitialized) {
       print('[SilentCoordinator] ⚠️ Ya está inicializado, saliendo...');
       return;
     }
-    
+
     try {
       // 1. Inicializar servicios existentes (sin romper nada)
       print('[SilentCoordinator] 🔧 Inicializando servicios base...');
-      
+
       await NotificationService.initialize();
       await QuickActionsService.initialize();
-      
+
       // Point 15: Inicializar servicio del modal transparente
       await StatusModalService.initialize();
-      
+
       // 2. Configurar el handler para la notificación persistente
       NotificationService.setQuickActionTapHandler(_handleQuickActionTap);
-      
+
       // 3. NO mostrar notificación aún - esperar login
       // await NotificationService.showQuickActionNotification();
-      
+
       _isInitialized = true;
       print('[SilentCoordinator] ✅ Servicios base inicializados exitosamente');
-      
     } catch (e) {
       print('[SilentCoordinator] ❌ Error inicializando servicios: $e');
       rethrow;
@@ -53,67 +55,90 @@ class SilentFunctionalityCoordinator {
   static Future<void> initialize(BuildContext context) async {
     print('[SilentCoordinator] ⚠️ initialize() con BuildContext es deprecado');
     _context = context;
-    
+
     if (!_isInitialized) {
       await initializeServices();
     }
   }
 
   /// Activa la funcionalidad silenciosa DESPUÉS del login exitoso
+  /// SOLO si el usuario pertenece a un círculo
   static Future<void> activateAfterLogin(BuildContext context) async {
     print('');
     print('=== ACTIVATE AFTER LOGIN CALLED ===');
     print('[SilentCoordinator] 🔓 MÉTODO activateAfterLogin() EJECUTÁNDOSE');
-    
+
     // Point 1.1: NO activar si hay un logout manual en progreso
     if (_isManualLogoutInProgress) {
-      print('[SilentCoordinator] ⚠️ Logout manual en progreso - BLOQUEANDO activación');
+      print(
+          '[SilentCoordinator] ⚠️ Logout manual en progreso - BLOQUEANDO activación');
       return;
     }
-    
+
     _context = context;
-    
+
     if (!_isInitialized) {
       print('[SilentCoordinator] ❌ ERROR: Servicios NO inicializados');
-      print('[SilentCoordinator] ❌ Debes llamar initializeServices() en main() antes de runApp()');
+      print(
+          '[SilentCoordinator] ❌ Debes llamar initializeServices() en main() antes de runApp()');
       return;
     }
-    
+
     try {
+      // VERIFICAR SI EL USUARIO PERTENECE A UN CÍRCULO
+      print('[SilentCoordinator] 🔍 Verificando pertenencia a círculo...');
+      final circleService = CircleService();
+      final userCircle = await circleService.getUserCircle();
+
+      if (userCircle == null) {
+        print('[SilentCoordinator] ⚠️ Usuario NO pertenece a un círculo');
+        print(
+            '[SilentCoordinator] ⚠️ NO se solicitarán permisos de notificación');
+        print(
+            '[SilentCoordinator] 💡 Las notificaciones se activarán cuando se una a un círculo');
+        return;
+      }
+
+      print(
+          '[SilentCoordinator] ✅ Usuario pertenece al círculo: ${userCircle.name}');
+
       final hasPermission = await NotificationService.requestPermissions();
-      
+
       if (hasPermission) {
         print('[SilentCoordinator] ✅ Permisos de notificación otorgados');
         print('[SilentCoordinator] Mostrando notificación persistente...');
         await NotificationService.showQuickActionNotification();
         print('[SilentCoordinator] ✅ Funcionalidad silenciosa ACTIVADA');
-        
+
         // Point 1.1: Resetear bandera de logout manual (usuario hizo login exitoso)
         _isManualLogoutInProgress = false;
         print('[SilentCoordinator] 🔓 Bandera Dart de logout manual RESETEADA');
-        
+
         // Point 1.1: Resetear también en el lado NATIVO
         try {
           const keepAliveChannel = MethodChannel('zync/keep_alive');
-          await keepAliveChannel.invokeMethod('setManualLogoutFlag', {'inProgress': false});
+          await keepAliveChannel
+              .invokeMethod('setManualLogoutFlag', {'inProgress': false});
           print('[SilentCoordinator] 🔓 Bandera nativa de logout RESETEADA');
         } catch (e) {
           print('[SilentCoordinator] ⚠️ Error reseteando bandera nativa: $e');
         }
       } else {
         print('[SilentCoordinator] ⚠️ Permisos de notificación denegados');
-        print('[SilentCoordinator] 💡 Point 2: El modal se mostrará después de navegar a HomePage');
+        print(
+            '[SilentCoordinator] 💡 Point 2: El modal se mostrará después de navegar a HomePage');
         // Point 2: NO mostrar modal aquí - se mostrará en auth_final_page después de navegar
       }
     } catch (e) {
       print('[SilentCoordinator] ❌ Error solicitando permisos: $e');
     }
-    
+
     print('');
   }
-  
+
   /// Point 21 FASE 5: Muestra diálogo cuando las notificaciones están bloqueadas
-  static void _showNotificationPermissionDialog(BuildContext context) {
+  // TODO: Implementar cuando se active la validación de permisos
+  /* static void _showNotificationPermissionDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false, // Usuario debe tomar acción
@@ -155,22 +180,25 @@ class SilentFunctionalityCoordinator {
       ),
     );
   }
-  
+  */
   /// FASE 5 UX: Verifica el estado de permisos después de que el usuario vuelve de Settings
-  static Future<void> _checkAndNotifyPermissionStatus(BuildContext context) async {
+  static Future<void> _checkAndNotifyPermissionStatus(
+      BuildContext context) async {
     if (!context.mounted) return;
-    
+
     try {
       final hasPermission = await NotificationService.hasPermission();
-      
+
       if (hasPermission) {
-        print('[SilentCoordinator] ✅ Usuario habilitó notificaciones - mostrando notificación');
+        print(
+            '[SilentCoordinator] ✅ Usuario habilitó notificaciones - mostrando notificación');
         await NotificationService.showQuickActionNotification();
-        
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Notificaciones habilitadas - Cambio rápido disponible'),
+              content: Text(
+                  '✅ Notificaciones habilitadas - Cambio rápido disponible'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
@@ -184,11 +212,11 @@ class SilentFunctionalityCoordinator {
       print('[SilentCoordinator] ❌ Error verificando permisos: $e');
     }
   }
-  
+
   /// FASE 5 UX: Muestra mensaje informativo cuando notificaciones están deshabilitadas
   static void _showNotificationsDisabledInfo(BuildContext context) {
     if (!context.mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Row(
@@ -229,23 +257,25 @@ class SilentFunctionalityCoordinator {
     print('');
     print('=== DEACTIVATE AFTER LOGOUT CALLED ===');
     print('[SilentCoordinator] 🔒 MÉTODO deactivateAfterLogout() EJECUTÁNDOSE');
-    
+
     // Point 1.1: Marcar que hay un logout manual en progreso (Dart)
     _isManualLogoutInProgress = true;
-    
+
     // Point 1.1: Marcar también en el lado NATIVO (Android)
     try {
       const keepAliveChannel = MethodChannel('zync/keep_alive');
-      await keepAliveChannel.invokeMethod('setManualLogoutFlag', {'inProgress': true});
+      await keepAliveChannel
+          .invokeMethod('setManualLogoutFlag', {'inProgress': true});
       print('[SilentCoordinator] 🔒 Bandera nativa de logout activada');
     } catch (e) {
       print('[SilentCoordinator] ⚠️ Error activando bandera nativa: $e');
     }
-    
+
     try {
       // Point 1.1: Limpieza exhaustiva - ORDEN CRÍTICO
-      print('[SilentCoordinator] 🔒 Usuario deslogueado - Iniciando limpieza...');
-      
+      print(
+          '[SilentCoordinator] 🔒 Usuario deslogueado - Iniciando limpieza...');
+
       // PASO 1: Detener KeepAliveService PRIMERO (esto auto-cancela su notificación en onDestroy)
       print('[SilentCoordinator] PASO 1/3: Deteniendo KeepAliveService...');
       try {
@@ -255,22 +285,25 @@ class SilentFunctionalityCoordinator {
       } catch (e) {
         print('[SilentCoordinator] ❌ Error deteniendo KeepAliveService: $e');
       }
-      
+
       // PASO 2: Esperar más tiempo para que onDestroy() se ejecute completamente
-      print('[SilentCoordinator] PASO 2/3: Esperando 1.5 segundos para que onDestroy complete...');
+      print(
+          '[SilentCoordinator] PASO 2/3: Esperando 1.5 segundos para que onDestroy complete...');
       await Future.delayed(const Duration(milliseconds: 1500));
-      
+
       // PASO 3: Cancelar TODAS las notificaciones restantes (limpieza final)
-      print('[SilentCoordinator] PASO 3/3: Cancelación final de notificaciones restantes...');
+      print(
+          '[SilentCoordinator] PASO 3/3: Cancelación final de notificaciones restantes...');
       await NotificationService.cancelAllNotificationsAggressive();
-      
+
       print('[SilentCoordinator] ✅ Proceso de limpieza completado');
-      print('[SilentCoordinator] ✅ KeepAliveService destruido + Notificaciones canceladas');
-      
+      print(
+          '[SilentCoordinator] ✅ KeepAliveService destruido + Notificaciones canceladas');
+
       // Point 1.1: Mantener la bandera activa para evitar reactivación por AuthWrapper
       // Se reseteará solo cuando el usuario haga login nuevamente
-      print('[SilentCoordinator] 🔒 Bandera de logout manual ACTIVA - bloqueará reactivaciones');
-      
+      print(
+          '[SilentCoordinator] 🔒 Bandera de logout manual ACTIVA - bloqueará reactivaciones');
     } catch (e) {
       print('[SilentCoordinator] ❌ Error en proceso de limpieza: $e');
       // Resetear bandera si hubo error para permitir reintentos
@@ -282,28 +315,30 @@ class SilentFunctionalityCoordinator {
   /// Usa StatusModalActivity nativa para comportamiento transparente
   static void _handleQuickActionTap() async {
     print('[SilentCoordinator] 🎯 Tap en notificación detectado - FASE 5');
-    
+
     if (!_isInitialized) {
       print('[SilentCoordinator] ❌ No inicializado');
       return;
     }
 
     try {
-      print('[SilentCoordinator] 🚀 Abriendo StatusModalActivity (modal transparente)...');
-      
+      print(
+          '[SilentCoordinator] 🚀 Abriendo StatusModalActivity (modal transparente)...');
+
       // FASE 5: Abrir activity nativa transparente en lugar de usar Navigator
       // Esto evita abrir la app completa
       await StatusModalService.openModal();
-      
+
       print('[SilentCoordinator] ✅ StatusModalActivity iniciada');
-      
     } catch (e) {
       print('[SilentCoordinator] ❌ Error abriendo modal transparente: $e');
-      print('[SilentCoordinator] 🚨 Fallback: Intentando abrir con Navigator...');
-      
+      print(
+          '[SilentCoordinator] 🚨 Fallback: Intentando abrir con Navigator...');
+
       // Fallback: usar el método anterior si falla
       if (_context != null && _context!.mounted) {
-        Navigator.of(_context!).push(
+        Navigator.of(_context!)
+            .push(
           PageRouteBuilder(
             opaque: false,
             pageBuilder: (context, animation, secondaryAnimation) {
@@ -314,7 +349,8 @@ class SilentFunctionalityCoordinator {
               );
             },
           ),
-        ).catchError((error) {
+        )
+            .catchError((error) {
           print('[SilentCoordinator] ❌ Error en fallback: $error');
           return null;
         });
@@ -328,7 +364,8 @@ class SilentFunctionalityCoordinator {
   }
 
   /// Actualiza la notificación persistente cuando cambia el status
-  static Future<void> updatePersistentNotification(StatusType? currentStatus) async {
+  static Future<void> updatePersistentNotification(
+      StatusType? currentStatus) async {
     try {
       // Actualizar la notificación con el nuevo estado
       await NotificationService.showQuickActionNotification();

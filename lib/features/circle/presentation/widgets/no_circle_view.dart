@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_auth/firebase_auth.dart'; // Comentado: no usado actualmente
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
-import '../../../../core/services/silent_functionality_coordinator.dart';
+// import '../../../../core/services/silent_functionality_coordinator.dart'; // Comentado: no usado actualmente
 import '../../../settings/presentation/pages/settings_page.dart';
 import 'create_circle_view.dart';
 import 'join_circle_view.dart';
@@ -16,12 +16,11 @@ class NoCircleView extends ConsumerStatefulWidget {
 }
 
 class _NoCircleViewState extends ConsumerState<NoCircleView> {
-
   String _getCurrentUserNickname() {
     final authState = ref.watch(authProvider);
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty 
-          ? authState.user.nickname 
+      return authState.user.nickname.isNotEmpty
+          ? authState.user.nickname
           : authState.user.email.split('@')[0];
     }
     return 'Usuario';
@@ -43,7 +42,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  // TODO: Usar cuando se active la opción de cerrar sesión desde esta vista
+  /* void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -100,7 +100,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         ],
       ),
     );
-  }
+  } */
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +147,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1CE7E8),
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -163,7 +164,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
             ],
           ),
         ),
-        
+
         // Contenido principal
         Expanded(
           child: Container(
@@ -175,7 +176,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 40), // Espacio reducido
-                  
+
                   // Mensaje principal
                   Text(
                     "Aún no estás en un círculo",
@@ -187,7 +188,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Mensaje de acción
                   Text(
                     "¿Qué te gustaría hacer?",
@@ -199,7 +200,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
-                  
+
                   // Botón Crear Círculo
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 16),
@@ -246,11 +247,12 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ),
 
                   const SizedBox(height: 30),
-                  
+
                   // Divider OR
                   Row(
                     children: [
-                      Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                      Expanded(
+                          child: Divider(color: Colors.white.withOpacity(0.3))),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Text(
@@ -262,7 +264,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                           ),
                         ),
                       ),
-                      Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                      Expanded(
+                          child: Divider(color: Colors.white.withOpacity(0.3))),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -273,7 +276,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     child: ElevatedButton(
                       onPressed: _navigateToJoinCircle,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 91, 207, 139),
+                        backgroundColor:
+                            const Color.fromARGB(255, 91, 207, 139),
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         shape: RoundedRectangleBorder(
@@ -311,7 +315,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 100), // Espacio final
                 ],
               ),

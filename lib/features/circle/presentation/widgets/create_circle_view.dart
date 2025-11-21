@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/global_keys.dart';
 import '../../../../services/circle_service.dart';
+import '../../../../core/services/silent_functionality_coordinator.dart';
 
 class CreateCircleView extends ConsumerStatefulWidget {
   const CreateCircleView({super.key});
@@ -35,9 +36,9 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
 
   void _onCreateCircle() async {
     print('[CreateCircleView] Create button pressed');
-    
+
     if (!mounted) return;
-    
+
     if (_createController.text.trim().isEmpty) {
       if (mounted) {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
@@ -49,14 +50,21 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
       }
       return;
     }
-    
+
     final circleName = _createController.text.trim();
     print('[CreateCircleView] Creating circle: $circleName');
-    
+
     try {
       await _service.createCircle(circleName);
       print('[CreateCircleView] Circle created successfully');
-      
+
+      // ACTIVAR NOTIFICACIONES después de crear el círculo
+      if (mounted) {
+        print(
+            '[CreateCircleView] Activando notificaciones después de crear...');
+        await SilentFunctionalityCoordinator.activateAfterLogin(context);
+      }
+
       if (mounted) {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
@@ -64,20 +72,19 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
             backgroundColor: const Color(0xFF1CE4B3),
           ),
         );
-        
+
         // Limpiar el controller de manera segura
         _createController.clear();
       }
-      
+
       // Forzar actualización del stream
       CircleService.forceRefresh();
       print('[CreateCircleView] Forced stream refresh');
-      
+
       // Navegar de vuelta
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
     } catch (e) {
       print('[CreateCircleView] Error creating circle: $e');
       if (mounted) {
@@ -114,7 +121,7 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 40),
-            
+
             // Mensaje principal
             Text(
               "Crea tu propio círculo y comparte el código con tus contactos.",
@@ -126,7 +133,7 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 60),
-            
+
             // Input para nombre del círculo
             TextFormField(
               controller: _createController,
@@ -143,21 +150,21 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF1CE4B3), width: 2),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF1CE4B3), width: 2),
                 ),
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.05),
               ),
             ),
             const SizedBox(height: 40),
-            
+
             // Botón Crear Círculo
             ElevatedButton(
               onPressed: _isFormValid ? _onCreateCircle : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _isFormValid 
-                    ? const Color(0xFF1CE4B3) 
-                    : Colors.grey[700],
+                backgroundColor:
+                    _isFormValid ? const Color(0xFF1CE4B3) : Colors.grey[700],
                 foregroundColor: _isFormValid ? Colors.black : Colors.grey[400],
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -168,13 +175,13 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
               child: Text(
                 'Crear Círculo',
                 style: TextStyle(
-                  fontSize: 16, 
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
                   color: _isFormValid ? Colors.black : Colors.grey[500],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 100),
           ],
         ),

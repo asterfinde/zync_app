@@ -71,7 +71,7 @@ dev_dependencies:
   # Framework de pruebas de UI que extiende integration_test
   patrol: ^3.4.6
 
-  flutter_lints: ^6.0.0
+  flutter_lints: ^5.0.0
   change_app_package_name: ^1.1.0
 
 flutter:

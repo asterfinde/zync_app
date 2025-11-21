@@ -9,6 +9,7 @@ import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
 import 'package:zync_app/core/services/status_service.dart';
 import 'package:zync_app/notifications/notification_service.dart'; // Point 2
 import 'package:app_settings/app_settings.dart'; // Point 2
+import 'package:zync_app/services/circle_service.dart';
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});
@@ -29,7 +30,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
   String _message = '';
 
   Future<void> _login() async {
-    setState(() { _isLoading = true; _message = ''; });
+    setState(() {
+      _isLoading = true;
+      _message = '';
+    });
     final email = _emailController.text.trim();
     final emailValid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
     if (!emailValid) {
@@ -47,10 +51,11 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       if (userCredential.user != null) {
         if (mounted) {
           // Activar funcionalidad silenciosa después del login exitoso
-          print('🟢 [LOGIN] Login exitoso, activando funcionalidad silenciosa...');
+          print(
+              '🟢 [LOGIN] Login exitoso, activando funcionalidad silenciosa...');
           await SilentFunctionalityCoordinator.activateAfterLogin(context);
           print('🟢 [LOGIN] activateAfterLogin completado');
-          
+
           // Inicializar listener de estados para badge
           print('🟢 [LOGIN] Inicializando status listener para badge...');
           try {
@@ -59,17 +64,19 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           } catch (e) {
             print('❌ [LOGIN] Error inicializando status listener: $e');
           }
-          
+
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (newContext) {
               // Point 2: Verificar permisos DESPUÉS de navegar
               Future.delayed(const Duration(milliseconds: 300), () {
-                print('🔔 [POINT 2] Verificando permisos después de navegación (LOGIN)...');
+                print(
+                    '🔔 [POINT 2] Verificando permisos después de navegación (LOGIN)...');
                 print('🔔 [POINT 2] Context mounted: ${newContext.mounted}');
                 if (newContext.mounted) {
                   _checkNotificationPermissionsInContext(newContext);
                 } else {
-                  print('❌ [POINT 2] Context NO mounted - no se puede mostrar modal');
+                  print(
+                      '❌ [POINT 2] Context NO mounted - no se puede mostrar modal');
                 }
               });
               return HomePage();
@@ -77,10 +84,14 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           );
         }
       } else {
-        setState(() { _message = 'Usuario no encontrado.'; });
+        setState(() {
+          _message = 'Usuario no encontrado.';
+        });
       }
     } on FirebaseAuthException catch (e) {
-      setState(() { _message = getAuthErrorMessage(e.code); });
+      setState(() {
+        _message = getAuthErrorMessage(e.code);
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -90,7 +101,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         );
       }
     } catch (e) {
-      setState(() { _message = 'Error inesperado. Intenta de nuevo.'; });
+      setState(() {
+        _message = 'Error inesperado. Intenta de nuevo.';
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -100,18 +113,26 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         );
       }
     } finally {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _register() async {
-    setState(() { _isLoading = true; _message = ''; });
+    setState(() {
+      _isLoading = true;
+      _message = '';
+    });
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user?.uid)
+          .set({
         'nickname': _nicknameController.text.trim(),
         'email': _emailController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
@@ -120,10 +141,11 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       });
       if (mounted) {
         // Activar funcionalidad silenciosa después del registro exitoso
-        print('🟢 [REGISTER] Registro exitoso, activando funcionalidad silenciosa...');
+        print(
+            '🟢 [REGISTER] Registro exitoso, activando funcionalidad silenciosa...');
         await SilentFunctionalityCoordinator.activateAfterLogin(context);
         print('🟢 [REGISTER] activateAfterLogin completado');
-        
+
         // Inicializar listener de estados para badge
         print('🟢 [REGISTER] Inicializando status listener para badge...');
         try {
@@ -132,17 +154,19 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         } catch (e) {
           print('❌ [REGISTER] Error inicializando status listener: $e');
         }
-        
+
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (newContext) {
             // Point 2: Verificar permisos DESPUÉS de navegar
             Future.delayed(const Duration(milliseconds: 300), () {
-              print('🔔 [POINT 2] Verificando permisos después de navegación (REGISTER)...');
+              print(
+                  '🔔 [POINT 2] Verificando permisos después de navegación (REGISTER)...');
               print('🔔 [POINT 2] Context mounted: ${newContext.mounted}');
               if (newContext.mounted) {
                 _checkNotificationPermissionsInContext(newContext);
               } else {
-                print('❌ [POINT 2] Context NO mounted - no se puede mostrar modal');
+                print(
+                    '❌ [POINT 2] Context NO mounted - no se puede mostrar modal');
               }
             });
             return HomePage();
@@ -150,7 +174,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      setState(() { _message = getAuthErrorMessage(e.code); });
+      setState(() {
+        _message = getAuthErrorMessage(e.code);
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -160,9 +186,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         );
       }
     } catch (e) {
-      setState(() { _message = 'Error inesperado. Intenta de nuevo.'; });
+      setState(() {
+        _message = 'Error inesperado. Intenta de nuevo.';
+      });
     } finally {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -184,21 +214,35 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
   }
 
   // Point 2: Verificar permisos de notificación después del login/registro
-  Future<void> _checkNotificationPermissionsInContext(BuildContext checkContext) async {
+  Future<void> _checkNotificationPermissionsInContext(
+      BuildContext checkContext) async {
     print('');
     print('=== [POINT 2] INICIANDO VERIFICACIÓN DE PERMISOS ===');
     print('[POINT 2] Context mounted: ${checkContext.mounted}');
-    
+
     try {
+      // VERIFICAR PRIMERO SI EL USUARIO PERTENECE A UN CÍRCULO
+      print('[POINT 2] 🔍 Verificando si el usuario pertenece a un círculo...');
+      final circleService = CircleService();
+      final userCircle = await circleService.getUserCircle();
+
+      if (userCircle == null) {
+        print('[POINT 2] ⚠️ Usuario NO pertenece a un círculo');
+        print('[POINT 2] ⚠️ NO se verificarán permisos ni se mostrará modal');
+        print('[POINT 2] 💡 El modal aparecerá cuando se una/cree un círculo');
+        return;
+      }
+
+      print('[POINT 2] ✅ Usuario pertenece al círculo: ${userCircle.name}');
       print('[POINT 2] Llamando a NotificationService.hasPermission()...');
       final hasPermission = await NotificationService.hasPermission();
-      
+
       print('[POINT 2] 🔍 Resultado hasPermission: $hasPermission');
       print('[POINT 2] Context aún mounted: ${checkContext.mounted}');
-      
+
       if (!hasPermission) {
         print('[POINT 2] ⚠️ Permisos DENEGADOS - Intentando mostrar modal...');
-        
+
         if (checkContext.mounted) {
           print('[POINT 2] ✅ Context mounted - Mostrando modal informativo');
           await _showPermissionDeniedDialogInContext(checkContext);
@@ -207,22 +251,24 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           print('[POINT 2] ❌ Context NO mounted - No se puede mostrar modal');
         }
       } else {
-        print('[POINT 2] ✅ Permisos concedidos - modo Silent funcionará correctamente');
+        print(
+            '[POINT 2] ✅ Permisos concedidos - modo Silent funcionará correctamente');
       }
     } catch (e, stackTrace) {
       print('[POINT 2] ❌ ERROR verificando permisos: $e');
       print('[POINT 2] ❌ StackTrace: $stackTrace');
     }
-    
+
     print('=== [POINT 2] FIN VERIFICACIÓN DE PERMISOS ===');
     print('');
   }
 
   // Point 2: Modal informativo cuando los permisos están denegados
-  Future<void> _showPermissionDeniedDialogInContext(BuildContext dialogContext) async {
+  Future<void> _showPermissionDeniedDialogInContext(
+      BuildContext dialogContext) async {
     print('[POINT 2 MODAL] 📦 Iniciando showDialog...');
     print('[POINT 2 MODAL] Context: ${dialogContext.mounted}');
-    
+
     return showDialog<void>(
       context: dialogContext,
       barrierDismissible: false,
@@ -271,7 +317,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
               onPressed: () {
                 print('[POINT 2 MODAL] 🔴 Usuario presionó botón CERRAR');
                 Navigator.of(dialogContext).pop();
-                print('[POINT 2 MODAL] 🔴 Modal cerrado - Usuario NO activó permisos');
+                print(
+                    '[POINT 2 MODAL] 🔴 Modal cerrado - Usuario NO activó permisos');
               },
               child: const Text(
                 'Cerrar',
@@ -282,11 +329,14 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
               onPressed: () async {
                 print('[POINT 2 MODAL] 🟢 Usuario presionó botón PERMITIR');
                 Navigator.of(dialogContext).pop();
-                print('[POINT 2 MODAL] 🔧 Abriendo configuración del sistema...');
-                
+                print(
+                    '[POINT 2 MODAL] 🔧 Abriendo configuración del sistema...');
+
                 try {
-                  await AppSettings.openAppSettings(type: AppSettingsType.notification);
-                  print('[POINT 2 MODAL] ✅ Configuración de notificaciones abierta exitosamente');
+                  await AppSettings.openAppSettings(
+                      type: AppSettingsType.notification);
+                  print(
+                      '[POINT 2 MODAL] ✅ Configuración de notificaciones abierta exitosamente');
                 } catch (e) {
                   print('[POINT 2 MODAL] ❌ Error abriendo configuración: $e');
                 }
@@ -304,20 +354,22 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
     );
   }
 
-
-
   // PROCESO ACTUAL: Solo Firebase Auth (comportamiento estándar)
   Future<bool> _sendPasswordResetEmail(String email) async {
-    log('[PROCESO AUTH] Iniciando envío de correo de recuperación para email: $email', name: 'PasswordReset');
-    log('[PROCESO AUTH] ⚠️ NOTA: Firebase Auth no valida existencia por seguridad', name: 'PasswordReset');
-    
+    log('[PROCESO AUTH] Iniciando envío de correo de recuperación para email: $email',
+        name: 'PasswordReset');
+    log('[PROCESO AUTH] ⚠️ NOTA: Firebase Auth no valida existencia por seguridad',
+        name: 'PasswordReset');
+
     try {
       await _auth.sendPasswordResetEmail(email: email);
-      log('[PROCESO AUTH] ✅ Correo procesado (enviado si el usuario existe)', name: 'PasswordReset');
+      log('[PROCESO AUTH] ✅ Correo procesado (enviado si el usuario existe)',
+          name: 'PasswordReset');
       return true;
     } on FirebaseAuthException catch (e) {
-      log('[PROCESO AUTH] ❌ FirebaseAuthException: ${e.code}', name: 'PasswordReset', error: e);
-      
+      log('[PROCESO AUTH] ❌ FirebaseAuthException: ${e.code}',
+          name: 'PasswordReset', error: e);
+
       switch (e.code) {
         case 'invalid-email':
           throw Exception('invalid_email');
@@ -328,12 +380,14 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           throw Exception('auth_error_${e.code}');
       }
     } catch (e) {
-      log('[PROCESO AUTH] ❌ Error general: $e', name: 'PasswordReset', error: e);
+      log('[PROCESO AUTH] ❌ Error general: $e',
+          name: 'PasswordReset', error: e);
       throw Exception('connection_error');
     }
   }
 
-  void _showResetPasswordModal(BuildContext rootContext, void Function(String, Color) onFeedback) {
+  void _showResetPasswordModal(
+      BuildContext rootContext, void Function(String, Color) onFeedback) {
     final TextEditingController resetEmailController = TextEditingController();
     showModalBottomSheet(
       context: rootContext,
@@ -344,7 +398,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       ),
       builder: (modalContext) {
         bool isLoading = false;
-        
+
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
@@ -379,7 +433,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     decoration: InputDecoration(
                       labelText: 'Email',
                       labelStyle: TextStyle(color: Color(0xFF7EAEA0)),
-                      prefixIcon: Icon(Icons.alternate_email, color: Color(0xFF7EAEA0)),
+                      prefixIcon:
+                          Icon(Icons.alternate_email, color: Color(0xFF7EAEA0)),
                       filled: true,
                       fillColor: Color(0xFF171D1B),
                       border: OutlineInputBorder(
@@ -388,14 +443,16 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Color(0xFF7EAEA0), width: 2),
+                        borderSide:
+                            BorderSide(color: Color(0xFF7EAEA0), width: 2),
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   if (isLoading)
                     CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7EAEA0)),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFF7EAEA0)),
                     )
                   else
                     SizedBox(
@@ -418,113 +475,156 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                         ),
                         onPressed: () async {
                           final email = resetEmailController.text.trim();
-                          
-                          log('\n[VALIDACIÓN] Email ingresado: "$email"', name: 'PasswordReset');
-                          
+
+                          log('\n[VALIDACIÓN] Email ingresado: "$email"',
+                              name: 'PasswordReset');
+
                           // CASO 3: Validación de campo vacío
                           if (email.isEmpty) {
-                            log('[VALIDACIÓN] ❌ Email vacío', name: 'PasswordReset');
+                            log('[VALIDACIÓN] ❌ Email vacío',
+                                name: 'PasswordReset');
                             ScaffoldMessenger.of(rootContext).showSnackBar(
                               SnackBar(
-                                content: Text('Por favor ingresa un correo.', style: TextStyle(color: Colors.white)),
+                                content: Text('Por favor ingresa un correo.',
+                                    style: TextStyle(color: Colors.white)),
                                 backgroundColor: Colors.red,
                               ),
                             );
                             return;
                           }
-                          
-                          // CASO 3: Validación de formato de email
-                          final emailValid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-                          log('[VALIDACIÓN] Formato de email válido: $emailValid', name: 'PasswordReset');
-                            if (!emailValid) {
-                              log('[VALIDACIÓN] ❌ Formato de email inválido', name: 'PasswordReset');
-                              return;
-                            }
 
-                          log('[VALIDACIÓN] ✅ Todas las validaciones pasaron. Iniciando loading...', name: 'PasswordReset');
+                          // CASO 3: Validación de formato de email
+                          final emailValid =
+                              RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                  .hasMatch(email);
+                          log('[VALIDACIÓN] Formato de email válido: $emailValid',
+                              name: 'PasswordReset');
+                          if (!emailValid) {
+                            log('[VALIDACIÓN] ❌ Formato de email inválido',
+                                name: 'PasswordReset');
+                            return;
+                          }
+
+                          log('[VALIDACIÓN] ✅ Todas las validaciones pasaron. Iniciando loading...',
+                              name: 'PasswordReset');
                           setModalState(() => isLoading = true);
 
                           // PROCESO ÚNICO: Solo Firebase Auth
-                          log('\n[TREN EJECUCIÓN] =================================', name: 'PasswordReset');
-                          log('[TREN EJECUCIÓN] Iniciando recuperación de contraseña', name: 'PasswordReset');
-                          log('[TREN EJECUCIÓN] Email a procesar: $email', name: 'PasswordReset');
-                          log('[TREN EJECUCIÓN] Usando solo Firebase Auth (sin Firestore)', name: 'PasswordReset');
-                          log('[TREN EJECUCIÓN] =================================\n', name: 'PasswordReset');
-                          
+                          log('\n[TREN EJECUCIÓN] =================================',
+                              name: 'PasswordReset');
+                          log('[TREN EJECUCIÓN] Iniciando recuperación de contraseña',
+                              name: 'PasswordReset');
+                          log('[TREN EJECUCIÓN] Email a procesar: $email',
+                              name: 'PasswordReset');
+                          log('[TREN EJECUCIÓN] Usando solo Firebase Auth (sin Firestore)',
+                              name: 'PasswordReset');
+                          log('[TREN EJECUCIÓN] =================================\n',
+                              name: 'PasswordReset');
+
                           try {
                             // PROCESO ÚNICO: Firebase Auth maneja existencia y envío
-                            log('[TREN EJECUCIÓN] Ejecutando proceso de envío...', name: 'PasswordReset');
+                            log('[TREN EJECUCIÓN] Ejecutando proceso de envío...',
+                                name: 'PasswordReset');
                             bool success = await _sendPasswordResetEmail(email);
-                            log('[TREN EJECUCIÓN] Resultado del proceso: $success', name: 'PasswordReset');
-                            
+                            log('[TREN EJECUCIÓN] Resultado del proceso: $success',
+                                name: 'PasswordReset');
+
                             if (success) {
                               // ÉXITO COMPLETO
-                              log('[TREN EJECUCIÓN] 🎉 ÉXITO: Correo enviado correctamente', name: 'PasswordReset');
-                              log('[TREN EJECUCIÓN] Mostrando SnackBar verde de éxito', name: 'PasswordReset');
+                              log('[TREN EJECUCIÓN] 🎉 ÉXITO: Correo enviado correctamente',
+                                  name: 'PasswordReset');
+                              log('[TREN EJECUCIÓN] Mostrando SnackBar verde de éxito',
+                                  name: 'PasswordReset');
                               // ignore: use_build_context_synchronously
                               Navigator.of(modalContext).pop();
                               if (mounted) {
                                 // ignore: use_build_context_synchronously
                                 ScaffoldMessenger.of(rootContext).showSnackBar(
                                   SnackBar(
-                                    content: Text('Hemos enviado las instrucciones. Si no las recibes, verifica que el correo esté registrado.', style: TextStyle(color: Colors.white)),
+                                    content: Text(
+                                        'Hemos enviado las instrucciones. Si no las recibes, verifica que el correo esté registrado.',
+                                        style: TextStyle(color: Colors.white)),
                                     backgroundColor: Colors.orange,
                                     duration: Duration(seconds: 4),
                                   ),
                                 );
                               }
                             }
-                            
                           } catch (e) {
-                            log('\n[TREN EJECUCIÓN] ❌ ERROR CAPTURADO:', name: 'PasswordReset', error: e);
-                            log('[TREN EJECUCIÓN] Error completo: $e', name: 'PasswordReset');
-                            log('[TREN EJECUCIÓN] Tipo de error: ${e.runtimeType}', name: 'PasswordReset');
-                            log('[TREN EJECUCIÓN] String del error: ${e.toString()}', name: 'PasswordReset');
-                            
+                            log('\n[TREN EJECUCIÓN] ❌ ERROR CAPTURADO:',
+                                name: 'PasswordReset', error: e);
+                            log('[TREN EJECUCIÓN] Error completo: $e',
+                                name: 'PasswordReset');
+                            log('[TREN EJECUCIÓN] Tipo de error: ${e.runtimeType}',
+                                name: 'PasswordReset');
+                            log('[TREN EJECUCIÓN] String del error: ${e.toString()}',
+                                name: 'PasswordReset');
+
                             Navigator.of(modalContext).pop();
                             String errorMessage;
-                            
+
                             // Manejo de errores simplificado (solo Firebase Auth)
                             if (e.toString().contains('user_not_found')) {
-                              log('[TREN EJECUCIÓN] Clasificado como: USUARIO NO EXISTE', name: 'PasswordReset');
-                              errorMessage = 'No existe ninguna cuenta con ese correo.';
+                              log('[TREN EJECUCIÓN] Clasificado como: USUARIO NO EXISTE',
+                                  name: 'PasswordReset');
+                              errorMessage =
+                                  'No existe ninguna cuenta con ese correo.';
                             } else if (e.toString().contains('invalid_email')) {
-                              log('[TREN EJECUCIÓN] Clasificado como: EMAIL INVÁLIDO', name: 'PasswordReset');
-                              errorMessage = 'Por favor ingresa un correo válido.';
+                              log('[TREN EJECUCIÓN] Clasificado como: EMAIL INVÁLIDO',
+                                  name: 'PasswordReset');
+                              errorMessage =
+                                  'Por favor ingresa un correo válido.';
                             } else if (e.toString().contains('network_error')) {
-                              log('[TREN EJECUCIÓN] Clasificado como: ERROR DE RED', name: 'PasswordReset');
-                              errorMessage = 'No hay conexión de internet. Intenta de nuevo.';
-                            } else if (e.toString().contains('connection_error')) {
-                              log('[TREN EJECUCIÓN] Clasificado como: ERROR DE CONEXIÓN', name: 'PasswordReset');
-                              errorMessage = 'Error de conexión. Intenta de nuevo.';
+                              log('[TREN EJECUCIÓN] Clasificado como: ERROR DE RED',
+                                  name: 'PasswordReset');
+                              errorMessage =
+                                  'No hay conexión de internet. Intenta de nuevo.';
+                            } else if (e
+                                .toString()
+                                .contains('connection_error')) {
+                              log('[TREN EJECUCIÓN] Clasificado como: ERROR DE CONEXIÓN',
+                                  name: 'PasswordReset');
+                              errorMessage =
+                                  'Error de conexión. Intenta de nuevo.';
                             } else if (e.toString().contains('auth_error_')) {
-                              log('[TREN EJECUCIÓN] Clasificado como: ERROR DE AUTENTICACIÓN', name: 'PasswordReset');
-                              errorMessage = 'Error en el sistema de autenticación. Intenta de nuevo.';
+                              log('[TREN EJECUCIÓN] Clasificado como: ERROR DE AUTENTICACIÓN',
+                                  name: 'PasswordReset');
+                              errorMessage =
+                                  'Error en el sistema de autenticación. Intenta de nuevo.';
                             } else {
-                              log('[TREN EJECUCIÓN] Clasificado como: ERROR INESPERADO', name: 'PasswordReset');
-                              errorMessage = 'Error inesperado. Intenta de nuevo.';
+                              log('[TREN EJECUCIÓN] Clasificado como: ERROR INESPERADO',
+                                  name: 'PasswordReset');
+                              errorMessage =
+                                  'Error inesperado. Intenta de nuevo.';
                             }
-                            
-                            log('[TREN EJECUCIÓN] Mensaje final al usuario: $errorMessage', name: 'PasswordReset');
-                            log('[TREN EJECUCIÓN] =================================\n', name: 'PasswordReset');
-                            
+
+                            log('[TREN EJECUCIÓN] Mensaje final al usuario: $errorMessage',
+                                name: 'PasswordReset');
+                            log('[TREN EJECUCIÓN] =================================\n',
+                                name: 'PasswordReset');
+
                             if (mounted) {
                               ScaffoldMessenger.of(rootContext).showSnackBar(
                                 SnackBar(
-                                  content: Text(errorMessage, style: TextStyle(color: Colors.white)),
+                                  content: Text(errorMessage,
+                                      style: TextStyle(color: Colors.white)),
                                   backgroundColor: Colors.red,
                                 ),
                               );
                             }
                           } finally {
-                            log('[TREN EJECUCIÓN] Finalizando proceso en bloque finally', name: 'PasswordReset');
+                            log('[TREN EJECUCIÓN] Finalizando proceso en bloque finally',
+                                name: 'PasswordReset');
                             if (mounted) {
-                              log('[TREN EJECUCIÓN] Widget aún montado, desactivando loading', name: 'PasswordReset');
+                              log('[TREN EJECUCIÓN] Widget aún montado, desactivando loading',
+                                  name: 'PasswordReset');
                               setModalState(() => isLoading = false);
                             } else {
-                              log('[TREN EJECUCIÓN] ⚠️ Widget ya no está montado', name: 'PasswordReset');
+                              log('[TREN EJECUCIÓN] ⚠️ Widget ya no está montado',
+                                  name: 'PasswordReset');
                             }
-                            log('[TREN EJECUCIÓN] Proceso completado\n', name: 'PasswordReset');
+                            log('[TREN EJECUCIÓN] Proceso completado\n',
+                                name: 'PasswordReset');
                           }
                         },
                       ),
@@ -545,7 +645,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       final nickname = _nicknameController.text.trim();
       final password = _passwordController.text;
       final nicknameValid = nickname.length >= 3;
-      final passwordValid = password.length >= 6 && password.length <= 10 && password.trim().isNotEmpty;
+      final passwordValid = password.length >= 6 &&
+          password.length <= 10 &&
+          password.trim().isNotEmpty;
       if (_isLogin) {
         _isFormValid = emailValid && passwordValid;
       } else {
@@ -586,7 +688,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isLogin ? 'Inicia sesión para continuar' : 'Completa los campos para registrarte',
+                  _isLogin
+                      ? 'Inicia sesión para continuar'
+                      : 'Completa los campos para registrarte',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -605,8 +709,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                           labelText: 'Nickname',
                           labelStyle: TextStyle(color: secondaryTextColor),
                           hintText: 'Tu apodo público',
-                          hintStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.5)),
-                          prefixIcon: Icon(Icons.person_outline, color: secondaryTextColor),
+                          hintStyle: TextStyle(
+                              color: secondaryTextColor.withValues(alpha: 0.5)),
+                          prefixIcon: Icon(Icons.person_outline,
+                              color: secondaryTextColor),
                           filled: true,
                           fillColor: inputFillColor,
                           border: OutlineInputBorder(
@@ -615,7 +721,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: accentColor, width: 2),
+                            borderSide:
+                                BorderSide(color: accentColor, width: 2),
                           ),
                         ),
                       ),
@@ -630,8 +737,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     labelText: 'Email',
                     labelStyle: TextStyle(color: secondaryTextColor),
                     hintText: 'tu.email@ejemplo.com',
-                    hintStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.5)),
-                    prefixIcon: Icon(Icons.alternate_email, color: secondaryTextColor),
+                    hintStyle: TextStyle(
+                        color: secondaryTextColor.withValues(alpha: 0.5)),
+                    prefixIcon:
+                        Icon(Icons.alternate_email, color: secondaryTextColor),
                     filled: true,
                     fillColor: inputFillColor,
                     border: OutlineInputBorder(
@@ -653,7 +762,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
                     labelStyle: TextStyle(color: secondaryTextColor),
-                    prefixIcon: Icon(Icons.lock_outline, color: secondaryTextColor),
+                    prefixIcon:
+                        Icon(Icons.lock_outline, color: secondaryTextColor),
                     filled: true,
                     fillColor: inputFillColor,
                     border: OutlineInputBorder(
@@ -666,7 +776,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        _isPasswordObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                         color: secondaryTextColor,
                       ),
                       onPressed: () {
@@ -689,7 +801,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [accentColor.withValues(alpha: 0.8), accentColor],
+                          colors: [
+                            accentColor.withValues(alpha: 0.8),
+                            accentColor
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -703,7 +818,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: _isFormValid && !_isLoading ? (_isLogin ? _login : _register) : null,
+                        onPressed: _isFormValid && !_isLoading
+                            ? (_isLogin ? _login : _register)
+                            : null,
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(double.infinity, 55),
                           backgroundColor: _isFormValid && !_isLoading
@@ -736,15 +853,20 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            _isLogin ? '¿No tienes una cuenta? ' : '¿Ya tienes una cuenta? ',
+                            _isLogin
+                                ? '¿No tienes una cuenta? '
+                                : '¿Ya tienes una cuenta? ',
                             style: TextStyle(color: secondaryTextColor),
                           ),
                           TextButton(
                             onPressed: () {
-                              setState(() { _isLogin = !_isLogin; });
+                              setState(() {
+                                _isLogin = !_isLogin;
+                              });
                             },
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               overlayColor: accentColor.withValues(alpha: 0.1),
                             ),
                             child: Text(
@@ -765,14 +887,16 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                               (message, color) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(message, style: TextStyle(color: Colors.white)),
+                                    content: Text(message,
+                                        style: TextStyle(color: Colors.white)),
                                     backgroundColor: color,
                                   ),
                                 );
                               },
                             );
                           },
-                          child: Text('¿Olvidaste tu contraseña?', style: TextStyle(color: accentColor)),
+                          child: Text('¿Olvidaste tu contraseña?',
+                              style: TextStyle(color: accentColor)),
                         ),
                     ],
                   ),
@@ -784,6 +908,4 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       ),
     );
   }
-
-
 }
