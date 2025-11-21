@@ -51,3 +51,15 @@ patrol.yaml
 
 # Secret files
 scripts/serviceAccountKey.json
+
+# Node modules (Firebase Admin SDK)
+node_modules/
+
+# Windows Zone.Identifier files
+*:Zone.Identifier
+
+# Archivos temporales y de desarrollo
+nul
+.watchdog.pid
+.watchdog_temp.sh
+*.code-workspace

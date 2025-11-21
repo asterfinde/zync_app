@@ -68,8 +68,8 @@ while true; do
         echo -e "${RED}═══════════════════════════════════════════════════════${NC}"
         
         # Ejecutar script de sanación
-        if [ -f /home/datainfers/projects/zync_app/fix_adb_connection.sh ]; then
-            /home/datainfers/projects/zync_app/fix_adb_connection.sh $DEVICE
+        if [ -f /home/dante/projects/zync_app/fix_adb_connection.sh ]; then
+            /home/dante/projects/zync_app/fix_adb_connection.sh $DEVICE
             FAILURES=0
         else
             # Reconexión manual
