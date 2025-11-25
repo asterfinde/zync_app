@@ -28,6 +28,33 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
   bool _isLoading = false;
   bool _isFormValid = false;
   String _message = '';
+  String _currentTime = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+    _startTimeUpdater();
+  }
+
+  void _startTimeUpdater() {
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        _updateTime();
+        return true;
+      }
+      return false;
+    });
+  }
+
+  void _updateTime() {
+    if (mounted) {
+      setState(() {
+        _currentTime = DateTime.now().toString().substring(11, 19);
+      });
+    }
+  }
 
   Future<void> _login() async {
     setState(() {
@@ -684,6 +711,15 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: primaryTextColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Timestamp dinámico para verificar versión
+                Text(
+                  'v$_currentTime',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade700,
                   ),
                 ),
                 const SizedBox(height: 8),

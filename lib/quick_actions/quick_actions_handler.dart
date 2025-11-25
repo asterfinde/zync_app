@@ -1,21 +1,25 @@
 import '../core/models/user_status.dart';
-import 'quick_actions_service.dart';
+import '../core/services/status_service.dart';
 import 'dart:developer';
 
 class QuickActionsHandler {
   /// Maneja la lógica cuando se selecciona una quick action desde fuera de la app
   static Future<void> handleAction(String action) async {
     log('[QuickActionsHandler] Handling quick action: $action');
-    
+
     try {
       // Obtener el StatusType correspondiente
       final statusType = _mapActionToStatusType(action);
-      
+
       if (statusType != null) {
-        // Usar el servicio de quick actions para manejar la actualización
-        await QuickActionsService.handleQuickAction(action);
-        
-        log('[QuickActionsHandler] Quick action handled successfully: $action');
+        // Actualizar estado directamente usando StatusService
+        final result = await StatusService.updateUserStatus(statusType);
+
+        if (result.isSuccess) {
+          log('[QuickActionsHandler] Quick action handled successfully: $action');
+        } else {
+          log('[QuickActionsHandler] Error updating status: ${result.errorMessage}');
+        }
       } else {
         log('[QuickActionsHandler] Unknown action: $action');
       }
@@ -60,7 +64,7 @@ class QuickActionsHandler {
   static List<String> getAvailableActions() {
     return [
       'leave',
-      'busy', 
+      'busy',
       'fine',
       'sad',
       'ready',

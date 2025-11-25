@@ -18,6 +18,7 @@ import 'package:zync_app/notifications/notification_service.dart'; // Point 2: N
 import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
 import 'package:zync_app/core/models/user_status.dart'; // StatusType enum
 import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
+// Para silent launch detection
 
 import 'core/global_keys.dart';
 
@@ -169,6 +170,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
+
+
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

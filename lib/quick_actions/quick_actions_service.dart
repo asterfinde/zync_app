@@ -1,144 +1,179 @@
-import 'package:quick_actions/quick_actions.dart';
-import '../core/services/status_service.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../core/services/quick_actions_preferences_service.dart';
 import '../core/models/user_status.dart';
+import '../services/circle_service.dart';
 import 'dart:developer';
 
+/// Servicio para gestionar Quick Actions NATIVAMENTE (sin plugin Flutter)
+///
+/// Funcionalidad condicional según membresía en círculo:
+/// - SIN círculo: Solo mostrar "Cerrar Sesión"
+/// - CON círculo: Mostrar 4 estados configurados + actualización Firebase sin abrir app
 class QuickActionsService {
-  static const QuickActions _quickActions = QuickActions();
-  
-  /// Inicializa las Quick Actions según las preferencias del usuario
-  static Future<void> initialize() async {
-    await _setupQuickActions();
-    await _setupQuickActionHandler();
-  }
+  static const _platform = MethodChannel('zync/native_shortcuts');
+  static bool _isInitialized = false;
 
-  /// Configura las Quick Actions según las preferencias del usuario (Point 14)
-  /// Permite hasta 4 emojis personalizables por el usuario
-  static Future<void> _setupQuickActions() async {
+  /// Inicializa Quick Actions usando implementación nativa
+  /// IMPORTANTE: NO usa el plugin quick_actions de Flutter
+  static Future<void> initialize() async {
+    if (_isInitialized) {
+      log('[QuickActionsService] ⚠️ Ya inicializado, saltando...');
+      return;
+    }
+
     try {
-      // Obtener las 4 Quick Actions configuradas por el usuario
-      final userQuickActions = await QuickActionsPreferencesService.getUserQuickActions();
-      
-      // Convertir a ShortcutItems
-      final shortcutItems = userQuickActions.map((status) {
-        return ShortcutItem(
-          type: status.toString().split('.').last, // 'available', 'busy', etc.
-          localizedTitle: '${status.emoji} ${status.description}',
-        );
-      }).toList();
-      
-      await _quickActions.setShortcutItems(shortcutItems);
-      
-      log('[QuickActionsService] ✅ Quick Actions configuradas: ${userQuickActions.map((s) => s.emoji).join(', ')}');
-      
+      // 1. Configuración inicial (puede ser null si no hay usuario aún)
+      await updateQuickActionsBasedOnCircle();
+
+      // 2. Escuchar cambios de autenticación para actualizar shortcuts
+      FirebaseAuth.instance.authStateChanges().listen((user) async {
+        log('[QuickActionsService] 🔄 Auth state changed: ${user?.uid}');
+        await updateQuickActionsBasedOnCircle();
+      });
+
+      _isInitialized = true;
+      log('[QuickActionsService] ✅ Inicializado - Shortcuts nativos configurados y escuchando Auth');
     } catch (e) {
-      log('[QuickActionsService] ❌ Error configurando Quick Actions: $e');
-      // Fallback a configuración por defecto en caso de error
-      await _setupDefaultQuickActions();
+      log('[QuickActionsService] ❌ Error inicializando: $e');
     }
   }
-  
-  /// Configuración de fallback con Quick Actions por defecto
-  static Future<void> _setupDefaultQuickActions() async {
-    await _quickActions.setShortcutItems([
-      const ShortcutItem(
-        type: 'available',
-        localizedTitle: '� Disponible',
-      ),
-      const ShortcutItem(
-        type: 'busy',
-        localizedTitle: '� Ocupado',
-      ),
-      const ShortcutItem(
-        type: 'away',
-        localizedTitle: '🟡 Ausente',
-      ),
-      const ShortcutItem(
-        type: 'sos',
-        localizedTitle: '🆘 SOS',
-      ),
-    ]);
-  }
 
-  /// Configura el handler para cuando se selecciona una quick action
-  static Future<void> _setupQuickActionHandler() async {
-    _quickActions.initialize((String shortcutType) async {
-      await handleQuickAction(shortcutType);
-    });
-  }
-
-  /// Maneja la acción cuando se selecciona una quick action
-  static Future<void> handleQuickAction(String actionType) async {
-    log('[QuickActionsService] Quick action selected: $actionType');
-    
+  /// Actualiza Quick Actions según membresía en círculo
+  /// - NO círculo: Solo "Cerrar Sesión"
+  /// - SI círculo: 4 estados configurados
+  static Future<void> updateQuickActionsBasedOnCircle() async {
     try {
-      final statusType = _parseStatusType(actionType);
-      if (statusType != null) {
-        final result = await StatusService.updateUserStatus(statusType);
-        if (result.isSuccess) {
-          log('[QuickActionsService] Status updated successfully via quick action');
-        } else {
-          log('[QuickActionsService] Failed to update status: ${result.errorMessage}');
-        }
+      final circleService = CircleService();
+      final userCircle = await circleService.getUserCircle();
+
+      if (userCircle == null) {
+        // Usuario NO tiene círculo -> Solo Cerrar Sesión
+        log('[QuickActionsService] ⛔ Usuario sin círculo, solo mostrando Cerrar Sesión');
+        await _setupLogoutOnlyShortcuts();
       } else {
-        log('[QuickActionsService] Unknown action type: $actionType');
+        // Usuario tiene círculo -> Mostrar 4 estados
+        log('[QuickActionsService] ✅ Usuario en círculo ${userCircle.name}, configurando estados');
+        await _setupUserStatusShortcuts();
       }
     } catch (e) {
-      log('[QuickActionsService] Error handling quick action: $e');
+      log('[QuickActionsService] ❌ Error actualizando Quick Actions: $e');
     }
   }
 
-  /// Convierte el string de acción a StatusType (actualizado para Point 14)
-  /// Soporta todos los StatusType disponibles, no solo los 6 legacy
-  static StatusType? _parseStatusType(String actionType) {
+  /// Configura Quick Actions solo con Cerrar Sesión
+  static Future<void> _setupLogoutOnlyShortcuts() async {
     try {
-      // Buscar el StatusType que coincida con el actionType
-      return StatusType.values.firstWhere(
-        (status) => status.toString().split('.').last == actionType,
-      );
+      await _platform.invokeMethod('updateShortcuts', {
+        'hasCircle': false,
+        'shortcuts': [],
+      });
+      log('[QuickActionsService] 🚪 Shortcuts nativos: Solo Cerrar Sesión');
     } catch (e) {
-      log('[QuickActionsService] ❌ StatusType no encontrado: $actionType');
-      return null;
+      log('[QuickActionsService] ❌ Error configurando logout: $e');
     }
   }
 
-  /// Habilita o deshabilita las quick actions
+  /// Configura Quick Actions con los 4 estados del usuario
+  static Future<void> _setupUserStatusShortcuts() async {
+    try {
+      // Obtener las 4 Quick Actions configuradas por el usuario
+      final userQuickActions =
+          await QuickActionsPreferencesService.getUserQuickActions();
+
+      // Convertir a formato nativo
+      final shortcuts = userQuickActions.map((status) {
+        final statusName = status.toString().split('.').last;
+        return {
+          'type': statusName, // 'fine', 'busy', etc.
+          'emoji': status.emoji,
+          'label': status.description,
+        };
+      }).toList();
+
+      // Llamar a MethodChannel nativo
+      await _platform.invokeMethod('updateShortcuts', {
+        'hasCircle': true,
+        'shortcuts': shortcuts,
+      });
+
+      log('[QuickActionsService] ✅ ${shortcuts.length} Shortcuts nativos configurados: ${userQuickActions.map((s) => s.emoji).join(' ')}');
+    } catch (e) {
+      log('[QuickActionsService] ❌ Error configurando estados: $e');
+      // Fallback a estados por defecto
+      await _setupDefaultStatusShortcuts();
+    }
+  }
+
+  /// Configuración de fallback con estados por defecto
+  static Future<void> _setupDefaultStatusShortcuts() async {
+    log('[QuickActionsService] ⚙️ Usando estados por defecto (fallback)');
+
+    try {
+      await _platform.invokeMethod('updateShortcuts', {
+        'hasCircle': true,
+        'shortcuts': [
+          {'type': 'fine', 'emoji': '🟢', 'label': 'Todo bien'},
+          {'type': 'busy', 'emoji': '🔴', 'label': 'Ocupado'},
+          {'type': 'sos', 'emoji': '🆘', 'label': 'SOS'},
+          {'type': 'meeting', 'emoji': '💼', 'label': 'En reunión'},
+        ],
+      });
+    } catch (e) {
+      log('[QuickActionsService] ❌ Error en fallback: $e');
+    }
+  }
+
+  /// Habilita o deshabilita Quick Actions
+  /// Usado cuando el usuario entra/sale de un círculo
   static Future<void> setEnabled(bool enabled) async {
     if (enabled) {
-      await _setupQuickActions();
+      await updateQuickActionsBasedOnCircle();
     } else {
-      await _quickActions.clearShortcutItems();
+      try {
+        await _platform.invokeMethod('clearShortcuts');
+        log('[QuickActionsService] 🧹 Shortcuts nativos limpiados');
+      } catch (e) {
+        log('[QuickActionsService] ❌ Error limpiando shortcuts: $e');
+      }
     }
   }
 
-  /// Actualiza las Quick Actions cuando el usuario cambia su configuración
+  /// Actualiza Quick Actions cuando el usuario cambia su configuración
+  static Future<void> refreshUserShortcuts() async {
+    log('[QuickActionsService] 🔄 Refrescando Quick Actions del usuario');
+    await _setupUserStatusShortcuts();
+  }
+
+  /// Actualiza los Quick Actions cuando el usuario cambia su configuración
   /// Point 14: Permite configuración personalizada de 4 Quick Actions
-  static Future<void> updateUserQuickActions(List<StatusType> newQuickActions) async {
+  static Future<void> updateUserQuickActions(
+      List<StatusType> newQuickActions) async {
     try {
       if (newQuickActions.length != 4) {
         log('[QuickActionsService] ❌ Error: Debe haber exactamente 4 Quick Actions');
         return;
       }
-      
+
       // Guardar las nuevas preferencias
-      final saved = await QuickActionsPreferencesService.saveUserQuickActions(newQuickActions);
-      
+      final saved = await QuickActionsPreferencesService.saveUserQuickActions(
+          newQuickActions);
+
       if (saved) {
-        // Actualizar las Quick Actions del sistema
-        await _setupQuickActions();
+        // Actualizar los Quick Actions del sistema
+        await _setupUserStatusShortcuts();
         log('[QuickActionsService] ✅ Quick Actions actualizadas por el usuario');
       } else {
-        log('[QuickActionsService] ❌ Error guardando preferencias de Quick Actions');
+        log('[QuickActionsService] ❌ Error guardando preferencias');
       }
-      
     } catch (e) {
       log('[QuickActionsService] ❌ Error actualizando Quick Actions: $e');
     }
   }
 
   /// Método legacy mantenido para compatibilidad
-  static Future<void> updateQuickActions(List<StatusType> enabledStatuses) async {
+  static Future<void> updateQuickActions(
+      List<StatusType> enabledStatuses) async {
     await updateUserQuickActions(enabledStatuses);
   }
 }

@@ -22,7 +22,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleInstance"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -65,6 +65,16 @@
         <!-- EmojiDialogActivity: Modal nativo instantáneo (sin Flutter) -->
         <activity
             android:name=".EmojiDialogActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:noHistory="true"/>
+        <!-- QuickActionActivity: Procesa QuickActions sin mostrar UI -->
+        <activity
+            android:name=".QuickActionActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:exported="true"
             android:launchMode="singleTask"
