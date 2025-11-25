@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import 'package:firebase_auth/firebase_auth.dart'; // Comentado: no usado actualmente
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
-// import '../../../../core/services/silent_functionality_coordinator.dart'; // Comentado: no usado actualmente
-import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../auth/presentation/pages/auth_final_page.dart';
+import '../../../../core/services/session_cache_service.dart';
 import 'create_circle_view.dart';
 import 'join_circle_view.dart';
 
@@ -42,8 +42,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     );
   }
 
-  // TODO: Usar cuando se active la opción de cerrar sesión desde esta vista
-  /* void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -68,27 +67,34 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
             onPressed: () async {
               Navigator.of(context).pop();
               try {
-                print('🔴 [LOGOUT] Iniciando proceso de logout...');
+                print(
+                    '🔴 [LOGOUT] Iniciando logout desde NoCircleView (sin círculo)...');
+
+                // PASO 1: Limpiar cache PRIMERO (evita parpadeo de NoCircleView)
+                print('🔴 [LOGOUT] Limpiando SessionCache...');
+                await SessionCacheService.clearSession();
+
+                // PASO 2: Cerrar sesión Firebase
                 await FirebaseAuth.instance.signOut();
-                print('🔴 [LOGOUT] Firebase signOut completado, llamando deactivateAfterLogout...');
-                // NUEVO: Desactivar funcionalidad silenciosa al hacer logout
-                await SilentFunctionalityCoordinator.deactivateAfterLogout();
-                print('🔴 [LOGOUT] deactivateAfterLogout completado');
+                print('🔴 [LOGOUT] Firebase signOut completado');
+
+                // PASO 3: Navegar directo a login (sin SnackBar)
                 if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Sesión cerrada exitosamente'),
-                      backgroundColor: Color(0xFF1CE4B3),
-                    ),
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+                    (route) => false,
                   );
+                  print('✅ [LOGOUT] Navegación completada');
                 }
               } catch (e) {
+                print('❌ [LOGOUT] Error: $e');
+                // Solo mostrar error si realmente falla
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error al cerrar sesión: $e'),
                       backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 }
@@ -100,7 +106,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         ],
       ),
     );
-  } */
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -137,16 +143,10 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsPage(),
-                    ),
-                  );
-                },
+                onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1CE7E8),
-                  foregroundColor: Colors.black,
+                  backgroundColor: const Color(0xFFFF6B6B),
+                  foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(
@@ -158,8 +158,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.settings, size: 18),
-                label: const Text('Ajustes'),
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Cerrar Sesión'),
               ),
             ],
           ),

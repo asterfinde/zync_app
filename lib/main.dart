@@ -17,6 +17,7 @@ import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; /
 import 'package:zync_app/notifications/notification_service.dart'; // Point 2: Notification Service
 import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
 import 'package:zync_app/core/models/user_status.dart'; // StatusType enum
+import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
 
 import 'core/global_keys.dart';
 
@@ -242,23 +243,29 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     print('[App Resume] 🔍 Verificando permisos de notificación...');
 
     try {
+      // CRÍTICO: Verificar PRIMERO si el usuario pertenece a un círculo
+      print('[App Resume] Verificando pertenencia a círculo...');
+      final circleService = CircleService();
+      final userCircle = await circleService.getUserCircle();
+
+      if (userCircle == null) {
+        print(
+            '[App Resume] ⚠️ Usuario NO pertenece a círculo - NO mostrar notificaciones');
+        return;
+      }
+
+      print('[App Resume] ✅ Usuario pertenece al círculo: ${userCircle.name}');
+
       final hasPermission = await NotificationService.hasPermission();
 
       if (hasPermission) {
         print(
-            '[App Resume] ✅ Permisos CONCEDIDOS - Verificando si notificación está activa...');
-
-        // IMPORTANTE: Solo activar notificación si el usuario pertenece a un círculo
-        // Evita mostrar notificaciones a usuarios sin círculo
-        print(
-            '[App Resume] Verificando pertenencia a círculo antes de activar notificación...');
-        // La verificación ya está en SilentFunctionalityCoordinator.activateAfterLogin
-        // Por lo tanto, solo mostrar notificación si ya fue activada previamente
+            '[App Resume] ✅ Permisos CONCEDIDOS - Activando notificación persistente...');
         await NotificationService.showQuickActionNotification();
-        print('[App Resume] ✅ Notificación persistente activada/verificada');
+        print('[App Resume] ✅ Notificación persistente activada');
       } else {
         print(
-            '[App Resume] ⚠️ Permisos aún DENEGADOS - notificación no disponible');
+            '[App Resume] ⚠️ Permisos DENEGADOS - notificación no disponible');
       }
     } catch (e) {
       print('[App Resume] ❌ Error verificando permisos: $e');

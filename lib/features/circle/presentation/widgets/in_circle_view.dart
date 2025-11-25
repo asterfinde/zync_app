@@ -633,25 +633,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     );
   }
 
-  /// Construye un item del PopupMenu
-  PopupMenuItem<String> _buildPopupMenuItem({
-    required String value,
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Text(text, style: const TextStyle(color: _AppColors.textPrimary)),
-        ],
-      ),
-    );
-  }
-
   /// Obtiene el nickname del usuario actual desde Riverpod
   String _getCurrentUserNickname(WidgetRef ref) {
     final authState = ref.watch(
