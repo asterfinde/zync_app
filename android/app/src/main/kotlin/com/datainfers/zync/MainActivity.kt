@@ -47,20 +47,31 @@ class MainActivity: FlutterActivity() {
     private val statusUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == "com.datainfers.zync.UPDATE_STATUS") {
-                val emoji = intent.getStringExtra("emoji")
-                val status = intent.getStringExtra("status")
+                val statusType = intent.getStringExtra("statusType")
                 
-                Log.d(TAG, "👆 [BROADCAST] Recibido estado: $emoji ($status)")
+                Log.d(TAG, "👆 [BROADCAST] Recibido estado desde QuickAction: $statusType")
                 
-                if (emoji != null && status != null) {
-                    // Enviar a Flutter para actualizar en Firebase
+                if (statusType != null) {
+                    // CRÍTICO: Guardar en cache para procesarlo cuando la app esté activa
+                    // No podemos usar FlutterEngine aquí porque puede no estar disponible
+                    val prefs = context?.getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+                    prefs?.edit()?.apply {
+                        putString("statusType", statusType)
+                        putLong("timestamp", System.currentTimeMillis())
+                        apply()
+                    }
+                    Log.d(TAG, "✅ [BROADCAST] Estado $statusType guardado en cache - se procesará en onResume()")
+                    
+                    // Intentar procesar inmediatamente si FlutterEngine está disponible
                     flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
                         val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
                         channel.invokeMethod("updateStatus", mapOf(
-                            "statusType" to status
+                            "statusType" to statusType
                         ))
-                        Log.d(TAG, "✅ [BROADCAST] Estado enviado a Flutter")
-                    }
+                        Log.d(TAG, "✅ [BROADCAST] Estado también enviado inmediatamente a Flutter")
+                    } ?: Log.w(TAG, "⚠️ [BROADCAST] FlutterEngine no disponible - esperando onResume()")
+                } else {
+                    Log.w(TAG, "⚠️ [BROADCAST] statusType es null")
                 }
             }
         }
@@ -146,6 +157,27 @@ class MainActivity: FlutterActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume() - App maximizada/resumida")
+        
+        // 🔥 CRÍTICO: Procesar estado pendiente del cache (ej. desde QuickAction)
+        val prefs = getSharedPreferences("pending_status", MODE_PRIVATE)
+        val pendingStatus = prefs.getString("statusType", null)
+        
+        if (pendingStatus != null) {
+            Log.d(TAG, "💾 [RESUME] Estado pendiente encontrado: $pendingStatus - enviando a Flutter")
+            
+            // Enviar a Flutter para actualizar Firebase
+            flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
+                val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
+                channel.invokeMethod("updateStatus", mapOf(
+                    "statusType" to pendingStatus
+                ))
+                Log.d(TAG, "✅ [RESUME] Estado $pendingStatus enviado a Flutter")
+                
+                // Limpiar cache después de enviar
+                prefs.edit().clear().apply()
+                Log.d(TAG, "✅ [RESUME] Cache limpiado")
+            } ?: Log.e(TAG, "❌ [RESUME] FlutterEngine no disponible")
+        }
         
         // 🚀 FASE 1: Detener keep-alive al resumir
         if (isKeepAliveRunning) {
@@ -328,7 +360,45 @@ class MainActivity: FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }        
+        // Canal para native shortcuts (QuickActions 100% nativos)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zync/native_shortcuts").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "updateShortcuts" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                        val hasCircle = call.argument<Boolean>("hasCircle") ?: false
+                        val shortcutsData = call.argument<List<Map<String, String>>>("shortcuts") ?: emptyList()
+                        
+                        val shortcuts = shortcutsData.map {
+                            ShortcutData(
+                                type = it["type"] ?: "",
+                                emoji = it["emoji"] ?: "",
+                                label = it["label"] ?: ""
+                            )
+                        }
+                        
+                        NativeShortcutManager.updateShortcuts(this, hasCircle, shortcuts)
+                        result.success(true)
+                        Log.d(TAG, "✅ [SHORTCUTS] Nativos actualizados: hasCircle=$hasCircle, count=${shortcuts.size}")
+                    } else {
+                        result.error("API_LEVEL", "Shortcuts requieren API 25+", null)
+                    }
+                }
+                "clearShortcuts" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                        NativeShortcutManager.clearShortcuts(this)
+                        result.success(true)
+                        Log.d(TAG, "🧹 [SHORTCUTS] Nativos limpiados")
+                    } else {
+                        result.success(true)
+                    }
+                }
+                else -> result.notImplemented()
+            }
         }
+        
+
+
         
         // Canal para keep-alive service (mantener por compatibilidad)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEEP_ALIVE_CHANNEL).setMethodCallHandler { call, result ->

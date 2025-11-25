@@ -1,5 +1,5 @@
 import '../core/models/user_status.dart';
-import 'quick_actions_service.dart';
+import '../core/services/status_service.dart';
 import 'dart:developer';
 
 class QuickActionsHandler {
@@ -12,10 +12,14 @@ class QuickActionsHandler {
       final statusType = _mapActionToStatusType(action);
 
       if (statusType != null) {
-        // Usar el servicio de quick actions para manejar la actualización
-        await QuickActionsService.handleShortcutAction(action);
+        // Actualizar estado directamente usando StatusService
+        final result = await StatusService.updateUserStatus(statusType);
 
-        log('[QuickActionsHandler] Quick action handled successfully: $action');
+        if (result.isSuccess) {
+          log('[QuickActionsHandler] Quick action handled successfully: $action');
+        } else {
+          log('[QuickActionsHandler] Error updating status: ${result.errorMessage}');
+        }
       } else {
         log('[QuickActionsHandler] Unknown action: $action');
       }

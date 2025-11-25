@@ -1,0 +1,37 @@
+        
+        // Canal para native shortcuts (QuickActions 100% nativos)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zync/native_shortcuts").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "updateShortcuts" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                        val hasCircle = call.argument<Boolean>("hasCircle") ?: false
+                        val shortcutsData = call.argument<List<Map<String, String>>>("shortcuts") ?: emptyList()
+                        
+                        val shortcuts = shortcutsData.map {
+                            ShortcutData(
+                                type = it["type"] ?: "",
+                                emoji = it["emoji"] ?: "",
+                                label = it["label"] ?: ""
+                            )
+                        }
+                        
+                        NativeShortcutManager.updateShortcuts(this, hasCircle, shortcuts)
+                        result.success(true)
+                        Log.d(TAG, "✅ [SHORTCUTS] Nativos actualizados: hasCircle=$hasCircle, count=${shortcuts.size}")
+                    } else {
+                        result.error("API_LEVEL", "Shortcuts requieren API 25+", null)
+                    }
+                }
+                "clearShortcuts" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                        NativeShortcutManager.clearShortcuts(this)
+                        result.success(true)
+                        Log.d(TAG, "🧹 [SHORTCUTS] Nativos limpiados")
+                    } else {
+                        result.success(true)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+        

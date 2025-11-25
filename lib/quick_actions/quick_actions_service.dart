@@ -1,25 +1,21 @@
-import 'package:launcher_shortcuts/launcher_shortcuts.dart';
-import '../core/services/status_service.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../core/services/quick_actions_preferences_service.dart';
 import '../core/models/user_status.dart';
 import '../services/circle_service.dart';
 import 'dart:developer';
 
-/// Servicio para gestionar Launcher Shortcuts (Quick Actions)
-/// OPCIÓN C: Fast Launch + Auto-Update
+/// Servicio para gestionar Quick Actions NATIVAMENTE (sin plugin Flutter)
 ///
-/// Funcionalidad:
-/// - Si el usuario NO pertenece a círculo: NO shortcuts
-/// - Si el usuario SI pertenece a círculo: SI shortcuts con iconos personalizados
-/// - Al hacer tap: actualiza estado en Firebase sin UI visible (fast launch)
+/// Funcionalidad condicional según membresía en círculo:
+/// - SIN círculo: Solo mostrar "Cerrar Sesión"
+/// - CON círculo: Mostrar 4 estados configurados + actualización Firebase sin abrir app
 class QuickActionsService {
+  static const _platform = MethodChannel('zync/native_shortcuts');
   static bool _isInitialized = false;
-  static bool _isSilentLaunch = false;
 
-  /// Flag para indicar si la app se abrió desde un shortcut (silent mode)
-  static bool get isSilentLaunch => _isSilentLaunch;
-
-  /// Inicializa las Launcher Shortcuts según membresía en círculo
+  /// Inicializa Quick Actions usando implementación nativa
+  /// IMPORTANTE: NO usa el plugin quick_actions de Flutter
   static Future<void> initialize() async {
     if (_isInitialized) {
       log('[QuickActionsService] ⚠️ Ya inicializado, saltando...');
@@ -27,176 +23,129 @@ class QuickActionsService {
     }
 
     try {
-      await LauncherShortcuts.initialize();
-      await _setupShortcutHandler();
-      await updateShortcutsBasedOnCircle();
+      // 1. Configuración inicial (puede ser null si no hay usuario aún)
+      await updateQuickActionsBasedOnCircle();
+
+      // 2. Escuchar cambios de autenticación para actualizar shortcuts
+      FirebaseAuth.instance.authStateChanges().listen((user) async {
+        log('[QuickActionsService] 🔄 Auth state changed: ${user?.uid}');
+        await updateQuickActionsBasedOnCircle();
+      });
+
       _isInitialized = true;
-      log('[QuickActionsService] ✅ Inicializado con launcher_shortcuts');
+      log('[QuickActionsService] ✅ Inicializado - Shortcuts nativos configurados y escuchando Auth');
     } catch (e) {
       log('[QuickActionsService] ❌ Error inicializando: $e');
     }
   }
 
-  /// Configura el handler de shortcuts (escucha eventos del sistema)
-  static Future<void> _setupShortcutHandler() async {
-    LauncherShortcuts.shortcutStream.listen((String shortcutType) async {
-      log('[QuickActionsService] 🚀 Shortcut activado: $shortcutType');
-
-      // Marcar como silent launch
-      _isSilentLaunch = true;
-
-      // Manejar la acción
-      await handleShortcutAction(shortcutType);
-    });
-  }
-
-  /// Maneja la acción cuando se selecciona un shortcut
-  /// OPCIÓN C: Actualiza Firebase y marca para auto-close
-  static Future<void> handleShortcutAction(String actionType) async {
-    log('[QuickActionsService] 📱 Procesando shortcut: $actionType');
-
-    try {
-      final statusType = _parseStatusType(actionType);
-
-      if (statusType != null) {
-        log('[QuickActionsService] ✅ StatusType reconocido: ${statusType.emoji} ${statusType.description}');
-
-        // Actualizar estado en Firebase (sin mostrar UI)
-        final result = await StatusService.updateUserStatus(statusType);
-
-        if (result.isSuccess) {
-          log('[QuickActionsService] ✅ Estado actualizado en Firebase exitosamente');
-          // La app se cerrará automáticamente en main.dart al detectar _isSilentLaunch
-        } else {
-          log('[QuickActionsService] ❌ Error actualizando estado: ${result.errorMessage}');
-          _isSilentLaunch = false; // Cancelar auto-close si hubo error
-        }
-      } else {
-        log('[QuickActionsService] ⚠️ StatusType desconocido: $actionType');
-        _isSilentLaunch = false;
-      }
-    } catch (e) {
-      log('[QuickActionsService] ❌ Error manejando shortcut: $e');
-      _isSilentLaunch = false;
-    }
-  }
-
-  /// Actualiza shortcuts según membresía en círculo
-  /// - NO círculo: Limpia shortcuts
-  /// - SI círculo: Configura shortcuts personalizados
-  static Future<void> updateShortcutsBasedOnCircle() async {
+  /// Actualiza Quick Actions según membresía en círculo
+  /// - NO círculo: Solo "Cerrar Sesión"
+  /// - SI círculo: 4 estados configurados
+  static Future<void> updateQuickActionsBasedOnCircle() async {
     try {
       final circleService = CircleService();
       final userCircle = await circleService.getUserCircle();
 
       if (userCircle == null) {
-        // Usuario NO tiene círculo -> CLEAR shortcuts
-        log('[QuickActionsService] ⛔ Usuario sin círculo, limpiando shortcuts...');
-        await LauncherShortcuts.clearShortcuts();
+        // Usuario NO tiene círculo -> Solo Cerrar Sesión
+        log('[QuickActionsService] ⛔ Usuario sin círculo, solo mostrando Cerrar Sesión');
+        await _setupLogoutOnlyShortcuts();
       } else {
-        // Usuario tiene círculo -> CONFIGURAR shortcuts
-        log('[QuickActionsService] ✅ Usuario en círculo ${userCircle.name}, configurando shortcuts...');
-        await _setupUserShortcuts();
+        // Usuario tiene círculo -> Mostrar 4 estados
+        log('[QuickActionsService] ✅ Usuario en círculo ${userCircle.name}, configurando estados');
+        await _setupUserStatusShortcuts();
       }
     } catch (e) {
-      log('[QuickActionsService] ❌ Error actualizando shortcuts: $e');
+      log('[QuickActionsService] ❌ Error actualizando Quick Actions: $e');
     }
   }
 
-  /// Configura los shortcuts personalizados del usuario
-  static Future<void> _setupUserShortcuts() async {
+  /// Configura Quick Actions solo con Cerrar Sesión
+  static Future<void> _setupLogoutOnlyShortcuts() async {
+    try {
+      await _platform.invokeMethod('updateShortcuts', {
+        'hasCircle': false,
+        'shortcuts': [],
+      });
+      log('[QuickActionsService] 🚪 Shortcuts nativos: Solo Cerrar Sesión');
+    } catch (e) {
+      log('[QuickActionsService] ❌ Error configurando logout: $e');
+    }
+  }
+
+  /// Configura Quick Actions con los 4 estados del usuario
+  static Future<void> _setupUserStatusShortcuts() async {
     try {
       // Obtener las 4 Quick Actions configuradas por el usuario
       final userQuickActions =
           await QuickActionsPreferencesService.getUserQuickActions();
 
-      // Convertir a ShortcutItem con iconos personalizados
-      final shortcutItems = userQuickActions.map((status) {
+      // Convertir a formato nativo
+      final shortcuts = userQuickActions.map((status) {
         final statusName = status.toString().split('.').last;
-
-        return ShortcutItem(
-          type: statusName, // 'available', 'busy', etc.
-          localizedTitle: '${status.emoji} ${status.description}',
-          androidConfig: AndroidConfig(
-            icon: 'assets/launcher/$statusName.png',
-          ),
-          iosConfig: IosConfig(
-            icon: statusName,
-            localizedSubtitle: 'Actualizar estado',
-          ),
-        );
+        return {
+          'type': statusName, // 'fine', 'busy', etc.
+          'emoji': status.emoji,
+          'label': status.description,
+        };
       }).toList();
 
-      await LauncherShortcuts.setShortcuts(shortcutItems);
+      // Llamar a MethodChannel nativo
+      await _platform.invokeMethod('updateShortcuts', {
+        'hasCircle': true,
+        'shortcuts': shortcuts,
+      });
 
-      log('[QuickActionsService] ✅ ${shortcutItems.length} shortcuts configurados: ${userQuickActions.map((s) => s.emoji).join(' ')}');
+      log('[QuickActionsService] ✅ ${shortcuts.length} Shortcuts nativos configurados: ${userQuickActions.map((s) => s.emoji).join(' ')}');
     } catch (e) {
-      log('[QuickActionsService] ❌ Error configurando shortcuts: $e');
-      // Fallback a shortcuts por defecto
-      await _setupDefaultShortcuts();
+      log('[QuickActionsService] ❌ Error configurando estados: $e');
+      // Fallback a estados por defecto
+      await _setupDefaultStatusShortcuts();
     }
   }
 
-  /// Configuración de fallback con shortcuts por defecto
-  static Future<void> _setupDefaultShortcuts() async {
-    log('[QuickActionsService] ⚙️ Usando shortcuts por defecto (fallback)');
+  /// Configuración de fallback con estados por defecto
+  static Future<void> _setupDefaultStatusShortcuts() async {
+    log('[QuickActionsService] ⚙️ Usando estados por defecto (fallback)');
 
-    await LauncherShortcuts.setShortcuts([
-      ShortcutItem(
-        type: 'available',
-        localizedTitle: '🟢 Disponible',
-        androidConfig: AndroidConfig(icon: 'assets/launcher/available.png'),
-        iosConfig: IosConfig(
-            icon: 'available', localizedSubtitle: 'Actualizar estado'),
-      ),
-      ShortcutItem(
-        type: 'busy',
-        localizedTitle: '🔴 Ocupado',
-        androidConfig: AndroidConfig(icon: 'assets/launcher/busy.png'),
-        iosConfig:
-            IosConfig(icon: 'busy', localizedSubtitle: 'Actualizar estado'),
-      ),
-      ShortcutItem(
-        type: 'away',
-        localizedTitle: '🟡 Ausente',
-        androidConfig: AndroidConfig(icon: 'assets/launcher/away.png'),
-        iosConfig:
-            IosConfig(icon: 'away', localizedSubtitle: 'Actualizar estado'),
-      ),
-      ShortcutItem(
-        type: 'sos',
-        localizedTitle: '🆘 SOS',
-        androidConfig: AndroidConfig(icon: 'assets/launcher/sos.png'),
-        iosConfig:
-            IosConfig(icon: 'sos', localizedSubtitle: 'Actualizar estado'),
-      ),
-    ]);
-  }
-
-  /// Convierte el string de acción a StatusType
-  static StatusType? _parseStatusType(String actionType) {
     try {
-      return StatusType.values.firstWhere(
-        (status) => status.toString().split('.').last == actionType,
-      );
+      await _platform.invokeMethod('updateShortcuts', {
+        'hasCircle': true,
+        'shortcuts': [
+          {'type': 'fine', 'emoji': '🟢', 'label': 'Todo bien'},
+          {'type': 'busy', 'emoji': '🔴', 'label': 'Ocupado'},
+          {'type': 'sos', 'emoji': '🆘', 'label': 'SOS'},
+          {'type': 'meeting', 'emoji': '💼', 'label': 'En reunión'},
+        ],
+      });
     } catch (e) {
-      log('[QuickActionsService] ❌ StatusType no encontrado: $actionType');
-      return null;
+      log('[QuickActionsService] ❌ Error en fallback: $e');
     }
   }
 
-  /// Habilita o deshabilita los shortcuts
+  /// Habilita o deshabilita Quick Actions
   /// Usado cuando el usuario entra/sale de un círculo
   static Future<void> setEnabled(bool enabled) async {
     if (enabled) {
-      await updateShortcutsBasedOnCircle();
+      await updateQuickActionsBasedOnCircle();
     } else {
-      await LauncherShortcuts.clearShortcuts();
-      log('[QuickActionsService] 🧹 Shortcuts deshabilitados');
+      try {
+        await _platform.invokeMethod('clearShortcuts');
+        log('[QuickActionsService] 🧹 Shortcuts nativos limpiados');
+      } catch (e) {
+        log('[QuickActionsService] ❌ Error limpiando shortcuts: $e');
+      }
     }
   }
 
-  /// Actualiza los shortcuts cuando el usuario cambia su configuración
+  /// Actualiza Quick Actions cuando el usuario cambia su configuración
+  static Future<void> refreshUserShortcuts() async {
+    log('[QuickActionsService] 🔄 Refrescando Quick Actions del usuario');
+    await _setupUserStatusShortcuts();
+  }
+
+  /// Actualiza los Quick Actions cuando el usuario cambia su configuración
   /// Point 14: Permite configuración personalizada de 4 Quick Actions
   static Future<void> updateUserQuickActions(
       List<StatusType> newQuickActions) async {
@@ -211,8 +160,8 @@ class QuickActionsService {
           newQuickActions);
 
       if (saved) {
-        // Actualizar los shortcuts del sistema
-        await _setupUserShortcuts();
+        // Actualizar los Quick Actions del sistema
+        await _setupUserStatusShortcuts();
         log('[QuickActionsService] ✅ Quick Actions actualizadas por el usuario');
       } else {
         log('[QuickActionsService] ❌ Error guardando preferencias');
@@ -220,12 +169,6 @@ class QuickActionsService {
     } catch (e) {
       log('[QuickActionsService] ❌ Error actualizando Quick Actions: $e');
     }
-  }
-
-  /// Resetea el flag de silent launch (llamar después del auto-close)
-  static void resetSilentLaunch() {
-    _isSilentLaunch = false;
-    log('[QuickActionsService] 🔄 Silent launch flag reseteado');
   }
 
   /// Método legacy mantenido para compatibilidad

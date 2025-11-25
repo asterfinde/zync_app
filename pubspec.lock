@@ -447,14 +447,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.9.0"
-  launcher_shortcuts:
-    dependency: "direct main"
-    description:
-      name: launcher_shortcuts
-      sha256: "23ae5dc2261aa5b962afa0dd8ddc7e53f67c9da65be10e0f775af87d3223d811"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.4"
   leak_tracker:
     dependency: transitive
     description:
