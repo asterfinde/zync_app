@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/global_keys.dart';
 import '../../../../services/circle_service.dart';
+import '../../../../core/services/silent_functionality_coordinator.dart';
 
 class JoinCircleView extends ConsumerStatefulWidget {
   const JoinCircleView({super.key});
@@ -35,9 +36,9 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
 
   void _onJoinCircle() async {
     print('[JoinCircleView] Join button pressed');
-    
+
     if (!mounted) return;
-    
+
     if (_joinController.text.trim().isEmpty) {
       if (mounted) {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
@@ -49,14 +50,20 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
       }
       return;
     }
-    
+
     final invitationCode = _joinController.text.trim();
     print('[JoinCircleView] Joining circle with code: $invitationCode');
-    
+
     try {
       await _service.joinCircle(invitationCode);
       print('[JoinCircleView] Joined circle successfully');
-      
+
+      // ACTIVAR NOTIFICACIONES después de unirse al círculo
+      if (mounted) {
+        print('[JoinCircleView] Activando notificaciones después de unirse...');
+        await SilentFunctionalityCoordinator.activateAfterLogin(context);
+      }
+
       if (mounted) {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
           const SnackBar(
@@ -64,20 +71,19 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
             backgroundColor: Color(0xFF1CE4B3),
           ),
         );
-        
+
         // Limpiar el controller
         _joinController.clear();
       }
-      
+
       // Forzar actualización del stream
       CircleService.forceRefresh();
       print('[JoinCircleView] Forced stream refresh after join');
-      
+
       // Navegar de vuelta
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
     } catch (e) {
       print('[JoinCircleView] Error joining circle: $e');
       if (mounted) {
@@ -114,7 +120,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 40),
-            
+
             // Mensaje principal
             Text(
               "Ingresa el código de invitación que recibiste para unirte al círculo.",
@@ -126,7 +132,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 60),
-            
+
             // Input para código de invitación
             TextFormField(
               controller: _joinController,
@@ -143,21 +149,21 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF1CE4B3), width: 2),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF1CE4B3), width: 2),
                 ),
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.05),
               ),
             ),
             const SizedBox(height: 40),
-            
+
             // Botón Unirse a Círculo
             ElevatedButton(
               onPressed: _isFormValid ? _onJoinCircle : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _isFormValid 
-                    ? const Color(0xFF1CE4B3) 
-                    : Colors.grey[700],
+                backgroundColor:
+                    _isFormValid ? const Color(0xFF1CE4B3) : Colors.grey[700],
                 foregroundColor: _isFormValid ? Colors.black : Colors.grey[400],
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -168,13 +174,13 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
               child: Text(
                 'Unirse al Círculo',
                 style: TextStyle(
-                  fontSize: 16, 
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
                   color: _isFormValid ? Colors.black : Colors.grey[500],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 100),
           ],
         ),

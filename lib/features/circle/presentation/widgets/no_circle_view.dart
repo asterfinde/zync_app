@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
-import '../../../../core/services/silent_functionality_coordinator.dart';
-import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../auth/presentation/pages/auth_final_page.dart';
+import '../../../../core/services/session_cache_service.dart';
 import 'create_circle_view.dart';
 import 'join_circle_view.dart';
 
@@ -16,12 +16,11 @@ class NoCircleView extends ConsumerStatefulWidget {
 }
 
 class _NoCircleViewState extends ConsumerState<NoCircleView> {
-
   String _getCurrentUserNickname() {
     final authState = ref.watch(authProvider);
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty 
-          ? authState.user.nickname 
+      return authState.user.nickname.isNotEmpty
+          ? authState.user.nickname
           : authState.user.email.split('@')[0];
     }
     return 'Usuario';
@@ -68,27 +67,34 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
             onPressed: () async {
               Navigator.of(context).pop();
               try {
-                print('🔴 [LOGOUT] Iniciando proceso de logout...');
+                print(
+                    '🔴 [LOGOUT] Iniciando logout desde NoCircleView (sin círculo)...');
+
+                // PASO 1: Limpiar cache PRIMERO (evita parpadeo de NoCircleView)
+                print('🔴 [LOGOUT] Limpiando SessionCache...');
+                await SessionCacheService.clearSession();
+
+                // PASO 2: Cerrar sesión Firebase
                 await FirebaseAuth.instance.signOut();
-                print('🔴 [LOGOUT] Firebase signOut completado, llamando deactivateAfterLogout...');
-                // NUEVO: Desactivar funcionalidad silenciosa al hacer logout
-                await SilentFunctionalityCoordinator.deactivateAfterLogout();
-                print('🔴 [LOGOUT] deactivateAfterLogout completado');
+                print('🔴 [LOGOUT] Firebase signOut completado');
+
+                // PASO 3: Navegar directo a login (sin SnackBar)
                 if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Sesión cerrada exitosamente'),
-                      backgroundColor: Color(0xFF1CE4B3),
-                    ),
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+                    (route) => false,
                   );
+                  print('✅ [LOGOUT] Navegación completada');
                 }
               } catch (e) {
+                print('❌ [LOGOUT] Error: $e');
+                // Solo mostrar error si realmente falla
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error al cerrar sesión: $e'),
                       backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 }
@@ -137,17 +143,12 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsPage(),
-                    ),
-                  );
-                },
+                onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1CE7E8),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  backgroundColor: const Color(0xFFFF6B6B),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -157,13 +158,13 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.settings, size: 18),
-                label: const Text('Ajustes'),
+                icon: const Icon(Icons.logout, size: 18),
+                label: const Text('Cerrar Sesión'),
               ),
             ],
           ),
         ),
-        
+
         // Contenido principal
         Expanded(
           child: Container(
@@ -175,7 +176,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 40), // Espacio reducido
-                  
+
                   // Mensaje principal
                   Text(
                     "Aún no estás en un círculo",
@@ -187,7 +188,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Mensaje de acción
                   Text(
                     "¿Qué te gustaría hacer?",
@@ -199,7 +200,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
-                  
+
                   // Botón Crear Círculo
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 16),
@@ -246,11 +247,12 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ),
 
                   const SizedBox(height: 30),
-                  
+
                   // Divider OR
                   Row(
                     children: [
-                      Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                      Expanded(
+                          child: Divider(color: Colors.white.withOpacity(0.3))),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Text(
@@ -262,7 +264,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                           ),
                         ),
                       ),
-                      Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                      Expanded(
+                          child: Divider(color: Colors.white.withOpacity(0.3))),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -273,7 +276,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     child: ElevatedButton(
                       onPressed: _navigateToJoinCircle,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 91, 207, 139),
+                        backgroundColor:
+                            const Color.fromARGB(255, 91, 207, 139),
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         shape: RoundedRectangleBorder(
@@ -311,7 +315,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 100), // Espacio final
                 ],
               ),
