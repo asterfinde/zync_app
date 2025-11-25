@@ -18,6 +18,7 @@ import 'package:zync_app/notifications/notification_service.dart'; // Point 2: N
 import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
 import 'package:zync_app/core/models/user_status.dart'; // StatusType enum
 import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
+import 'package:zync_app/quick_actions/quick_actions_service.dart'; // Para silent launch detection
 
 import 'core/global_keys.dart';
 
@@ -162,12 +163,35 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // OPCIÓN C: Detectar silent launch y auto-close
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkSilentLaunch();
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// OPCIÓN C: Detecta silent launch y cierra la app automáticamente
+  Future<void> _checkSilentLaunch() async {
+    if (QuickActionsService.isSilentLaunch) {
+      print('🔇 [Silent Launch] Detectado - cerrando app en 1 segundo...');
+
+      // Esperar 1 segundo para que Firebase complete la actualización
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Cerrar la app usando SystemNavigator
+      await SystemNavigator.pop();
+
+      // Resetear flag
+      QuickActionsService.resetSilentLaunch();
+
+      print('✅ [Silent Launch] App cerrada exitosamente');
+    }
   }
 
   @override

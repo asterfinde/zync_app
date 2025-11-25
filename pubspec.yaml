@@ -49,8 +49,8 @@ dependencies:
   # --- FUNCIONALIDAD SILENCIOSA ---
   # Widgets de pantalla de inicio
   home_widget: ^0.6.0
-  # Quick actions (3D Touch / Long press)
-  quick_actions: ^1.0.0
+  # Launcher shortcuts (3D Touch / Long press con iconos personalizados)
+  launcher_shortcuts: ^1.1.4
   # Notificaciones locales
   flutter_local_notifications: ^17.2.2
   # Badge en ícono de aplicación
@@ -76,3 +76,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+  # Assets para launcher shortcuts
+  assets:
+    - assets/launcher/

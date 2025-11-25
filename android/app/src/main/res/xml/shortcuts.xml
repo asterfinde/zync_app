@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Quick Actions dinámicos se configuran desde QuickActionsService -->
+    <!-- Este archivo está vacío porque los shortcuts se crean dinámicamente -->
+    <!-- Los emojis aparecerán SIN íconos de Android -->
+</shortcuts>

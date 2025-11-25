@@ -6,15 +6,15 @@ class QuickActionsHandler {
   /// Maneja la lógica cuando se selecciona una quick action desde fuera de la app
   static Future<void> handleAction(String action) async {
     log('[QuickActionsHandler] Handling quick action: $action');
-    
+
     try {
       // Obtener el StatusType correspondiente
       final statusType = _mapActionToStatusType(action);
-      
+
       if (statusType != null) {
         // Usar el servicio de quick actions para manejar la actualización
-        await QuickActionsService.handleQuickAction(action);
-        
+        await QuickActionsService.handleShortcutAction(action);
+
         log('[QuickActionsHandler] Quick action handled successfully: $action');
       } else {
         log('[QuickActionsHandler] Unknown action: $action');
@@ -60,7 +60,7 @@ class QuickActionsHandler {
   static List<String> getAvailableActions() {
     return [
       'leave',
-      'busy', 
+      'busy',
       'fine',
       'sad',
       'ready',
