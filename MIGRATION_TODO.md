@@ -21,9 +21,45 @@ Migrar de `enum StatusType` hardcoded a `class StatusType` cargada desde Firebas
 - [x] `scripts/seed_predefined_emojis.dart` - Script de seed (no ejecutado)
 - [x] `SEED_FIRESTORE_MANUAL.md` - Instrucciones para seed manual
 
+### Migration Phase 1 (6 archivos críticos - 65 errores)
+- [x] `lib/main.dart` - 2 errores (Commit 4f3b492)
+- [x] `lib/features/circle/presentation/widgets/in_circle_view.dart` - 3 errores (Commit 3a1822f)
+- [x] `lib/core/widgets/quick_actions_config_widget.dart` - 3 errores (Commit 0ae0616)
+- [x] `lib/core/widgets/status_widget.dart` - 1 error (Commit 6bbb3cd)
+- [x] `lib/dev_test/mock_data.dart` - 2 errores (Commit 114b882)
+- [x] `lib/notifications/notification_actions.dart` - 54 errores (Commit 1b03d1f)
+
 ## ⏳ Pendiente de Migración
 
-### Archivos con errores de compilación (65 errores totales)
+### Migration Phase 2 (6 archivos adicionales - ~38 errores nuevos descubiertos)
+
+#### 7. `lib/notifications/notification_service.dart` (1 error)
+**Problema:** Usa `.name` getter que no existe
+**Acción:** Cambiar a `.id`
+
+#### 8. `lib/quick_actions/quick_actions_handler.dart` (12 errors)
+**Problema:** Usa enum getters (StatusType.leave, .busy, .fine, etc.)
+**Acción:** Cargar desde Firebase con IDs
+
+#### 9. `lib/widgets/home_screen_widget.dart` (6 errors)
+**Problema:** Usa enum getters hardcoded
+**Acción:** Cargar desde Firebase
+
+#### 10. `lib/widgets/sos_gps_test_widget.dart` (1 error)
+**Problema:** Usa StatusType.sos
+**Acción:** Cargar desde Firebase con ID 'sos'
+
+#### 11. `lib/widgets/status_selector_overlay.dart` (12 errors)
+**Problema:** Usa múltiples enum getters hardcoded
+**Acción:** Cargar desde Firebase
+
+#### 12. `lib/widgets/widget_service.dart` (6 errors)
+**Problema:** Usa enum getters
+**Acción:** Cargar desde Firebase
+
+## ⏳ Pendiente de Migración (archivos originales - REFERENCIA)
+
+### Archivos con errores de compilación (FASE 1 COMPLETADA)
 
 #### 1. `lib/core/widgets/quick_actions_config_widget.dart` (3 errores)
 **Problema:** Usa `getAvailableStatusTypes()` de forma síncrona, ahora es async
