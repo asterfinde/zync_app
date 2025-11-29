@@ -6,7 +6,6 @@ import 'dart:developer';
 
 /// Servicio para manejar las preferencias de Quick Actions del usuario
 /// Permite seleccionar y guardar hasta 4 StatusTypes favoritos para Quick Actions
-/// REFACTORED: Ahora usa EmojiService para cargar desde Firebase
 class QuickActionsPreferencesService {
   static const String _prefsKey = 'quick_actions_preferences';
 
@@ -29,18 +28,15 @@ class QuickActionsPreferencesService {
         final List<dynamic> savedList = json.decode(savedData);
         final List<StatusType> quickActions = [];
 
-        // Obtener emojis predefinidos de Firebase
-        final predefinedEmojis = await EmojiService.getPredefinedEmojis();
-
-        // Convertir IDs guardados a StatusType
-        for (String statusId in savedList) {
+        // Convertir strings guardados de vuelta a StatusType
+        for (String statusName in savedList) {
           try {
-            final statusType = predefinedEmojis.firstWhere(
-              (s) => s.id == statusId,
+            final statusType = StatusType.values.firstWhere(
+              (s) => s.toString().split('.').last == statusName,
             );
             quickActions.add(statusType);
           } catch (e) {
-            log('[QuickActionsPrefs] Status no encontrado: $statusId');
+            log('[QuickActionsPrefs] Status no encontrado: $statusName');
           }
         }
 
@@ -53,37 +49,10 @@ class QuickActionsPreferencesService {
 
       // Si no hay configuración válida, usar defaults
       log('[QuickActionsPrefs] 🔧 Usando Quick Actions por defecto');
-      return await _getDefaultQuickActions();
+      return _defaultQuickActions;
     } catch (e) {
       log('[QuickActionsPrefs] ❌ Error cargando preferencias: $e');
-      return await _getDefaultQuickActions();
-    }
-  }
-
-  /// Obtiene StatusTypes por defecto desde Firebase
-  static Future<List<StatusType>> _getDefaultQuickActions() async {
-    try {
-      final predefinedEmojis = await EmojiService.getPredefinedEmojis();
-      final defaults = <StatusType>[];
-
-      for (String id in _defaultQuickActionIds) {
-        try {
-          final status = predefinedEmojis.firstWhere((s) => s.id == id);
-          defaults.add(status);
-        } catch (e) {
-          log('[QuickActionsPrefs] ⚠️ Default ID no encontrado: $id');
-        }
-      }
-
-      // Fallback si Firebase no tiene los defaults
-      if (defaults.length == 4) {
-        return defaults;
-      } else {
-        return StatusType.fallbackPredefined.take(4).toList();
-      }
-    } catch (e) {
-      log('[QuickActionsPrefs] ❌ Error cargando defaults desde Firebase: $e');
-      return StatusType.fallbackPredefined.take(4).toList();
+      return _defaultQuickActions;
     }
   }
 
@@ -99,11 +68,12 @@ class QuickActionsPreferencesService {
 
       final prefs = await SharedPreferences.getInstance();
 
-      // Convertir StatusTypes a IDs para guardar
-      final List<String> statusIds =
-          quickActions.map((status) => status.id).toList();
+      // Convertir StatusTypes a strings para guardar
+      final List<String> statusNames = quickActions
+          .map((status) => status.toString().split('.').last)
+          .toList();
 
-      final savedData = json.encode(statusIds);
+      final savedData = json.encode(statusNames);
       final success = await prefs.setString(_prefsKey, savedData);
 
       if (success) {
@@ -120,8 +90,7 @@ class QuickActionsPreferencesService {
   /// Resetea las Quick Actions a los valores por defecto
   static Future<bool> resetToDefaults() async {
     try {
-      final defaults = await _getDefaultQuickActions();
-      final success = await saveUserQuickActions(defaults);
+      final success = await saveUserQuickActions(_defaultQuickActions);
       log('[QuickActionsPrefs] 🔄 Quick Actions reseteadas a defaults');
       return success;
     } catch (e) {
@@ -131,33 +100,35 @@ class QuickActionsPreferencesService {
   }
 
   /// Obtiene todos los StatusTypes disponibles para Quick Actions
-  /// Retorna los 16 emojis predefinidos de Firebase
-  static Future<List<StatusType>> getAvailableStatusTypes() async {
-    try {
-      final predefinedEmojis = await EmojiService.getPredefinedEmojis();
-      log('[QuickActionsPrefs] ✅ ${predefinedEmojis.length} emojis disponibles para Quick Actions');
-      return predefinedEmojis;
-    } catch (e) {
-      log('[QuickActionsPrefs] ❌ Error cargando emojis: $e');
-      return StatusType.fallbackPredefined;
-    }
+  /// SINCRONIZADO con StatusSelectorOverlay - Solo los 13 elementos del modal principal
+  static List<StatusType> getAvailableStatusTypes() {
+    // EXACTAMENTE los mismos elementos que StatusSelectorOverlay (Point 14 grid consistency fix)
+    return [
+      // Fila 1: Estados de disponibilidad básica
+      StatusType.available, StatusType.busy, StatusType.away, StatusType.focus,
+      // Fila 2: Estados emocionales/físicos
+      StatusType.happy, StatusType.tired, StatusType.stressed, StatusType.sad,
+      // Fila 3: Estados de actividad/ubicación
+      StatusType.traveling, StatusType.meeting, StatusType.studying,
+      StatusType.eating,
+      // Fila 4: Solo SOS (sin elementos heredados/duplicados)
+      StatusType.sos,
+    ];
   }
 
   /// Verifica si las Quick Actions actuales son las por defecto
   static Future<bool> areDefaultQuickActions() async {
     final current = await getUserQuickActions();
-    final defaults = await _getDefaultQuickActions();
-
-    if (current.length != defaults.length) return false;
+    if (current.length != _defaultQuickActions.length) return false;
 
     for (int i = 0; i < current.length; i++) {
-      if (current[i].id != defaults[i].id) return false;
+      if (current[i] != _defaultQuickActions[i]) return false;
     }
     return true;
   }
 
   /// Obtiene las Quick Actions por defecto
-  static Future<List<StatusType>> getDefaultQuickActions() async {
-    return await _getDefaultQuickActions();
+  static List<StatusType> getDefaultQuickActions() {
+    return List.from(_defaultQuickActions);
   }
 }
