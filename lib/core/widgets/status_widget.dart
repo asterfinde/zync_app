@@ -3,6 +3,7 @@ import 'package:home_widget/home_widget.dart';
 // TODO: Migrar a launcher_shortcuts
 // import 'package:quick_actions/quick_actions.dart';
 import '../../core/models/user_status.dart';
+import '../../core/services/emoji_service.dart';
 
 /// Widget service for handling home screen widgets and quick actions
 /// NOTA: Quick Actions movidos a QuickActionsService (launcher_shortcuts)
@@ -65,7 +66,15 @@ class StatusWidgetService {
   static Future<void> _setupWidget() async {
     try {
       await HomeWidget.setAppGroupId('group.com.datainfers.zync');
-      await _updateWidget(status: StatusType.fine, circleId: null);
+
+      // Cargar emojis desde Firebase con fallback
+      final emojis = await EmojiService.getPredefinedEmojis();
+      final availableStatus = emojis.firstWhere(
+        (s) => s.id == 'available',
+        orElse: () => StatusType.fallbackPredefined.first,
+      );
+
+      await _updateWidget(status: availableStatus, circleId: null);
       debugPrint('✅ [StatusWidgetService] Widget configurado');
     } catch (e) {
       debugPrint('🔴 [StatusWidgetService] Error configurando widget: $e');
