@@ -16,7 +16,8 @@ import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Nat
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
 import 'package:zync_app/notifications/notification_service.dart'; // Point 2: Notification Service
 import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
-import 'package:zync_app/core/models/user_status.dart'; // StatusType enum
+import 'package:zync_app/core/services/emoji_service.dart'; // Para cargar emojis desde Firebase
+import 'package:zync_app/core/models/user_status.dart'; // StatusType class
 import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
 // Para silent launch detection
 
@@ -119,10 +120,12 @@ void main() async {
 /// Helper para actualizar estado desde nativo (reutilizable)
 Future<void> _updateStatusFromNative(String statusTypeName) async {
   try {
-    // Convertir string a StatusType enum
-    final statusType = StatusType.values.firstWhere(
-      (e) => e.name == statusTypeName,
-      orElse: () => StatusType.available,
+    // Convertir string ID a StatusType desde Firebase
+    final predefinedEmojis = await EmojiService.getPredefinedEmojis();
+    final statusType = predefinedEmojis.firstWhere(
+      (e) => e.id == statusTypeName,
+      orElse: () =>
+          predefinedEmojis.first, // Default al primero si no encuentra
     );
 
     // Actualizar en Firebase usando StatusService
@@ -170,8 +173,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
-
-
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
