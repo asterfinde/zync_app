@@ -127,9 +127,9 @@ class MockData {
   /// Obtener emoji para un status específico
   static String getEmojiForStatus(String status) {
     try {
-      final statusType = StatusType.values.firstWhere(
-        (e) => e.name == status,
-        orElse: () => StatusType.available,
+      final statusType = StatusType.fallbackPredefined.firstWhere(
+        (e) => e.id == status,
+        orElse: () => StatusType.fallbackPredefined.first,
       );
       return statusType.emoji;
     } catch (e) {
