@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/services/gps_service.dart';
 import '../core/services/status_service.dart';
-import '../core/services/emoji_service.dart';
 import '../core/models/user_status.dart';
 
 class SOSGPSTestWidget extends StatefulWidget {
@@ -40,10 +39,7 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
                   children: [
                     const Text(
                       'Estado GPS',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -65,7 +61,9 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
                 ),
               ),
             ),
+            
             const SizedBox(height: 16),
+            
             ElevatedButton.icon(
               onPressed: _testGPS,
               icon: const Icon(Icons.gps_fixed),
@@ -75,7 +73,9 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
                 foregroundColor: Colors.white,
               ),
             ),
+            
             const SizedBox(height: 8),
+            
             ElevatedButton.icon(
               onPressed: _testSOSWithGPS,
               icon: const Icon(Icons.sos),
@@ -85,7 +85,9 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
                 foregroundColor: Colors.white,
               ),
             ),
+            
             const SizedBox(height: 8),
+            
             ElevatedButton.icon(
               onPressed: _lastCoordinates != null ? _testMapsUrls : null,
               icon: const Icon(Icons.map),
@@ -95,7 +97,9 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
                 foregroundColor: Colors.white,
               ),
             ),
+            
             const SizedBox(height: 16),
+            
             Expanded(
               child: Card(
                 color: Colors.grey[900],
@@ -106,10 +110,7 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
                     children: [
                       const Text(
                         'Log de Debug',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       const SizedBox(height: 8),
                       Expanded(
@@ -149,16 +150,15 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
 
     try {
       final coordinates = await GPSService.getCurrentLocation();
-
+      
       if (coordinates != null) {
         setState(() {
           _status = 'GPS obtenido correctamente';
           _lastCoordinates = coordinates;
         });
-
+        
         HapticFeedback.lightImpact();
-        _showSuccess(
-            'GPS obtenido: ${coordinates.latitude}, ${coordinates.longitude}');
+        _showSuccess('GPS obtenido: ${coordinates.latitude}, ${coordinates.longitude}');
       } else {
         setState(() {
           _status = 'Error: No se pudo obtener GPS';
@@ -179,15 +179,8 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
     });
 
     try {
-      // Cargar SOS status desde Firebase
-      final emojis = await EmojiService.getPredefinedEmojis();
-      final sosStatus = emojis.firstWhere(
-        (s) => s.id == 'sos',
-        orElse: () => StatusType.fallbackPredefined.first,
-      );
-
-      final result = await StatusService.updateUserStatus(sosStatus);
-
+      final result = await StatusService.updateUserStatus(StatusType.sos);
+      
       if (result.isSuccess) {
         setState(() {
           if (result.coordinates != null) {
@@ -197,10 +190,9 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
             _status = 'SOS enviado sin GPS';
           }
         });
-
+        
         HapticFeedback.mediumImpact();
-        _showSuccess(
-            'SOS enviado ${result.coordinates != null ? 'con GPS' : 'sin GPS'}');
+        _showSuccess('SOS enviado ${result.coordinates != null ? 'con GPS' : 'sin GPS'}');
       } else {
         setState(() {
           _status = 'Error enviando SOS: ${result.errorMessage}';
@@ -218,27 +210,25 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
   void _testMapsUrls() async {
     if (_lastCoordinates == null) return;
 
-    final urls =
-        GPSService.generateFallbackMapUrls(_lastCoordinates!, 'TestUser');
-
+    final urls = GPSService.generateFallbackMapUrls(_lastCoordinates!, 'TestUser');
+    
     for (int i = 0; i < urls.length; i++) {
       final url = urls[i];
       print('Testing URL $i: $url');
-
+      
       try {
         final uri = Uri.parse(url);
         final canLaunch = await canLaunchUrl(uri);
-
+        
         print('URL $i can launch: $canLaunch');
-
+        
         if (canLaunch) {
           // Mostrar diálogo de confirmación
           final shouldLaunch = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
               backgroundColor: Colors.grey[900],
-              title: Text('Probar URL $i',
-                  style: const TextStyle(color: Colors.white)),
+              title: Text('Probar URL $i', style: const TextStyle(color: Colors.white)),
               content: Text(
                 'URL: $url\n\n¿Abrir en aplicación de mapas?',
                 style: const TextStyle(color: Colors.grey),
@@ -255,7 +245,7 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
               ],
             ),
           );
-
+          
           if (shouldLaunch == true && mounted) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
             _showSuccess('URL $i funcionó correctamente');
@@ -266,7 +256,7 @@ class _SOSGPSTestWidgetState extends State<SOSGPSTestWidget> {
         print('Error with URL $i: $e');
       }
     }
-
+    
     _showError('Ninguna URL de mapas funcionó');
   }
 

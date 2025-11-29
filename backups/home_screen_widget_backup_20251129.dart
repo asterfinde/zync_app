@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/services/status_service.dart';
-import '../core/services/emoji_service.dart';
 import '../core/models/user_status.dart';
 
 class HomeScreenWidget extends ConsumerStatefulWidget {
@@ -13,56 +12,29 @@ class HomeScreenWidget extends ConsumerStatefulWidget {
   ConsumerState<HomeScreenWidget> createState() => _HomeScreenWidgetState();
 }
 
-class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
+class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget> 
     with TickerProviderStateMixin {
+  
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   String? _lastSelectedEmoji;
   bool _isProcessing = false;
 
-  // Los 6 emojis principales cargados desde Firebase
-  List<StatusType> _emojis = [];
-
-  // Mapping de IDs antiguos a nuevos (para compatibilidad)
-  static const _emojiMapping = [
-    'away', // Ausente (antes leave)
-    'busy', // Ocupado
-    'available', // Disponible (antes fine)
-    'do_not_disturb', // No molestar (antes sad)
-    'available', // Disponible (antes ready)
-    'sos', // SOS
+  // Los 6 emojis principales según el plan usando StatusType real
+  final List<Map<String, dynamic>> _emojis = [
+    {'emoji': '🚶‍♂️', 'status': StatusType.leave, 'label': 'Saliendo'},
+    {'emoji': '🔥', 'status': StatusType.busy, 'label': 'Ocupado'},
+    {'emoji': '😊', 'status': StatusType.fine, 'label': 'Bien'},
+    {'emoji': '😢', 'status': StatusType.sad, 'label': 'Mal'},
+    {'emoji': '✅', 'status': StatusType.ready, 'label': 'Listo'},
+    {'emoji': '🆘', 'status': StatusType.sos, 'label': 'SOS'},
   ];
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
-    _loadEmojis();
     _initializeWidget();
-  }
-
-  Future<void> _loadEmojis() async {
-    try {
-      final allEmojis = await EmojiService.getPredefinedEmojis();
-      final selectedEmojis = <StatusType>[];
-
-      for (final id in _emojiMapping) {
-        final emoji = allEmojis.firstWhere(
-          (e) => e.id == id,
-          orElse: () => StatusType.fallbackPredefined.first,
-        );
-        selectedEmojis.add(emoji);
-      }
-
-      if (mounted) {
-        setState(() => _emojis = selectedEmojis);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(
-            () => _emojis = StatusType.fallbackPredefined.take(6).toList());
-      }
-    }
   }
 
   void _setupAnimations() {
@@ -85,16 +57,12 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
   }
 
   Future<void> _updateWidgetData() async {
-    await HomeWidget.saveWidgetData(
-        'emojis',
-        _emojis
-            .map((e) => {
-                  'emoji': e.emoji,
-                  'label': e.shortLabel,
-                  'status': e.id,
-                })
-            .toList());
-
+    await HomeWidget.saveWidgetData('emojis', _emojis.map((e) => {
+      'emoji': e['emoji'],
+      'label': e['label'],
+      'status': e['status'].toString(),
+    }).toList());
+    
     await HomeWidget.updateWidget(
       name: 'ZyncStatusWidget',
       androidName: 'ZyncStatusWidget',
@@ -102,12 +70,12 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
     );
   }
 
-  Future<void> _handleEmojiTap(StatusType statusType) async {
+  Future<void> _handleEmojiTap(Map<String, dynamic> emojiData) async {
     if (_isProcessing) return;
 
     setState(() {
       _isProcessing = true;
-      _lastSelectedEmoji = statusType.emoji;
+      _lastSelectedEmoji = emojiData['emoji'];
     });
 
     _animationController.forward().then((_) {
@@ -118,8 +86,8 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
 
     try {
       // Usar StatusService con el StatusType correcto
-      await StatusService.updateUserStatus(statusType);
-      await _showSuccessFeedback(statusType.emoji);
+      await StatusService.updateUserStatus(emojiData['status'] as StatusType);
+      await _showSuccessFeedback(emojiData['emoji']);
     } catch (e) {
       await _showErrorFeedback();
     } finally {
@@ -131,16 +99,15 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
 
   Future<void> _showSuccessFeedback(String emoji) async {
     await HomeWidget.saveWidgetData('lastStatus', emoji);
-    await HomeWidget.saveWidgetData(
-        'lastUpdate', DateTime.now().toIso8601String());
+    await HomeWidget.saveWidgetData('lastUpdate', DateTime.now().toIso8601String());
     await _updateWidgetData();
-
+    
     setState(() {
       _lastSelectedEmoji = '✅';
     });
-
+    
     await Future.delayed(const Duration(seconds: 1));
-
+    
     setState(() {
       _lastSelectedEmoji = emoji;
     });
@@ -151,9 +118,9 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
     setState(() {
       _lastSelectedEmoji = '❌';
     });
-
+    
     await Future.delayed(const Duration(seconds: 1));
-
+    
     setState(() {
       _lastSelectedEmoji = null;
     });
@@ -186,9 +153,9 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
             itemCount: _emojis.length,
             itemBuilder: (context, index) {
               final emojiData = _emojis[index];
-              final isSelected = _lastSelectedEmoji == emojiData.emoji;
+              final isSelected = _lastSelectedEmoji == emojiData['emoji'];
               final isProcessing = _isProcessing && isSelected;
-
+              
               return GestureDetector(
                 onTap: () => _handleEmojiTap(emojiData),
                 child: AnimatedBuilder(
@@ -198,14 +165,14 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
                       scale: isProcessing ? _scaleAnimation.value : 1.0,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF1CE4B3).withValues(alpha: 0.2)
-                              : Colors.transparent,
+                          color: isSelected 
+                            ? const Color(0xFF1CE4B3).withValues(alpha: 0.2)
+                            : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isSelected
-                                ? const Color(0xFF1CE4B3)
-                                : Colors.grey.withValues(alpha: 0.3),
+                              ? const Color(0xFF1CE4B3)
+                              : Colors.grey.withValues(alpha: 0.3),
                             width: isSelected ? 2 : 1,
                           ),
                         ),
@@ -213,20 +180,20 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              emojiData.emoji,
+                              emojiData['emoji'],
                               style: const TextStyle(fontSize: 24),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              emojiData.shortLabel,
+                              emojiData['label'],
                               style: TextStyle(
                                 fontSize: 10,
-                                color: isSelected
-                                    ? const Color(0xFF1CE4B3)
-                                    : Colors.grey,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                                color: isSelected 
+                                  ? const Color(0xFF1CE4B3)
+                                  : Colors.grey,
+                                fontWeight: isSelected 
+                                  ? FontWeight.bold 
+                                  : FontWeight.normal,
                               ),
                             ),
                           ],
@@ -238,21 +205,27 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
               );
             },
           ),
+          
           const SizedBox(height: 12),
+          
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 Icons.circle,
                 size: 8,
-                color: _isProcessing ? Colors.orange : const Color(0xFF1CE4B3),
+                color: _isProcessing 
+                  ? Colors.orange 
+                  : const Color(0xFF1CE4B3),
               ),
               const SizedBox(width: 8),
               Text(
                 _isProcessing ? 'Enviando...' : 'Zync',
                 style: TextStyle(
                   fontSize: 12,
-                  color: _isProcessing ? Colors.orange : Colors.grey,
+                  color: _isProcessing 
+                    ? Colors.orange 
+                    : Colors.grey,
                   fontWeight: FontWeight.w500,
                 ),
               ),
