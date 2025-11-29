@@ -1,33 +1,42 @@
 import '../core/services/status_service.dart';
 import '../core/models/user_status.dart';
+import '../core/services/emoji_service.dart';
 import 'notification_service.dart';
 import 'dart:developer';
 
 class NotificationActions {
   /// Define y maneja las acciones disponibles desde las notificaciones
-  static const Map<String, StatusType> actionStatusMap = {
-    'status_leave': StatusType.leave,
-    'status_busy': StatusType.busy,
-    'status_fine': StatusType.fine,
-    'status_sad': StatusType.sad,
-    'status_ready': StatusType.ready,
-    'status_sos': StatusType.sos,
+  /// Mapea action IDs a status IDs (nuevo sistema de 16 emojis)
+  static const Map<String, String> actionStatusMap = {
+    'status_leave': 'away', // Ausente (reemplazo de leave)
+    'status_busy': 'busy', // Ocupado
+    'status_fine': 'available', // Disponible (reemplazo de fine)
+    'status_sad': 'do_not_disturb', // No molestar (reemplazo de sad)
+    'status_ready': 'available', // Disponible (reemplazo de ready)
+    'status_sos': 'sos', // SOS
   };
 
   /// Maneja la acción seleccionada desde una notificación
   static Future<void> onActionSelected(String action) async {
     log('[NotificationActions] Action selected: $action');
-    
+
     try {
-      final statusType = actionStatusMap[action];
-      
-      if (statusType != null) {
+      final statusId = actionStatusMap[action];
+
+      if (statusId != null) {
+        // Cargar StatusType desde Firebase por ID
+        final emojis = await EmojiService.getPredefinedEmojis();
+        final statusType = emojis.firstWhere(
+          (s) => s.id == statusId,
+          orElse: () => StatusType.fallbackPredefined.first,
+        );
+
         // Actualizar el estado usando el StatusService
         final result = await StatusService.updateUserStatus(statusType);
-        
+
         if (result.isSuccess) {
-          log('[NotificationActions] Status updated successfully: ${statusType.description}');
-          
+          log('[NotificationActions] Status updated successfully: ${statusType.label}');
+
           // Mostrar notificación de confirmación
           await NotificationService.showSilentNotification(statusType);
         } else {
@@ -49,17 +58,29 @@ class NotificationActions {
   }
 
   /// Obtiene el StatusType para una acción específica
-  static StatusType? getStatusTypeForAction(String action) {
-    return actionStatusMap[action];
+  static Future<StatusType?> getStatusTypeForAction(String action) async {
+    final statusId = actionStatusMap[action];
+    if (statusId == null) return null;
+
+    try {
+      final emojis = await EmojiService.getPredefinedEmojis();
+      return emojis.firstWhere(
+        (s) => s.id == statusId,
+        orElse: () => StatusType.fallbackPredefined.first,
+      );
+    } catch (e) {
+      log('[NotificationActions] Error loading status: $e');
+      return StatusType.fallbackPredefined.first;
+    }
   }
 
   /// Obtiene información legible para una acción
-  static Map<String, String>? getActionInfo(String action) {
-    final statusType = actionStatusMap[action];
+  static Future<Map<String, String>?> getActionInfo(String action) async {
+    final statusType = await getStatusTypeForAction(action);
     if (statusType != null) {
       return {
         'emoji': statusType.emoji,
-        'description': statusType.description,
+        'description': statusType.label,
         'action': action,
       };
     }
@@ -73,27 +94,32 @@ class NotificationActions {
 
   /// Crea una acción personalizada
   static String createCustomAction(StatusType statusType) {
-    return 'status_${statusType.name}';
+    return 'status_${statusType.id}';
   }
 
   /// Obtiene todas las acciones con su información
-  static Map<String, Map<String, String>> getAllActionsInfo() {
+  static Future<Map<String, Map<String, String>>> getAllActionsInfo() async {
     final result = <String, Map<String, String>>{};
-    
+
     for (final action in actionStatusMap.keys) {
-      final info = getActionInfo(action);
+      final info = await getActionInfo(action);
       if (info != null) {
         result[action] = info;
       }
     }
-    
+
     return result;
   }
 
   /// Muestra una notificación de error
   static Future<void> _showErrorNotification() async {
     try {
-      await NotificationService.showSilentNotification(StatusType.worried);
+      final emojis = await EmojiService.getPredefinedEmojis();
+      final errorStatus = emojis.firstWhere(
+        (s) => s.id == 'do_not_disturb',
+        orElse: () => StatusType.fallbackPredefined.first,
+      );
+      await NotificationService.showSilentNotification(errorStatus);
     } catch (e) {
       log('[NotificationActions] Error showing error notification: $e');
     }
@@ -102,14 +128,14 @@ class NotificationActions {
   /// Configura las acciones según las preferencias del usuario
   static Future<void> configureActions(List<StatusType> enabledStatuses) async {
     log('[NotificationActions] Configuring actions for ${enabledStatuses.length} statuses');
-    
+
     // Esta funcionalidad se puede expandir para personalizar
     // las acciones disponibles según las preferencias del usuario
-    
+
     // Por ahora, simplemente logueamos la configuración
     for (final status in enabledStatuses) {
       final action = createCustomAction(status);
-      log('[NotificationActions] Action configured: $action -> ${status.description}');
+      log('[NotificationActions] Action configured: $action -> ${status.label}');
     }
   }
 
