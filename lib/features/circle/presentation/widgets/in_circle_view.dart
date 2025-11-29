@@ -13,6 +13,7 @@ import '../../../auth/presentation/provider/auth_state.dart';
 import '../../../../core/widgets/emoji_modal.dart';
 import '../../../../core/services/gps_service.dart';
 import '../../../../core/services/status_service.dart';
+import '../../../../core/services/emoji_service.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../../core/models/user_status.dart';
 // CACHE-FIRST: Importar caches
@@ -106,6 +107,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   bool _isUpdatingStatus = false;
   final Map<String, String> _memberNicknamesCache = {};
   bool _isLoadingNicknames = true;
+  List<StatusType>? _predefinedEmojis;
 
   // --- INICIO DE LA MODIFICACIÓN ---
   // StreamSubscription para poder cancelarlo en dispose()
@@ -115,6 +117,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   @override
   void initState() {
     super.initState();
+    _loadPredefinedEmojis();
 
     // ==================== CACHE-FIRST PATTERN ====================
     // PASO 1: Cargar cache PRIMERO (sin await, sincrónico desde memoria)
@@ -158,6 +161,26 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     super.dispose();
   }
   // --- FIN DE LA MODIFICACIÓN ---
+
+  /// Carga emojis predefinidos desde Firebase
+  Future<void> _loadPredefinedEmojis() async {
+    try {
+      final emojis = await EmojiService.getPredefinedEmojis();
+      if (mounted) {
+        setState(() {
+          _predefinedEmojis = emojis;
+        });
+      }
+    } catch (e) {
+      print('[InCircleView] ⚠️ Error cargando emojis: $e');
+      // Usar fallback si falla
+      if (mounted) {
+        setState(() {
+          _predefinedEmojis = StatusType.fallbackPredefined;
+        });
+      }
+    }
+  }
 
   // ========================================================================
   // CACHE-FIRST: Métodos de cache
@@ -319,9 +342,10 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     if (statusType != null) {
       try {
-        final statusEnum = StatusType.values.firstWhere(
-          (s) => s.name == statusType,
-          orElse: () => StatusType.fine, // Fallback seguro
+        final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
+        final statusEnum = emojis.firstWhere(
+          (s) => s.id == statusType,
+          orElse: () => emojis.first, // Fallback al primero
         );
         emoji = statusEnum.emoji;
       } catch (e) {
@@ -573,8 +597,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     });
 
     try {
-      print('[InCircleView] ✅ Enviando estado rápido: fine (Todo Bien)');
-      final result = await StatusService.updateUserStatus(StatusType.fine);
+      final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
+      final defaultStatus = emojis.firstWhere((s) => s.id == 'available',
+          orElse: () => emojis.first);
+      print('[InCircleView] ✅ Enviando estado rápido: ${defaultStatus.label}');
+      final result = await StatusService.updateUserStatus(defaultStatus);
 
       if (!result.isSuccess && mounted) {
         _showError(context, 'Error: ${result.errorMessage}');
