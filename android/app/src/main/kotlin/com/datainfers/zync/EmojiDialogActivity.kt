@@ -19,40 +19,103 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Modal nativo de Android para selección de emojis
- * Diseño EXACTO al modal Flutter (status_selector_overlay.dart)
+ * Lee emojis desde SharedPreferences (cache Firebase sincronizado por Flutter)
  */
 class EmojiDialogActivity : Activity() {
     private val TAG = "EmojiDialogActivity"
     
-    // Grid 4x4 exactamente como Flutter (StatusType enum)
-    private val emojis = listOf(
-        // Fila 1: Estados de disponibilidad básica
-        Triple("🟢", "Libre", "available"),
-        Triple("🔴", "Ocupado", "busy"),
-        Triple("🟡", "Ausente", "away"),
-        Triple("🎯", "Concentr", "focus"),
-        // Fila 2: Estados emocionales/físicos
-        Triple("😊", "Feliz", "happy"),
-        Triple("😴", "Cansado", "tired"),
-        Triple("😰", "Estrés", "stressed"),
-        Triple("😢", "Triste", "sad"),
-        // Fila 3: Estados de actividad/ubicación
-        Triple("✈️", "Viajando", "traveling"),
-        Triple("👥", "Reunión", "meeting"),
-        Triple("📚", "Estudia", "studying"),
-        Triple("🍽️", "Comiendo", "eating"),
-        // Fila 4: Config + SOS (posiciones 12, 13, 14 vacías, 15 = SOS)
-        Triple("", "", ""),
-        Triple("", "", ""),
-        Triple("", "", ""),
-        Triple("🆘", "SOS", "sos")
-    )
+    // Emojis cargados desde Firebase cache
+    private lateinit var emojis: List<Triple<String, String, String>>
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "⚡ [NATIVE] Abriendo dialog nativo de emojis...")
         
+        // Cargar emojis desde SharedPreferences (sincronizado desde Firebase)
+        emojis = loadEmojisFromCache()
+        
         setupActivityUI()
+    }
+    
+    /**
+     * Carga emojis desde SharedPreferences (sincronizados desde Firebase por Flutter)
+     */
+    private fun loadEmojisFromCache(): List<Triple<String, String, String>> {
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val cachedJson = prefs.getString("flutter.predefined_emojis", null)
+        
+        if (cachedJson != null) {
+            try {
+                Log.d(TAG, "📦 [CACHE] JSON encontrado: ${cachedJson.take(100)}...")
+                
+                val emojiList = mutableListOf<Triple<String, String, String>>()
+                
+                // Parse JSON: [{"id":"available","emoji":"🟢","shortLabel":"Disponible"}...]
+                val jsonTrimmed = cachedJson.trim()
+                if (jsonTrimmed.startsWith("[") && jsonTrimmed.endsWith("]")) {
+                    val content = jsonTrimmed.substring(1, jsonTrimmed.length - 1)
+                    
+                    // Split por objetos
+                    val objects = content.split("},")
+                    for (obj in objects) {
+                        var cleanObj = obj.trim()
+                        if (!cleanObj.endsWith("}")) cleanObj += "}"
+                        if (!cleanObj.startsWith("{")) cleanObj = "{$cleanObj"
+                        
+                        // Extraer campos
+                        var id = ""
+                        var emoji = ""
+                        var shortLabel = ""
+                        
+                        val idMatch = Regex(""""id":"([^"]+)"""").find(cleanObj)
+                        val emojiMatch = Regex(""""emoji":"([^"]+)"""").find(cleanObj)
+                        val labelMatch = Regex(""""shortLabel":"([^"]+)"""").find(cleanObj)
+                        
+                        if (idMatch != null) id = idMatch.groupValues[1]
+                        if (emojiMatch != null) emoji = emojiMatch.groupValues[1]
+                        if (labelMatch != null) shortLabel = labelMatch.groupValues[1]
+                        
+                        if (id.isNotEmpty() && emoji.isNotEmpty()) {
+                            emojiList.add(Triple(emoji, shortLabel, id))
+                        }
+                    }
+                }
+                
+                if (emojiList.isNotEmpty()) {
+                    Log.d(TAG, "✅ [CACHE] ${emojiList.size} emojis cargados desde Firebase cache")
+                    
+                    // Rellenar hasta 16 elementos (grid 4x4)
+                    while (emojiList.size < 16) {
+                        emojiList.add(Triple("", "", ""))
+                    }
+                    
+                    return emojiList.take(16)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ [CACHE] Error parseando: ${e.message}")
+            }
+        }
+        
+        // Fallback: 16 emojis predefinidos de Firebase
+        Log.d(TAG, "⚠️ [CACHE] Sin cache, usando fallback (16 emojis Firebase)")
+        return listOf(
+            Triple("🟢", "Disponible", "available"),
+            Triple("🔴", "Ocupado", "busy"),
+            Triple("🟠", "Ausente", "away"),
+            Triple("⛔", "No molestar", "do_not_disturb"),
+            Triple("🏠", "Casa", "home"),
+            Triple("🏫", "Colegio", "school"),
+            Triple("🏢", "Trabajo", "work"),
+            Triple("🏥", "Consulta", "medical"),
+            Triple("👥", "Reunión", "meeting"),
+            Triple("📚", "Estudiando", "studying"),
+            Triple("🍽️", "Comiendo", "eating"),
+            Triple("🏃", "Ejercitando", "exercising"),
+            Triple("🚗", "Conduciendo", "driving"),
+            Triple("🚶", "Caminando", "walking"),
+            Triple("🚌", "Transporte", "public_transport"),
+            Triple("🆘", "SOS", "sos")
+        )
     }
     
     private fun setupActivityUI() {

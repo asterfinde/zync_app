@@ -62,7 +62,7 @@
             android:finishOnTaskLaunch="true"
             android:noHistory="true"/>
 
-        <!-- EmojiDialogActivity: Modal nativo instantáneo (sin Flutter) -->
+        <!-- EmojiDialogActivity: Modal nativo INSTANTÁNEO con cache Firebase -->
         <activity
             android:name=".EmojiDialogActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"

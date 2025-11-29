@@ -54,7 +54,10 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
 
   Future<void> _loadStatusGrid() async {
     try {
+      log('[StatusSelectorOverlay] 📡 Cargando grid desde EmojiService...');
       final emojis = await EmojiService.getPredefinedEmojis();
+      log('[StatusSelectorOverlay] ✅ Recibidos ${emojis.length} emojis: ${emojis.map((e) => e.emoji).join(", ")}');
+
       final grid = <StatusType?>[];
 
       for (final id in _gridIds) {
@@ -65,10 +68,13 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
         grid.add(status);
       }
 
+      log('[StatusSelectorOverlay] ✅ Grid construido con ${grid.length} emojis');
+
       if (mounted) {
         setState(() => _statusGrid = grid);
       }
     } catch (e) {
+      log('[StatusSelectorOverlay] ❌ ERROR cargando grid: $e');
       if (mounted) {
         setState(() =>
             _statusGrid = StatusType.fallbackPredefined.take(16).toList());

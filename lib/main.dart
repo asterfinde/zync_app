@@ -17,7 +17,8 @@ import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; /
 import 'package:zync_app/notifications/notification_service.dart'; // Point 2: Notification Service
 import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
 import 'package:zync_app/core/services/emoji_service.dart'; // Para cargar emojis desde Firebase
-import 'package:zync_app/core/models/user_status.dart'; // StatusType class
+import 'package:zync_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
+// StatusType class
 import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
 // Para silent launch detection
 
@@ -54,6 +55,10 @@ void main() async {
   // Point 2: Inicializar servicios de notificación ANTES de runApp()
   await SilentFunctionalityCoordinator.initializeServices();
   print('✅ [main] SilentFunctionalityCoordinator inicializado.');
+
+  // 🔄 Sincronizar emojis de Firebase a cache nativo (para EmojiDialogActivity)
+  await EmojiCacheService.syncEmojisToNativeCache();
+  print('✅ [main] Emojis sincronizados a cache nativo.');
 
   // 🔍 Verificar si hay estado nativo disponible (solo Android)
   try {

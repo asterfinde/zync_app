@@ -1,149 +1,62 @@
-# Este script debe ejecutarse con permisos de administrador
-# Verificar que tiene permisos admin
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "❌ ERROR: Este script requiere permisos de administrador" -ForegroundColor Red
-    Write-Host "   Ejecútalo desde un PowerShell con permisos elevados" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "Presiona Enter para cerrar..."
-    Read-Host
-    exit 1
-}
-
-$distroName = "Ubuntu-24.04"
+# Script de diagnóstico y conexión para Flutter Nativo en Windows
 $ErrorActionPreference = "Stop"
 
 Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  📱 Conexión Android/WSL2" -ForegroundColor Cyan
+Write-Host "  📱 Conexión Android (Windows Nativo)" -ForegroundColor Cyan
 Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "🔍 Buscando dispositivo Android..." -ForegroundColor Yellow
-$deviceList = usbipd list
-$androidDeviceLine = $deviceList | Select-String -Pattern "Galaxy|Android|ADB|Samsung|Xiaomi|OnePlus|Motorola|Huawei"
-
-if (-not $androidDeviceLine) {
-    Write-Host "❌ Dispositivo Android no encontrado" -ForegroundColor Red
-    Write-Host "" 
-    Write-Host "Verificar:" -ForegroundColor Yellow
-    Write-Host "  • Cable USB conectado" -ForegroundColor White
-    Write-Host "  • Dispositivo desbloqueado" -ForegroundColor White
-    Write-Host "  • Depuración USB activada" -ForegroundColor White
-    Write-Host ""
-    exit 1
-}
-
-$busid = ($androidDeviceLine -split '\s+')[0]
-Write-Host "✅ Dispositivo encontrado: $busid" -ForegroundColor Green
-Write-Host ""
-
-Write-Host "🧹 Limpiando conexiones previas..." -ForegroundColor Yellow
-$deviceStatus = usbipd list | Where-Object { $_ -match $busid }
-
-if ($deviceStatus -match "Attached") {
-    usbipd detach --busid $busid 2>$null
-    Start-Sleep -Seconds 2
-}
-
-if ($deviceStatus -match "Shared") {
-    usbipd unbind --busid $busid 2>$null
-    Start-Sleep -Seconds 2
-}
-
-Write-Host "✅ Limpieza completada" -ForegroundColor Green
-Write-Host ""
-
-Write-Host "🔗 Conectando a WSL2..." -ForegroundColor Yellow
-try {
-    usbipd bind --busid $busid
-    Start-Sleep -Seconds 2
-    # Sintaxis moderna de usbipd-win
-    usbipd attach --wsl --busid $busid
-    Start-Sleep -Seconds 3
-    
-    # Verificar que realmente quedó attached
-    $attachStatus = usbipd list | Where-Object { $_ -match $busid }
-    if ($attachStatus -match "Attached") {
-        Write-Host "✅ Dispositivo conectado a WSL2" -ForegroundColor Green
-    } else {
-        Write-Host "⚠️  Primer intento no completó, reintentando..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 2
-        usbipd attach --wsl --busid $busid
-        Start-Sleep -Seconds 3
-        
-        $attachStatus = usbipd list | Where-Object { $_ -match $busid }
-        if ($attachStatus -match "Attached") {
-            Write-Host "✅ Dispositivo conectado a WSL2 (segundo intento)" -ForegroundColor Green
-        } else {
-            Write-Host "❌ Error: Dispositivo no quedó attached después de reintentos" -ForegroundColor Red
-            exit 1
-        }
-    }
-} catch {
-    Write-Host "❌ Error al conectar: $_" -ForegroundColor Red
-    exit 1
-}
-Write-Host ""
-
-Write-Host "🔐 Configurando permisos USB..." -ForegroundColor Yellow
-wsl -d "$distroName" -e bash -c "sudo chmod -R 777 /dev/bus/usb/ 2>/dev/null"
-Write-Host "✅ Permisos configurados" -ForegroundColor Green
-Write-Host ""
-
-Write-Host "🔄 Reiniciando servidor ADB..." -ForegroundColor Yellow
-wsl -d "$distroName" -e bash -c "adb kill-server 2>/dev/null; sleep 2; adb start-server 2>/dev/null"
-Start-Sleep -Seconds 2
-Write-Host "✅ Servidor ADB reiniciado" -ForegroundColor Green
-Write-Host ""
-
-Write-Host "✔️  Verificando conexión con ADB..." -ForegroundColor Yellow
-Write-Host "   (Esto puede tomar hasta 15 segundos)" -ForegroundColor Gray
-
-# Reintentar hasta 3 veces con delays progresivos
-$maxRetries = 3
-$deviceDetected = $false
-
-for ($attempt = 1; $attempt -le $maxRetries; $attempt++) {
-    if ($attempt -gt 1) {
-        Write-Host "   Intento $attempt/$maxRetries..." -ForegroundColor Yellow
-    }
-    
-    Start-Sleep -Seconds 5
-    $adbOutput = wsl -d "$distroName" -e bash -c "adb devices -l 2>/dev/null"
-    
-    if ($adbOutput -match "unauthorized") {
-        Write-Host "⚠️  DISPOSITIVO NO AUTORIZADO" -ForegroundColor Yellow
-        Write-Host "   Desbloquea el dispositivo y acepta depuración USB" -ForegroundColor White
-        Write-Host ""
-        exit 1
-    } elseif ($adbOutput -match "device\s+usb:") {
-        $deviceDetected = $true
-        break
-    }
-    
-    # Si no se detectó y quedan intentos, esperar más
-    if ($attempt -lt $maxRetries) {
-        Write-Host "   ⏳ Esperando a que ADB detecte el dispositivo..." -ForegroundColor Gray
-    }
-}
-
-if ($deviceDetected) {
-    Write-Host ""
-    Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
-    Write-Host "✅ CONEXIÓN EXITOSA" -ForegroundColor Green
-    Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
-    Write-Host ""
+# 1. Verificar si ADB está en el PATH de Windows
+Write-Host "🔍 Verificando entorno ADB..." -ForegroundColor Yellow
+if (Get-Command adb -ErrorAction SilentlyContinue) {
+    $adbPath = (Get-Command adb).Source
+    Write-Host "✅ ADB encontrado en: $adbPath" -ForegroundColor Green
 } else {
-    Write-Host ""
-    Write-Host "❌ ADB no detectó el dispositivo después de $maxRetries intentos" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Posibles causas:" -ForegroundColor Yellow
-    Write-Host "   • Cable USB defectuoso o de solo carga" -ForegroundColor White
-    Write-Host "   • Depuración USB no autorizada en el dispositivo" -ForegroundColor White
-    Write-Host "   • Modo USB incorrecto (debe ser MTP/Transferencia de archivos)" -ForegroundColor White
-    Write-Host "   • Puerto USB de la PC con problemas" -ForegroundColor White
-    Write-Host ""
-    Write-Host "💡 Alternativa: Usa WiFi ADB (más estable)" -ForegroundColor Cyan
-    Write-Host "   Ver: docs/dev/wifi-adb-connection-guide.md" -ForegroundColor Gray
-    Write-Host ""
+    Write-Host "❌ ADB no detectado en el PATH" -ForegroundColor Red
+    Write-Host "   Asegúrate de agregar 'platform-tools' a tus Variables de Entorno." -ForegroundColor Yellow
+    Write-Host "   Ruta común: C:\Users\TU_USUARIO\AppData\Local\Android\Sdk\platform-tools" -ForegroundColor Gray
     exit 1
 }
+Write-Host ""
+
+# 2. Asegurarse de que el dispositivo NO esté secuestrado por usbipd (si lo usaste antes)
+if (Get-Command usbipd -ErrorAction SilentlyContinue) {
+    Write-Host "🧹 Verificando conflictos con usbipd..." -ForegroundColor Yellow
+    # Intentamos liberar todos los dispositivos por si acaso quedó alguno atado a WSL
+    usbipd unbind --all 2>$null
+    Write-Host "ℹ️  Se ejecutó limpieza de usbipd para asegurar que Windows tenga el control." -ForegroundColor Gray
+    Write-Host ""
+}
+
+# 3. Reiniciar servidor ADB en Windows
+Write-Host "🔄 Reiniciando servidor ADB (Windows)..." -ForegroundColor Yellow
+adb kill-server
+Start-Sleep -Seconds 2
+adb start-server
+Write-Host "✅ Servidor reiniciado" -ForegroundColor Green
+Write-Host ""
+
+# 4. Buscar dispositivos
+Write-Host "✔️  Buscando dispositivos..." -ForegroundColor Yellow
+$adbOutput = adb devices -l
+
+if ($adbOutput -match "unauthorized") {
+    Write-Host "⚠️  DISPOSITIVO NO AUTORIZADO" -ForegroundColor Red
+    Write-Host "   Mira la pantalla de tu celular y acepta la huella digital RSA." -ForegroundColor White
+} elseif ($adbOutput -match "device\s+product:") {
+    Write-Host "✅ DISPOSITIVO CONECTADO Y LISTO" -ForegroundColor Green
+    $adbOutput | Select-String "product:" | ForEach-Object { Write-Host "   📱 $_" -ForegroundColor Cyan }
+    
+    Write-Host ""
+    Write-Host "🦋 Verificando visibilidad en Flutter..." -ForegroundColor Magenta
+    flutter devices
+} else {
+    Write-Host "❌ No se encontraron dispositivos" -ForegroundColor Red
+    Write-Host "   1. Desconecta y reconecta el cable USB." -ForegroundColor Yellow
+    Write-Host "   2. Asegúrate que esté en modo 'Transferencia de Archivos' (MTP)." -ForegroundColor Yellow
+    Write-Host "   3. Verifica que tengas el Driver USB de tu fabricante instalado." -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host "Presiona Enter para salir..."
+Read-Host

@@ -1,81 +1,58 @@
-# Auto-elevar a administrador si no lo está
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Start-Process powershell.exe "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
-}
-
-$distroName = "Ubuntu-24.04"
+# Script de limpieza y desconexión para Flutter en Windows
+$ErrorActionPreference = "SilentlyContinue" # No detenerse si no encuentra procesos para matar
 
 Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  📱 Desconexión Android/WSL2" -ForegroundColor Cyan
+Write-Host "  🌙 Fin del Día - Desconexión Android" -ForegroundColor Cyan
 Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
 
-# Se matará ADB al final, después de desconectar el dispositivo
-
-Write-Host "🔍 Buscando dispositivos Android conectados..." -ForegroundColor Yellow
-$deviceList = usbipd list
-$androidDevices = $deviceList | Select-String -Pattern "Attached|Shared" | Select-String -Pattern "Galaxy|Android|Samsung|Xiaomi|OnePlus"
-
-if (-not $androidDevices) {
-    Write-Host "ℹ️  No hay dispositivos Android conectados" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "✅ Nada que desconectar" -ForegroundColor Green
-    Write-Host ""
-    exit 0
-}
-
-Write-Host "📱 Dispositivos encontrados:" -ForegroundColor Cyan
-$androidDevices | ForEach-Object {
-    Write-Host "   $_" -ForegroundColor Gray
-}
-Write-Host ""
-
-Write-Host "🔌 Desconectando dispositivos..." -ForegroundColor Yellow
-
-$androidDevices | ForEach-Object {
-    $busid = ($_ -split '\s+')[0]
-    
-    if ($_ -match "Attached") {
-        try {
-            usbipd detach --busid $busid
-            Start-Sleep -Seconds 1
-            Write-Host "   ✅ BUSID $busid desconectado" -ForegroundColor Green
-        } catch {
-            Write-Host "   ⚠️  Error al desconectar BUSID $busid" -ForegroundColor Yellow
-        }
-    }
-    
-    if ($_ -match "Shared") {
-        try {
-            usbipd unbind --busid $busid
-            Start-Sleep -Seconds 1
-            Write-Host "   ✅ BUSID $busid desvinculado" -ForegroundColor Green
-        } catch {
-            Write-Host "   ⚠️  Error al desvincular BUSID $busid" -ForegroundColor Yellow
-        }
-    }
-}
-
-Write-Host ""
+# 1. Detener la comunicación con el dispositivo
 Write-Host "🛑 Deteniendo servidor ADB..." -ForegroundColor Yellow
-wsl -d "$distroName" -e bash -c "adb kill-server 2>/dev/null"
-Start-Sleep -Seconds 2
-
-# Verificar que ADB ya no detecta dispositivos
-$adbCheck = wsl -d "$distroName" -e bash -c "adb devices 2>/dev/null | grep -v 'List of devices'"
-if ($adbCheck -match "device") {
-    Write-Host "⚠️  Advertencia: ADB aún detecta dispositivos" -ForegroundColor Yellow
-    Write-Host "   Matando servidor ADB forzadamente..." -ForegroundColor Gray
-    wsl -d "$distroName" -e bash -c "adb kill-server 2>/dev/null; sleep 1"
+adb kill-server
+if (-not (Get-Process adb -ErrorAction SilentlyContinue)) {
+    Write-Host "✅ Servidor ADB detenido correctamente." -ForegroundColor Green
 } else {
-    Write-Host "✅ Servidor ADB detenido" -ForegroundColor Green
+    Write-Host "⚠️  No se pudo detener ADB suavemente, forzando cierre..." -ForegroundColor Red
+    Stop-Process -Name "adb" -Force
+}
+Write-Host ""
+
+# 2. Limpieza de memoria (Flutter/Gradle suelen dejar procesos abiertos)
+Write-Host "🧹 Limpiando procesos de desarrollo en memoria..." -ForegroundColor Yellow
+
+# Matar procesos de Dart (Flutter)
+$dartProcs = Get-Process dart -ErrorAction SilentlyContinue
+if ($dartProcs) {
+    $count = $dartProcs.Count
+    Stop-Process -Name "dart" -Force
+    Write-Host "   🗑️  Se cerraron $count procesos de Dart (Flutter)." -ForegroundColor Gray
+} else {
+    Write-Host "   ✓ No había procesos de Dart activos." -ForegroundColor Gray
+}
+
+# Matar procesos de Java (Gradle Daemon)
+# OJO: Esto cerrará cualquier otra app Java, pero es estándar cerrar el daemon de Gradle al final del día.
+$javaProcs = Get-Process java -ErrorAction SilentlyContinue
+if ($javaProcs) {
+    # Filtramos para intentar no matar cosas que no sean de desarrollo si es posible, 
+    # pero usualmente en dev machine Java = Gradle/Android Studio.
+    $count = $javaProcs.Count
+    Write-Host "   ❓ Se detectaron $count procesos Java (posiblemente Gradle Daemons)." -ForegroundColor Yellow
+    Write-Host "      ¿Deseas cerrarlos para liberar RAM? (S/N) " -NoNewline -ForegroundColor White
+    $response = Read-Host
+    if ($response -match "^[sS]") {
+        Stop-Process -Name "java" -Force
+        Write-Host "   🗑️  Procesos Java cerrados." -ForegroundColor Green
+    } else {
+        Write-Host "   ⏩ Omitiendo limpieza de Java." -ForegroundColor Gray
+    }
+} else {
+    Write-Host "   ✓ No había procesos de Java/Gradle activos." -ForegroundColor Gray
 }
 
 Write-Host ""
 Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "✅ DESCONEXIÓN COMPLETADA" -ForegroundColor Green
+Write-Host "✅ SISTEMA DESCONECTADO Y LIMPIO" -ForegroundColor Green
+Write-Host "   Puedes desconectar el cable USB de forma segura." -ForegroundColor White
 Write-Host "═══════════════════════════════════════" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "💾 Puedes desconectar el cable USB con seguridad" -ForegroundColor Cyan
-Write-Host ""
+Start-Sleep -Seconds 2
