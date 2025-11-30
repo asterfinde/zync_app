@@ -1,0 +1,132 @@
+{
+  "predefinedEmojis": {
+    "available": {
+      "id": "available",
+      "emoji": "🟢",
+      "label": "Disponible",
+      "shortLabel": "Libre",
+      "category": "availability",
+      "order": 1
+    },
+    "busy": {
+      "id": "busy",
+      "emoji": "🔴",
+      "label": "Ocupado",
+      "shortLabel": "Ocupado",
+      "category": "availability",
+      "order": 2
+    },
+    "away": {
+      "id": "away",
+      "emoji": "🟡",
+      "label": "Ausente",
+      "shortLabel": "Ausente",
+      "category": "availability",
+      "order": 3
+    },
+    "do_not_disturb": {
+      "id": "do_not_disturb",
+      "emoji": "🔕",
+      "label": "No molestar",
+      "shortLabel": "No molestar",
+      "category": "availability",
+      "order": 4
+    },
+    "home": {
+      "id": "home",
+      "emoji": "🏠",
+      "label": "En casa",
+      "shortLabel": "Casa",
+      "category": "location",
+      "order": 5
+    },
+    "school": {
+      "id": "school",
+      "emoji": "🏫",
+      "label": "En el colegio",
+      "shortLabel": "Colegio",
+      "category": "location",
+      "order": 6
+    },
+    "work": {
+      "id": "work",
+      "emoji": "🏢",
+      "label": "En el trabajo",
+      "shortLabel": "Trabajo",
+      "category": "location",
+      "order": 7
+    },
+    "medical": {
+      "id": "medical",
+      "emoji": "🏥",
+      "label": "En consulta",
+      "shortLabel": "Consulta",
+      "category": "location",
+      "order": 8
+    },
+    "meeting": {
+      "id": "meeting",
+      "emoji": "🗪",
+      "label": "Reunión",
+      "shortLabel": "Reunión",
+      "category": "activity",
+      "order": 9
+    },
+    "studying": {
+      "id": "studying",
+      "emoji": "📚",
+      "label": "Estudiando",
+      "shortLabel": "Estudia",
+      "category": "activity",
+      "order": 10
+    },
+    "eating": {
+      "id": "eating",
+      "emoji": "🍽️",
+      "label": "Comiendo",
+      "shortLabel": "Comiendo",
+      "category": "activity",
+      "order": 11
+    },
+    "exercising": {
+      "id": "exercising",
+      "emoji": "💪",
+      "label": "Ejercicio",
+      "shortLabel": "Ejercicio",
+      "category": "activity",
+      "order": 12
+    },
+    "driving": {
+      "id": "driving",
+      "emoji": "🚗",
+      "label": "En camino",
+      "shortLabel": "Camino",
+      "category": "transport",
+      "order": 13
+    },
+    "walking": {
+      "id": "walking",
+      "emoji": "🚶",
+      "label": "Caminando",
+      "shortLabel": "Caminando",
+      "category": "transport",
+      "order": 14
+    },
+    "public_transport": {
+      "id": "public_transport",
+      "emoji": "🚌",
+      "label": "En transporte",
+      "shortLabel": "Transporte",
+      "category": "transport",
+      "order": 15
+    },
+    "sos": {
+      "id": "sos",
+      "emoji": "🆘",
+      "label": "SOS",
+      "shortLabel": "SOS",
+      "category": "emergency",
+      "order": 16
+    }
+  }
+}

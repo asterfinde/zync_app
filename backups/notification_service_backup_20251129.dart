@@ -4,9 +4,9 @@ import '../core/models/user_status.dart';
 import 'dart:developer';
 
 class NotificationService {
-  static final FlutterLocalNotificationsPlugin _notifications =
+  static final FlutterLocalNotificationsPlugin _notifications = 
       FlutterLocalNotificationsPlugin();
-
+  
   static bool _isInitialized = false;
 
   /// Inicializa el servicio de notificaciones
@@ -14,9 +14,8 @@ class NotificationService {
     if (_isInitialized) return;
 
     // Configuración para Android
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    
     // Configuración para iOS (solo solicitar permisos en iOS, no en Android)
     const iosSettings = DarwinInitializationSettings(
       requestSoundPermission: false, // Point 21: Silencioso
@@ -36,7 +35,7 @@ class NotificationService {
 
     // Point 21: NO solicitar permisos - se declaran en AndroidManifest.xml
     // El permiso POST_NOTIFICATIONS se maneja automáticamente en Android
-
+    
     // Crear canal de notificaciones (silencioso)
     await _createNotificationChannel();
 
@@ -82,31 +81,31 @@ class NotificationService {
     await _notifications.show(
       status.hashCode,
       'Zync Status Updated',
-      '${status.emoji} ${status.label}',
+      '${status.emoji} ${status.description}',
       notificationDetails,
-      payload: 'status_update:${status.id}',
+      payload: 'status_update:${status.name}',
     );
 
-    log('[NotificationService] Silent notification shown for ${status.label}');
+    log('[NotificationService] Silent notification shown for ${status.description}');
   }
 
   /// Point 21 FASE 5: Muestra notificación persistente NATIVA
   /// Usa el método nativo de MainActivity que apunta a StatusModalActivity
-  static Future<void> showQuickActionNotification(
-      {StatusType? currentStatus}) async {
+  static Future<void> showQuickActionNotification({StatusType? currentStatus}) async {
     await _ensureInitialized();
 
     try {
       // FASE 5 FIX: Usar el canal nativo existente que ya apunta a StatusModalActivity
       const platform = MethodChannel('mini_emoji/notification');
-
+      
       log('[NotificationService] 🎯 [FASE 5] Solicitando notificación NATIVA a Android...');
       log('[NotificationService] 📡 Usando canal: mini_emoji/notification → showNotification');
-
+      
       final result = await platform.invokeMethod('showNotification');
-
+      
       log('[NotificationService] ✅ [FASE 5] Notificación nativa creada: $result');
       log('[NotificationService] 🎯 [FASE 5] Tap abrirá StatusModalActivity (modal transparente)');
+      
     } catch (e) {
       log('[NotificationService] ❌ [FASE 5] Error creando notificación nativa: $e');
       log('[NotificationService] � [FASE 5] Asegúrate de que el método nativo esté disponible');
@@ -123,7 +122,7 @@ class NotificationService {
   /// Cancela la notificación de quick actions
   static Future<void> cancelQuickActionNotification() async {
     await _ensureInitialized();
-
+    
     try {
       // Cancelar notificación nativa de Android
       const platform = MethodChannel('mini_emoji/notification');
@@ -132,18 +131,18 @@ class NotificationService {
     } catch (e) {
       log('[NotificationService] ⚠️ Error cancelando notificación nativa: $e');
     }
-
+    
     // Cancelar también cualquier notificación Flutter local
     await _notifications.cancel(9999);
     log('[NotificationService] Quick action notification cancelled');
   }
-
+  
   /// Point 1.1: Cancela TODAS las notificaciones de forma agresiva (incluye KeepAliveService)
   static Future<void> cancelAllNotificationsAggressive() async {
     await _ensureInitialized();
-
+    
     log('[NotificationService] 🔴🔴🔴 CANCELACIÓN AGRESIVA: Eliminando TODAS las notificaciones...');
-
+    
     try {
       // 1. Cancelar todas las notificaciones Flutter locales
       await _notifications.cancelAll();
@@ -151,7 +150,7 @@ class NotificationService {
     } catch (e) {
       log('[NotificationService] ⚠️ Error cancelando notificaciones Flutter: $e');
     }
-
+    
     try {
       // 2. Llamar al método nativo que cancela TODAS (MainActivity + KeepAliveService)
       const platform = MethodChannel('mini_emoji/notification');
@@ -170,16 +169,16 @@ class NotificationService {
       }
     }
   }
-
+  
   /// Point 21 FASE 5: Abre la configuración de notificaciones de Android
   static Future<void> openNotificationSettings() async {
     try {
       const platform = MethodChannel('mini_emoji/notification');
-
+      
       log('[NotificationService] Abriendo Settings de Android...');
-
+      
       final result = await platform.invokeMethod('openNotificationSettings');
-
+      
       if (result == true) {
         log('[NotificationService] Settings abierto exitosamente');
       } else {
@@ -193,13 +192,13 @@ class NotificationService {
   /// Handler para cuando se toca una notificación
   static void _onNotificationTapped(NotificationResponse response) {
     log('[NotificationService] Notification tapped: ${response.payload}');
-
+    
     // Si es la notificación persistente (ID 9999), abrir modal
     if (response.id == 9999) {
       _handleQuickActionTap();
       return;
     }
-
+    
     if (response.actionId != null) {
       _handleNotificationAction(response.actionId!);
     } else if (response.payload != null) {
@@ -209,7 +208,7 @@ class NotificationService {
 
   /// Callback para manejar tap en notificación persistente
   static void Function()? _onQuickActionTap;
-
+  
   /// Registra callback para el tap en notificación persistente
   static void setQuickActionTapHandler(void Function() onTap) {
     _onQuickActionTap = onTap;
@@ -224,7 +223,7 @@ class NotificationService {
   /// Maneja las acciones de las notificaciones
   static void _handleNotificationAction(String actionId) {
     log('[NotificationService] Handling action: $actionId');
-
+    
     // Las acciones se manejarán a través del NotificationActions
     // Este método puede expandirse para manejar diferentes tipos de acciones
   }
@@ -232,7 +231,7 @@ class NotificationService {
   /// Maneja el payload de las notificaciones
   static void _handleNotificationPayload(String payload) {
     log('[NotificationService] Handling payload: $payload');
-
+    
     if (payload.startsWith('status_update:')) {
       final statusName = payload.split(':')[1];
       log('[NotificationService] Status update payload: $statusName');
@@ -254,10 +253,8 @@ class NotificationService {
       showBadge: false, // Point 21: Sin badge
     );
 
-    final androidImplementation =
-        _notifications.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-
+    final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
     if (androidImplementation != null) {
       try {
         await androidImplementation.createNotificationChannel(channel);
@@ -280,22 +277,20 @@ class NotificationService {
   /// Android 13+ (API 33+) requiere permisos explícitos en tiempo de ejecución
   static Future<bool> hasPermission() async {
     await _ensureInitialized();
-
-    final androidImplementation =
-        _notifications.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-
+    
+    final androidImplementation = _notifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
     if (androidImplementation != null) {
       final result = await androidImplementation.areNotificationsEnabled();
       log('[NotificationService] 🔍 Permisos de notificación: ${result ?? false}');
       return result ?? false;
     }
-
+    
     // iOS
-    final iosImplementation =
-        _notifications.resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>();
-
+    final iosImplementation = _notifications
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    
     if (iosImplementation != null) {
       final result = await iosImplementation.requestPermissions(
         alert: false,
@@ -304,7 +299,7 @@ class NotificationService {
       );
       return result ?? true;
     }
-
+    
     return true; // Fallback
   }
 
@@ -312,37 +307,33 @@ class NotificationService {
   /// Point 21 FASE 1 FIX: Android 13+ (API 33+) requiere permisos explícitos
   static Future<bool> requestPermissions() async {
     await _ensureInitialized();
-
+    
     // Android 13+ (API 33+): Solicitar permisos explícitamente
-    final androidImplementation =
-        _notifications.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-
+    final androidImplementation = _notifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
     if (androidImplementation != null) {
       log('[NotificationService] 📱 Android 13+ detectado - solicitando permisos...');
-
+      
       // Verificar primero si ya tenemos permisos
-      final hasPermissions =
-          await androidImplementation.areNotificationsEnabled();
-
+      final hasPermissions = await androidImplementation.areNotificationsEnabled();
+      
       if (hasPermissions == true) {
         log('[NotificationService] ✅ Ya tenemos permisos de notificación');
         return true;
       }
-
+      
       // Solicitar permisos
       log('[NotificationService] ⚠️ No hay permisos - solicitando al usuario...');
-      final result =
-          await androidImplementation.requestNotificationsPermission();
+      final result = await androidImplementation.requestNotificationsPermission();
       log('[NotificationService] 🔔 Resultado de solicitud de permisos: $result');
       return result ?? false;
     }
-
+    
     // iOS
-    final iosImplementation =
-        _notifications.resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>();
-
+    final iosImplementation = _notifications
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    
     if (iosImplementation != null) {
       final result = await iosImplementation.requestPermissions(
         alert: false, // Point 21: Silencioso
@@ -351,7 +342,7 @@ class NotificationService {
       );
       return result ?? true;
     }
-
+    
     return true; // Fallback para Android <13
   }
 }

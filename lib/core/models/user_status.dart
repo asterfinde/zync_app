@@ -1,93 +1,233 @@
-// lib/features/circle/domain/entities/user_status.dart
+// lib/core/models/user_status.dart
+// REFACTORED: StatusType ahora es una clase que se carga desde Firebase
+// Backup del enum original en: backups/user_status_enum_backup_20251129.dart
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
-enum StatusType {
-  // Fila 1: Estados de disponibilidad básica
-  available("🟢", "Disponible", "ic_status_available"),
-  busy("🔴", "Ocupado", "ic_status_busy"),
-  away("🟡", "Ausente", "ic_status_away"),
-  focus("🎯", "Concentrado", "ic_status_focus"),
-  
-  // Fila 2: Estados emocionales/físicos
-  happy("😊", "Feliz", "ic_status_happy"),
-  tired("😴", "Cansado", "ic_status_tired"),
-  stressed("😰", "Estresado", "ic_status_stressed"),
-  sad("😢", "Triste", "ic_status_sad"),
-  
-  // Fila 3: Estados de actividad/ubicación
-  traveling("✈️", "Viajando", "ic_status_traveling"),
-  meeting("👥", "Reunión", "ic_status_meeting"),
-  studying("📚", "Estudiando", "ic_status_studying"),
-  eating("🍽️", "Comiendo", "ic_status_eating"),
-  
-  // Estados heredados (compatibilidad)
-  fine("😊", "Bien", "ic_status_fine"),
-  sos("🆘", "SOS", "ic_status_sos"),
-  ready("✅", "Listo", "ic_status_ready"),
-  leave("🚶‍♂️", "Saliendo", "ic_status_leave"),
-  sleepy("😴", "Con sueño", "ic_status_sleepy"),
-  excited("🎉", "Emocionado", "ic_status_excited"),
-  thinking("🤔", "Pensando", "ic_status_thinking"),
-  worried("😰", "Preocupado", "ic_status_worried");
+/// Representa un tipo de estado (emoji/estado) que puede ser:
+/// - Predefinido: Cargado desde Firebase /predefinedEmojis (16 estados base)
+/// - Personalizado: Creado por usuarios en /circles/{id}/customEmojis
+class StatusType extends Equatable {
+  final String id; // ID único (ej: "available", "busy", "natacion")
+  final String emoji; // Emoji unicode (ej: "🟢", "🏊")
+  final String label; // Descripción completa (ej: "Disponible", "Natación")
+  final String
+      shortLabel; // Descripción corta para grid (ej: "Libre", "Natación")
+  final String
+      category; // Categoría (availability, location, activity, transport, emergency, custom)
+  final int order; // Orden de visualización
+  final bool
+      isPredefined; // true = predefinido global, false = custom del círculo
+  final bool canDelete; // true = usuario puede eliminar (solo custom)
 
-  const StatusType(this.emoji, this.description, this.iconName);
-  final String emoji;
-  final String description;
-  final String iconName;
-  
-  // Versión corta para el grid del modal
-  String get shortDescription {
-    switch (this) {
-      // Fila 1: Estados de disponibilidad básica
-      case StatusType.available:
-        return 'Libre';
-      case StatusType.busy:
-        return 'Ocupado';
-      case StatusType.away:
-        return 'Ausente';
-      case StatusType.focus:
-        return 'Concentr';
-        
-      // Fila 2: Estados emocionales/físicos
-      case StatusType.happy:
-        return 'Feliz';
-      case StatusType.tired:
-        return 'Cansado';
-      case StatusType.stressed:
-        return 'Estrés';
-      case StatusType.sad:
-        return 'Triste';
-        
-      // Fila 3: Estados de actividad/ubicación
-      case StatusType.traveling:
-        return 'Viajando';
-      case StatusType.meeting:
-        return 'Reunión';
-      case StatusType.studying:
-        return 'Estudia';
-      case StatusType.eating:
-        return 'Comiendo';
-        
-      // Estados heredados (compatibilidad)
-      case StatusType.fine:
-        return 'Bien';
-      case StatusType.sos:
-        return 'SOS';
-      case StatusType.ready:
-        return 'Listo';
-      case StatusType.leave:
-        return 'Salir';
-      case StatusType.sleepy:
-        return 'Sueño';
-      case StatusType.excited:
-        return 'Emoción';
-      case StatusType.thinking:
-        return 'Pienso';
-      case StatusType.worried:
-        return 'Preocup';
-    }
+  const StatusType({
+    required this.id,
+    required this.emoji,
+    required this.label,
+    required this.shortLabel,
+    required this.category,
+    required this.order,
+    this.isPredefined = true,
+    this.canDelete = false,
+  });
+
+  /// Factory desde Firestore Document
+  factory StatusType.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return StatusType(
+      id: doc.id,
+      emoji: data['emoji'] as String,
+      label: data['label'] as String,
+      shortLabel: data['shortLabel'] as String,
+      category: data['category'] as String,
+      order: data['order'] as int,
+      isPredefined: data['isPredefined'] as bool? ?? true,
+      canDelete: data['canDelete'] as bool? ?? false,
+    );
   }
+
+  /// Factory desde Map (para deserialización)
+  factory StatusType.fromMap(Map<String, dynamic> map) {
+    return StatusType(
+      id: map['id'] as String,
+      emoji: map['emoji'] as String,
+      label: map['label'] as String,
+      shortLabel: map['shortLabel'] as String,
+      category: map['category'] as String,
+      order: map['order'] as int,
+      isPredefined: map['isPredefined'] as bool? ?? true,
+      canDelete: map['canDelete'] as bool? ?? false,
+    );
+  }
+
+  /// Conversión a Map para Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'emoji': emoji,
+      'label': label,
+      'shortLabel': shortLabel,
+      'category': category,
+      'order': order,
+      'isPredefined': isPredefined,
+      'canDelete': canDelete,
+    };
+  }
+
+  /// Conversión a Map para serialización
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'emoji': emoji,
+      'label': label,
+      'shortLabel': shortLabel,
+      'category': category,
+      'order': order,
+      'isPredefined': isPredefined,
+      'canDelete': canDelete,
+    };
+  }
+
+  /// Getter para compatibilidad con código que usaba .description
+  String get description => label;
+
+  /// Getter para compatibilidad con código que usaba .shortDescription
+  String get shortDescription => shortLabel;
+
+  /// Getter para iconName (legacy, mantener por compatibilidad)
+  String get iconName => 'ic_status_$id';
+
+  @override
+  List<Object?> get props => [id, emoji, label, category, order];
+
+  @override
+  String toString() => 'StatusType($id: $emoji $label)';
+
+  /// Método helper para comparar por ID (útil para búsquedas)
+  bool hasId(String statusId) => id == statusId;
+
+  /// Estados predefinidos hardcoded como fallback (si Firebase falla)
+  static final List<StatusType> fallbackPredefined = [
+    // FILA 1: DISPONIBILIDAD
+    StatusType(
+        id: 'available',
+        emoji: '🟢',
+        label: 'Disponible',
+        shortLabel: 'Libre',
+        category: 'availability',
+        order: 1),
+    StatusType(
+        id: 'busy',
+        emoji: '🔴',
+        label: 'Ocupado',
+        shortLabel: 'Ocupado',
+        category: 'availability',
+        order: 2),
+    StatusType(
+        id: 'away',
+        emoji: '🟡',
+        label: 'Ausente',
+        shortLabel: 'Ausente',
+        category: 'availability',
+        order: 3),
+    StatusType(
+        id: 'do_not_disturb',
+        emoji: '🔕',
+        label: 'No molestar',
+        shortLabel: 'No molestar',
+        category: 'availability',
+        order: 4),
+
+    // FILA 2: UBICACIÓN
+    StatusType(
+        id: 'home',
+        emoji: '🏠',
+        label: 'En casa',
+        shortLabel: 'Casa',
+        category: 'location',
+        order: 5),
+    StatusType(
+        id: 'school',
+        emoji: '🏫',
+        label: 'En el colegio',
+        shortLabel: 'Colegio',
+        category: 'location',
+        order: 6),
+    StatusType(
+        id: 'work',
+        emoji: '🏢',
+        label: 'En el trabajo',
+        shortLabel: 'Trabajo',
+        category: 'location',
+        order: 7),
+    StatusType(
+        id: 'medical',
+        emoji: '🏥',
+        label: 'En consulta',
+        shortLabel: 'Consulta',
+        category: 'location',
+        order: 8),
+
+    // FILA 3: ACTIVIDAD
+    StatusType(
+        id: 'meeting',
+        emoji: '👥',
+        label: 'Reunión',
+        shortLabel: 'Reunión',
+        category: 'activity',
+        order: 9),
+    StatusType(
+        id: 'studying',
+        emoji: '📚',
+        label: 'Estudiando',
+        shortLabel: 'Estudia',
+        category: 'activity',
+        order: 10),
+    StatusType(
+        id: 'eating',
+        emoji: '🍽️',
+        label: 'Comiendo',
+        shortLabel: 'Comiendo',
+        category: 'activity',
+        order: 11),
+    StatusType(
+        id: 'exercising',
+        emoji: '💪',
+        label: 'Ejercicio',
+        shortLabel: 'Ejercicio',
+        category: 'activity',
+        order: 12),
+
+    // FILA 4: TRANSPORTE + SOS
+    StatusType(
+        id: 'driving',
+        emoji: '🚗',
+        label: 'En camino',
+        shortLabel: 'Camino',
+        category: 'transport',
+        order: 13),
+    StatusType(
+        id: 'walking',
+        emoji: '🚶',
+        label: 'Caminando',
+        shortLabel: 'Caminando',
+        category: 'transport',
+        order: 14),
+    StatusType(
+        id: 'public_transport',
+        emoji: '🚌',
+        label: 'En transporte',
+        shortLabel: 'Transporte',
+        category: 'transport',
+        order: 15),
+    StatusType(
+        id: 'sos',
+        emoji: '🆘',
+        label: 'SOS',
+        shortLabel: 'SOS',
+        category: 'emergency',
+        order: 16),
+  ];
 }
 
 // Clase auxiliar para las coordenadas, como discutimos.

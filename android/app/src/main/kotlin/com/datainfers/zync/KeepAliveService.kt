@@ -106,8 +106,7 @@ class KeepAliveService : Service() {
     }
     
     private fun createNotification(): Notification {
-        // Point 4: Abrir EmojiDialogActivity (modal nativo instantáneo)
-        // NO usa Flutter - apertura en <100ms
+        // ✅ Abrir EmojiDialogActivity (nativo INSTANTÁNEO con cache Firebase)
         val intent = Intent(this, EmojiDialogActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }

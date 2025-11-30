@@ -3,53 +3,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zync_app/core/models/user_status.dart';
 import 'package:zync_app/core/services/status_service.dart';
-import 'package:zync_app/core/services/emoji_service.dart';
 import 'package:zync_app/core/widgets/status_widget.dart';
 import 'package:zync_app/widgets/status_selector_overlay.dart';
 
 /// Bottom Sheet con grid de emojis para cambiar estado del usuario
-/// REFACTORED: Ahora carga emojis dinámicamente desde Firebase
 class EmojiStatusBottomSheet extends ConsumerStatefulWidget {
   const EmojiStatusBottomSheet({super.key});
 
   @override
-  ConsumerState<EmojiStatusBottomSheet> createState() =>
-      _EmojiStatusBottomSheetState();
+  ConsumerState<EmojiStatusBottomSheet> createState() => _EmojiStatusBottomSheetState();
 }
 
-class _EmojiStatusBottomSheetState
-    extends ConsumerState<EmojiStatusBottomSheet> {
+class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet> {
   bool _isUpdating = false;
   StatusType? _currentStatus;
-  List<StatusType>? _availableStatuses;
-  bool _isLoading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadAvailableStatuses();
-  }
-
-  /// Carga los emojis predefinidos desde Firebase
-  Future<void> _loadAvailableStatuses() async {
-    try {
-      final statuses = await EmojiService.getPredefinedEmojis();
-      setState(() {
-        _availableStatuses = statuses;
-        _isLoading = false;
-      });
-    } catch (e) {
-      // Usar fallback si Firebase falla
-      setState(() {
-        _availableStatuses = StatusType.fallbackPredefined;
-        _isLoading = false;
-      });
-    }
-  }
+  // Estados disponibles exactamente como los definiste
+  final List<StatusType> _availableStatuses = const [
+    StatusType.leave,    // 🚶‍♂️ Saliendo
+    StatusType.busy,     // 🔥 Ocupado
+    StatusType.fine,     // 😊 Bien
+    StatusType.sad,      // 😢 Mal
+    StatusType.ready,    // ✅ Listo
+    StatusType.sos,      // 🆘 SOS
+  ];
 
   Future<void> _updateStatus(StatusType newStatus) async {
     if (_isUpdating) return;
-
+    
     setState(() {
       _isUpdating = true;
       _currentStatus = newStatus;
@@ -57,22 +38,22 @@ class _EmojiStatusBottomSheetState
 
     // Usar el servicio extraído - MISMA lógica, diferente ubicación
     final result = await StatusService.updateUserStatus(newStatus);
-
+    
     if (result.isSuccess) {
       // Notify the widget service about the status change
       await StatusWidgetService.onStatusChanged(
         status: newStatus,
         circleId: 'active', // We'll track the active circle later
       );
-
+      
       // Pequeña pausa para mostrar feedback visual
       await Future.delayed(const Duration(milliseconds: 300));
-
+      
       if (mounted) {
         Navigator.of(context).pop();
-
+        
         // Point 16: Mensaje especial para SOS con GPS
-        if (newStatus.id == 'sos' && result.coordinates != null) {
+        if (newStatus == StatusType.sos && result.coordinates != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -93,7 +74,7 @@ class _EmojiStatusBottomSheetState
               duration: const Duration(seconds: 4),
             ),
           );
-        } else if (newStatus.id == 'sos') {
+        } else if (newStatus == StatusType.sos) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -136,12 +117,11 @@ class _EmojiStatusBottomSheetState
         _isUpdating = false;
         _currentStatus = null;
       });
-
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('❌ Error: ${result.errorMessage ?? 'Error desconocido'}'),
+            content: Text('❌ Error: ${result.errorMessage ?? 'Error desconocido'}'),
             backgroundColor: Colors.red[700],
           ),
         );
@@ -169,100 +149,88 @@ class _EmojiStatusBottomSheetState
               borderRadius: BorderRadius.circular(8),
             ),
           ),
+          
 
+          
           // Grid de estados (diseño minimalista)
-          if (_isLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(40.0),
-                child: CircularProgressIndicator(color: Color(0xFF1CE4B3)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 16.0),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.0,
               ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 16.0),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.0,
-                ),
-                itemCount: _availableStatuses!.length,
-                itemBuilder: (context, index) {
-                  final status = _availableStatuses![index];
-                  final isSelected = _currentStatus == status;
-                  final isUpdating = _isUpdating && isSelected;
-
-                  return GestureDetector(
-                    onTap: () => _updateStatus(status),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF1CE4B3).withOpacity(0.15)
-                            : const Color(0xFF2C2C2C),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF1CE4B3)
-                              : Colors.grey[700]!,
-                          width: isSelected ? 2 : 1,
-                        ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color:
-                                      const Color(0xFF1CE4B3).withOpacity(0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
+              itemCount: _availableStatuses.length,
+              itemBuilder: (context, index) {
+                final status = _availableStatuses[index];
+                final isSelected = _currentStatus == status;
+                final isUpdating = _isUpdating && isSelected;
+                
+                return GestureDetector(
+                  onTap: () => _updateStatus(status),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? const Color(0xFF1CE4B3).withOpacity(0.15) 
+                          : const Color(0xFF2C2C2C),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected 
+                            ? const Color(0xFF1CE4B3) 
+                            : Colors.grey[700]!,
+                        width: isSelected ? 2 : 1,
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isUpdating) ...[
-                            const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF1CE4B3)),
-                              ),
+                      boxShadow: isSelected ? [
+                        BoxShadow(
+                          color: const Color(0xFF1CE4B3).withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ] : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (isUpdating) ...[
+                          const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1CE4B3)),
                             ),
-                          ] else ...[
-                            Text(
-                              status.emoji,
-                              style: const TextStyle(fontSize: 32),
-                            ),
-                          ],
-                          const SizedBox(height: 6),
+                          ),
+                        ] else ...[
                           Text(
-                            status.description,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isSelected
-                                  ? const Color(0xFF1CE4B3)
-                                  : Colors.grey[300],
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            status.emoji,
+                            style: const TextStyle(fontSize: 32),
                           ),
                         ],
-                      ),
+                        const SizedBox(height: 6),
+                        Text(
+                          status.description,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected ? const Color(0xFF1CE4B3) : Colors.grey[300],
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
-
+          ),
+          
           // Padding bottom para safe area (más compacto)
           SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
         ],
