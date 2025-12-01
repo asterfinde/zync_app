@@ -31,12 +31,10 @@ class _AppColors {
   static const Color background = Color(0xFF000000); // Negro puro
   static const Color accent = Color(0xFF1EE9A4); // Verde menta/turquesa
   static const Color textPrimary = Color(0xFFFFFFFF); // Blanco
-  static const Color textSecondary =
-      Color(0xFF9E9E9E); // Gris para subtítulos y labels
+  static const Color textSecondary = Color(0xFF9E9E9E); // Gris para subtítulos y labels
   // static const Color cardBackground =
   //     Color(0xFF1C1C1E); // Gris oscuro para menús y diálogos (comentado: no usado actualmente)
-  static const Color cardBorder =
-      Color(0xFF3A3A3C); // Borde sutil para tarjetas y divider
+  static const Color cardBorder = Color(0xFF3A3A3C); // Borde sutil para tarjetas y divider
   static const Color sosRed = Color(0xFFD32F2F); // Rojo para alertas SOS
 }
 
@@ -162,15 +160,17 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   }
   // --- FIN DE LA MODIFICACIÓN ---
 
-  /// Carga emojis predefinidos desde Firebase
+  /// Carga TODOS los emojis (predefinidos + personalizados) desde Firebase
   Future<void> _loadPredefinedEmojis() async {
     try {
-      final emojis = await EmojiService.getPredefinedEmojis();
+      // Cargar predefinidos + personalizados del círculo
+      final emojis = await EmojiService.getAllEmojisForCircle(widget.circle.id);
       if (mounted) {
         setState(() {
           _predefinedEmojis = emojis;
         });
       }
+      print('[InCircleView] ✅ ${emojis.length} emojis cargados (predefinidos + personalizados)');
     } catch (e) {
       print('[InCircleView] ⚠️ Error cargando emojis: $e');
       // Usar fallback si falla
@@ -191,15 +191,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     print('⚡ [InCircleView] Cargando desde cache...');
 
     // Intentar InMemoryCache primero (0ms)
-    final memoryNicknames =
-        InMemoryCache.get<Map<String, String>>('nicknames_${widget.circle.id}');
-    final memoryMemberData =
-        InMemoryCache.get<Map<String, Map<String, dynamic>>>(
-            'member_data_${widget.circle.id}');
+    final memoryNicknames = InMemoryCache.get<Map<String, String>>('nicknames_${widget.circle.id}');
+    final memoryMemberData = InMemoryCache.get<Map<String, Map<String, dynamic>>>('member_data_${widget.circle.id}');
 
     if (memoryNicknames != null && memoryMemberData != null) {
-      print(
-          '✅ [InCircleView] Cache en memoria encontrado (${memoryNicknames.length} nicknames)');
+      print('✅ [InCircleView] Cache en memoria encontrado (${memoryNicknames.length} nicknames)');
       setState(() {
         _memberNicknamesCache.addAll(memoryNicknames);
         _memberDataCache.addAll(memoryMemberData);
@@ -213,8 +209,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     final diskMemberData = PersistentCache.loadMemberData();
 
     if (diskNicknames.isNotEmpty || diskMemberData.isNotEmpty) {
-      print(
-          '✅ [InCircleView] Cache en disco encontrado (${diskNicknames.length} nicknames)');
+      print('✅ [InCircleView] Cache en disco encontrado (${diskNicknames.length} nicknames)');
       setState(() {
         _memberNicknamesCache.addAll(diskNicknames);
         _memberDataCache.addAll(diskMemberData);
@@ -246,8 +241,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       InMemoryCache.set('nicknames_${widget.circle.id}', _memberNicknamesCache);
       PersistentCache.saveNicknames(_memberNicknamesCache);
 
-      print(
-          '✅ [InCircleView] Nicknames actualizados (${nicknames.length} items)');
+      print('✅ [InCircleView] Nicknames actualizados (${nicknames.length} items)');
     }).catchError((error) {
       print('❌ [InCircleView] Error refrescando nicknames: $error');
     });
@@ -273,11 +267,8 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   void _listenToStatusChanges() {
     // Guardar la suscripción para poder cancelarla después
     _circleListenerSubscription?.cancel(); // Cancelar anterior si existe
-    _circleListenerSubscription = FirebaseFirestore.instance
-        .collection('circles')
-        .doc(widget.circle.id)
-        .snapshots()
-        .listen((snapshot) {
+    _circleListenerSubscription =
+        FirebaseFirestore.instance.collection('circles').doc(widget.circle.id).snapshots().listen((snapshot) {
       if (!mounted) return; // Verificar mounted al inicio
 
       if (!snapshot.exists || snapshot.data() == null) {
@@ -311,8 +302,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           });
 
           // CACHE-FIRST: Actualizar caches cuando hay cambios
-          InMemoryCache.set(
-              'member_data_${widget.circle.id}', _memberDataCache);
+          InMemoryCache.set('member_data_${widget.circle.id}', _memberDataCache);
           PersistentCache.saveMemberData(_memberDataCache);
           print('✅ [InCircleView] Cache actualizado con nuevos estados');
         }
@@ -328,13 +318,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   Map<String, dynamic> _parseMemberData(dynamic statusData) {
     if (statusData is! Map<String, dynamic>) {
       // Valor por defecto si la data está mal formada
-      return {
-        'emoji': '❓',
-        'status': 'unknown',
-        'hasGPS': false,
-        'coordinates': null,
-        'lastUpdate': null
-      };
+      return {'emoji': '❓', 'status': 'unknown', 'hasGPS': false, 'coordinates': null, 'lastUpdate': null};
     }
 
     final statusType = statusData['statusType'] as String?;
@@ -365,22 +349,17 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       'emoji': emoji,
       'status': statusType ?? 'fine', // Default status si es null
       'coordinates': coordinates,
-      'hasGPS': coordinates != null &&
-          statusType == 'sos', // GPS solo relevante para SOS
+      'hasGPS': coordinates != null && statusType == 'sos', // GPS solo relevante para SOS
       'lastUpdate': lastUpdate,
     };
   }
 
-  bool _hasChanged(
-      Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
+  bool _hasChanged(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
     if (oldData == null) return true; // Siempre cambia si no había data previa
     // Comparar campos relevantes
     return oldData['status'] != newData['status'] ||
-        oldData['lastUpdate']?.millisecondsSinceEpoch !=
-            newData['lastUpdate']?.millisecondsSinceEpoch ||
-        oldData['coordinates']?.toString() !=
-            newData['coordinates']
-                ?.toString(); // Comparación simple para coordenadas
+        oldData['lastUpdate']?.millisecondsSinceEpoch != newData['lastUpdate']?.millisecondsSinceEpoch ||
+        oldData['coordinates']?.toString() != newData['coordinates']?.toString(); // Comparación simple para coordenadas
   }
 
   @override
@@ -428,8 +407,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1CE7E8),
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     textStyle: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -461,15 +439,13 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.hub,
-                                size: 28, color: _AppColors.accent),
+                            const Icon(Icons.hub, size: 28, color: _AppColors.accent),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(circle.name,
-                                      style: _AppTextStyles.cardTitle),
+                                  Text(circle.name, style: _AppTextStyles.cardTitle),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${circle.members.length} miembros', // Esto se actualizará si circle cambia
@@ -481,20 +457,16 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        const Text('Código de Invitación',
-                            style: _AppTextStyles.cardSubtitle),
+                        const Text('Código de Invitación', style: _AppTextStyles.cardSubtitle),
                         const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(
-                              child: Text(circle.invitationCode,
-                                  style: _AppTextStyles.invitationCode),
+                              child: Text(circle.invitationCode, style: _AppTextStyles.invitationCode),
                             ),
                             IconButton(
-                              onPressed: () => _copyToClipboard(
-                                  context, circle.invitationCode),
-                              icon: const Icon(Icons.copy,
-                                  size: 24, color: _AppColors.accent),
+                              onPressed: () => _copyToClipboard(context, circle.invitationCode),
+                              icon: const Icon(Icons.copy, size: 24, color: _AppColors.accent),
                               tooltip: 'Copiar código',
                             ),
                           ],
@@ -511,8 +483,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                   // --- MEMBERS HEADER ---
                   const Row(
                     children: [
-                      Icon(Icons.people_outline,
-                          size: 24, color: _AppColors.accent),
+                      Icon(Icons.people_outline, size: 24, color: _AppColors.accent),
                       SizedBox(width: 8),
                       Text('Miembros', style: _AppTextStyles.screenTitle),
                     ],
@@ -521,25 +492,17 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
                   // --- MEMBER LIST ---
                   _isLoadingNicknames
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                              color: _AppColors.accent))
+                      ? const Center(child: CircularProgressIndicator(color: _AppColors.accent))
                       : Column(
-                          children: _getSortedMembers(circle.members)
-                              .asMap()
-                              .entries
-                              .map((entry) {
+                          children: _getSortedMembers(circle.members).asMap().entries.map((entry) {
                             final index = entry.key;
                             final memberId = entry.value;
 
                             // Obtener nickname del caché (ya no hay FutureBuilder)
                             final nickname = _memberNicknamesCache[memberId] ??
-                                (memberId.length > 8
-                                    ? memberId.substring(0, 8)
-                                    : memberId);
+                                (memberId.length > 8 ? memberId.substring(0, 8) : memberId);
 
-                            final currentUser =
-                                FirebaseAuth.instance.currentUser;
+                            final currentUser = FirebaseAuth.instance.currentUser;
                             final isCurrentUser = currentUser?.uid == memberId;
 
                             // --- INICIO DE LA MODIFICACIÓN ---
@@ -570,6 +533,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                         context) // Asume que esta función existe y es importada
                                     : null,
                                 onOpenMaps: _openGoogleMaps,
+                                predefinedEmojis: _predefinedEmojis, // NUEVO: Pasar lista de emojis
                               ),
                             );
                           }).toList(),
@@ -598,8 +562,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     try {
       final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
-      final defaultStatus = emojis.firstWhere((s) => s.id == 'available',
-          orElse: () => emojis.first);
+      final defaultStatus = emojis.firstWhere((s) => s.id == 'available', orElse: () => emojis.first);
       print('[InCircleView] ✅ Enviando estado rápido: ${defaultStatus.label}');
       final result = await StatusService.updateUserStatus(defaultStatus);
 
@@ -631,8 +594,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
             backgroundColor: _AppColors.accent,
             foregroundColor: _AppColors.background,
             padding: const EdgeInsets.symmetric(vertical: 16),
-            textStyle:
-                const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.0),
             ),
@@ -662,12 +624,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
   /// Obtiene el nickname del usuario actual desde Riverpod
   String _getCurrentUserNickname(WidgetRef ref) {
-    final authState = ref.watch(
-        authProvider); // Asume que authProvider está definido e importado
+    final authState = ref.watch(authProvider); // Asume que authProvider está definido e importado
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty
-          ? authState.user.nickname
-          : authState.user.email.split('@')[0];
+      return authState.user.nickname.isNotEmpty ? authState.user.nickname : authState.user.email.split('@')[0];
     }
     return 'Usuario';
   }
@@ -693,8 +652,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   }
 
   /// Obtiene todos los nicknames de los miembros (llamado desde _loadAllNicknames)
-  Future<Map<String, String>> _getAllMemberNicknames(
-      List<String> memberIds) async {
+  Future<Map<String, String>> _getAllMemberNicknames(List<String> memberIds) async {
     final Map<String, String> nicknames = {};
     // Usar un servicio real si existe, o mantener la lógica directa
     final service = CircleService(); // Asume que esta clase existe
@@ -716,8 +674,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           else if (email.isNotEmpty)
             finalNickname = email.split('@')[0];
           else
-            finalNickname =
-                uid.length > 8 ? uid.substring(0, 8) : uid; // Fallback
+            finalNickname = uid.length > 8 ? uid.substring(0, 8) : uid; // Fallback
           return MapEntry(uid, finalNickname);
         } else {
           final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
@@ -750,8 +707,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   }
 
   /// Abre Google Maps con las coordenadas SOS
-  void _openGoogleMaps(BuildContext context, Map<String, dynamic> coordinates,
-      String memberName) async {
+  void _openGoogleMaps(BuildContext context, Map<String, dynamic> coordinates, String memberName) async {
     try {
       final latitude = coordinates['latitude'] as double?;
       final longitude = coordinates['longitude'] as double?;
@@ -761,8 +717,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       }
       // Asume que Coordinates existe o adapta la llamada
       final url = GPSService.generateSOSLocationUrl(
-        Coordinates(
-            latitude: latitude, longitude: longitude), // Adapta si es necesario
+        Coordinates(latitude: latitude, longitude: longitude), // Adapta si es necesario
         memberName,
       );
       final uri = Uri.parse(url);
@@ -839,6 +794,7 @@ class _MemberListItem extends StatelessWidget {
   final Map<String, dynamic> memberData;
   final VoidCallback? onTap;
   final Function(BuildContext, Map<String, dynamic>, String) onOpenMaps;
+  final List<StatusType>? predefinedEmojis; // NUEVO: Lista de emojis para obtener labels
 
   const _MemberListItem({
     super.key,
@@ -849,6 +805,7 @@ class _MemberListItem extends StatelessWidget {
     required this.memberData,
     this.onTap,
     required this.onOpenMaps,
+    this.predefinedEmojis, // NUEVO
   });
 
   @override
@@ -885,9 +842,7 @@ class _MemberListItem extends StatelessWidget {
                 children: [
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 150),
-                    child: Text(emoji,
-                        key: ValueKey(status),
-                        style: const TextStyle(fontSize: 32)),
+                    child: Text(emoji, key: ValueKey(status), style: const TextStyle(fontSize: 32)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -898,13 +853,11 @@ class _MemberListItem extends StatelessWidget {
                           children: [
                             Flexible(
                                 child: Text(nickname,
-                                    style: _AppTextStyles.memberNickname,
-                                    overflow: TextOverflow.ellipsis)),
+                                    style: _AppTextStyles.memberNickname, overflow: TextOverflow.ellipsis)),
                             if (isCurrentUser) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: _AppColors.accent,
                                   borderRadius: BorderRadius.circular(4),
@@ -923,15 +876,10 @@ class _MemberListItem extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _getStatusLabel(
-                              status), // Mostrará "Cargando..." si es necesario
-                          style: isSOS
-                              ? _AppTextStyles.sosStatus
-                              : _AppTextStyles.memberStatus,
+                          _getStatusLabel(status), // Mostrará "Cargando..." si es necesario
+                          style: isSOS ? _AppTextStyles.sosStatus : _AppTextStyles.memberStatus,
                         ),
-                        if (isFirst &&
-                            status !=
-                                'loading') // No mostrar "Creador" si está cargando
+                        if (isFirst && status != 'loading') // No mostrar "Creador" si está cargando
                           Text(
                             'Creador',
                             style: TextStyle(
@@ -946,10 +894,7 @@ class _MemberListItem extends StatelessWidget {
                   if (lastUpdate != null)
                     Text(
                       _getTimeAgo(lastUpdate),
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors
-                              .grey[600]), // Mantener gris o usar textSecondary
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]), // Mantener gris o usar textSecondary
                     ),
                 ],
               ),
@@ -957,25 +902,18 @@ class _MemberListItem extends StatelessWidget {
               if (hasGPS && coordinates != null && status != 'loading') ...[
                 const SizedBox(height: 12),
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 4.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
                   child: Row(
                     children: [
-                      const Icon(Icons.location_on,
-                          size: 20, color: _AppColors.sosRed),
+                      const Icon(Icons.location_on, size: 20, color: _AppColors.sosRed),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
                           'Ubicación SOS compartida',
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: _AppColors.textPrimary,
-                              fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 13, color: _AppColors.textPrimary, fontWeight: FontWeight.w500),
                         ),
                       ),
-                      Icon(Icons.arrow_forward_ios,
-                          size: 14,
-                          color: Colors.red[300]), // Mantener o usar sosRed
+                      Icon(Icons.arrow_forward_ios, size: 14, color: Colors.red[300]), // Mantener o usar sosRed
                     ],
                   ),
                 ),
@@ -992,22 +930,46 @@ class _MemberListItem extends StatelessWidget {
     if (s == 'loading') {
       return 'Cargando...'; // Texto para el estado inicial
     }
-    // Mapeo de status a etiquetas legibles
+
+    // NUEVO: Buscar en la lista de emojis cargados (predefinidos + personalizados)
+    if (predefinedEmojis != null) {
+      try {
+        final statusType = predefinedEmojis!.firstWhere(
+          (emoji) => emoji.id == s,
+          orElse: () => throw Exception('Status not found'),
+        );
+        return statusType.label; // Retornar el label del emoji
+      } catch (e) {
+        // Si no se encuentra, continuar con el fallback
+        print('[InCircleView] ⚠️ Status "$s" no encontrado en emojis cargados');
+      }
+    }
+
+    // FALLBACK: Mapeo hardcoded para compatibilidad (solo si no se cargaron emojis)
     final labels = {
-      'fine': 'Todo bien', 'sos': '¡Necesito ayuda!', 'meeting': 'En reunión',
+      'fine': 'Todo bien',
+      'sos': '¡Necesito ayuda!',
+      'meeting': 'En reunión',
       'ready': 'Listo',
-      'leave': 'De salida', 'happy': 'Feliz', 'sad': 'Triste',
+      'leave': 'De salida',
+      'happy': 'Feliz',
+      'sad': 'Triste',
       'busy': 'Ocupado',
-      'sleepy': 'Con sueño', 'excited': 'Emocionado', 'thinking': 'Pensando',
+      'sleepy': 'Con sueño',
+      'excited': 'Emocionado',
+      'thinking': 'Pensando',
       'worried': 'Preocupado',
-      'available': 'Disponible', 'away': 'Ausente', 'focus': 'Concentrado',
+      'available': 'Disponible',
+      'away': 'Ausente',
+      'focus': 'Concentrado',
       'tired': 'Cansado',
-      'stressed': 'Estresado', 'traveling': 'Viajando',
-      'studying': 'Estudiando', 'eating': 'Comiendo',
-      'unknown': 'Desconocido', // Añadir un label para el estado 'unknown'
+      'stressed': 'Estresado',
+      'traveling': 'Viajando',
+      'studying': 'Estudiando',
+      'eating': 'Comiendo',
+      'unknown': 'Desconocido',
     };
-    return labels[s] ??
-        s.capitalize(); // Fallback: capitalizar el status si no está en el mapa
+    return labels[s] ?? s.capitalize(); // Fallback: capitalizar el status si no está en el mapa
   }
 
   // --- Método Helper _getTimeAgo ---

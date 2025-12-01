@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/models/user_status.dart';
 import '../core/services/status_service.dart';
 import '../core/services/emoji_service.dart';
-import '../features/settings/presentation/pages/settings_page.dart';
 
 import 'dart:developer';
 
@@ -21,28 +22,15 @@ class StatusSelectorOverlay extends StatefulWidget {
   State<StatusSelectorOverlay> createState() => _StatusSelectorOverlayState();
 }
 
-class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
-    with SingleTickerProviderStateMixin {
+class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
 
   bool _isUpdating = false;
 
-  // Grid 4x4 cargado desde Firebase (16 emojis predefinidos)
+  // Grid dinámico cargado desde Firebase (predefinidos + personalizados)
   List<StatusType?> _statusGrid = [];
-
-  // IDs del grid 4x4 en orden (null = botón especial)
-  static const _gridIds = [
-    // Fila 1: Disponibilidad
-    'available', 'busy', 'away', 'do_not_disturb',
-    // Fila 2: Ubicación
-    'home', 'school', 'work', 'medical',
-    // Fila 3: Actividad
-    'meeting', 'studying', 'eating', 'exercising',
-    // Fila 4: Transporte + SOS
-    'driving', 'walking', 'public_transport', 'sos',
-  ];
 
   @override
   void initState() {
@@ -55,18 +43,22 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
   Future<void> _loadStatusGrid() async {
     try {
       log('[StatusSelectorOverlay] 📡 Cargando grid desde EmojiService...');
-      final emojis = await EmojiService.getPredefinedEmojis();
-      log('[StatusSelectorOverlay] ✅ Recibidos ${emojis.length} emojis: ${emojis.map((e) => e.emoji).join(", ")}');
 
-      final grid = <StatusType?>[];
+      // Obtener circleId del usuario actual
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Usuario no autenticado');
 
-      for (final id in _gridIds) {
-        final status = emojis.firstWhere(
-          (e) => e.id == id,
-          orElse: () => StatusType.fallbackPredefined.first,
-        );
-        grid.add(status);
-      }
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+      final circleId = userDoc.data()?['circleId'] as String?;
+      if (circleId == null) throw Exception('Usuario sin círculo');
+
+      // Cargar TODOS los emojis (predefinidos + personalizados)
+      final emojis = await EmojiService.getAllEmojisForCircle(circleId);
+      log('[StatusSelectorOverlay] ✅ Recibidos ${emojis.length} emojis (predefinidos + personalizados): ${emojis.map((e) => e.emoji).join(", ")}');
+
+      // NO filtrar por _gridIds - mostrar TODOS los emojis
+      final grid = emojis.map((e) => e as StatusType?).toList();
 
       log('[StatusSelectorOverlay] ✅ Grid construido con ${grid.length} emojis');
 
@@ -76,8 +68,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
     } catch (e) {
       log('[StatusSelectorOverlay] ❌ ERROR cargando grid: $e');
       if (mounted) {
-        setState(() =>
-            _statusGrid = StatusType.fallbackPredefined.take(16).toList());
+        setState(() => _statusGrid = StatusType.fallbackPredefined.take(16).toList());
       }
     }
   }
@@ -177,31 +168,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
     }
   }
 
-  /// Maneja tap en configuración (gear emoji)
-  void _handleConfigTap() async {
-    HapticFeedback.lightImpact();
-    log('[StatusSelectorOverlay] 🔧 TAP EN CONFIGURACIÓN - Cerrando modal y navegando');
-
-    // CRÍTICO: Cerrar modal COMPLETAMENTE antes de navegar
-    await _animationController.reverse();
-    if (mounted) {
-      Navigator.of(context).pop(); // Cerrar modal
-      widget.onClose?.call();
-
-      // Esperar un frame para asegurar que el modal se cerró
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      // Ahora sí navegar a configuración
-      if (mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const SettingsPage(),
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -213,20 +179,17 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
             color: Colors.black.withOpacity(0.85 * _fadeAnimation.value),
             child: Center(
               child: GestureDetector(
-                onTap:
-                    () {}, // Evitar que el tap se propague al contenedor padre
+                onTap: () {}, // Evitar que el tap se propague al contenedor padre
                 child: Transform.scale(
                   scale: _scaleAnimation.value,
                   child: Container(
                     margin: const EdgeInsets.all(32),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade900
-                          .withOpacity(0.95), // Fondo oscuro transparente
+                      color: Colors.grey.shade900.withOpacity(0.95), // Fondo oscuro transparente
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: Colors.grey.shade700
-                            .withOpacity(0.5), // Borde sutil
+                        color: Colors.grey.shade700.withOpacity(0.5), // Borde sutil
                         width: 1,
                       ),
                       boxShadow: [
@@ -240,36 +203,47 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Grid 3x4 de estados con altura fija
-                        SizedBox(
-                          height:
-                              280, // Altura aumentada para mostrar última fila completa
-                          child: GridView.builder(
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                              childAspectRatio: 1,
+                        // Grid DINÁMICO scrollable con altura máxima
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: 340, // Altura fija para mostrar ~4 filas y forzar scroll
+                          ),
+                          child: Scrollbar(
+                            thumbVisibility: true, // Barra de scroll siempre visible
+                            thickness: 4,
+                            radius: const Radius.circular(8),
+                            child: GridView.builder(
+                              shrinkWrap: true, // CRÍTICO: Permite que el GridView se ajuste al contenido
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.all(16),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                                childAspectRatio: 1,
+                              ),
+                              itemCount: _statusGrid.length,
+                              itemBuilder: (context, index) {
+                                // Validar que tenemos suficientes items en el grid
+                                if (_statusGrid.isEmpty || index >= _statusGrid.length) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xFF1EE9A4),
+                                      strokeWidth: 2,
+                                    ),
+                                  );
+                                }
+
+                                final gridItem = _statusGrid[index];
+
+                                // Mostrar todos los emojis
+                                if (gridItem != null) {
+                                  return _buildStatusButton(gridItem);
+                                }
+
+                                return const SizedBox.shrink();
+                              },
                             ),
-                            itemCount: 16, // 4x4 grid
-                            itemBuilder: (context, index) {
-                              final gridItem = _statusGrid[index];
-
-                              // Si es un estado válido, mostrar botón de estado
-                              if (gridItem != null) {
-                                return _buildStatusButton(gridItem);
-                              }
-
-                              // Posición 12 (primera de la última fila) es configuración
-                              if (index == 12) {
-                                return _buildConfigButton();
-                              }
-
-                              // Resto son espacios vacíos (posiciones 13, 14)
-                              return const SizedBox.shrink();
-                            },
                           ),
                         ),
                       ],
@@ -295,8 +269,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
           decoration: BoxDecoration(
             color: _isUpdating
                 ? Colors.grey.shade800.withOpacity(0.3)
-                : Colors.grey.shade800
-                    .withOpacity(0.6), // Fondo oscuro transparente
+                : Colors.grey.shade800.withOpacity(0.6), // Fondo oscuro transparente
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: Colors.grey.shade600.withOpacity(0.4), // Borde sutil
@@ -323,46 +296,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Construye botón de configuración
-  Widget _buildConfigButton() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _handleConfigTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.blue.shade900
-                .withOpacity(0.6), // Azul oscuro transparente
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.blue.shade400.withOpacity(0.5), // Borde azul sutil
-              width: 1,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                '⚙️',
-                style: TextStyle(fontSize: 24),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Config',
-                style: TextStyle(
-                  fontSize: 9,
-                  color: Colors.blue.shade200,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],

@@ -60,6 +60,8 @@ dependencies:
   url_launcher: ^6.3.0
   # Point 2: Abrir configuración del SO para permisos
   app_settings: ^5.1.1
+  # Emoji picker para crear estados personalizados
+  emoji_picker_flutter: ^3.0.0
 
 dev_dependencies:
   flutter_test:

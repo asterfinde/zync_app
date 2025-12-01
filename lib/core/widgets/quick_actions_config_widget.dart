@@ -13,12 +13,9 @@ class _AppColors {
   static const Color background = Color(0xFF000000); // Negro puro
   static const Color accent = Color(0xFF1EE9A4); // Verde menta/turquesa
   static const Color textPrimary = Color(0xFFFFFFFF); // Blanco
-  static const Color textSecondary =
-      Color(0xFF9E9E9E); // Gris para subtítulos y labels
-  static const Color cardBackground =
-      Color(0xFF1C1C1E); // Gris oscuro para menús y diálogos
-  static const Color cardBorder =
-      Color(0xFF3A3A3C); // Borde sutil para tarjetas y divider
+  static const Color textSecondary = Color(0xFF9E9E9E); // Gris para subtítulos y labels
+  static const Color cardBackground = Color(0xFF1C1C1E); // Gris oscuro para menús y diálogos
+  static const Color cardBorder = Color(0xFF3A3A3C); // Borde sutil para tarjetas y divider
   static const Color sosRed = Color(0xFFD32F2F); // Rojo para alertas SOS
   static const Color inputFill = Color(0xFF2C2C2E); // Relleno de inputs
 }
@@ -49,8 +46,7 @@ class QuickActionsConfigWidget extends StatefulWidget {
   const QuickActionsConfigWidget({super.key});
 
   @override
-  State<QuickActionsConfigWidget> createState() =>
-      _QuickActionsConfigWidgetState();
+  State<QuickActionsConfigWidget> createState() => _QuickActionsConfigWidgetState();
 }
 
 class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
@@ -71,10 +67,8 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
     try {
       setState(() => _isLoading = true);
 
-      final current =
-          await QuickActionsPreferencesService.getUserQuickActions();
-      final available =
-          await QuickActionsPreferencesService.getAvailableStatusTypes();
+      final current = await QuickActionsPreferencesService.getUserQuickActions();
+      final available = await QuickActionsPreferencesService.getAvailableStatusTypes();
 
       setState(() {
         _selectedQuickActions = List.from(current);
@@ -93,8 +87,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
   /// Guarda la nueva configuración de Quick Actions
   Future<void> _saveConfiguration() async {
     if (_selectedQuickActions.length != 4) {
-      _showMessage('❌ Debes seleccionar exactamente 4 emojis',
-          _AppColors.sosRed); // <-- CAMBIO DE UI
+      _showMessage('❌ Debes seleccionar exactamente 4 emojis', _AppColors.sosRed); // <-- CAMBIO DE UI
       return;
     }
 
@@ -107,12 +100,10 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
       // Feedback háptico
       HapticFeedback.lightImpact();
 
-      _showMessage('✅ Quick Actions actualizadas correctamente',
-          Colors.green); // <-- CAMBIO DE UI (Se mantiene verde)
+      _showMessage('✅ Quick Actions actualizadas correctamente', Colors.green); // <-- CAMBIO DE UI (Se mantiene verde)
     } catch (e) {
       debugPrint('[QuickActionsConfig] ❌ Error guardando: $e');
-      _showMessage('❌ Error guardando configuración',
-          _AppColors.sosRed); // <-- CAMBIO DE UI
+      _showMessage('❌ Error guardando configuración', _AppColors.sosRed); // <-- CAMBIO DE UI
     } finally {
       setState(() => _isSaving = false);
     }
@@ -123,8 +114,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
     try {
       setState(() => _isSaving = true);
 
-      final defaults =
-          await QuickActionsPreferencesService.getDefaultQuickActions();
+      final defaults = await QuickActionsPreferencesService.getDefaultQuickActions();
       await QuickActionsService.updateUserQuickActions(defaults);
 
       setState(() {
@@ -132,12 +122,10 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
       });
 
       HapticFeedback.lightImpact();
-      _showMessage('🔄 Configuración reseteada a defaults',
-          _AppColors.textSecondary); // <-- CAMBIO DE UI
+      _showMessage('🔄 Configuración reseteada a defaults', _AppColors.textSecondary); // <-- CAMBIO DE UI
     } catch (e) {
       debugPrint('[QuickActionsConfig] ❌ Error reseteando: $e');
-      _showMessage('❌ Error reseteando configuración',
-          _AppColors.sosRed); // <-- CAMBIO DE UI
+      _showMessage('❌ Error reseteando configuración', _AppColors.sosRed); // <-- CAMBIO DE UI
     } finally {
       setState(() => _isSaving = false);
     }
@@ -158,8 +146,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
           HapticFeedback.selectionClick();
         } else {
           // Ya hay 4 seleccionados, mostrar mensaje
-          _showMessage('🔢 Máximo 4 Quick Actions permitidas',
-              _AppColors.sosRed); // <-- CAMBIO DE UI
+          _showMessage('🔢 Máximo 4 Quick Actions permitidas', _AppColors.sosRed); // <-- CAMBIO DE UI
         }
       }
     });
@@ -192,8 +179,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
           // --- FIN DE LA MEJORA ---
         ),
         child: const Center(
-          child: CircularProgressIndicator(
-              color: _AppColors.accent), // <-- CAMBIO DE UI
+          child: CircularProgressIndicator(color: _AppColors.accent), // <-- CAMBIO DE UI
         ),
       );
     }
@@ -244,8 +230,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
           if (_selectedQuickActions.isNotEmpty) ...[
             Text(
               'Quick Actions seleccionadas:',
-              style: _AppTextStyles.textBody
-                  .copyWith(fontSize: 13), // <-- CAMBIO DE UI
+              style: _AppTextStyles.textBody.copyWith(fontSize: 13), // <-- CAMBIO DE UI
             ),
             const SizedBox(height: 6), // Reducido de 8 a 6
             Wrap(
@@ -253,15 +238,11 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
               runSpacing: 4,
               children: _selectedQuickActions.map((status) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4), // Reducido
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Reducido
                   decoration: BoxDecoration(
-                    color:
-                        _AppColors.accent.withOpacity(0.2), // <-- CAMBIO DE UI
-                    borderRadius:
-                        BorderRadius.circular(16), // Reducido de 20 a 16
-                    border: Border.all(
-                        color: _AppColors.accent, width: 1), // <-- CAMBIO DE UI
+                    color: _AppColors.accent.withOpacity(0.2), // <-- CAMBIO DE UI
+                    borderRadius: BorderRadius.circular(16), // Reducido de 20 a 16
+                    border: Border.all(color: _AppColors.accent, width: 1), // <-- CAMBIO DE UI
                   ),
                   child: Text(
                     '${status.emoji} ${status.shortDescription}', // Usar shortDescription
@@ -279,20 +260,16 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
           // Grid de todos los emojis disponibles
           Text(
             'Emojis disponibles (toca para seleccionar):',
-            style: _AppTextStyles.textBody
-                .copyWith(fontSize: 13), // <-- CAMBIO DE UI
+            style: _AppTextStyles.textBody.copyWith(fontSize: 13), // <-- CAMBIO DE UI
           ),
           const SizedBox(height: 8), // Reducido de 12 a 8
 
-          // Grid sincronizado con StatusSelectorOverlay (13 elementos)
-          // Ahora con mejor manejo de overflow
-          ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxHeight: 300, // Altura máxima para prevenir overflow
-            ),
+          // Grid scrollable - muestra TODOS los emojis disponibles
+          SizedBox(
+            height: 400, // Altura fija pero con scroll interno
             child: GridView.builder(
               shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 4,
                 mainAxisSpacing: 6, // Reducido de 8 a 6
@@ -309,11 +286,9 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? _AppColors.accent
-                              .withOpacity(0.3) // <-- CAMBIO DE UI
+                          ? _AppColors.accent.withOpacity(0.3) // <-- CAMBIO DE UI
                           : _AppColors.inputFill, // <-- CAMBIO DE UI
-                      borderRadius:
-                          BorderRadius.circular(8), // Reducido de 12 a 8
+                      borderRadius: BorderRadius.circular(8), // Reducido de 12 a 8
                       border: Border.all(
                         color: isSelected
                             ? _AppColors.accent // <-- CAMBIO DE UI
@@ -326,23 +301,16 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
                       children: [
                         Text(
                           status.emoji,
-                          style: const TextStyle(
-                              fontSize: 20), // Reducido de 24 a 20
+                          style: const TextStyle(fontSize: 20), // Reducido de 24 a 20
                         ),
                         const SizedBox(height: 2), // Reducido de 4 a 2
                         Flexible(
                           child: Text(
-                            status
-                                .shortDescription, // Usar shortDescription como el modal
+                            status.shortDescription, // Usar shortDescription como el modal
                             style: TextStyle(
                               fontSize: 8, // Reducido de 10 a 8
-                              color: isSelected
-                                  ? _AppColors.textPrimary
-                                  : _AppColors
-                                      .textSecondary, // <-- CAMBIO DE UI
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
+                              color: isSelected ? _AppColors.textPrimary : _AppColors.textSecondary, // <-- CAMBIO DE UI
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                             ),
                             textAlign: TextAlign.center,
                             maxLines: 1, // Solo 1 línea para evitar overflow
@@ -369,8 +337,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _AppColors.inputFill, // <-- CAMBIO DE UI
                     foregroundColor: _AppColors.textPrimary, // <-- CAMBIO DE UI
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 16), // <-- CAMBIO DE UI
+                    padding: const EdgeInsets.symmetric(vertical: 16), // <-- CAMBIO DE UI
                     shape: RoundedRectangleBorder(
                       // <-- CAMBIO DE UI
                       borderRadius: BorderRadius.circular(12.0),
@@ -392,17 +359,13 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
               Expanded(
                 flex: 2,
                 child: ElevatedButton.icon(
-                  onPressed: (_selectedQuickActions.length == 4 && !_isSaving)
-                      ? _saveConfiguration
-                      : null,
+                  onPressed: (_selectedQuickActions.length == 4 && !_isSaving) ? _saveConfiguration : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _AppColors.accent, // <-- CAMBIO DE UI
                     foregroundColor: _AppColors.background, // <-- CAMBIO DE UI
                     disabledBackgroundColor: _AppColors.accent.withOpacity(0.5),
-                    disabledForegroundColor:
-                        _AppColors.background.withOpacity(0.7),
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 16), // <-- CAMBIO DE UI
+                    disabledForegroundColor: _AppColors.background.withOpacity(0.7),
+                    padding: const EdgeInsets.symmetric(vertical: 16), // <-- CAMBIO DE UI
                     shape: RoundedRectangleBorder(
                       // <-- CAMBIO DE UI
                       borderRadius: BorderRadius.circular(12.0),

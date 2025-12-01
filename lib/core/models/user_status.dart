@@ -12,13 +12,10 @@ class StatusType extends Equatable {
   final String id; // ID único (ej: "available", "busy", "natacion")
   final String emoji; // Emoji unicode (ej: "🟢", "🏊")
   final String label; // Descripción completa (ej: "Disponible", "Natación")
-  final String
-      shortLabel; // Descripción corta para grid (ej: "Libre", "Natación")
-  final String
-      category; // Categoría (availability, location, activity, transport, emergency, custom)
+  final String shortLabel; // Descripción corta para grid (ej: "Libre", "Natación")
+  final String category; // Categoría (availability, location, activity, transport, emergency, custom)
   final int order; // Orden de visualización
-  final bool
-      isPredefined; // true = predefinido global, false = custom del círculo
+  final bool isPredefined; // true = predefinido global, false = custom del círculo
   final bool canDelete; // true = usuario puede eliminar (solo custom)
 
   const StatusType({
@@ -40,10 +37,10 @@ class StatusType extends Equatable {
       emoji: data['emoji'] as String,
       label: data['label'] as String,
       shortLabel: data['shortLabel'] as String,
-      category: data['category'] as String,
-      order: data['order'] as int,
-      isPredefined: data['isPredefined'] as bool? ?? true,
-      canDelete: data['canDelete'] as bool? ?? false,
+      category: data['category'] as String? ?? 'custom', // Default para custom emojis
+      order: data['order'] as int? ?? 999, // Default order alto
+      isPredefined: data['isPredefined'] as bool? ?? false,
+      canDelete: data['canDelete'] as bool? ?? true,
     );
   }
 
@@ -110,26 +107,9 @@ class StatusType extends Equatable {
   static final List<StatusType> fallbackPredefined = [
     // FILA 1: DISPONIBILIDAD
     StatusType(
-        id: 'available',
-        emoji: '🟢',
-        label: 'Disponible',
-        shortLabel: 'Libre',
-        category: 'availability',
-        order: 1),
-    StatusType(
-        id: 'busy',
-        emoji: '🔴',
-        label: 'Ocupado',
-        shortLabel: 'Ocupado',
-        category: 'availability',
-        order: 2),
-    StatusType(
-        id: 'away',
-        emoji: '🟡',
-        label: 'Ausente',
-        shortLabel: 'Ausente',
-        category: 'availability',
-        order: 3),
+        id: 'available', emoji: '🟢', label: 'Disponible', shortLabel: 'Libre', category: 'availability', order: 1),
+    StatusType(id: 'busy', emoji: '🔴', label: 'Ocupado', shortLabel: 'Ocupado', category: 'availability', order: 2),
+    StatusType(id: 'away', emoji: '🟡', label: 'Ausente', shortLabel: 'Ausente', category: 'availability', order: 3),
     StatusType(
         id: 'do_not_disturb',
         emoji: '🔕',
@@ -139,80 +119,25 @@ class StatusType extends Equatable {
         order: 4),
 
     // FILA 2: UBICACIÓN
+    StatusType(id: 'home', emoji: '🏠', label: 'En casa', shortLabel: 'Casa', category: 'location', order: 5),
     StatusType(
-        id: 'home',
-        emoji: '🏠',
-        label: 'En casa',
-        shortLabel: 'Casa',
-        category: 'location',
-        order: 5),
+        id: 'school', emoji: '🏫', label: 'En el colegio', shortLabel: 'Colegio', category: 'location', order: 6),
+    StatusType(id: 'work', emoji: '🏢', label: 'En el trabajo', shortLabel: 'Trabajo', category: 'location', order: 7),
     StatusType(
-        id: 'school',
-        emoji: '🏫',
-        label: 'En el colegio',
-        shortLabel: 'Colegio',
-        category: 'location',
-        order: 6),
-    StatusType(
-        id: 'work',
-        emoji: '🏢',
-        label: 'En el trabajo',
-        shortLabel: 'Trabajo',
-        category: 'location',
-        order: 7),
-    StatusType(
-        id: 'medical',
-        emoji: '🏥',
-        label: 'En consulta',
-        shortLabel: 'Consulta',
-        category: 'location',
-        order: 8),
+        id: 'medical', emoji: '🏥', label: 'En consulta', shortLabel: 'Consulta', category: 'location', order: 8),
 
     // FILA 3: ACTIVIDAD
+    StatusType(id: 'meeting', emoji: '👥', label: 'Reunión', shortLabel: 'Reunión', category: 'activity', order: 9),
     StatusType(
-        id: 'meeting',
-        emoji: '👥',
-        label: 'Reunión',
-        shortLabel: 'Reunión',
-        category: 'activity',
-        order: 9),
+        id: 'studying', emoji: '📚', label: 'Estudiando', shortLabel: 'Estudia', category: 'activity', order: 10),
+    StatusType(id: 'eating', emoji: '🍽️', label: 'Comiendo', shortLabel: 'Comiendo', category: 'activity', order: 11),
     StatusType(
-        id: 'studying',
-        emoji: '📚',
-        label: 'Estudiando',
-        shortLabel: 'Estudia',
-        category: 'activity',
-        order: 10),
-    StatusType(
-        id: 'eating',
-        emoji: '🍽️',
-        label: 'Comiendo',
-        shortLabel: 'Comiendo',
-        category: 'activity',
-        order: 11),
-    StatusType(
-        id: 'exercising',
-        emoji: '💪',
-        label: 'Ejercicio',
-        shortLabel: 'Ejercicio',
-        category: 'activity',
-        order: 12),
+        id: 'exercising', emoji: '💪', label: 'Ejercicio', shortLabel: 'Ejercicio', category: 'activity', order: 12),
 
     // FILA 4: TRANSPORTE + SOS
+    StatusType(id: 'driving', emoji: '🚗', label: 'En camino', shortLabel: 'Camino', category: 'transport', order: 13),
     StatusType(
-        id: 'driving',
-        emoji: '🚗',
-        label: 'En camino',
-        shortLabel: 'Camino',
-        category: 'transport',
-        order: 13),
-    StatusType(
-        id: 'walking',
-        emoji: '🚶',
-        label: 'Caminando',
-        shortLabel: 'Caminando',
-        category: 'transport',
-        order: 14),
+        id: 'walking', emoji: '🚶', label: 'Caminando', shortLabel: 'Caminando', category: 'transport', order: 14),
     StatusType(
         id: 'public_transport',
         emoji: '🚌',
@@ -220,13 +145,7 @@ class StatusType extends Equatable {
         shortLabel: 'Transporte',
         category: 'transport',
         order: 15),
-    StatusType(
-        id: 'sos',
-        emoji: '🆘',
-        label: 'SOS',
-        shortLabel: 'SOS',
-        category: 'emergency',
-        order: 16),
+    StatusType(id: 'sos', emoji: '🆘', label: 'SOS', shortLabel: 'SOS', category: 'emergency', order: 16),
   ];
 }
 

@@ -9,6 +9,7 @@ import '../../../../notifications/notification_service.dart';
 import '../../../../core/widgets/quick_actions_config_widget.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
 import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout
+import 'emoji_management_page.dart'; // Gestión de estados/emojis
 
 // ===========================================================================
 // SECCIÓN DE DISEÑO: Colores y Estilos basados en la pantalla de referencia
@@ -39,7 +40,7 @@ class _AppTextStyles {
     fontWeight: FontWeight.bold,
     color: _AppColors.textPrimary,
   );
-  
+
   static const TextStyle textBody = TextStyle(
     fontSize: 14,
     color: _AppColors.textSecondary,
@@ -57,14 +58,7 @@ class _AppTextStyles {
     fontWeight: FontWeight.bold,
     color: _AppColors.sosRed,
   );
-
-  static const TextStyle destructiveButton = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-    color: _AppColors.textPrimary,
-  );
 }
-
 
 /// Pantalla de configuración del usuario
 /// Permite cambiar nombre de usuario, nombre del círculo y salir del círculo
@@ -75,12 +69,12 @@ class SettingsPage extends ConsumerStatefulWidget {
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends ConsumerState<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerProviderStateMixin {
   // --- INICIO DE LÓGICA (SIN CAMBIOS) ---
   final _userNameController = TextEditingController();
   final _circleNameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  
+
   bool _isLoading = false;
   String? _userId;
   String? _circleId;
@@ -88,12 +82,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String? _currentCircleName;
   String? _userEmail; // email (solo lectura)
 
+  // Tab controller
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     debugPrint('[SettingsPage] 🔧 Inicializando pantalla de configuración');
     _loadCurrentInfo();
-    
+
     // Cargar datos de Firebase DESPUÉS del primer frame (no bloquear)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadFirebaseDataInBackground();
@@ -102,6 +100,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _userNameController.dispose();
     _circleNameController.dispose();
     super.dispose();
@@ -111,24 +110,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _loadCurrentInfo() {
     try {
       final authState = ref.read(authProvider);
-      
+
       if (authState is Authenticated) {
         _userId = authState.user.uid;
         _userEmail = authState.user.email;
-        
+
         // OPTIMIZACIÓN: Usar datos del authProvider inmediatamente (cache-first)
-        _currentUserName = authState.user.nickname.isNotEmpty 
-            ? authState.user.nickname 
-            : authState.user.email.split('@')[0];
+        _currentUserName =
+            authState.user.nickname.isNotEmpty ? authState.user.nickname : authState.user.email.split('@')[0];
         _userNameController.text = _currentUserName ?? '';
-        
+
         debugPrint('[SettingsPage] ⚡ Usuario cargado desde cache: nickname=[$_currentUserName]');
       }
     } catch (e) {
       debugPrint('[SettingsPage] ❌ Error cargando información: $e');
     }
   }
-  
+
   /// Carga datos de Firebase en background (ASÍNCRONO - no bloquea UI)
   Future<void> _loadFirebaseDataInBackground() async {
     try {
@@ -151,26 +149,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   /// Carga el nickname del usuario desde Firestore
   Future<void> _loadUserNickname() async {
     if (_userId == null) return;
-    
+
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_userId)
-          .get();
-      
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(_userId).get();
+
       if (userDoc.exists) {
         final userData = userDoc.data()!;
         // Prioridad: nickname > displayName > fallback al email split
-        _currentUserName = userData['nickname'] as String? ?? 
-                           userData['displayName'] as String? ?? 
-                           _userEmail?.split('@')[0] ?? 'Usuario';
-        
+        _currentUserName = userData['nickname'] as String? ??
+            userData['displayName'] as String? ??
+            _userEmail?.split('@')[0] ??
+            'Usuario';
+
         if (mounted) {
           setState(() {
             _userNameController.text = _currentUserName ?? '';
           });
         }
-        
+
         debugPrint('[SettingsPage] 🔧 Nickname cargado: $_currentUserName');
       }
     } catch (e) {
@@ -181,23 +177,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   /// Carga información del círculo desde Firebase
   Future<void> _loadCircleInfo() async {
     if (_userId == null) return;
-    
+
     try {
       // Buscar el círculo del usuario
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_userId)
-          .get();
-      
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(_userId).get();
+
       if (userDoc.exists && userDoc.data()?['circleId'] != null) {
         _circleId = userDoc.data()!['circleId'] as String;
-        
+
         // Obtener información del círculo
-        final circleDoc = await FirebaseFirestore.instance
-            .collection('circles')
-            .doc(_circleId)
-            .get();
-        
+        final circleDoc = await FirebaseFirestore.instance.collection('circles').doc(_circleId).get();
+
         if (circleDoc.exists) {
           _currentCircleName = circleDoc.data()?['name'] as String?;
           debugPrint('[SettingsPage] 🔧 Círculo cargado: $_currentCircleName (ID: $_circleId)');
@@ -216,26 +206,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   /// Actualiza el nickname del usuario (NO el email que es credencial de auth)
   Future<void> _updateUserName() async {
     if (_userId == null || _userNameController.text.trim().isEmpty) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final newNickname = _userNameController.text.trim();
-      
+
       // CRÍTICO: Solo actualizar nickname/displayName, NUNCA el email
-      
+
       // 1. Actualizar en Firebase Auth displayName
       await FirebaseAuth.instance.currentUser?.updateDisplayName(newNickname);
-      
+
       // 2. Actualizar nickname en Firestore (perfil del usuario)
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_userId)
-          .update({
-            'nickname': newNickname,
-            'displayName': newNickname, // Mantener ambos por compatibilidad
-          });
-      
+      await FirebaseFirestore.instance.collection('users').doc(_userId).update({
+        'nickname': newNickname,
+        'displayName': newNickname, // Mantener ambos por compatibilidad
+      });
+
       // 3. Actualizar también en el documento del círculo si existe
       if (_circleId != null) {
         await FirebaseFirestore.instance
@@ -244,14 +231,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             .collection('members')
             .doc(_userId)
             .update({
-              'nickname': newNickname,
-              'displayName': newNickname,
-            });
+          'nickname': newNickname,
+          'displayName': newNickname,
+        });
       }
-      
+
       // 4. Actualizar variable local
       _currentUserName = newNickname;
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -260,7 +247,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         );
       }
-      
     } catch (e) {
       debugPrint('[SettingsPage] Error actualizando nickname: $e');
       if (mounted) {
@@ -281,18 +267,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   /// Actualiza el nombre del círculo
   Future<void> _updateCircleName() async {
     if (_circleId == null || _circleNameController.text.trim().isEmpty) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final newName = _circleNameController.text.trim();
-      
+
       // Actualizar nombre del círculo en Firestore
-      await FirebaseFirestore.instance
-          .collection('circles')
-          .doc(_circleId)
-          .update({'name': newName});
-      
+      await FirebaseFirestore.instance.collection('circles').doc(_circleId).update({'name': newName});
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -301,7 +284,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         );
       }
-      
     } catch (e) {
       debugPrint('[SettingsPage] Error actualizando círculo: $e');
       if (mounted) {
@@ -361,29 +343,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   /// Sale del círculo actual
   Future<void> _leaveCircle() async {
     if (_userId == null || _circleId == null) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       // CRÍTICO: Cancelar notificaciones antes de salir del círculo
       // Esto previene inconsistencias donde el usuario ya no está en el círculo
       // pero las notificaciones permiten actualizaciones de estado inválidas
       await NotificationService.cancelQuickActionNotification();
-      
+
       // Remover usuario del círculo
-      await FirebaseFirestore.instance
-          .collection('circles')
-          .doc(_circleId)
-          .collection('members')
-          .doc(_userId)
-          .delete();
-      
+      await FirebaseFirestore.instance.collection('circles').doc(_circleId).collection('members').doc(_userId).delete();
+
       // Actualizar el perfil del usuario para remover circleId
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_userId)
-          .update({'circleId': FieldValue.delete()});
-      
+      await FirebaseFirestore.instance.collection('users').doc(_userId).update({'circleId': FieldValue.delete()});
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -391,14 +365,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             backgroundColor: Colors.green, // <-- CAMBIO DE UI (Se mantiene verde para éxito)
           ),
         );
-        
+
         // Navegar de vuelta a la pantalla principal
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const AuthFinalPage()),
           (route) => false,
         );
       }
-      
     } catch (e) {
       debugPrint('[SettingsPage] Error saliendo del círculo: $e');
       if (mounted) {
@@ -435,7 +408,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onPressed: () async {
               // 1. Cerrar el diálogo PRIMERO
               Navigator.of(dialogContext).pop();
-              
+
               // 2. Mostrar indicador de carga
               if (context.mounted) {
                 showDialog(
@@ -448,25 +421,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                 );
               }
-              
+
               try {
                 // 3. Limpiar notificaciones y servicios (Point 1.1 - paso 2 y 3)
                 print('🔴 [LOGOUT] Iniciando proceso de logout desde Settings...');
                 print('🔴 [LOGOUT] Paso 1/3: Desactivando funcionalidad silenciosa...');
-                
+
                 await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
                   const Duration(seconds: 10),
                   onTimeout: () {
                     print('⚠️ [LOGOUT] Timeout en deactivateAfterLogout, continuando...');
                   },
                 );
-                
+
                 // FIX: Limpiar SessionCache INMEDIATAMENTE para evitar parpadeo
                 print('🔴 [LOGOUT] Limpiando SessionCache...');
                 await SessionCacheService.clearSession();
-                
+
                 print('🔴 [LOGOUT] Paso 2/3: Cerrando sesión de Firebase...');
-                
+
                 // 4. Invalidar sesión (Point 1.1 - paso 1)
                 await FirebaseAuth.instance.signOut().timeout(
                   const Duration(seconds: 10),
@@ -474,9 +447,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     print('⚠️ [LOGOUT] Timeout en signOut, continuando...');
                   },
                 );
-                
+
                 print('🔴 [LOGOUT] Paso 3/3: Redirigiendo a login...');
-                
               } catch (e) {
                 print('❌ [LOGOUT] Error durante logout: $e');
                 // Continuar con navegación incluso si hay error
@@ -486,13 +458,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 if (context.mounted) {
                   // Cerrar indicador de carga si existe
                   Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
-                  
+
                   // Navegar a AuthFinalPage
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const AuthFinalPage()),
                     (route) => false,
                   );
-                  
+
                   print('✅ [LOGOUT] Logout completado exitosamente');
                 }
               }
@@ -505,260 +477,186 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
   // --- FIN DE LÓGICA (SIN CAMBIOS) ---
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _AppColors.background, // <-- CAMBIO DE UI
+      backgroundColor: _AppColors.background,
       appBar: AppBar(
-        backgroundColor: _AppColors.background, // <-- CAMBIO DE UI
-        foregroundColor: _AppColors.textPrimary, // <-- CAMBIO DE UI
+        backgroundColor: _AppColors.background,
+        foregroundColor: _AppColors.textPrimary,
         title: const Text(
           'Configuración',
-          style: _AppTextStyles.screenTitle, // <-- CAMBIO DE UI
+          style: _AppTextStyles.screenTitle,
         ),
         elevation: 0,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: _AppColors.accent,
+          labelColor: _AppColors.accent,
+          unselectedLabelColor: _AppColors.textSecondary,
+          labelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          tabs: const [
+            Tab(text: 'Cuenta'),
+            Tab(text: 'Círculo'),
+            Tab(text: 'Estados'),
+          ],
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: _AppColors.accent)) // <-- CAMBIO DE UI
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0), // <-- CAMBIO DE UI
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Sección: Perfil del usuario
-                    _buildSectionCard(
-                      title: 'Tu perfil', // <-- CAMBIO DE UI (Emoji quitado)
-                      children: [
-                        // Email (solo lectura)
-                        const Text(
-                          'Email (no se puede cambiar)',
-                          style: _AppTextStyles.label, // <-- CAMBIO DE UI
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _AppColors.cardBackground, // <-- CAMBIO DE UI
-                            borderRadius: BorderRadius.circular(12),
-                            // El borde se quitó de aquí, pero se mantiene en el input de solo lectura
-                            border: Border.all(color: _AppColors.cardBorder, width: 1), 
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.email, color: _AppColors.textSecondary, size: 18), // <-- CAMBIO DE UI
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _userEmail ?? 'Cargando...',
-                                  style: _AppTextStyles.textBody, // <-- CAMBIO DE UI
-                                ),
-                              ),
-                              Icon(Icons.lock, color: _AppColors.textSecondary, size: 16), // <-- CAMBIO DE UI
-                            ],
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 20),
-                        
-                        // Nickname (editable)
-                        const Text(
-                          'Nickname',
-                          style: _AppTextStyles.label, // <-- CAMBIO DE UI
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _userNameController,
-                          style: const TextStyle(color: _AppColors.textPrimary), // <-- CAMBIO DE UI
-                          decoration: InputDecoration(
-                            hintText: 'Ingresa tu nickname',
-                            hintStyle: const TextStyle(color: _AppColors.textSecondary), // <-- CAMBIO DE UI
-                            filled: true,
-                            fillColor: _AppColors.inputFill, // <-- CAMBIO DE UI
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            prefixIcon: const Icon(Icons.person, color: _AppColors.textSecondary), // <-- CAMBIO DE UI
-                            suffixIcon: IconButton(
-                              onPressed: _updateUserName,
-                              icon: const Icon(
-                                Icons.check,
-                                color: _AppColors.accent, // <-- CAMBIO DE UI
-                              ),
-                              tooltip: 'Guardar nickname',
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value?.trim().isEmpty ?? true) {
-                              return 'El nickname no puede estar vacío';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Este es el nombre que verán los miembros de tu círculo.',
-                          style: _AppTextStyles.textBody.copyWith(fontSize: 12), // <-- CAMBIO DE UI
-                        ),
-                      ],
-                    ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildAccountTab(),
+          _buildCircleTab(),
+          _buildStatesTab(),
+        ],
+      ),
+    );
+  }
 
-                    const SizedBox(height: 24),
+  Widget _buildAccountTab() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: _AppColors.accent),
+      );
+    }
 
-                    // Sección: Quick Actions (Point 14)
-                    // Pásame el código de este widget para aplicarle los estilos
-                    const QuickActionsConfigWidget(),
-
-                    const SizedBox(height: 24),
-
-                    // Point 1 SPEC: Sección Cerrar Sesión
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: _AppColors.sosRed.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: _AppColors.sosRed.withOpacity(0.3),
-                          width: 1,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Sección: Perfil del usuario
+            _buildSectionCard(
+              title: 'Tu perfil',
+              children: [
+                // Email (solo lectura)
+                const Text(
+                  'Email (no se puede cambiar)',
+                  style: _AppTextStyles.label,
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _AppColors.cardBorder, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.email, color: _AppColors.textSecondary, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _userEmail ?? 'Cargando...',
+                          style: _AppTextStyles.textBody,
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Sesión',
-                            style: _AppTextStyles.destructiveLabel,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Cerrar sesión eliminará todas las notificaciones activas y te redirigirá al login.',
-                            style: _AppTextStyles.textBody,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () => _showLogoutDialog(context, ref),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFFC401), // Ámbar
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(Icons.logout),
-                            label: const Text(
-                              'Cerrar Sesión',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Sección: Círculo
-                    if (_circleId != null) ...[
-                      _buildSectionCard(
-                        title: 'Círculo', // <-- CAMBIO DE UI (Emoji quitado)
-                        children: [
-                          const Text(
-                            'Nombre del círculo',
-                            style: _AppTextStyles.label, // <-- CAMBIO DE UI
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _circleNameController,
-                            style: const TextStyle(color: _AppColors.textPrimary), // <-- CAMBIO DE UI
-                            decoration: InputDecoration(
-                              hintText: 'Nombre del círculo',
-                              hintStyle: const TextStyle(color: _AppColors.textSecondary), // <-- CAMBIO DE UI
-                              filled: true,
-                              fillColor: _AppColors.inputFill, // <-- CAMBIO DE UI
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              suffixIcon: IconButton(
-                                onPressed: _updateCircleName,
-                                icon: const Icon(
-                                  Icons.check,
-                                  color: _AppColors.accent, // <-- CAMBIO DE UI
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value?.trim().isEmpty ?? true) {
-                                return 'El nombre del círculo no puede estar vacío';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Cualquier miembro del círculo puede cambiar este nombre.',
-                            style: _AppTextStyles.textBody.copyWith(fontSize: 12), // <-- CAMBIO DE UI
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Botón: Salir del círculo
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: _AppColors.sosRed.withOpacity(0.1), // <-- CAMBIO DE UI
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: _AppColors.sosRed.withOpacity(0.3), // <-- CAMBIO DE UI
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              'Zona peligrosa',
-                              style: _AppTextStyles.destructiveLabel, // <-- CAMBIO DE UI
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Una vez que salgas del círculo, tendrás que ser invitado nuevamente para volver a unirte.',
-                              style: _AppTextStyles.textBody, // <-- CAMBIO DE UI
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _showLeaveCircleDialog,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _AppColors.sosRed, // <-- CAMBIO DE UI
-                                foregroundColor: _AppColors.textPrimary, // <-- CAMBIO DE UI
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              icon: const Icon(Icons.exit_to_app),
-                              label: const Text(
-                                'Salir del círculo',
-                                style: _AppTextStyles.destructiveButton, // <-- CAMBIO DE UI
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      const Icon(Icons.lock, color: _AppColors.textSecondary, size: 16),
                     ],
-                  ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Nickname (editable)
+                const Text(
+                  'Nickname',
+                  style: _AppTextStyles.label,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _userNameController,
+                  style: const TextStyle(color: _AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Ingresa tu nickname',
+                    hintStyle: const TextStyle(color: _AppColors.textSecondary),
+                    filled: true,
+                    fillColor: _AppColors.inputFill,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: const Icon(Icons.person, color: _AppColors.textSecondary),
+                    suffixIcon: IconButton(
+                      onPressed: _updateUserName,
+                      icon: const Icon(
+                        Icons.check,
+                        color: _AppColors.accent,
+                      ),
+                      tooltip: 'Guardar nickname',
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value?.trim().isEmpty ?? true) {
+                      return 'El nickname no puede estar vacío';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Este es el nombre que verán los miembros de tu círculo.',
+                  style: _AppTextStyles.textBody.copyWith(fontSize: 12),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Sección: Quick Actions (Point 14)
+            const QuickActionsConfigWidget(),
+
+            const SizedBox(height: 24),
+
+            // Point 1 SPEC: Sección Cerrar Sesión
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _AppColors.sosRed.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _AppColors.sosRed.withOpacity(0.3),
+                  width: 1,
                 ),
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Sesión',
+                    style: _AppTextStyles.destructiveLabel,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Cerrar sesión eliminará todas las notificaciones activas y te redirigirá al login.',
+                    style: _AppTextStyles.textBody,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => _showLogoutDialog(context, ref),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFC401),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Cerrar Sesión', style: TextStyle(color: Colors.black)),
+                  ),
+                ],
+              ),
             ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -792,6 +690,158 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ],
       ),
     );
+  }
+
+  // Tab 2: Configuración de círculo
+  Widget _buildCircleTab() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: _AppColors.accent),
+      );
+    }
+
+    if (_circleId == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.group_off,
+                size: 64,
+                color: _AppColors.textSecondary.withOpacity(0.5),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No estás en ningún círculo',
+                style: TextStyle(
+                  color: _AppColors.textSecondary,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSectionCard(
+            title: 'Información del círculo',
+            children: [
+              const Text(
+                'Nombre del círculo',
+                style: _AppTextStyles.label,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _circleNameController,
+                style: const TextStyle(color: _AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Nombre del círculo',
+                  hintStyle: const TextStyle(color: _AppColors.textSecondary),
+                  filled: true,
+                  fillColor: _AppColors.inputFill,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: const Icon(Icons.group, color: _AppColors.textSecondary),
+                  suffixIcon: IconButton(
+                    onPressed: _updateCircleName,
+                    icon: const Icon(
+                      Icons.check,
+                      color: _AppColors.accent,
+                    ),
+                    tooltip: 'Guardar nombre',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Sección: Salir del círculo
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _AppColors.sosRed.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _AppColors.sosRed.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Zona de peligro',
+                  style: _AppTextStyles.destructiveLabel,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Salir del círculo eliminará tu acceso a toda la información compartida.',
+                  style: _AppTextStyles.textBody,
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _showLeaveCircleDialog,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _AppColors.sosRed,
+                    side: const BorderSide(color: _AppColors.sosRed, width: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.exit_to_app),
+                  label: const Text('Salir del Círculo'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tab 3: Estados/Emojis
+  Widget _buildStatesTab() {
+    if (_circleId == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.emoji_emotions_outlined,
+                size: 64,
+                color: _AppColors.textSecondary.withOpacity(0.5),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Únete a un círculo para gestionar estados',
+                style: TextStyle(
+                  color: _AppColors.textSecondary,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Navegar directamente a la página de gestión de emojis SIN botón intermedio
+    return EmojiManagementPage(circleId: _circleId!);
   }
 }
 

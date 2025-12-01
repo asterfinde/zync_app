@@ -84,12 +84,8 @@ class EmojiDialogActivity : Activity() {
                 if (emojiList.isNotEmpty()) {
                     Log.d(TAG, "✅ [CACHE] ${emojiList.size} emojis cargados desde Firebase cache")
                     
-                    // Rellenar hasta 16 elementos (grid 4x4)
-                    while (emojiList.size < 16) {
-                        emojiList.add(Triple("", "", ""))
-                    }
-                    
-                    return emojiList.take(16)
+                    // CAMBIO: No limitar a 16, retornar TODOS los emojis
+                    return emojiList
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ [CACHE] Error parseando: ${e.message}")
@@ -164,10 +160,24 @@ class EmojiDialogActivity : Activity() {
             isClickable = true
         }
         
+        // NUEVO: ScrollView para hacer el grid scrollable
+        val scrollView = android.widget.ScrollView(this).apply {
+            // Altura máxima: 4 filas de emojis (65dp * 4 + spacing) = ~300dp
+            // Esto fuerza el scroll cuando hay más de 16 emojis (4 filas)
+            val maxHeightDp = (65 * 4) + (10 * 4) + 40 // 4 filas + spacing + padding
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dpToPx(maxHeightDp)
+            )
+            isVerticalScrollBarEnabled = true // Mostrar scrollbar
+            scrollBarStyle = android.view.View.SCROLLBARS_OUTSIDE_OVERLAY
+        }
+        
         // Crear GridLayout para los emojis
         val gridLayout = GridLayout(this).apply {
             columnCount = 4
-            rowCount = 4
+            // CAMBIO: No fijar rowCount, dejar que sea dinámico
+            // rowCount calculado automáticamente según cantidad de emojis
         }
         
         // Agregar cada emoji al grid
@@ -260,7 +270,11 @@ class EmojiDialogActivity : Activity() {
             gridLayout.addView(container)
         }
         
-        mainContainer.addView(gridLayout)
+        // Agregar grid al ScrollView
+        scrollView.addView(gridLayout)
+        
+        // Agregar ScrollView al container principal
+        mainContainer.addView(scrollView)
         root.addView(mainContainer)
         setContentView(root)
     }
