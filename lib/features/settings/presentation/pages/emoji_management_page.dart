@@ -160,14 +160,18 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? null : _handleCreateEmoji,
-        backgroundColor:
-            _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? _AppColors.cardBorder : _AppColors.accent,
-        foregroundColor: _AppColors.background,
-        icon: const Icon(Icons.add),
-        label: Text(
-          'Crear estado ($_customEmojiCount/${EmojiManagementService.maxCustomEmojis})',
+      floatingActionButton: SizedBox(
+        width: 56,
+        height: 56,
+        child: FloatingActionButton(
+          onPressed: _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? null : _handleCreateEmoji,
+          backgroundColor:
+              _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? _AppColors.cardBorder : _AppColors.accent,
+          foregroundColor: _AppColors.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.add, size: 28),
         ),
       ),
     );
@@ -274,15 +278,28 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Mis estados personalizados',
-              style: TextStyle(
-                color: _AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Mis estados personalizados',
+                  style: TextStyle(
+                    color: _AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '$_customEmojiCount/${EmojiManagementService.maxCustomEmojis}',
+                  style: const TextStyle(
+                    color: _AppColors.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
           Divider(color: _AppColors.cardBorder, height: 1),
@@ -296,34 +313,16 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
               ),
             )
           else if (_customEmojis.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.add_circle_outline,
-                    size: 48,
-                    color: _AppColors.textSecondary.withOpacity(0.5),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Aún no tienes estados personalizados',
+                  style: TextStyle(
+                    color: _AppColors.textSecondary,
+                    fontSize: 14,
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Aún no tienes estados personalizados',
-                    style: TextStyle(
-                      color: _AppColors.textSecondary,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Crea uno para personalizar tu experiencia',
-                    style: TextStyle(
-                      color: _AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                ),
               ),
             )
           else
@@ -368,14 +367,6 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (emoji.shortLabel != emoji.label)
-                      Text(
-                        'Grid: ${emoji.shortLabel}',
-                        style: const TextStyle(
-                          color: _AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
                   ],
                 ),
               ),

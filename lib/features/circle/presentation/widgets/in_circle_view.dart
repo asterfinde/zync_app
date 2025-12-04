@@ -110,12 +110,14 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   // --- INICIO DE LA MODIFICACIÓN ---
   // StreamSubscription para poder cancelarlo en dispose()
   StreamSubscription<DocumentSnapshot>? _circleListenerSubscription;
+  StreamSubscription<QuerySnapshot>? _customEmojisListener;
   // --- FIN DE LA MODIFICACIÓN ---
 
   @override
   void initState() {
     super.initState();
     _loadPredefinedEmojis();
+    _listenToCustomEmojis(); // Escuchar cambios en emojis personalizados
 
     // ==================== CACHE-FIRST PATTERN ====================
     // PASO 1: Cargar cache PRIMERO (sin await, sincrónico desde memoria)
@@ -155,10 +157,30 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     // Cancelar la suscripción al listener de Firestore para evitar memory leaks
     _circleListenerSubscription?.cancel();
-    print("[InCircleView] Listener de círculo cancelado.");
+    _customEmojisListener?.cancel();
+    print("[InCircleView] Listeners cancelados.");
     super.dispose();
   }
   // --- FIN DE LA MODIFICACIÓN ---
+
+  /// Listener para detectar cuando se agregan nuevos emojis personalizados
+  void _listenToCustomEmojis() {
+    _customEmojisListener?.cancel();
+    _customEmojisListener = FirebaseFirestore.instance
+        .collection('circles')
+        .doc(widget.circle.id)
+        .collection('customEmojis')
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+
+      // Recargar la lista completa de emojis cuando hay cambios
+      _loadPredefinedEmojis();
+      print('[InCircleView] 🔄 Emojis personalizados actualizados');
+    }, onError: (error) {
+      print('[InCircleView] ❌ Error en listener de emojis: $error');
+    });
+  }
 
   /// Carga TODOS los emojis (predefinidos + personalizados) desde Firebase
   Future<void> _loadPredefinedEmojis() async {
@@ -169,6 +191,8 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         setState(() {
           _predefinedEmojis = emojis;
         });
+        // Forzar actualización del cache con los nuevos emojis
+        _refreshMemberDataWithNewEmojis();
       }
       print('[InCircleView] ✅ ${emojis.length} emojis cargados (predefinidos + personalizados)');
     } catch (e) {
@@ -179,6 +203,46 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           _predefinedEmojis = StatusType.fallbackPredefined;
         });
       }
+    }
+  }
+
+  /// Actualiza el memberDataCache cuando se cargan nuevos emojis personalizados
+  void _refreshMemberDataWithNewEmojis() {
+    if (_predefinedEmojis == null) return;
+
+    bool hasChanges = false;
+    final Map<String, Map<String, dynamic>> updates = {};
+
+    _memberDataCache.forEach((memberId, memberData) {
+      final statusType = memberData['status'] as String?;
+      if (statusType != null) {
+        try {
+          final statusEnum = _predefinedEmojis!.firstWhere(
+            (s) => s.id == statusType,
+            orElse: () => throw Exception('Status not found'),
+          );
+
+          // Actualizar emoji si cambió
+          if (memberData['emoji'] != statusEnum.emoji) {
+            updates[memberId] = {
+              ...memberData,
+              'emoji': statusEnum.emoji,
+            };
+            hasChanges = true;
+          }
+        } catch (e) {
+          // Status no encontrado, mantener datos actuales
+        }
+      }
+    });
+
+    if (hasChanges && mounted) {
+      setState(() {
+        updates.forEach((memberId, newData) {
+          _memberDataCache[memberId] = newData;
+        });
+      });
+      print('[InCircleView] 🔄 Cache actualizado con nuevos emojis personalizados');
     }
   }
 
@@ -614,7 +678,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
               else
                 const Icon(Icons.check_circle),
               const SizedBox(width: 8),
-              Text(_isUpdatingStatus ? 'Actualizando...' : 'Todo bien'),
+              Text(_isUpdatingStatus ? 'Actualizando...' : 'OK'),
             ],
           ),
         ),
