@@ -22,7 +22,7 @@ import 'package:zync_app/core/services/emoji_service.dart'; // Para cargar emoji
 import 'package:zync_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
 // StatusType class
 import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
-// Para silent launch detection
+import 'package:zync_app/core/splash/splash_screen.dart'; // Splash screen personalizado
 
 import 'core/global_keys.dart';
 
@@ -310,9 +310,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       theme: baseTheme,
       navigatorKey: navigatorKey, // Point 21 FASE 5: Para acceso desde StatusModalService
       scaffoldMessengerKey: rootScaffoldMessengerKey,
-      // CACHE-FIRST: Eliminar splash screen, mostrar AuthWrapper directamente
-      // El cache hará que la UI aparezca instantáneamente
-      home: const AuthWrapper(),
+      // Splash screen personalizado con logo ZYNC animado
+      home: OptimizedSplashScreen(
+        onInitialize: () async {
+          // Esta función se ejecuta en background mientras se muestra el splash
+          // No hacer nada aquí porque ya se inicializó todo en main()
+          await Future.delayed(const Duration(milliseconds: 100));
+        },
+        child: const AuthWrapper(),
+      ),
     );
   }
 }

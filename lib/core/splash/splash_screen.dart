@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' as Flutter;
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
@@ -17,18 +16,6 @@ class OptimizedSplashScreen extends StatefulWidget {
   @override
   State<OptimizedSplashScreen> createState() => _OptimizedSplashScreenState();
 }
-
-// --- INICIO DE LA MODIFICACIÓN ---
-// Función "top-level" o "static" requerida para Flutter.compute
-// Esta es la función que se ejecutará en el nuevo isolate.
-Future<void> _runInitialization(Future<void> Function() onInitialize) async {
-  // Esta función ahora se ejecuta en un Isolate separado,
-  // sin bloquear el hilo de la UI.
-  print('ISOLATE: [${DateTime.now()}] Iniciando inicialización en background isolate...');
-  await onInitialize();
-  print('ISOLATE: [${DateTime.now()}] Background isolate terminó inicialización.');
-}
-// --- FIN DE LA MODIFICACIÓN ---
 
 class _OptimizedSplashScreenState extends State<OptimizedSplashScreen> with TickerProviderStateMixin {
   bool _isReady = false;
@@ -77,31 +64,29 @@ class _OptimizedSplashScreenState extends State<OptimizedSplashScreen> with Tick
 
   Future<void> _initialize() async {
     try {
-      // --- INICIO DE LA MODIFICACIÓN ---
-      //
-      // PROBLEMA ANTERIOR: widget.onInitialize() (los 1.8s de carga)
-      // se ejecutaba en el main isolate (UI thread), compitiendo
-      // con el build() de HomePage y causando 207 frames skippeados.
-      //
-      // SOLUCIÓN: Mover TODA la inicialización a un isolate separado
-      // usando Flutter.compute.
+      // Mostrar splash animado por 3 segundos para apreciar las animaciones (breathing effect)
+      final splashDuration = Future.delayed(const Duration(seconds: 3));
 
-      // 1. Lanzamos la inicialización en un isolate de background.
-      //    Esto NO bloquea el UI thread.
-      Flutter.compute(_runInitialization, widget.onInitialize).catchError((e) {
-        print('❌ [SplashScreen] Error fatal en background isolate: $e');
-      });
+      // Ejecutar inicialización en background (si hay algo que hacer)
+      final initFuture = widget.onInitialize();
 
-      // 2. Inmediatamente (mientras el isolate trabaja) marcamos como listo
-      //    para mostrar el AuthWrapper.
+      // Esperar a que ambos terminen (lo que tarde más)
+      await Future.wait([splashDuration, initFuture]);
+
+      // Marcar como listo para mostrar AuthWrapper
       if (mounted) {
         setState(() {
           _isReady = true;
         });
       }
-      // --- FIN DE LA MODIFICACIÓN ---
     } catch (e) {
-      print('❌ [SplashScreen] Error durante el lanzamiento de la inicialización: $e');
+      print('❌ [SplashScreen] Error durante inicialización: $e');
+      // Mostrar AuthWrapper aunque haya error
+      if (mounted) {
+        setState(() {
+          _isReady = true;
+        });
+      }
     }
   }
 

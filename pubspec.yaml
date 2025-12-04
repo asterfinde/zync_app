@@ -76,6 +76,20 @@ dev_dependencies:
 
   flutter_lints: ^5.0.0
   change_app_package_name: ^1.1.0
+  
+  # Generador de splash screens nativos
+  flutter_native_splash: ^2.4.2
 
 flutter:
   uses-material-design: true
+
+# Configuración del splash screen nativo
+flutter_native_splash:
+  color: "#000000"  # Solo fondo negro (sin imagen para evitar distorsión)
+  android: true
+  ios: true
+  web: false
+  
+  # Android 12+ (sin imagen, solo color de fondo)
+  android_12:
+    color: "#000000"
