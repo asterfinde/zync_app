@@ -46,6 +46,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
   int _customEmojiCount = 0;
 
   String? _currentUserId;
+  Map<String, bool> _deletePermissions = {}; // Cache de permisos
 
   @override
   void initState() {
@@ -71,6 +72,20 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
       // Cargar custom
       final custom = await EmojiService.getCustomEmojis(widget.circleId);
       final count = await EmojiManagementService.getCustomEmojiCount(widget.circleId);
+
+      // Cargar permisos de borrado para todos los emojis personalizados
+      if (_currentUserId != null) {
+        final permissions = <String, bool>{};
+        for (final emoji in custom) {
+          final canDelete = await EmojiManagementService.canDeleteEmoji(
+            circleId: widget.circleId,
+            userId: _currentUserId!,
+            emojiId: emoji.id,
+          );
+          permissions[emoji.id] = canDelete;
+        }
+        _deletePermissions = permissions;
+      }
 
       setState(() {
         _customEmojis = custom;
@@ -126,10 +141,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
       appBar: AppBar(
         backgroundColor: _AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: const Text(
           'Mis Estados',
           style: TextStyle(
@@ -174,6 +186,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
           child: const Icon(Icons.add, size: 28),
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -373,18 +386,13 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
 
               // Delete button (solo para custom)
               if (showDeleteButton)
-                StreamBuilder<bool>(
-                  stream: _canDeleteStream(emoji.id),
-                  builder: (context, snapshot) {
-                    final canDelete = snapshot.data ?? false;
-
-                    return IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      color: canDelete ? _AppColors.textSecondary : _AppColors.textSecondary.withOpacity(0.3),
-                      onPressed: canDelete ? () => _handleDeleteEmoji(emoji) : null,
-                      tooltip: canDelete ? 'Borrar estado' : 'Solo el creador puede borrar',
-                    );
-                  },
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  color: (_deletePermissions[emoji.id] ?? false)
+                      ? _AppColors.textSecondary
+                      : _AppColors.textSecondary.withOpacity(0.3),
+                  onPressed: (_deletePermissions[emoji.id] ?? false) ? () => _handleDeleteEmoji(emoji) : null,
+                  tooltip: (_deletePermissions[emoji.id] ?? false) ? 'Borrar estado' : 'Solo el creador puede borrar',
                 ),
             ],
           ),
@@ -423,20 +431,5 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
         ],
       ),
     );
-  }
-
-  Stream<bool> _canDeleteStream(String emojiId) async* {
-    if (_currentUserId == null) {
-      yield false;
-      return;
-    }
-
-    final canDelete = await EmojiManagementService.canDeleteEmoji(
-      circleId: widget.circleId,
-      userId: _currentUserId!,
-      emojiId: emojiId,
-    );
-
-    yield canDelete;
   }
 }

@@ -393,11 +393,28 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
         final statusEnum = emojis.firstWhere(
           (s) => s.id == statusType,
-          orElse: () => emojis.first, // Fallback al primero
+          orElse: () {
+            // Si no encontramos el emoji, usar un placeholder pero mantener el statusType
+            print(
+                "⚠️ [InCircleView] Status '$statusType' no encontrado en emojis cargados (${emojis.length} disponibles), reintentando carga...");
+            // Recargar emojis en background para próxima vez
+            _loadPredefinedEmojis();
+            // Retornar un StatusType temporal con emoji genérico
+            return StatusType(
+              id: statusType,
+              emoji: '⏳', // Emoji temporal mientras se recarga
+              label: 'Cargando...',
+              shortLabel: '...',
+              category: 'custom',
+              order: 999,
+              isPredefined: false,
+              canDelete: false,
+            );
+          },
         );
         emoji = statusEnum.emoji;
       } catch (e) {
-        print("Error parsing status enum: $e, using default emoji.");
+        print("❌ [InCircleView] Error parsing status enum: $e, using default emoji.");
         emoji = '😊'; // Mantener default si hay error
       }
     }
