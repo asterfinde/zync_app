@@ -1,6 +1,9 @@
 // lib/core/widgets/emoji_modal.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:zync_app/core/models/user_status.dart';
 import 'package:zync_app/core/services/status_service.dart';
 import 'package:zync_app/core/services/emoji_service.dart';
@@ -13,16 +16,15 @@ class EmojiStatusBottomSheet extends ConsumerStatefulWidget {
   const EmojiStatusBottomSheet({super.key});
 
   @override
-  ConsumerState<EmojiStatusBottomSheet> createState() =>
-      _EmojiStatusBottomSheetState();
+  ConsumerState<EmojiStatusBottomSheet> createState() => _EmojiStatusBottomSheetState();
 }
 
-class _EmojiStatusBottomSheetState
-    extends ConsumerState<EmojiStatusBottomSheet> {
+class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet> {
   bool _isUpdating = false;
   StatusType? _currentStatus;
   List<StatusType>? _availableStatuses;
   bool _isLoading = true;
+  final ScrollController _scrollController = ScrollController(); // Controller para scrollbar
 
   @override
   void initState() {
@@ -30,10 +32,26 @@ class _EmojiStatusBottomSheetState
     _loadAvailableStatuses();
   }
 
-  /// Carga los emojis predefinidos desde Firebase
+  @override
+  void dispose() {
+    _scrollController.dispose(); // Limpiar controller
+    super.dispose();
+  }
+
+  /// Carga los emojis predefinidos + personalizados desde Firebase
   Future<void> _loadAvailableStatuses() async {
     try {
-      final statuses = await EmojiService.getPredefinedEmojis();
+      // Obtener circleId del usuario actual
+      final user = await FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Usuario no autenticado');
+
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+      final circleId = userDoc.data()?['circleId'] as String?;
+      if (circleId == null) throw Exception('Usuario sin círculo');
+
+      // Cargar predefinidos + personalizados
+      final statuses = await EmojiService.getAllEmojisForCircle(circleId);
       setState(() {
         _availableStatuses = statuses;
         _isLoading = false;
@@ -140,8 +158,7 @@ class _EmojiStatusBottomSheetState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('❌ Error: ${result.errorMessage ?? 'Error desconocido'}'),
+            content: Text('❌ Error: ${result.errorMessage ?? 'Error desconocido'}'),
             backgroundColor: Colors.red[700],
           ),
         );
@@ -155,6 +172,9 @@ class _EmojiStatusBottomSheetState
       decoration: const BoxDecoration(
         color: Color(0xFF1E1E1E),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.75, // Máximo 75% de la pantalla
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -170,7 +190,7 @@ class _EmojiStatusBottomSheetState
             ),
           ),
 
-          // Grid de estados (diseño minimalista)
+          // Grid de estados (diseño minimalista) - SCROLLABLE
           if (_isLoading)
             const Center(
               child: Padding(
@@ -179,87 +199,88 @@ class _EmojiStatusBottomSheetState
               ),
             )
           else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 16.0),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.0,
-                ),
-                itemCount: _availableStatuses!.length,
-                itemBuilder: (context, index) {
-                  final status = _availableStatuses![index];
-                  final isSelected = _currentStatus == status;
-                  final isUpdating = _isUpdating && isSelected;
-
-                  return GestureDetector(
-                    onTap: () => _updateStatus(status),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF1CE4B3).withOpacity(0.15)
-                            : const Color(0xFF2C2C2C),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF1CE4B3)
-                              : Colors.grey[700]!,
-                          width: isSelected ? 2 : 1,
-                        ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color:
-                                      const Color(0xFF1CE4B3).withOpacity(0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isUpdating) ...[
-                            const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF1CE4B3)),
-                              ),
-                            ),
-                          ] else ...[
-                            Text(
-                              status.emoji,
-                              style: const TextStyle(fontSize: 32),
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          Text(
-                            status.description,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isSelected
-                                  ? const Color(0xFF1CE4B3)
-                                  : Colors.grey[300],
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
+            Flexible(
+              child: Scrollbar(
+                controller: _scrollController, // Controller explícito
+                thumbVisibility: true,
+                thickness: 6, // Más grueso para mejor visibilidad
+                radius: const Radius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 16.0),
+                  child: GridView.builder(
+                    controller: _scrollController, // Mismo controller
+                    shrinkWrap: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.0,
                     ),
-                  );
-                },
+                    itemCount: _availableStatuses!.length,
+                    itemBuilder: (context, index) {
+                      final status = _availableStatuses![index];
+                      final isSelected = _currentStatus == status;
+                      final isUpdating = _isUpdating && isSelected;
+
+                      return GestureDetector(
+                        onTap: () => _updateStatus(status),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF1CE4B3).withOpacity(0.15) : const Color(0xFF2C2C2C),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF1CE4B3) : Colors.grey[700]!,
+                              width: isSelected ? 2 : 1,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(0xFF1CE4B3).withOpacity(0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (isUpdating) ...[
+                                const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1CE4B3)),
+                                  ),
+                                ),
+                              ] else ...[
+                                Text(
+                                  status.emoji,
+                                  style: const TextStyle(fontSize: 32),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Text(
+                                status.description,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: isSelected ? const Color(0xFF1CE4B3) : Colors.grey[300],
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
 

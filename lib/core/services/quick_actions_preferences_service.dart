@@ -1,4 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/models/user_status.dart';
 import 'emoji_service.dart';
 import 'dart:convert';
@@ -29,13 +31,22 @@ class QuickActionsPreferencesService {
         final List<dynamic> savedList = json.decode(savedData);
         final List<StatusType> quickActions = [];
 
-        // Obtener emojis predefinidos de Firebase
-        final predefinedEmojis = await EmojiService.getPredefinedEmojis();
+        // Obtener circleId del usuario actual
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) throw Exception('Usuario no autenticado');
+
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+        final circleId = userDoc.data()?['circleId'] as String?;
+        if (circleId == null) throw Exception('Usuario sin círculo');
+
+        // Obtener todos los emojis (predefinidos + personalizados)
+        final allEmojis = await EmojiService.getAllEmojisForCircle(circleId);
 
         // Convertir IDs guardados a StatusType
         for (String statusId in savedList) {
           try {
-            final statusType = predefinedEmojis.firstWhere(
+            final statusType = allEmojis.firstWhere(
               (s) => s.id == statusId,
             );
             quickActions.add(statusType);
@@ -89,8 +100,7 @@ class QuickActionsPreferencesService {
 
   /// Guarda la configuración de Quick Actions del usuario
   /// Debe recibir exactamente 4 StatusTypes
-  static Future<bool> saveUserQuickActions(
-      List<StatusType> quickActions) async {
+  static Future<bool> saveUserQuickActions(List<StatusType> quickActions) async {
     try {
       if (quickActions.length != 4) {
         log('[QuickActionsPrefs] ❌ Error: Debe haber exactamente 4 Quick Actions');
@@ -100,8 +110,7 @@ class QuickActionsPreferencesService {
       final prefs = await SharedPreferences.getInstance();
 
       // Convertir StatusTypes a IDs para guardar
-      final List<String> statusIds =
-          quickActions.map((status) => status.id).toList();
+      final List<String> statusIds = quickActions.map((status) => status.id).toList();
 
       final savedData = json.encode(statusIds);
       final success = await prefs.setString(_prefsKey, savedData);
@@ -131,12 +140,22 @@ class QuickActionsPreferencesService {
   }
 
   /// Obtiene todos los StatusTypes disponibles para Quick Actions
-  /// Retorna los 16 emojis predefinidos de Firebase
+  /// Retorna predefinidos + personalizados del círculo del usuario
   static Future<List<StatusType>> getAvailableStatusTypes() async {
     try {
-      final predefinedEmojis = await EmojiService.getPredefinedEmojis();
-      log('[QuickActionsPrefs] ✅ ${predefinedEmojis.length} emojis disponibles para Quick Actions');
-      return predefinedEmojis;
+      // Obtener circleId del usuario actual
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Usuario no autenticado');
+
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+      final circleId = userDoc.data()?['circleId'] as String?;
+      if (circleId == null) throw Exception('Usuario sin círculo');
+
+      // Obtener todos los emojis (predefinidos + personalizados)
+      final allEmojis = await EmojiService.getAllEmojisForCircle(circleId);
+      log('[QuickActionsPrefs] ✅ ${allEmojis.length} emojis disponibles para Quick Actions (predefinidos + personalizados)');
+      return allEmojis;
     } catch (e) {
       log('[QuickActionsPrefs] ❌ Error cargando emojis: $e');
       return StatusType.fallbackPredefined;

@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:zync_app/firebase_options.dart';
 import 'package:zync_app/features/auth/presentation/pages/auth_wrapper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:zync_app/core/models/user_status.dart';
 // import 'package:zync_app/core/di/injection_container.dart' as di; // 🔥 SIMPLIFICADO: Ya no se usa para Auth
 import 'package:zync_app/core/cache/persistent_cache.dart'; // CACHE PERSISTENTE
 import 'package:zync_app/core/utils/performance_tracker.dart'; // PERFORMANCE TRACKING
@@ -72,8 +74,7 @@ void main() async {
   }
 
   // 👆 Handler para recibir actualizaciones de estado desde EmojiDialogActivity nativo
-  const statusUpdateChannel =
-      MethodChannel('com.datainfers.zync/status_update');
+  const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
   statusUpdateChannel.setMethodCallHandler((call) async {
     if (call.method == 'updateStatus') {
       final statusTypeName = call.arguments['statusType'] as String?;
@@ -96,8 +97,7 @@ void main() async {
       final timestamp = pendingStatus['timestamp'] as int?;
 
       if (statusTypeName != null && timestamp != null) {
-        print(
-            '💾 [HYBRID] Estado pendiente encontrado: $statusTypeName (timestamp: $timestamp)');
+        print('💾 [HYBRID] Estado pendiente encontrado: $statusTypeName (timestamp: $timestamp)');
         await _updateStatusFromNative(statusTypeName);
 
         // Limpiar cache después de actualizar
@@ -125,23 +125,40 @@ void main() async {
 /// Helper para actualizar estado desde nativo (reutilizable)
 Future<void> _updateStatusFromNative(String statusTypeName) async {
   try {
-    // Convertir string ID a StatusType desde Firebase
-    final predefinedEmojis = await EmojiService.getPredefinedEmojis();
-    final statusType = predefinedEmojis.firstWhere(
+    // Obtener circleId del usuario para cargar emojis personalizados
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('⚠️ [NATIVE→FLUTTER] Usuario no autenticado');
+      return;
+    }
+
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+    final circleId = userDoc.data()?['circleId'] as String?;
+
+    // Cargar TODOS los emojis (predefinidos + personalizados)
+    List<StatusType> allEmojis;
+    if (circleId != null) {
+      allEmojis = await EmojiService.getAllEmojisForCircle(circleId);
+      print('📦 [NATIVE→FLUTTER] Cargados ${allEmojis.length} emojis (predefinidos + personalizados)');
+    } else {
+      allEmojis = await EmojiService.getPredefinedEmojis();
+      print('⚠️ [NATIVE→FLUTTER] Usuario sin círculo, solo predefinidos');
+    }
+
+    // Buscar el estado por ID
+    final statusType = allEmojis.firstWhere(
       (e) => e.id == statusTypeName,
-      orElse: () =>
-          predefinedEmojis.first, // Default al primero si no encuentra
+      orElse: () => allEmojis.first, // Default al primero si no encuentra
     );
 
     // Actualizar en Firebase usando StatusService
     final result = await StatusService.updateUserStatus(statusType);
 
     if (result.isSuccess) {
-      print(
-          '✅ [NATIVE→FLUTTER] Estado actualizado en Firebase: ${statusType.description}');
+      print('✅ [NATIVE→FLUTTER] Estado actualizado en Firebase: ${statusType.description}');
     } else {
-      print(
-          '❌ [NATIVE→FLUTTER] Error actualizando estado: ${result.errorMessage}');
+      print('❌ [NATIVE→FLUTTER] Error actualizando estado: ${result.errorMessage}');
     }
   } catch (e) {
     print('❌ [NATIVE→FLUTTER] Error procesando estado: $e');
@@ -185,8 +202,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     if (state == AppLifecycleState.paused) {
       // 📱 App minimizada - Guardar en múltiples capas
-      print(
-          '📱 [App] Went to background - Guardando en NativeState + SessionCache...');
+      print('📱 [App] Went to background - Guardando en NativeState + SessionCache...');
       PerformanceTracker.onAppPaused();
 
       final user = FirebaseAuth.instance.currentUser;
@@ -244,8 +260,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // Solo verificar si hay un usuario autenticado
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      print(
-          '[App Resume] No hay usuario autenticado - skip verificación permisos');
+      print('[App Resume] No hay usuario autenticado - skip verificación permisos');
       return;
     }
 
@@ -258,8 +273,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       final userCircle = await circleService.getUserCircle();
 
       if (userCircle == null) {
-        print(
-            '[App Resume] ⚠️ Usuario NO pertenece a círculo - NO mostrar notificaciones');
+        print('[App Resume] ⚠️ Usuario NO pertenece a círculo - NO mostrar notificaciones');
         return;
       }
 
@@ -268,13 +282,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       final hasPermission = await NotificationService.hasPermission();
 
       if (hasPermission) {
-        print(
-            '[App Resume] ✅ Permisos CONCEDIDOS - Activando notificación persistente...');
+        print('[App Resume] ✅ Permisos CONCEDIDOS - Activando notificación persistente...');
         await NotificationService.showQuickActionNotification();
         print('[App Resume] ✅ Notificación persistente activada');
       } else {
-        print(
-            '[App Resume] ⚠️ Permisos DENEGADOS - notificación no disponible');
+        print('[App Resume] ⚠️ Permisos DENEGADOS - notificación no disponible');
       }
     } catch (e) {
       print('[App Resume] ❌ Error verificando permisos: $e');
@@ -296,8 +308,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Zync App',
       theme: baseTheme,
-      navigatorKey:
-          navigatorKey, // Point 21 FASE 5: Para acceso desde StatusModalService
+      navigatorKey: navigatorKey, // Point 21 FASE 5: Para acceso desde StatusModalService
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       // CACHE-FIRST: Eliminar splash screen, mostrar AuthWrapper directamente
       // El cache hará que la UI aparezca instantáneamente
