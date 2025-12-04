@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fondo negro -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#000000"/>
+        </shape>
+    </item>
+    
+    <!-- Logo centrado (más arriba para dejar espacio al texto) -->
+    <item
+        android:width="180dp"
+        android:height="180dp"
+        android:gravity="center"
+        android:top="-80dp">
+        <vector
+            android:width="180dp"
+            android:height="180dp"
+            android:viewportWidth="200"
+            android:viewportHeight="200">
+            
+            <!-- Nodo central -->
+            <path
+                android:fillColor="#1CE8A1"
+                android:pathData="M100,100m-18,0a18,18 0,1,1 36,0a18,18 0,1,1 -36,0"/>
+            
+            <!-- Brazos (5 líneas desde el centro) -->
+            <!-- Brazo superior -->
+            <path
+                android:strokeColor="#1CE8A1"
+                android:strokeWidth="5"
+                android:strokeLineCap="round"
+                android:pathData="M100,100 L100,30"/>
+            
+            <!-- Brazo superior derecho -->
+            <path
+                android:strokeColor="#1CE8A1"
+                android:strokeWidth="5"
+                android:strokeLineCap="round"
+                android:pathData="M100,100 L166.5,78.5"/>
+            
+            <!-- Brazo inferior derecho -->
+            <path
+                android:strokeColor="#1CE8A1"
+                android:strokeWidth="5"
+                android:strokeLineCap="round"
+                android:pathData="M100,100 L143.5,156.5"/>
+            
+            <!-- Brazo inferior izquierdo -->
+            <path
+                android:strokeColor="#1CE8A1"
+                android:strokeWidth="5"
+                android:strokeLineCap="round"
+                android:pathData="M100,100 L56.5,156.5"/>
+            
+            <!-- Brazo superior izquierdo -->
+            <path
+                android:strokeColor="#1CE8A1"
+                android:strokeWidth="5"
+                android:strokeLineCap="round"
+                android:pathData="M100,100 L33.5,78.5"/>
+            
+            <!-- Nodos externos (5 círculos) -->
+            <!-- Nodo superior -->
+            <path
+                android:fillColor="#1CE8A1"
+                android:pathData="M100,30m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
+            
+            <!-- Nodo superior derecho -->
+            <path
+                android:fillColor="#1CE8A1"
+                android:pathData="M166.5,78.5m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
+            
+            <!-- Nodo inferior derecho -->
+            <path
+                android:fillColor="#1CE8A1"
+                android:pathData="M143.5,156.5m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
+            
+            <!-- Nodo inferior izquierdo -->
+            <path
+                android:fillColor="#1CE8A1"
+                android:pathData="M56.5,156.5m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
+            
+            <!-- Nodo superior izquierdo -->
+            <path
+                android:fillColor="#1CE8A1"
+                android:pathData="M33.5,78.5m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
+        </vector>
+    </item>
+</layer-list>

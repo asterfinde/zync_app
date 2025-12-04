@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fondo negro -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#000000"/>
+        </shape>
+    </item>
+
+    <!-- Logo Zync centrado -->
+    <item android:gravity="center">
+        <vector
+            android:width="120dp"
+            android:height="120dp"
+            android:viewportWidth="100"
+            android:viewportHeight="100">
+
+            <!-- 
+                GRUPO 1: Brazos conectores (Lineas)
+                Grosor: 5 unidades (5% del viewport 100)
+            -->
+            <path
+                android:name="zync_arms"
+                android:strokeWidth="5"
+                android:strokeColor="#1CE8A1"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:pathData="
+                    M 50.00,50.00 L 50.00,15.00
+                    M 50.00,50.00 L 83.29,39.18
+                    M 50.00,50.00 L 69.17,81.16
+                    M 50.00,50.00 L 30.83,81.16
+                    M 50.00,50.00 L 16.71,39.18
+                "/>
+
+            <!-- 
+                GRUPO 2: Nodos (Círculos Rellenos)
+                Incluye el nodo central y los 5 nodos externos.
+            -->
+            <path
+                android:name="zync_nodes"
+                android:fillColor="#1CE8A1"
+                android:pathData="
+                    M 50.00,34.70
+                    a 15.30,15.30 0 1,0 0,30.60
+                    a 15.30,15.30 0 1,0 0,-30.60
+                    z
+
+                    M 50.00,6.50
+                    a 8.50,8.50 0 1,0 0,17.00
+                    a 8.50,8.50 0 1,0 0,-17.00
+                    z
+
+                    M 83.29,30.68
+                    a 8.50,8.50 0 1,0 0,17.00
+                    a 8.50,8.50 0 1,0 0,-17.00
+                    z
+
+                    M 69.17,72.66
+                    a 8.50,8.50 0 1,0 0,17.00
+                    a 8.50,8.50 0 1,0 0,-17.00
+                    z
+
+                    M 30.83,72.66
+                    a 8.50,8.50 0 1,0 0,17.00
+                    a 8.50,8.50 0 1,0 0,-17.00
+                    z
+
+                    M 16.71,30.68
+                    a 8.50,8.50 0 1,0 0,17.00
+                    a 8.50,8.50 0 1,0 0,-17.00
+                    z
+                "/>
+        </vector>
+    </item>
+</layer-list>

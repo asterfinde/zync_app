@@ -7,11 +7,7 @@ class OptimizedSplashScreen extends StatefulWidget {
   final Future<void> Function() onInitialize;
   final Widget child;
 
-  const OptimizedSplashScreen({
-    super.key,
-    required this.onInitialize,
-    required this.child,
-  });
+  const OptimizedSplashScreen({super.key, required this.onInitialize, required this.child});
 
   @override
   State<OptimizedSplashScreen> createState() => _OptimizedSplashScreenState();
@@ -31,23 +27,19 @@ class _OptimizedSplashScreenState extends State<OptimizedSplashScreen> with Tick
     super.initState();
 
     // Configurar animaciones
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    );
+    _entranceController = AnimationController(vsync: this, duration: const Duration(seconds: 1));
 
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _entranceController, curve: Curves.easeIn),
-    );
+    _opacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeIn));
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
+    _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2));
 
-    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.95,
+      end: 1.05,
+    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
     _entranceController.forward();
     _pulseController.repeat(reverse: true);
@@ -64,8 +56,8 @@ class _OptimizedSplashScreenState extends State<OptimizedSplashScreen> with Tick
 
   Future<void> _initialize() async {
     try {
-      // Mostrar splash animado por 3 segundos para apreciar las animaciones (breathing effect)
-      final splashDuration = Future.delayed(const Duration(seconds: 3));
+      // Mostrar splash animado por 2 segundos para apreciar las animaciones (breathing effect)
+      final splashDuration = Future.delayed(const Duration(seconds: 2));
 
       // Ejecutar inicialización en background (si hay algo que hacer)
       final initFuture = widget.onInitialize();
@@ -122,9 +114,7 @@ class _OptimizedSplashScreenState extends State<OptimizedSplashScreen> with Tick
                       SizedBox(
                         width: 150,
                         height: 150,
-                        child: CustomPaint(
-                          painter: ZyncLogoPainter(color: zyncBrandColor),
-                        ),
+                        child: CustomPaint(painter: ZyncLogoPainter(color: zyncBrandColor)),
                       ),
                       const SizedBox(height: 20),
                       const Text(
@@ -147,17 +137,11 @@ class _OptimizedSplashScreenState extends State<OptimizedSplashScreen> with Tick
                 child: Text.rich(
                   TextSpan(
                     text: "powered by dat",
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 14),
                     children: [
                       TextSpan(
                         text: "AI",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          color: Colors.grey[300],
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w900, color: Colors.grey[300]),
                       ),
                       const TextSpan(text: "nfers"),
                     ],

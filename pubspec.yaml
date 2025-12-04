@@ -84,12 +84,10 @@ flutter:
   uses-material-design: true
 
 # Configuración del splash screen nativo
-flutter_native_splash:
-  color: "#000000"  # Solo fondo negro (sin imagen para evitar distorsión)
-  android: true
-  ios: true
-  web: false
-  
-  # Android 12+ (sin imagen, solo color de fondo)
-  android_12:
-    color: "#000000"
+# DESACTIVADO: Usando drawable vectorial personalizado en launch_background.xml
+# para evitar distorsión en diferentes tamaños de pantalla
+# flutter_native_splash:
+#   color: "#000000"
+#   android: true
+#   ios: true
+#   web: false
