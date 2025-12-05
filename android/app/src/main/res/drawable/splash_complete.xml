@@ -1,20 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Fondo negro -->
+    <!-- Capa 1: Fondo de color negro -->
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#000000"/>
+            <solid android:color="#000000" />
         </shape>
     </item>
 
-    <!-- Logo Zync centrado -->
+    <!-- Capa 2: El logo vectorial -->
+    <!-- 
+         gravity="center" asegura que el logo esté perfectamente centrado
+         en la pantalla sin riesgo de que se recorte.
+    -->
     <item android:gravity="center">
+        <!-- 
+             Se ha reducido el tamaño un 10% respecto a la versión anterior.
+             width y height ahora son 90dp.
+        -->
         <vector
-            android:width="120dp"
-            android:height="120dp"
+            android:width="90dp"
+            android:height="90dp"
             android:viewportWidth="100"
             android:viewportHeight="100">
-
+            
             <!-- 
                 GRUPO 1: Brazos conectores (Lineas)
                 Grosor: 5 unidades (5% del viewport 100)

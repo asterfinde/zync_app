@@ -24,7 +24,7 @@ class EmojiCacheService {
 
       try {
         // Obtener circleId del usuario actual
-        final user = await FirebaseAuth.instance.currentUser;
+        final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 

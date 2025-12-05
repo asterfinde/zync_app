@@ -42,7 +42,7 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
   Future<void> _loadAvailableStatuses() async {
     try {
       // Obtener circleId del usuario actual
-      final user = await FirebaseAuth.instance.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Usuario no autenticado');
 
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();

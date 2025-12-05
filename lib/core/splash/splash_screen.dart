@@ -7,7 +7,11 @@ class OptimizedSplashScreen extends StatefulWidget {
   final Future<void> Function() onInitialize;
   final Widget child;
 
-  const OptimizedSplashScreen({super.key, required this.onInitialize, required this.child});
+  const OptimizedSplashScreen({
+    super.key,
+    required this.onInitialize,
+    required this.child,
+  });
 
   @override
   State<OptimizedSplashScreen> createState() => _OptimizedSplashScreenState();
@@ -56,8 +60,8 @@ class _OptimizedSplashScreenState extends State<OptimizedSplashScreen> with Tick
 
   Future<void> _initialize() async {
     try {
-      // Mostrar splash animado por 2 segundos para apreciar las animaciones (breathing effect)
-      final splashDuration = Future.delayed(const Duration(seconds: 2));
+      // Mostrar splash animado por 4 segundos (breathing effect)
+      final splashDuration = Future.delayed(const Duration(seconds: 4));
 
       // Ejecutar inicialización en background (si hay algo que hacer)
       final initFuture = widget.onInitialize();
@@ -93,7 +97,7 @@ class _OptimizedSplashScreenState extends State<OptimizedSplashScreen> with Tick
 
     const zyncBrandColor = Color(0xFF1CE8A1);
 
-    // Muestra el splash animado mientras inicializa
+    // Muestra el splash animado con breathing effect (2 segundos)
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(

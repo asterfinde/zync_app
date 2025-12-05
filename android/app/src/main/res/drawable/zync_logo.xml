@@ -1,90 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Fondo negro -->
+    
+    <!-- CAPA 1: Fondo Negro -->
     <item>
         <shape android:shape="rectangle">
             <solid android:color="#000000"/>
         </shape>
     </item>
-    
-    <!-- Logo centrado (más arriba para dejar espacio al texto) -->
+
+    <!-- CAPA 2: Logo Zync 
+         - android:bottom="80dp": Esto reduce el espacio útil por abajo, 
+           lo que causa que el 'center' se desplace visualmente hacia arriba (aprox 40dp).
+           Esto replica la posición exacta de la imagen original donde había texto debajo.
+    -->
     <item
-        android:width="180dp"
-        android:height="180dp"
         android:gravity="center"
-        android:top="-80dp">
+        android:bottom="80dp">
+        
         <vector
-            android:width="180dp"
-            android:height="180dp"
-            android:viewportWidth="200"
-            android:viewportHeight="200">
-            
-            <!-- Nodo central -->
+            android:width="130dp"
+            android:height="130dp"
+            android:viewportWidth="100"
+            android:viewportHeight="100">
+
+            <!-- Brazos -->
             <path
-                android:fillColor="#1CE8A1"
-                android:pathData="M100,100m-18,0a18,18 0,1,1 36,0a18,18 0,1,1 -36,0"/>
-            
-            <!-- Brazos (5 líneas desde el centro) -->
-            <!-- Brazo superior -->
-            <path
-                android:strokeColor="#1CE8A1"
                 android:strokeWidth="5"
-                android:strokeLineCap="round"
-                android:pathData="M100,100 L100,30"/>
-            
-            <!-- Brazo superior derecho -->
-            <path
                 android:strokeColor="#1CE8A1"
-                android:strokeWidth="5"
                 android:strokeLineCap="round"
-                android:pathData="M100,100 L166.5,78.5"/>
-            
-            <!-- Brazo inferior derecho -->
-            <path
-                android:strokeColor="#1CE8A1"
-                android:strokeWidth="5"
-                android:strokeLineCap="round"
-                android:pathData="M100,100 L143.5,156.5"/>
-            
-            <!-- Brazo inferior izquierdo -->
-            <path
-                android:strokeColor="#1CE8A1"
-                android:strokeWidth="5"
-                android:strokeLineCap="round"
-                android:pathData="M100,100 L56.5,156.5"/>
-            
-            <!-- Brazo superior izquierdo -->
-            <path
-                android:strokeColor="#1CE8A1"
-                android:strokeWidth="5"
-                android:strokeLineCap="round"
-                android:pathData="M100,100 L33.5,78.5"/>
-            
-            <!-- Nodos externos (5 círculos) -->
-            <!-- Nodo superior -->
+                android:strokeLineJoin="round"
+                android:pathData="
+                    M 50.00,50.00 L 50.00,15.00
+                    M 50.00,50.00 L 83.29,39.18
+                    M 50.00,50.00 L 69.17,81.16
+                    M 50.00,50.00 L 30.83,81.16
+                    M 50.00,50.00 L 16.71,39.18"/>
+
+            <!-- Nodos -->
             <path
                 android:fillColor="#1CE8A1"
-                android:pathData="M100,30m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
-            
-            <!-- Nodo superior derecho -->
-            <path
-                android:fillColor="#1CE8A1"
-                android:pathData="M166.5,78.5m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
-            
-            <!-- Nodo inferior derecho -->
-            <path
-                android:fillColor="#1CE8A1"
-                android:pathData="M143.5,156.5m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
-            
-            <!-- Nodo inferior izquierdo -->
-            <path
-                android:fillColor="#1CE8A1"
-                android:pathData="M56.5,156.5m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
-            
-            <!-- Nodo superior izquierdo -->
-            <path
-                android:fillColor="#1CE8A1"
-                android:pathData="M33.5,78.5m-10,0a10,10 0,1,1 20,0a10,10 0,1,1 -20,0"/>
+                android:pathData="
+                    M 50.00,34.70 a 15.30,15.30 0 1,0 0,30.60 a 15.30,15.30 0 1,0 0,-30.60 z
+                    M 50.00,6.50 a 8.50,8.50 0 1,0 0,17.00 a 8.50,8.50 0 1,0 0,-17.00 z
+                    M 83.29,30.68 a 8.50,8.50 0 1,0 0,17.00 a 8.50,8.50 0 1,0 0,-17.00 z
+                    M 69.17,72.66 a 8.50,8.50 0 1,0 0,17.00 a 8.50,8.50 0 1,0 0,-17.00 z
+                    M 30.83,72.66 a 8.50,8.50 0 1,0 0,17.00 a 8.50,8.50 0 1,0 0,-17.00 z
+                    M 16.71,30.68 a 8.50,8.50 0 1,0 0,17.00 a 8.50,8.50 0 1,0 0,-17.00 z"/>
         </vector>
     </item>
+
 </layer-list>
