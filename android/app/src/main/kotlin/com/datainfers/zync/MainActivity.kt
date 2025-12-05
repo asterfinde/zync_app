@@ -9,11 +9,14 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -78,6 +81,19 @@ class MainActivity: FlutterActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 🎨 SPLASH: Instalar y controlar el splash screen nativo (2 segundos)
+        var keepSplashOnScreen = true
+        val splashScreen = installSplashScreen()
+        
+        // Mantener el splash visible por exactamente 2 segundos
+        splashScreen.setKeepOnScreenCondition { keepSplashOnScreen }
+        
+        // Programar que se oculte después de 2 segundos
+        Handler(Looper.getMainLooper()).postDelayed({
+            keepSplashOnScreen = false
+            Log.d(TAG, "🎨 [SPLASH] Splash nativo completado (2s)")
+        }, 2000)
+        
         super.onCreate(savedInstanceState)
         
         // Registrar BroadcastReceiver para actualizar estado sin abrir app

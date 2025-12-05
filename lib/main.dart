@@ -22,7 +22,7 @@ import 'package:zync_app/core/services/emoji_service.dart'; // Para cargar emoji
 import 'package:zync_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
 // StatusType class
 import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
-// Para silent launch detection
+import 'package:zync_app/core/splash/splash_screen.dart'; // Splash screen con breathing effect
 
 import 'core/global_keys.dart';
 
@@ -33,92 +33,15 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 📊 PERFORMANCE: Medir inicialización
-  PerformanceTracker.start('Firebase Init');
-
-  // 🚀 CRITICAL PATH: Firebase + SessionCache ANTES de runApp()
-  // Esto garantiza que el cache esté listo SIEMPRE
+  // 🚀 SOLO Firebase Init (rápido para que splash nativo sea breve)
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
-  PerformanceTracker.end('Firebase Init');
   print('✅ [main] Firebase inicializado.');
 
-  // 🎯 CRÍTICO: SessionCache ANTES de runApp() (patrón WhatsApp/Telegram)
-  // NOTA: NativeState (Kotlin) se inicializa automáticamente en MainActivity.onCreate()
-  // SessionCache aquí es fallback para compatibilidad
-  PerformanceTracker.start('SessionCache Init');
-  await SessionCacheService.init();
-  PerformanceTracker.end('SessionCache Init');
-  print('✅ [main] SessionCache inicializado (bloqueante).');
-
-  // Point 2: Inicializar servicios de notificación ANTES de runApp()
-  await SilentFunctionalityCoordinator.initializeServices();
-  print('✅ [main] SilentFunctionalityCoordinator inicializado.');
-
-  // 🔄 Sincronizar emojis de Firebase a cache nativo (para EmojiDialogActivity)
-  await EmojiCacheService.syncEmojisToNativeCache();
-  print('✅ [main] Emojis sincronizados a cache nativo.');
-
-  // 🔍 Verificar si hay estado nativo disponible (solo Android)
-  try {
-    final nativeUserId = await NativeStateBridge.getUserId();
-    if (nativeUserId != null && nativeUserId.isNotEmpty) {
-      print('🚀 [main] Estado nativo encontrado: $nativeUserId');
-    }
-  } catch (e) {
-    // Esperado en iOS o si falla la lectura
-    print('ℹ️ [main] NativeState no disponible (Android only): $e');
-  }
-
-  // 👆 Handler para recibir actualizaciones de estado desde EmojiDialogActivity nativo
-  const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
-  statusUpdateChannel.setMethodCallHandler((call) async {
-    if (call.method == 'updateStatus') {
-      final statusTypeName = call.arguments['statusType'] as String?;
-      print('👆 [NATIVE→FLUTTER] Recibido estado: $statusTypeName');
-
-      if (statusTypeName != null) {
-        await _updateStatusFromNative(statusTypeName);
-      }
-    }
-  });
-  print('✅ [main] Handler de estado nativo configurado.');
-
-  // 💾 [HYBRID] Verificar si hay estado pendiente del cache (app estaba cerrada)
-  try {
-    const platform = MethodChannel('com.datainfers.zync/pending_status');
-    final pendingStatus = await platform.invokeMethod('getPendingStatus');
-
-    if (pendingStatus != null && pendingStatus is Map) {
-      final statusTypeName = pendingStatus['statusType'] as String?;
-      final timestamp = pendingStatus['timestamp'] as int?;
-
-      if (statusTypeName != null && timestamp != null) {
-        print('💾 [HYBRID] Estado pendiente encontrado: $statusTypeName (timestamp: $timestamp)');
-        await _updateStatusFromNative(statusTypeName);
-
-        // Limpiar cache después de actualizar
-        await platform.invokeMethod('clearPendingStatus');
-        print('✅ [HYBRID] Estado pendiente procesado y limpiado');
-      }
-    }
-  } catch (e) {
-    print('ℹ️ [HYBRID] No hay estado pendiente o error leyendo cache: $e');
-  }
-
-  // 🔥 SIMPLIFICADO: GetIt ya NO es necesario para Auth
-  // AuthProvider ahora usa AuthService vía Riverpod
-  // TODO: Eliminar GetIt completamente después de migrar Circle y otros features
-  // PerformanceTracker.start('DI Init');
-  // await di.init();
-  // PerformanceTracker.end('DI Init');
-  // print('✅ [main] GetIt (DI) inicializado antes de runApp.');
-  print('✅ [main] Auth usa AuthService (sin GetIt).');
-
-  // 🎯 RENDERIZAR UI (con cache ya disponible)
+  // 🎯 RENDERIZAR INMEDIATAMENTE - resto se inicializa en OptimizedSplashScreen
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -310,9 +233,60 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       theme: baseTheme,
       navigatorKey: navigatorKey, // Point 21 FASE 5: Para acceso desde StatusModalService
       scaffoldMessengerKey: rootScaffoldMessengerKey,
-      // CACHE-FIRST: Eliminar splash screen, mostrar AuthWrapper directamente
-      // El cache hará que la UI aparezca instantáneamente
-      home: const AuthWrapper(),
+      // Splash con breathing effect (4s) después del splash nativo (breve)
+      home: OptimizedSplashScreen(
+        onInitialize: () async {
+          // 🎯 TODAS LAS INICIALIZACIONES AQUÍ (durante breathing effect)
+
+          // SessionCache
+          await SessionCacheService.init();
+          print('✅ [Splash] SessionCache inicializado.');
+
+          // Silent Functionality
+          await SilentFunctionalityCoordinator.initializeServices();
+          print('✅ [Splash] SilentFunctionalityCoordinator inicializado.');
+
+          // Sincronizar emojis a cache nativo
+          await EmojiCacheService.syncEmojisToNativeCache();
+          print('✅ [Splash] Emojis sincronizados a cache nativo.');
+
+          // Handler de estado nativo
+          const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
+          statusUpdateChannel.setMethodCallHandler((call) async {
+            if (call.method == 'updateStatus') {
+              final statusTypeName = call.arguments['statusType'] as String?;
+              print('👆 [NATIVE→FLUTTER] Recibido estado: $statusTypeName');
+              if (statusTypeName != null) {
+                await _updateStatusFromNative(statusTypeName);
+              }
+            }
+          });
+          print('✅ [Splash] Handler de estado nativo configurado.');
+
+          // Verificar estado pendiente del cache
+          try {
+            const platform = MethodChannel('com.datainfers.zync/pending_status');
+            final pendingStatus = await platform.invokeMethod('getPendingStatus');
+
+            if (pendingStatus != null && pendingStatus is Map) {
+              final statusTypeName = pendingStatus['statusType'] as String?;
+              final timestamp = pendingStatus['timestamp'] as int?;
+
+              if (statusTypeName != null && timestamp != null) {
+                print('💾 [HYBRID] Estado pendiente encontrado: $statusTypeName');
+                await _updateStatusFromNative(statusTypeName);
+                await platform.invokeMethod('clearPendingStatus');
+                print('✅ [HYBRID] Estado pendiente procesado');
+              }
+            }
+          } catch (e) {
+            print('ℹ️ [HYBRID] No hay estado pendiente: $e');
+          }
+
+          print('✅ [Splash] Inicialización completa');
+        },
+        child: const AuthWrapper(),
+      ),
     );
   }
 }
