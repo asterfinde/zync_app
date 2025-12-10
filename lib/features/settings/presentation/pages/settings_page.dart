@@ -10,6 +10,8 @@ import '../../../../core/widgets/quick_actions_config_widget.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
 import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout
 import 'emoji_management_page.dart'; // Gestión de estados/emojis
+import '../../../geofencing/presentation/pages/zones_page.dart'; // Gestión de zonas geográficas
+import '../../../../services/circle_service.dart'; // Para obtener Circle object
 
 // ===========================================================================
 // SECCIÓN DE DISEÑO: Colores y Estilos basados en la pantalla de referencia
@@ -88,7 +90,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     debugPrint('[SettingsPage] 🔧 Inicializando pantalla de configuración');
     _loadCurrentInfo();
 
@@ -502,6 +504,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
             Tab(text: 'Cuenta'),
             Tab(text: 'Círculo'),
             Tab(text: 'Estados'),
+            Tab(text: 'Zonas'),
           ],
         ),
       ),
@@ -511,6 +514,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
           _buildAccountTab(),
           _buildCircleTab(),
           _buildStatesTab(),
+          _buildZonesTab(),
         ],
       ),
     );
@@ -842,6 +846,80 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
 
     // Navegar directamente a la página de gestión de emojis SIN botón intermedio
     return EmojiManagementPage(circleId: _circleId!);
+  }
+
+  // Tab 4: Zonas geográficas
+  Widget _buildZonesTab() {
+    if (_circleId == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 64,
+                color: _AppColors.textSecondary.withOpacity(0.5),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Únete a un círculo para gestionar zonas',
+                style: TextStyle(
+                  color: _AppColors.textSecondary,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Cargar Circle desde Firestore y mostrar ZonesPage
+    return FutureBuilder<Circle?>(
+      future: FirebaseFirestore.instance.collection('circles').doc(_circleId).get().then((doc) {
+        if (!doc.exists) return null;
+        return Circle.fromFirestore(doc);
+      }),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: _AppColors.accent),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: _AppColors.sosRed.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Error al cargar el círculo',
+                    style: TextStyle(
+                      color: _AppColors.textSecondary,
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ZonesPage(circle: snapshot.data!);
+      },
+    );
   }
 }
 

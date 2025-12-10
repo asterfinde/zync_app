@@ -16,6 +16,7 @@ import '../../../../core/services/status_service.dart';
 import '../../../../core/services/emoji_service.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../../core/models/user_status.dart';
+import '../../../geofencing/services/geofencing_service.dart'; // Servicio de geofencing
 // CACHE-FIRST: Importar caches
 import '../../../../core/cache/in_memory_cache.dart';
 import '../../../../core/cache/persistent_cache.dart';
@@ -111,6 +112,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   // StreamSubscription para poder cancelarlo en dispose()
   StreamSubscription<DocumentSnapshot>? _circleListenerSubscription;
   StreamSubscription<QuerySnapshot>? _customEmojisListener;
+
+  // Servicio de geofencing
+  final GeofencingService _geofencingService = GeofencingService();
   // --- FIN DE LA MODIFICACIÓN ---
 
   @override
@@ -146,6 +150,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     // PASO 3: Refrescar datos en background (Firebase, sin await)
     _refreshDataInBackground();
+
+    // PASO 4: Iniciar monitoreo de geofencing
+    _startGeofencingMonitoring();
     // =============================================================
   }
 
@@ -158,6 +165,10 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     // Cancelar la suscripción al listener de Firestore para evitar memory leaks
     _circleListenerSubscription?.cancel();
     _customEmojisListener?.cancel();
+
+    // Detener monitoreo de geofencing
+    _stopGeofencingMonitoring();
+
     print("[InCircleView] Listeners cancelados.");
     super.dispose();
   }
@@ -179,6 +190,20 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       print('[InCircleView] 🔄 Emojis personalizados actualizados');
     }, onError: (error) {
       print('[InCircleView] ❌ Error en listener de emojis: $error');
+    });
+  }
+
+  /// Iniciar monitoreo de geofencing para el círculo actual
+  void _startGeofencingMonitoring() {
+    _geofencingService.startMonitoring(widget.circle.id).catchError((error) {
+      print('[InCircleView] ❌ Error iniciando geofencing: $error');
+    });
+  }
+
+  /// Detener monitoreo de geofencing
+  void _stopGeofencingMonitoring() {
+    _geofencingService.stopMonitoring().catchError((error) {
+      print('[InCircleView] ❌ Error deteniendo geofencing: $error');
     });
   }
 
@@ -382,13 +407,29 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   Map<String, dynamic> _parseMemberData(dynamic statusData) {
     if (statusData is! Map<String, dynamic>) {
       // Valor por defecto si la data está mal formada
-      return {'emoji': '❓', 'status': 'unknown', 'hasGPS': false, 'coordinates': null, 'lastUpdate': null};
+      return {
+        'emoji': '❓',
+        'status': 'unknown',
+        'hasGPS': false,
+        'coordinates': null,
+        'lastUpdate': null,
+        'autoUpdated': false
+      };
     }
 
     final statusType = statusData['statusType'] as String?;
+    final autoUpdated = statusData['autoUpdated'] as bool? ?? false;
+    final customEmoji = statusData['customEmoji'] as String?;
+    final zoneName = statusData['zoneName'] as String?;
+
     String emoji = '😊'; // Default emoji
 
-    if (statusType != null) {
+    // CASO 1: Si es actualización automática y tiene customEmoji (entrada a zona)
+    if (autoUpdated && customEmoji != null) {
+      emoji = customEmoji; // Usar emoji de la zona (🏠, 🏫, 💼, etc.)
+    }
+    // CASO 2: Estado manual o salida de zona (sin customEmoji)
+    else if (statusType != null) {
       try {
         final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
         final statusEnum = emojis.firstWhere(
@@ -432,13 +473,18 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       'coordinates': coordinates,
       'hasGPS': coordinates != null && statusType == 'sos', // GPS solo relevante para SOS
       'lastUpdate': lastUpdate,
+      'autoUpdated': autoUpdated, // 🆕 Flag para saber si es actualización automática
+      'zoneName': zoneName, // 🆕 Nombre de la zona (opcional)
     };
   }
 
   bool _hasChanged(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
     if (oldData == null) return true; // Siempre cambia si no había data previa
-    // Comparar campos relevantes
-    return oldData['status'] != newData['status'] ||
+    // Comparar campos relevantes (incluyendo emoji que cambia con customEmoji)
+    return oldData['emoji'] != newData['emoji'] || // 🆕 Detecta cambio de emoji de zona
+        oldData['status'] != newData['status'] ||
+        oldData['autoUpdated'] != newData['autoUpdated'] || // 🆕 Detecta cambio manual ↔ automático
+        oldData['zoneName'] != newData['zoneName'] || // 🆕 Detecta cambio de zona
         oldData['lastUpdate']?.millisecondsSinceEpoch != newData['lastUpdate']?.millisecondsSinceEpoch ||
         oldData['coordinates']?.toString() != newData['coordinates']?.toString(); // Comparación simple para coordenadas
   }
@@ -897,6 +943,8 @@ class _MemberListItem extends StatelessWidget {
     final hasGPS = memberData['hasGPS'] as bool? ?? false;
     final coordinates = memberData['coordinates'] as Map<String, dynamic>?;
     final lastUpdate = memberData['lastUpdate'] as DateTime?;
+    final autoUpdated = memberData['autoUpdated'] as bool? ?? false; // 🆕
+    // final zoneName = memberData['zoneName'] as String?; // 🆕 Disponible para uso futuro
     final isSOS = status == 'sos';
 
     return Material(
@@ -923,7 +971,10 @@ class _MemberListItem extends StatelessWidget {
                 children: [
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 150),
-                    child: Text(emoji, key: ValueKey(status), style: const TextStyle(fontSize: 32)),
+                    child: Text(emoji,
+                        key: ValueKey(emoji),
+                        style:
+                            const TextStyle(fontSize: 32)), // 🆕 Cambio: ValueKey(emoji) detecta cambios de customEmoji
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -956,10 +1007,22 @@ class _MemberListItem extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          _getStatusLabel(status), // Mostrará "Cargando..." si es necesario
-                          style: isSOS ? _AppTextStyles.sosStatus : _AppTextStyles.memberStatus,
-                        ),
+                        // CASO 1: Si es actualización automática, NO mostrar label (solo emoji + timestamp)
+                        // CASO 2: Si es estado manual, mostrar label del estado
+                        if (!autoUpdated)
+                          Text(
+                            _getStatusLabel(status), // Mostrará "Cargando..." si es necesario
+                            style: isSOS ? _AppTextStyles.sosStatus : _AppTextStyles.memberStatus,
+                          ),
+                        // Mostrar timestamp debajo del estado/nombre
+                        if (lastUpdate != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              _getTimeAgo(lastUpdate),
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ),
                         if (isFirst && status != 'loading') // No mostrar "Creador" si está cargando
                           Text(
                             'Creador',
@@ -972,11 +1035,6 @@ class _MemberListItem extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (lastUpdate != null)
-                    Text(
-                      _getTimeAgo(lastUpdate),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]), // Mantener gris o usar textSecondary
-                    ),
                 ],
               ),
               // Mostrar sección SOS solo si el status NO es 'loading'

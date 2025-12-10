@@ -100,6 +100,10 @@
             android:name="flutter_geolocator_foreground_service"
             android:value="false" />
 
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyC0cqR514ZQdfWTvstg_pdmUWWeQOSCbSQ"/>
+                
         <!-- Servicio foreground para ubicación -->
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
