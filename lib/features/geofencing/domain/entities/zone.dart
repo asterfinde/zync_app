@@ -15,6 +15,7 @@ class Zone {
   final String createdBy; // userId del creador
   final DateTime createdAt;
   final ZoneType type;
+  final bool isPredefined; // true para 4 zonas predefinidas (🏠🏫🎓💼), false para custom (📍)
 
   const Zone({
     required this.id,
@@ -25,7 +26,8 @@ class Zone {
     required this.circleId,
     required this.createdBy,
     required this.createdAt,
-    this.type = ZoneType.other,
+    this.type = ZoneType.custom,
+    this.isPredefined = false,
   });
 
   /// Factory desde Firestore DocumentSnapshot
@@ -41,7 +43,8 @@ class Zone {
       circleId: data['circleId'] as String,
       createdBy: data['createdBy'] as String,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
-      type: ZoneType.fromString(data['type'] as String? ?? 'other'),
+      type: ZoneType.fromString(data['type'] as String? ?? 'custom'),
+      isPredefined: data['isPredefined'] as bool? ?? false,
     );
   }
 
@@ -58,7 +61,8 @@ class Zone {
       createdAt: map['createdAt'] is Timestamp
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.parse(map['createdAt'] as String),
-      type: ZoneType.fromString(map['type'] as String? ?? 'other'),
+      type: ZoneType.fromString(map['type'] as String? ?? 'custom'),
+      isPredefined: map['isPredefined'] as bool? ?? false,
     );
   }
 
@@ -73,6 +77,7 @@ class Zone {
       'createdBy': createdBy,
       'createdAt': Timestamp.fromDate(createdAt),
       'type': type.value,
+      'isPredefined': isPredefined,
     };
   }
 
@@ -111,6 +116,7 @@ class Zone {
     String? createdBy,
     DateTime? createdAt,
     ZoneType? type,
+    bool? isPredefined,
   }) {
     return Zone(
       id: id ?? this.id,
@@ -122,12 +128,13 @@ class Zone {
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       type: type ?? this.type,
+      isPredefined: isPredefined ?? this.isPredefined,
     );
   }
 
   @override
   String toString() {
-    return 'Zone(id: $id, name: $name, lat: $latitude, lng: $longitude, radius: ${radiusMeters}m, type: ${type.value})';
+    return 'Zone(id: $id, name: $name, lat: $latitude, lng: $longitude, radius: ${radiusMeters}m, type: ${type.value}, isPredefined: $isPredefined)';
   }
 
   @override
@@ -142,7 +149,8 @@ class Zone {
         other.radiusMeters == radiusMeters &&
         other.circleId == circleId &&
         other.createdBy == createdBy &&
-        other.type == type;
+        other.type == type &&
+        other.isPredefined == isPredefined;
   }
 
   @override
@@ -156,16 +164,18 @@ class Zone {
       circleId,
       createdBy,
       type,
+      isPredefined,
     );
   }
 }
 
 /// Tipo de zona para determinar emoji y color
 enum ZoneType {
-  home('home', '🏠', 0xFF4CAF50), // Verde
-  school('school', '🏫', 0xFF2196F3), // Azul
-  work('work', '💼', 0xFFFF9800), // Naranja
-  other('other', '📍', 0xFF9E9E9E); // Gris
+  home('home', '🏠', 0xFF4CAF50), // Verde - Predefinida
+  school('school', '🏫', 0xFF2196F3), // Azul - Predefinida
+  university('university', '🎓', 0xFF9C27B0), // Morado - Predefinida
+  work('work', '💼', 0xFFFF9800), // Naranja - Predefinida
+  custom('custom', '📍', 0xFF9E9E9E); // Gris - Personalizada
 
   final String value;
   final String emoji;
@@ -179,10 +189,18 @@ enum ZoneType {
         return ZoneType.home;
       case 'school':
         return ZoneType.school;
+      case 'university':
+        return ZoneType.university;
       case 'work':
         return ZoneType.work;
+      case 'custom':
       default:
-        return ZoneType.other;
+        return ZoneType.custom;
     }
+  }
+
+  /// Verificar si es zona predefinida (4 tipos) o personalizada
+  bool get isPredefinedType {
+    return this == ZoneType.home || this == ZoneType.school || this == ZoneType.university || this == ZoneType.work;
   }
 }

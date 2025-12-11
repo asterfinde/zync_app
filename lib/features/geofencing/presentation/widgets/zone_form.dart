@@ -188,7 +188,7 @@ class _ZoneFormState extends State<ZoneForm> {
                       controller: _nameController,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Ej: Casa, Colegio, Trabajo',
+                        hintText: 'Ej: Casa de Abuela, Cine Plaza Norte',
                         hintStyle: TextStyle(color: Colors.grey.shade700),
                         filled: true,
                         fillColor: const Color(0xFF1C1C1E),
@@ -200,6 +200,9 @@ class _ZoneFormState extends State<ZoneForm> {
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Ingresa un nombre';
+                        }
+                        if (value.trim().length < 2) {
+                          return 'Mínimo 2 caracteres';
                         }
                         return null;
                       },
@@ -407,10 +410,12 @@ class _ZoneFormState extends State<ZoneForm> {
         return 'Casa';
       case ZoneType.school:
         return 'Colegio';
+      case ZoneType.university:
+        return 'Universidad';
       case ZoneType.work:
         return 'Trabajo';
-      case ZoneType.other:
-        return 'Otro';
+      case ZoneType.custom:
+        return 'Personalizada';
     }
   }
 
@@ -420,10 +425,12 @@ class _ZoneFormState extends State<ZoneForm> {
         return BitmapDescriptor.hueGreen;
       case ZoneType.school:
         return BitmapDescriptor.hueBlue;
+      case ZoneType.university:
+        return BitmapDescriptor.hueViolet;
       case ZoneType.work:
         return BitmapDescriptor.hueOrange;
-      case ZoneType.other:
-        return BitmapDescriptor.hueViolet;
+      case ZoneType.custom:
+        return BitmapDescriptor.hueRose;
     }
   }
 }

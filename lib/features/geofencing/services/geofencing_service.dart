@@ -222,49 +222,63 @@ class GeofencingService {
     if (user == null || _currentCircleId == null) return;
 
     try {
-      // Mapeo de tipo de zona a ID de estado predefinido
-      String statusId;
-      if (isEntry && zone != null) {
-        switch (zone.type) {
-          case ZoneType.home:
-            statusId = 'available'; // 🟢 Disponible (en casa)
-            break;
-          case ZoneType.school:
-            statusId = 'studying'; // 📚 Estudiando (en el colegio)
-            break;
-          case ZoneType.work:
-            statusId = 'busy'; // 🔴 Ocupado (en el trabajo)
-            break;
-          case ZoneType.other:
-            statusId = 'available'; // 🟢 Disponible (ubicación genérica)
-            break;
-        }
-      } else {
-        // Salida de zona → "En camino"
-        statusId = 'driving'; // 🚗 En camino
-      }
-
-      // Actualizar memberStatus en el círculo
       final Map<String, dynamic> statusData = {
-        'statusType': statusId,
         'timestamp': FieldValue.serverTimestamp(),
-        'autoUpdated': true,
       };
 
-      // Si es entrada a zona, guardar emoji y nombre de la zona
       if (isEntry && zone != null) {
-        statusData['customEmoji'] = zone.type.emoji; // 🏠, 🏫, 💼, 📍
-        statusData['zoneName'] = zone.name; // Nombre de la zona
+        // ENTRADA A ZONA
+        if (zone.isPredefined) {
+          // Zona predefinida: emoji específico (🏠🏫🎓💼)
+          statusData['customEmoji'] = zone.type.emoji;
+          statusData['statusType'] = _getStatusFromZoneType(zone.type);
+        } else {
+          // Zona personalizada: emoji genérico (📍)
+          statusData['customEmoji'] = '📍';
+          statusData['statusType'] = 'available';
+        }
+
+        statusData['zoneName'] = zone.name;
+        statusData['zoneId'] = zone.id;
+        statusData['autoUpdated'] = true;
+      } else {
+        // SALIDA DE ZONA
+        statusData['statusType'] = 'driving';
+        statusData['customEmoji'] = '🚗';
+        statusData['zoneName'] = 'En camino';
+        statusData['zoneId'] = null;
+        statusData['autoUpdated'] = true;
+
+        // Guardar última zona conocida
+        if (_currentZoneId != null) {
+          statusData['lastKnownZone'] = _currentZoneId;
+          statusData['lastKnownZoneTime'] = FieldValue.serverTimestamp();
+        }
       }
 
       await FirebaseFirestore.instance.collection('circles').doc(_currentCircleId).update({
         'memberStatus.${user.uid}': statusData,
       });
 
-      log('[Geofencing] ✅ Estado actualizado a: $statusId');
+      log('[Geofencing] ✅ Estado actualizado a: ${statusData['statusType']}');
     } catch (e) {
       log('[Geofencing] ❌ Error actualizando estado: $e');
       rethrow;
+    }
+  }
+
+  String _getStatusFromZoneType(ZoneType type) {
+    switch (type) {
+      case ZoneType.home:
+        return 'available'; // 🟢 Disponible
+      case ZoneType.school:
+        return 'studying'; // 📚 Estudiando
+      case ZoneType.university:
+        return 'studying'; // 📚 Estudiando
+      case ZoneType.work:
+        return 'busy'; // 🔴 Ocupado
+      default:
+        return 'available';
     }
   }
 }

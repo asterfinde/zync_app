@@ -413,7 +413,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         'hasGPS': false,
         'coordinates': null,
         'lastUpdate': null,
-        'autoUpdated': false
+        'autoUpdated': false,
+        'zoneName': null,
+        'displayText': null,
+        'showManualBadge': false,
+        'locationInfo': null,
       };
     }
 
@@ -421,12 +425,20 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     final autoUpdated = statusData['autoUpdated'] as bool? ?? false;
     final customEmoji = statusData['customEmoji'] as String?;
     final zoneName = statusData['zoneName'] as String?;
+    final lastKnownZone = statusData['lastKnownZone'] as String?;
+    final lastKnownZoneTime = statusData['lastKnownZoneTime'] as Timestamp?;
 
     String emoji = '😊'; // Default emoji
+    String? displayText;
+    bool showManualBadge = false;
+    String? locationInfo;
 
     // CASO 1: Si es actualización automática y tiene customEmoji (entrada a zona)
     if (autoUpdated && customEmoji != null) {
-      emoji = customEmoji; // Usar emoji de la zona (🏠, 🏫, 💼, etc.)
+      emoji = customEmoji; // Usar emoji de la zona (🏠, 🏫, 🎓, 💼, 📍, 🚗)
+      displayText = zoneName; // "En Jaus", "En Torre Real", "En camino"
+      showManualBadge = false; // Automático, sin badge
+      locationInfo = null;
     }
     // CASO 2: Estado manual o salida de zona (sin customEmoji)
     else if (statusType != null) {
@@ -454,9 +466,27 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           },
         );
         emoji = statusEnum.emoji;
+        displayText = statusEnum.label; // "Estudiando", "Cansado", etc.
       } catch (e) {
         print("❌ [InCircleView] Error parsing status enum: $e, using default emoji.");
         emoji = '😊'; // Mantener default si hay error
+        displayText = 'Todo bien';
+      }
+
+      // Estado manual: mostrar badge + ubicación
+      showManualBadge = true;
+
+      // Ubicación: Última zona conocida o desconocida
+      if (lastKnownZone != null && lastKnownZoneTime != null) {
+        final elapsed = DateTime.now().difference(lastKnownZoneTime.toDate());
+        if (elapsed.inMinutes < 30) {
+          // Última zona conocida (si salió hace menos de 30 min)
+          locationInfo = '📍 Última: $lastKnownZone (hace ${_formatDuration(elapsed)})';
+        } else {
+          locationInfo = '❓ Ubicación desconocida';
+        }
+      } else {
+        locationInfo = '❓ Ubicación desconocida';
       }
     }
 
@@ -475,7 +505,17 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       'lastUpdate': lastUpdate,
       'autoUpdated': autoUpdated, // 🆕 Flag para saber si es actualización automática
       'zoneName': zoneName, // 🆕 Nombre de la zona (opcional)
+      'displayText': displayText, // 🆕 Texto a mostrar (zona o estado)
+      'showManualBadge': showManualBadge, // 🆕 Mostrar badge ✋ Manual
+      'locationInfo': locationInfo, // 🆕 Info de ubicación desconocida/última zona
     };
+  }
+
+  String _formatDuration(Duration d) {
+    if (d.inMinutes < 1) return 'ahora';
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    return '${d.inDays}d';
   }
 
   bool _hasChanged(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
@@ -485,6 +525,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         oldData['status'] != newData['status'] ||
         oldData['autoUpdated'] != newData['autoUpdated'] || // 🆕 Detecta cambio manual ↔ automático
         oldData['zoneName'] != newData['zoneName'] || // 🆕 Detecta cambio de zona
+        oldData['displayText'] != newData['displayText'] || // 🆕 Detecta cambio de texto
+        oldData['showManualBadge'] != newData['showManualBadge'] || // 🆕 Detecta cambio de badge
+        oldData['locationInfo'] != newData['locationInfo'] || // 🆕 Detecta cambio de ubicación
         oldData['lastUpdate']?.millisecondsSinceEpoch != newData['lastUpdate']?.millisecondsSinceEpoch ||
         oldData['coordinates']?.toString() != newData['coordinates']?.toString(); // Comparación simple para coordenadas
   }
@@ -944,7 +987,9 @@ class _MemberListItem extends StatelessWidget {
     final coordinates = memberData['coordinates'] as Map<String, dynamic>?;
     final lastUpdate = memberData['lastUpdate'] as DateTime?;
     final autoUpdated = memberData['autoUpdated'] as bool? ?? false; // 🆕
-    // final zoneName = memberData['zoneName'] as String?; // 🆕 Disponible para uso futuro
+    final displayText = memberData['displayText'] as String?; // 🆕 Texto del estado o zona
+    final showManualBadge = memberData['showManualBadge'] as bool? ?? false; // 🆕
+    final locationInfo = memberData['locationInfo'] as String?; // 🆕
     final isSOS = status == 'sos';
 
     return Material(
@@ -1007,22 +1052,46 @@ class _MemberListItem extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        // CASO 1: Si es actualización automática, NO mostrar label (solo emoji + timestamp)
-                        // CASO 2: Si es estado manual, mostrar label del estado
-                        if (!autoUpdated)
+                        // Mostrar displayText si está disponible (nombre de zona o label de estado)
+                        if (displayText != null)
                           Text(
-                            _getStatusLabel(status), // Mostrará "Cargando..." si es necesario
+                            displayText,
                             style: isSOS ? _AppTextStyles.sosStatus : _AppTextStyles.memberStatus,
                           ),
-                        // Mostrar timestamp debajo del estado/nombre
+                        // Mostrar timestamp con formato según autoUpdated
                         if (lastUpdate != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
-                              _getTimeAgo(lastUpdate),
+                              autoUpdated
+                                  ? 'Desde ${_formatAbsoluteTime(lastUpdate)}' // "Desde 10:30 AM"
+                                  : 'Hace ${_getTimeAgo(lastUpdate)}', // "Hace 15 min"
                               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                             ),
                           ),
+                        // Badge ✋ Manual (solo para estados manuales)
+                        if (showManualBadge) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              '✋ Manual',
+                              style: TextStyle(fontSize: 11, color: Colors.orange),
+                            ),
+                          ),
+                        ],
+                        // Ubicación desconocida o última zona
+                        if (locationInfo != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            locationInfo,
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                        ],
                         if (isFirst && status != 'loading') // No mostrar "Creador" si está cargando
                           Text(
                             'Creador',
@@ -1064,60 +1133,22 @@ class _MemberListItem extends StatelessWidget {
     );
   }
 
-  // --- Método Helper _getStatusLabel ---
-  String _getStatusLabel(String s) {
-    if (s == 'loading') {
-      return 'Cargando...'; // Texto para el estado inicial
-    }
-
-    // NUEVO: Buscar en la lista de emojis cargados (predefinidos + personalizados)
-    if (predefinedEmojis != null) {
-      try {
-        final statusType = predefinedEmojis!.firstWhere(
-          (emoji) => emoji.id == s,
-          orElse: () => throw Exception('Status not found'),
-        );
-        return statusType.label; // Retornar el label del emoji
-      } catch (e) {
-        // Si no se encuentra, continuar con el fallback
-        print('[InCircleView] ⚠️ Status "$s" no encontrado en emojis cargados');
-      }
-    }
-
-    // FALLBACK: Mapeo hardcoded para compatibilidad (solo si no se cargaron emojis)
-    final labels = {
-      'fine': 'Todo bien',
-      'sos': '¡Necesito ayuda!',
-      'meeting': 'En reunión',
-      'ready': 'Listo',
-      'leave': 'De salida',
-      'happy': 'Feliz',
-      'sad': 'Triste',
-      'busy': 'Ocupado',
-      'sleepy': 'Con sueño',
-      'excited': 'Emocionado',
-      'thinking': 'Pensando',
-      'worried': 'Preocupado',
-      'available': 'Disponible',
-      'away': 'Ausente',
-      'focus': 'Concentrado',
-      'tired': 'Cansado',
-      'stressed': 'Estresado',
-      'traveling': 'Viajando',
-      'studying': 'Estudiando',
-      'eating': 'Comiendo',
-      'unknown': 'Desconocido',
-    };
-    return labels[s] ?? s.capitalize(); // Fallback: capitalizar el status si no está en el mapa
+  // --- Método Helper _formatAbsoluteTime ---
+  String _formatAbsoluteTime(DateTime dt) {
+    final hour = dt.hour;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    return '$displayHour:$minute $period';
   }
 
   // --- Método Helper _getTimeAgo ---
   String _getTimeAgo(DateTime dt) {
     final difference = DateTime.now().difference(dt);
     if (difference.inSeconds < 60) return 'Ahora'; // Más preciso
-    if (difference.inMinutes < 60) return 'Hace ${difference.inMinutes} min';
-    if (difference.inHours < 24) return 'Hace ${difference.inHours} h';
-    return 'Hace ${difference.inDays} d';
+    if (difference.inMinutes < 60) return '${difference.inMinutes} min';
+    if (difference.inHours < 24) return '${difference.inHours} h';
+    return '${difference.inDays} d';
   }
 } // Fin de _MemberListItem
 
