@@ -473,20 +473,27 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         displayText = 'Todo bien';
       }
 
-      // Estado manual: mostrar badge + ubicación
-      showManualBadge = true;
+      // Estado manual: mostrar badge + ubicación SOLO si cambió desde una zona
+      // (es decir, si tiene lastKnownZone o lastKnownZoneTime)
+      if (lastKnownZone != null || lastKnownZoneTime != null) {
+        showManualBadge = true;
 
-      // Ubicación: Última zona conocida o desconocida
-      if (lastKnownZone != null && lastKnownZoneTime != null) {
-        final elapsed = DateTime.now().difference(lastKnownZoneTime.toDate());
-        if (elapsed.inMinutes < 30) {
-          // Última zona conocida (si salió hace menos de 30 min)
-          locationInfo = '📍 Última: $lastKnownZone (hace ${_formatDuration(elapsed)})';
+        // Ubicación: Última zona conocida o desconocida
+        if (lastKnownZone != null && lastKnownZoneTime != null) {
+          final elapsed = DateTime.now().difference(lastKnownZoneTime.toDate());
+          if (elapsed.inMinutes < 30) {
+            // Última zona conocida (si salió hace menos de 30 min)
+            locationInfo = '📍 Última: $lastKnownZone (hace ${_formatDuration(elapsed)})';
+          } else {
+            locationInfo = '❓ Ubicación desconocida';
+          }
         } else {
           locationInfo = '❓ Ubicación desconocida';
         }
       } else {
-        locationInfo = '❓ Ubicación desconocida';
+        // Estado manual normal (sin zona previa): NO mostrar badges
+        showManualBadge = false;
+        locationInfo = null;
       }
     }
 
@@ -1069,7 +1076,7 @@ class _MemberListItem extends StatelessWidget {
                               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                             ),
                           ),
-                        // Badge ✋ Manual (solo para estados manuales)
+                        // Badge ✋ Manual (SOLO cuando showManualBadge es true, que ocurre solo en estados manuales)
                         if (showManualBadge) ...[
                           const SizedBox(height: 4),
                           Container(
@@ -1084,7 +1091,7 @@ class _MemberListItem extends StatelessWidget {
                             ),
                           ),
                         ],
-                        // Ubicación desconocida o última zona
+                        // Ubicación desconocida o última zona (SOLO cuando locationInfo no es null, que ocurre solo en estados manuales)
                         if (locationInfo != null) ...[
                           const SizedBox(height: 4),
                           Text(
