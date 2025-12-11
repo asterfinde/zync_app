@@ -3,11 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../domain/entities/zone.dart';
 import '../../services/zone_service.dart';
 
 /// Formulario para crear/editar zonas geográficas
-/// Incluye selector de ubicación en mapa y slider de radio
+/// Incluye búsqueda de dirección, mapa interactivo y option buttons
 class ZoneForm extends StatefulWidget {
   final String circleId;
   final Zone? zone; // null = crear, no-null = editar
@@ -24,40 +25,66 @@ class ZoneForm extends StatefulWidget {
 
 class _ZoneFormState extends State<ZoneForm> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _addressController = TextEditingController();
   final ZoneService _zoneService = ZoneService();
 
   GoogleMapController? _mapController;
   late LatLng _selectedLocation;
   late double _radiusMeters;
-  late ZoneType _selectedType;
+  ZoneType? _selectedType; // Ahora nullable - sin tipo por defecto
   bool _isLoading = false;
   bool _isLoadingLocation = false;
+  bool _isSearching = false;
+  List<Zone> _existingZones = []; // Para deshabilitar tipos ocupados
 
   @override
   void initState() {
     super.initState();
+    _loadExistingZones();
 
     if (widget.zone != null) {
       // Modo edición
-      _nameController.text = widget.zone!.name;
       _selectedLocation = LatLng(widget.zone!.latitude, widget.zone!.longitude);
       _radiusMeters = widget.zone!.radiusMeters;
       _selectedType = widget.zone!.type;
+      _addressController.text = widget.zone!.name;
     } else {
-      // Modo creación - valores por defecto
-      _selectedLocation = const LatLng(-12.046374, -77.042793); // Lima, Perú
+      // Modo creación - valores por defecto (Lima, Perú - Plaza de Armas)
+      _selectedLocation = const LatLng(-12.046374, -77.042793);
       _radiusMeters = 150.0;
-      _selectedType = ZoneType.home;
-      _getCurrentLocation(); // Intentar obtener ubicación actual
+      print('🗺️ [ZoneForm] Ubicación inicial: ${_selectedLocation.latitude}, ${_selectedLocation.longitude}');
+      // NO llamar _getCurrentLocation automáticamente para evitar saltos inesperados
+      // El usuario puede usar el botón de ubicación si lo necesita
     }
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _addressController.dispose();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  /// Cargar zonas existentes para deshabilitar tipos ocupados
+  Future<void> _loadExistingZones() async {
+    try {
+      final zones = await _zoneService.getCircleZones(widget.circleId);
+      setState(() => _existingZones = zones);
+    } catch (e) {
+      print('❌ Error cargando zonas: $e');
+    }
+  }
+
+  /// Verificar si un tipo de zona está disponible
+  bool _isZoneTypeAvailable(ZoneType type) {
+    // Solo las predefinidas se pueden ocupar (una vez)
+    if (!type.isPredefinedType) return true;
+
+    // En modo edición, el tipo actual siempre está disponible
+    if (widget.zone != null && widget.zone!.type == type) return true;
+
+    // Verificar si el tipo ya está ocupado
+    return !_existingZones.any((z) => z.type == type);
   }
 
   /// Obtener ubicación GPS actual del usuario
@@ -67,12 +94,48 @@ class _ZoneFormState extends State<ZoneForm> {
     try {
       final permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        await Geolocator.requestPermission();
+        final newPermission = await Geolocator.requestPermission();
+        if (newPermission == LocationPermission.denied || newPermission == LocationPermission.deniedForever) {
+          print('⚠️ [ZoneForm] Permisos de ubicación denegados');
+          setState(() => _isLoadingLocation = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('⚠️ Se necesitan permisos de ubicación'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          return;
+        }
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
       );
+
+      print('📍 [ZoneForm] Ubicación GPS obtenida: ${position.latitude}, ${position.longitude}');
+      print('📍 [ZoneForm] Precisión: ${position.accuracy}m');
+
+      // Validar que la ubicación sea razonable (Perú está entre -18 y 0 lat, -81 y -68 lng)
+      if (position.latitude < -18 || position.latitude > 0 || position.longitude < -82 || position.longitude > -68) {
+        print('⚠️ [ZoneForm] Ubicación fuera de Perú: ${position.latitude}, ${position.longitude}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  '⚠️ La ubicación GPS (${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}) parece estar fuera de Perú. Usa el mapa para ajustar manualmente.'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
 
       setState(() {
         _selectedLocation = LatLng(position.latitude, position.longitude);
@@ -82,9 +145,78 @@ class _ZoneFormState extends State<ZoneForm> {
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(_selectedLocation, 16),
       );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Ubicación actual obtenida - Refina el punto si es necesario'),
+            backgroundColor: Color(0xFF1EE9A4),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
-      print('❌ Error obteniendo ubicación: $e');
+      print('❌ [ZoneForm] Error obteniendo ubicación: $e');
       setState(() => _isLoadingLocation = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ No se pudo obtener ubicación: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Buscar dirección y ubicar en mapa
+  Future<void> _searchAddress() async {
+    final address = _addressController.text.trim();
+    if (address.isEmpty) return;
+
+    setState(() => _isSearching = true);
+
+    try {
+      final locations = await locationFromAddress(address);
+
+      if (locations.isEmpty) {
+        throw Exception('No se encontró la dirección');
+      }
+
+      final location = locations.first;
+      final newLocation = LatLng(location.latitude, location.longitude);
+
+      setState(() {
+        _selectedLocation = newLocation;
+        _isSearching = false;
+      });
+
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(newLocation, 16),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📍 Ubicación encontrada - Refina el punto en el mapa'),
+            backgroundColor: Color(0xFF1EE9A4),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSearching = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo encontrar la dirección: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -126,23 +258,29 @@ class _ZoneFormState extends State<ZoneForm> {
                   onTap: (latLng) {
                     setState(() => _selectedLocation = latLng);
                   },
-                  circles: {
-                    Circle(
-                      circleId: const CircleId('zone'),
-                      center: _selectedLocation,
-                      radius: _radiusMeters,
-                      fillColor: Color(_selectedType.color).withOpacity(0.2),
-                      strokeColor: Color(_selectedType.color),
-                      strokeWidth: 2,
-                    ),
-                  },
+                  circles: _selectedType != null
+                      ? {
+                          Circle(
+                            circleId: const CircleId('zone'),
+                            center: _selectedLocation,
+                            radius: _radiusMeters,
+                            fillColor: Color(_selectedType!.color).withOpacity(0.2),
+                            strokeColor: Color(_selectedType!.color),
+                            strokeWidth: 2,
+                          ),
+                        }
+                      : {},
                   markers: {
                     Marker(
                       markerId: const MarkerId('center'),
                       position: _selectedLocation,
-                      icon: BitmapDescriptor.defaultMarkerWithHue(
-                        _getMarkerHue(_selectedType),
-                      ),
+                      draggable: true,
+                      onDragEnd: (newPosition) {
+                        setState(() => _selectedLocation = newPosition);
+                      },
+                      icon: _selectedType != null
+                          ? BitmapDescriptor.defaultMarkerWithHue(_getMarkerHue(_selectedType!))
+                          : BitmapDescriptor.defaultMarker,
                     ),
                   },
                   myLocationEnabled: true,
@@ -175,42 +313,61 @@ class _ZoneFormState extends State<ZoneForm> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Nombre
+                    // Búsqueda de dirección
                     const Text(
-                      'Nombre de la zona',
+                      'Buscar dirección',
                       style: TextStyle(
                         color: Color(0xFF9E9E9E),
                         fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _nameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Ej: Casa de Abuela, Cine Plaza Norte',
-                        hintStyle: TextStyle(color: Colors.grey.shade700),
-                        filled: true,
-                        fillColor: const Color(0xFF1C1C1E),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _addressController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'Av. Principal, San Isidro',
+                              hintStyle: TextStyle(color: Colors.grey.shade700),
+                              filled: true,
+                              fillColor: const Color(0xFF1C1C1E),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
+                            ),
+                            onFieldSubmitted: (_) => _searchAddress(),
+                          ),
                         ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Ingresa un nombre';
-                        }
-                        if (value.trim().length < 2) {
-                          return 'Mínimo 2 caracteres';
-                        }
-                        return null;
-                      },
+                        const SizedBox(width: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1EE9A4),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: IconButton(
+                            onPressed: _isSearching ? null : _searchAddress,
+                            icon: _isSearching
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.black,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.arrow_forward, color: Colors.black),
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 24),
 
-                    // Tipo de zona
+                    // Tipo de zona con Option Buttons
                     const Text(
                       'Tipo de zona',
                       style: TextStyle(
@@ -219,29 +376,40 @@ class _ZoneFormState extends State<ZoneForm> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
+                    // Zonas predefinidas (Option Buttons)
                     Wrap(
                       spacing: 12,
-                      children: ZoneType.values.map((type) {
-                        final isSelected = _selectedType == type;
-                        return ChoiceChip(
-                          label: Text('${type.emoji} ${_getTypeName(type)}'),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() => _selectedType = type);
-                          },
-                          backgroundColor: const Color(0xFF1C1C1E),
-                          selectedColor: Color(type.color).withOpacity(0.3),
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : Colors.grey.shade600,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                          side: BorderSide(
-                            color: isSelected ? Color(type.color) : const Color(0xFF3A3A3C),
-                            width: isSelected ? 2 : 1,
-                          ),
-                        );
-                      }).toList(),
+                      runSpacing: 12,
+                      children: [
+                        _buildZoneTypeButton(ZoneType.home, '🏠 Casa'),
+                        _buildZoneTypeButton(ZoneType.school, '🏫 Colegio'),
+                        _buildZoneTypeButton(ZoneType.university, '🎓 Universidad'),
+                        _buildZoneTypeButton(ZoneType.work, '💼 Trabajo'),
+                      ],
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // Divider
+                    Row(
+                      children: [
+                        const Expanded(child: Divider(color: Color(0xFF3A3A3C))),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'O',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                          ),
+                        ),
+                        const Expanded(child: Divider(color: Color(0xFF3A3A3C))),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Zona personalizada (genérica)
+                    _buildZoneTypeButton(ZoneType.custom, '📍 Personalizada'),
 
                     const SizedBox(height: 24),
 
@@ -261,7 +429,7 @@ class _ZoneFormState extends State<ZoneForm> {
                             value: _radiusMeters,
                             min: ZoneService.MIN_RADIUS_METERS,
                             max: ZoneService.MAX_RADIUS_METERS,
-                            divisions: 45, // 10m de incremento
+                            divisions: 45,
                             activeColor: const Color(0xFF1EE9A4),
                             inactiveColor: const Color(0xFF3A3A3C),
                             onChanged: (value) {
@@ -300,10 +468,12 @@ class _ZoneFormState extends State<ZoneForm> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _save,
+                        onPressed: _isLoading || _selectedType == null ? null : _save,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1EE9A4),
                           foregroundColor: Colors.black,
+                          disabledBackgroundColor: const Color(0xFF3A3A3C),
+                          disabledForegroundColor: Colors.grey.shade700,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -327,6 +497,19 @@ class _ZoneFormState extends State<ZoneForm> {
                               ),
                       ),
                     ),
+
+                    if (_selectedType == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          '⚠️ Selecciona un tipo de zona para continuar',
+                          style: TextStyle(
+                            color: Colors.orange.shade400,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -339,19 +522,36 @@ class _ZoneFormState extends State<ZoneForm> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona un tipo de zona'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
+      // Obtener nombre automático si es predefinida, o usar dirección si es custom
+      String zoneName;
+      if (_selectedType!.isPredefinedType) {
+        zoneName = _getTypeName(_selectedType!);
+      } else {
+        zoneName = _addressController.text.trim().isEmpty ? 'Zona personalizada' : _addressController.text.trim();
+      }
+
       if (widget.zone == null) {
         // Crear nueva zona
         await _zoneService.createZone(
           circleId: widget.circleId,
-          name: _nameController.text.trim(),
+          name: zoneName,
           latitude: _selectedLocation.latitude,
           longitude: _selectedLocation.longitude,
           radiusMeters: _radiusMeters,
-          type: _selectedType,
+          type: _selectedType!,
         );
 
         if (mounted) {
@@ -369,11 +569,11 @@ class _ZoneFormState extends State<ZoneForm> {
         await _zoneService.updateZone(
           circleId: widget.circleId,
           zoneId: widget.zone!.id,
-          name: _nameController.text.trim(),
+          name: zoneName,
           latitude: _selectedLocation.latitude,
           longitude: _selectedLocation.longitude,
           radiusMeters: _radiusMeters,
-          type: _selectedType,
+          type: _selectedType!,
         );
 
         if (mounted) {
@@ -402,6 +602,60 @@ class _ZoneFormState extends State<ZoneForm> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  /// Widget para botón de tipo de zona (Option Button)
+  Widget _buildZoneTypeButton(ZoneType type, String label) {
+    final isSelected = _selectedType == type;
+    final isAvailable = _isZoneTypeAvailable(type);
+
+    return Opacity(
+      opacity: isAvailable ? 1.0 : 0.4,
+      child: InkWell(
+        onTap: isAvailable ? () => setState(() => _selectedType = type) : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? Color(type.color).withOpacity(0.2) : const Color(0xFF1C1C1E),
+            border: Border.all(
+              color: isSelected
+                  ? Color(type.color)
+                  : isAvailable
+                      ? const Color(0xFF3A3A3C)
+                      : Colors.grey.shade800,
+              width: isSelected ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : isAvailable
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade700,
+                  fontSize: 16,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              if (!isAvailable && type.isPredefinedType) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.check_circle,
+                  size: 16,
+                  color: Colors.grey.shade700,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _getTypeName(ZoneType type) {

@@ -151,10 +151,13 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
           case ZoneType.school:
             statusId = 'studying'; // 📚 Estudiando (en el colegio)
             break;
+          case ZoneType.university:
+            statusId = 'studying'; // 📚 Estudiando (en la universidad)
+            break;
           case ZoneType.work:
             statusId = 'busy'; // 🔴 Ocupado (en el trabajo)
             break;
-          case ZoneType.other:
+          case ZoneType.custom:
             statusId = 'available'; // 🟢 Disponible (ubicación genérica)
             break;
         }
