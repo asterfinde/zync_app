@@ -28,10 +28,7 @@ class StatusService {
       }
 
       // Obtener el circleId del usuario
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
       final circleId = userDoc.data()?['circleId'] as String?;
       if (circleId == null) {
@@ -43,11 +40,8 @@ class StatusService {
       await _circleStatusListener?.cancel();
 
       // Escuchar cambios en memberStatus del círculo
-      _circleStatusListener = FirebaseFirestore.instance
-          .collection('circles')
-          .doc(circleId)
-          .snapshots()
-          .listen(_handleCircleStatusChange);
+      _circleStatusListener =
+          FirebaseFirestore.instance.collection('circles').doc(circleId).snapshots().listen(_handleCircleStatusChange);
 
       _isListenerInitialized = true;
       log('[StatusService] ✅ Status listener initialized for circle: $circleId');
@@ -106,8 +100,7 @@ class StatusService {
   /// - Usuario no está autenticado
   /// - Usuario no pertenece a ningún círculo
   /// - Error en Firebase
-  static Future<StatusUpdateResult> updateUserStatus(
-      StatusType newStatus) async {
+  static Future<StatusUpdateResult> updateUserStatus(StatusType newStatus) async {
     try {
       log('[StatusService] Actualizando estado a: ${newStatus.description} ${newStatus.emoji}');
 
@@ -118,15 +111,24 @@ class StatusService {
       }
 
       // Obtener el circleId del usuario
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
 
       final circleId = userDoc.data()?['circleId'] as String?;
       if (circleId == null) {
         throw Exception('Usuario no está en ningún círculo');
       }
+
+      // Leer el estado actual del usuario para verificar si estaba en una zona
+      final circleDoc = await FirebaseFirestore.instance.collection('circles').doc(circleId).get();
+
+      final currentMemberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
+      final currentUserStatus = currentMemberStatus?[user.uid] as Map<String, dynamic>?;
+
+      // Verificar si el usuario estaba en una zona (tiene zoneId o customEmoji)
+      final wasInZone = currentUserStatus?['zoneId'] != null || currentUserStatus?['customEmoji'] != null;
+      final previousZoneName = currentUserStatus?['zoneName'] as String?;
+
+      log('[StatusService] 📍 Usuario estaba en zona: $wasInZone${wasInZone ? ' ($previousZoneName)' : ''}');
 
       // Point 16: Obtener ubicación GPS si es estado SOS
       Coordinates? coordinates;
@@ -148,7 +150,18 @@ class StatusService {
         'userId': user.uid,
         'statusType': newStatus.id,
         'timestamp': FieldValue.serverTimestamp(),
+        'autoUpdated': false, // Estado manual
+        'customEmoji': null, // Limpiar emoji de zona
+        'zoneName': null, // Limpiar nombre de zona
+        'zoneId': null, // No está en ninguna zona
       };
+
+      // Si estaba en una zona, guardar como última zona conocida
+      if (wasInZone && previousZoneName != null) {
+        statusData['lastKnownZone'] = previousZoneName;
+        statusData['lastKnownZoneTime'] = FieldValue.serverTimestamp();
+        log('[StatusService] 💾 Guardando última zona conocida: $previousZoneName');
+      }
 
       // Point 16: Agregar coordenadas GPS si están disponibles (solo para SOS)
       if (coordinates != null) {
@@ -163,15 +176,11 @@ class StatusService {
       log('[StatusService] 📤 StatusData completo: $statusData');
 
       batch.update(
-          FirebaseFirestore.instance.collection('circles').doc(circleId),
-          {'memberStatus.${user.uid}': statusData});
+          FirebaseFirestore.instance.collection('circles').doc(circleId), {'memberStatus.${user.uid}': statusData});
 
       // Crear evento en historial (opcional, si existe)
-      final historyRef = FirebaseFirestore.instance
-          .collection('circles')
-          .doc(circleId)
-          .collection('statusEvents')
-          .doc();
+      final historyRef =
+          FirebaseFirestore.instance.collection('circles').doc(circleId).collection('statusEvents').doc();
 
       final historyData = {
         'uid': user.uid,
@@ -233,8 +242,7 @@ class StatusUpdateResult {
     this.coordinates,
   });
 
-  factory StatusUpdateResult.success(StatusType status,
-      [Coordinates? coordinates]) {
+  factory StatusUpdateResult.success(StatusType status, [Coordinates? coordinates]) {
     return StatusUpdateResult._(
       isSuccess: true,
       status: status,

@@ -442,19 +442,8 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       // (es decir, si tiene lastKnownZone o lastKnownZoneTime)
       if (lastKnownZone != null || lastKnownZoneTime != null) {
         showManualBadge = true;
-
-        // Ubicación: Última zona conocida o desconocida
-        if (lastKnownZone != null && lastKnownZoneTime != null) {
-          final elapsed = DateTime.now().difference(lastKnownZoneTime.toDate());
-          if (elapsed.inMinutes < 30) {
-            // Última zona conocida (si salió hace menos de 30 min)
-            locationInfo = '📍 Última: $lastKnownZone (hace ${_formatDuration(elapsed)})';
-          } else {
-            locationInfo = '❓ Ubicación desconocida';
-          }
-        } else {
-          locationInfo = '❓ Ubicación desconocida';
-        }
+        // Siempre mostrar ubicación desconocida cuando cambió desde una zona
+        locationInfo = '❓ Ubicación desconocida';
       } else {
         // Estado manual normal (sin zona previa): NO mostrar badges
         showManualBadge = false;
@@ -484,13 +473,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     print('[InCircleView] 🎯 RETORNANDO: emoji=$emoji, displayText=$displayText, autoUpdated=$autoUpdated');
     return result;
-  }
-
-  String _formatDuration(Duration d) {
-    if (d.inMinutes < 1) return 'ahora';
-    if (d.inMinutes < 60) return '${d.inMinutes}m';
-    if (d.inHours < 24) return '${d.inHours}h';
-    return '${d.inDays}d';
   }
 
   bool _hasChanged(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
@@ -1123,7 +1105,7 @@ class _MemberListItem extends StatelessWidget {
   // --- Método Helper _getTimeAgo ---
   String _getTimeAgo(DateTime dt) {
     final difference = DateTime.now().difference(dt);
-    if (difference.inSeconds < 60) return 'Ahora'; // Más preciso
+    if (difference.inSeconds < 60) return 'Justo ahora'; // Más claro
     if (difference.inMinutes < 60) return '${difference.inMinutes} min';
     if (difference.inHours < 24) return '${difference.inHours} h';
     return '${difference.inDays} d';
