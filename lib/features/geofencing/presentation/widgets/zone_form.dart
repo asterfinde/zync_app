@@ -26,6 +26,7 @@ class ZoneForm extends StatefulWidget {
 class _ZoneFormState extends State<ZoneForm> {
   final _formKey = GlobalKey<FormState>();
   final _addressController = TextEditingController();
+  final _customNameController = TextEditingController();
   final ZoneService _zoneService = ZoneService();
 
   GoogleMapController? _mapController;
@@ -47,20 +48,22 @@ class _ZoneFormState extends State<ZoneForm> {
       _selectedLocation = LatLng(widget.zone!.latitude, widget.zone!.longitude);
       _radiusMeters = widget.zone!.radiusMeters;
       _selectedType = widget.zone!.type;
-      _addressController.text = widget.zone!.name;
+      if (widget.zone!.type == ZoneType.custom) {
+        _customNameController.text = widget.zone!.name;
+      }
     } else {
-      // Modo creación - valores por defecto (Lima, Perú - Plaza de Armas)
+      // Modo creación - obtener ubicación actual por defecto
       _selectedLocation = const LatLng(-12.046374, -77.042793);
       _radiusMeters = 150.0;
       print('🗺️ [ZoneForm] Ubicación inicial: ${_selectedLocation.latitude}, ${_selectedLocation.longitude}');
-      // NO llamar _getCurrentLocation automáticamente para evitar saltos inesperados
-      // El usuario puede usar el botón de ubicación si lo necesita
+      _getCurrentLocation(); // Obtener ubicación actual automáticamente
     }
   }
 
   @override
   void dispose() {
     _addressController.dispose();
+    _customNameController.dispose();
     _mapController?.dispose();
     super.dispose();
   }
@@ -145,16 +148,6 @@ class _ZoneFormState extends State<ZoneForm> {
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(_selectedLocation, 16),
       );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Ubicación actual obtenida - Refina el punto si es necesario'),
-            backgroundColor: Color(0xFF1EE9A4),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
     } catch (e) {
       print('❌ [ZoneForm] Error obteniendo ubicación: $e');
       setState(() => _isLoadingLocation = false);
@@ -411,6 +404,39 @@ class _ZoneFormState extends State<ZoneForm> {
                     // Zona personalizada (genérica)
                     _buildZoneTypeButton(ZoneType.custom, '📍 Personalizada'),
 
+                    // Campo de nombre para zona personalizada
+                    if (_selectedType == ZoneType.custom) ...[
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Nombre de la zona',
+                        style: TextStyle(
+                          color: Color(0xFF9E9E9E),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _customNameController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Ej: Gimnasio, Oficina del cliente, etc.',
+                          hintStyle: TextStyle(color: Colors.grey.shade700),
+                          filled: true,
+                          fillColor: const Color(0xFF1C1C1E),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        validator: (value) {
+                          if (_selectedType == ZoneType.custom && (value == null || value.trim().isEmpty)) {
+                            return 'Ingresa un nombre para la zona';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+
                     const SizedBox(height: 24),
 
                     // Radio
@@ -488,9 +514,9 @@ class _ZoneFormState extends State<ZoneForm> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Text(
-                                widget.zone == null ? 'CREAR ZONA' : 'GUARDAR CAMBIOS',
-                                style: const TextStyle(
+                            : const Text(
+                                'Guardar',
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -535,12 +561,16 @@ class _ZoneFormState extends State<ZoneForm> {
     setState(() => _isLoading = true);
 
     try {
-      // Obtener nombre automático si es predefinida, o usar dirección si es custom
+      // Obtener nombre según tipo de zona
       String zoneName;
       if (_selectedType!.isPredefinedType) {
         zoneName = _getTypeName(_selectedType!);
       } else {
-        zoneName = _addressController.text.trim().isEmpty ? 'Zona personalizada' : _addressController.text.trim();
+        // Para zona personalizada, usar el campo de nombre personalizado
+        zoneName = _customNameController.text.trim();
+        if (zoneName.isEmpty) {
+          zoneName = 'Zona personalizada';
+        }
       }
 
       if (widget.zone == null) {

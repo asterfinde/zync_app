@@ -30,12 +30,9 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: const Text(
-          'ZONAS GEOGRÁFICAS',
+          'Mis Zonas',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -43,7 +40,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
             letterSpacing: 1.2,
           ),
         ),
-        centerTitle: true,
+        centerTitle: false,
         actions: [
           IconButton(
             icon: Icon(
@@ -57,6 +54,24 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
           ),
         ],
       ),
+      floatingActionButton: StreamBuilder<List<Zone>>(
+        stream: _zoneService.listenToZones(widget.circle.id),
+        builder: (context, snapshot) {
+          final zones = snapshot.data ?? [];
+          final canAdd = zones.length < ZoneService.MAX_ZONES_PER_CIRCLE;
+
+          return FloatingActionButton(
+            onPressed: canAdd ? () => _addZone(context) : null,
+            backgroundColor: canAdd ? const Color(0xFF1EE9A4) : Colors.grey.shade800,
+            child: Icon(
+              Icons.add,
+              color: canAdd ? Colors.black : Colors.grey.shade600,
+              size: 32,
+            ),
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: StreamBuilder<List<Zone>>(
         stream: _zoneService.listenToZones(widget.circle.id),
         builder: (context, snapshot) {
@@ -116,7 +131,6 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  _buildAddButton(context, zones.length),
                 ],
               ),
             );
@@ -124,12 +138,13 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
 
           return Column(
             children: [
-              // Header con contador
+              // Header con contador (alineado a la derecha)
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Icon(Icons.location_on, color: Colors.grey.shade600),
+                    Icon(Icons.location_on, color: Colors.grey.shade600, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       '${zones.length} de ${ZoneService.MAX_ZONES_PER_CIRCLE} zonas',
@@ -138,8 +153,6 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
                         fontSize: 14,
                       ),
                     ),
-                    const Spacer(),
-                    _buildAddButton(context, zones.length),
                   ],
                 ),
               ),
@@ -215,26 +228,6 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
         ],
       ),
       onTap: () => _editZone(context, zone),
-    );
-  }
-
-  Widget _buildAddButton(BuildContext context, int currentCount) {
-    final canAdd = currentCount < ZoneService.MAX_ZONES_PER_CIRCLE;
-
-    return ElevatedButton.icon(
-      onPressed: canAdd ? () => _addZone(context) : null,
-      icon: const Icon(Icons.add_location_alt),
-      label: const Text('CREAR ZONA'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: canAdd ? const Color(0xFF1EE9A4) : Colors.grey,
-        foregroundColor: Colors.black,
-        disabledBackgroundColor: Colors.grey.shade800,
-        disabledForegroundColor: Colors.grey.shade600,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
     );
   }
 
