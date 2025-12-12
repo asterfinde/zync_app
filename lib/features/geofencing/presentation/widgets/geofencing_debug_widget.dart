@@ -141,9 +141,15 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
     if (user == null) return;
 
     try {
-      // Mapeo de tipo de zona a ID de estado predefinido
-      String statusId;
+      final Map<String, dynamic> statusData = {
+        'timestamp': FieldValue.serverTimestamp(),
+        'autoUpdated': true,
+      };
+
       if (isEntry && zone != null) {
+        // ENTRADA A ZONA
+        // Mapeo de tipo de zona a ID de estado predefinido
+        String statusId;
         switch (zone.type) {
           case ZoneType.home:
             statusId = 'available'; // 🟢 Disponible (en casa)
@@ -161,29 +167,42 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
             statusId = 'available'; // 🟢 Disponible (ubicación genérica)
             break;
         }
-      } else {
-        // Salida de zona → "En camino"
-        statusId = 'driving'; // 🚗 En camino
-      }
 
-      // Actualizar memberStatus en el círculo
-      final Map<String, dynamic> statusData = {
-        'statusType': statusId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'autoUpdated': true,
-      };
-
-      // Si es entrada a zona, guardar emoji y nombre de la zona
-      if (isEntry && zone != null) {
+        statusData['statusType'] = statusId;
         statusData['customEmoji'] = zone.type.emoji; // 🏠, 🏫, 💼, 📍
         statusData['zoneName'] = zone.name; // "Jaus", "Colegio", etc.
+        statusData['zoneId'] = zone.id; // ID de la zona activa
+
+        print('[DebugWidget] ✅ Entrada a zona: ${zone.name} (${zone.type.emoji})');
+      } else {
+        // SALIDA DE ZONA
+        statusData['statusType'] = 'driving'; // 🚗 En camino
+        statusData['customEmoji'] = '🚗';
+        statusData['zoneName'] = 'En camino';
+        statusData['zoneId'] = null;
+
+        // Guardar última zona conocida si existe
+        if (_selectedZone != null) {
+          statusData['lastKnownZone'] = _selectedZone!.name;
+          statusData['lastKnownZoneTime'] = FieldValue.serverTimestamp();
+        }
+
+        print('[DebugWidget] ✅ Salida de zona: En camino 🚗');
       }
 
       await FirebaseFirestore.instance.collection('circles').doc(widget.circleId).update({
         'memberStatus.${user.uid}': statusData,
       });
 
-      print('[DebugWidget] ✅ Estado actualizado a: $statusId');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isEntry ? '✅ Entrada a ${zone?.name}' : '✅ Salida: En camino'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
       print('[DebugWidget] ❌ Error actualizando estado: $e');
       if (mounted) {
