@@ -107,7 +107,7 @@ class StatusType extends Equatable {
   static final List<StatusType> fallbackPredefined = [
     // FILA 1: DISPONIBILIDAD
     StatusType(
-        id: 'available', emoji: '🟢', label: 'Disponible', shortLabel: 'Libre', category: 'availability', order: 1),
+        id: 'fine', emoji: '🙂', label: 'Todo bien', shortLabel: 'Bien', category: 'availability', order: 1),
     StatusType(id: 'busy', emoji: '🔴', label: 'Ocupado', shortLabel: 'Ocupado', category: 'availability', order: 2),
     StatusType(id: 'away', emoji: '🟡', label: 'Ausente', shortLabel: 'Ausente', category: 'availability', order: 3),
     StatusType(

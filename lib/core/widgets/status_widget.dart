@@ -70,8 +70,11 @@ class StatusWidgetService {
       // Cargar emojis desde Firebase con fallback
       final emojis = await EmojiService.getPredefinedEmojis();
       final availableStatus = emojis.firstWhere(
-        (s) => s.id == 'available',
-        orElse: () => StatusType.fallbackPredefined.first,
+        (s) => s.id == 'fine',
+        orElse: () => emojis.firstWhere(
+          (s) => s.id == 'available',
+          orElse: () => StatusType.fallbackPredefined.first,
+        ),
       );
 
       await _updateWidget(status: availableStatus, circleId: null);
@@ -88,8 +91,7 @@ class StatusWidgetService {
   }) async {
     try {
       await HomeWidget.saveWidgetData<String>(_statusKey, status.emoji);
-      await HomeWidget.saveWidgetData<String>(
-          _circleKey, circleId ?? 'Sin círculo');
+      await HomeWidget.saveWidgetData<String>(_circleKey, circleId ?? 'Sin círculo');
       await HomeWidget.updateWidget(
         name: _widgetName,
         iOSName: _widgetName,

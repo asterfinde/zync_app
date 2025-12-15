@@ -152,7 +152,7 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
         String statusId;
         switch (zone.type) {
           case ZoneType.home:
-            statusId = 'available'; // 🟢 Disponible (en casa)
+            statusId = 'fine';
             break;
           case ZoneType.school:
             statusId = 'studying'; // 📚 Estudiando (en el colegio)
@@ -164,7 +164,7 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
             statusId = 'busy'; // 🔴 Ocupado (en el trabajo)
             break;
           case ZoneType.custom:
-            statusId = 'available'; // 🟢 Disponible (ubicación genérica)
+            statusId = 'fine';
             break;
         }
 
@@ -294,13 +294,13 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
               // CASO 2: Estado genérico (salida de zona o estado manual)
               else {
                 final statusEmojis = {
-                  'available': '🟢',
+                  'fine': '🙂',
                   'studying': '📚',
                   'busy': '🔴',
                   'driving': '🚗', // En camino
                 };
                 final statusLabels = {
-                  'available': 'Disponible',
+                  'fine': 'Todo bien',
                   'studying': 'Estudiando',
                   'busy': 'Ocupado',
                   'driving': 'En camino', // En camino

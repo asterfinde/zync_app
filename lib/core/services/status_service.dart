@@ -12,6 +12,14 @@ class StatusService {
   static StreamSubscription<DocumentSnapshot>? _circleStatusListener;
   static bool _isListenerInitialized = false;
 
+  static const String _zoneManualSelectionNotAllowedError = 'zone_manual_selection_not_allowed';
+  static const Set<String> _blockedZoneStatusIds = {
+    'home',
+    'school',
+    'work',
+    'university',
+  };
+
   /// Inicializar el listener de cambios de estado para badge
   static Future<void> initializeStatusListener() async {
     // Evitar re-inicializar si ya está activo
@@ -118,15 +126,29 @@ class StatusService {
         throw Exception('Usuario no está en ningún círculo');
       }
 
+      final zonesConfigured = await _hasZonesConfigured(circleId);
+      if (zonesConfigured && _blockedZoneStatusIds.contains(newStatus.id)) {
+        log('[StatusService] 🚫 Bloqueado: selección manual de zona (${newStatus.id}) con zonas configuradas');
+        return StatusUpdateResult.error(_zoneManualSelectionNotAllowedError);
+      }
+
       // Leer el estado actual del usuario para verificar si estaba en una zona
       final circleDoc = await FirebaseFirestore.instance.collection('circles').doc(circleId).get();
 
       final currentMemberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
       final currentUserStatus = currentMemberStatus?[user.uid] as Map<String, dynamic>?;
 
-      // Verificar si el usuario estaba en una zona (tiene zoneId o customEmoji)
-      final wasInZone = currentUserStatus?['zoneId'] != null || currentUserStatus?['customEmoji'] != null;
+      // Verificar si el usuario estaba en una zona (solo si tiene zoneId)
+      // NOTA: customEmoji también se usa para "En camino" automático (🚗), así que NO es una prueba confiable.
+      final wasInZone = currentUserStatus?['zoneId'] != null;
       final previousZoneName = currentUserStatus?['zoneName'] as String?;
+      final previousZoneId = currentUserStatus?['zoneId'] as String?;
+      final previousZoneEmoji = currentUserStatus?['customEmoji'] as String?;
+
+      final previousWasAutoUpdated = currentUserStatus?['autoUpdated'] as bool? ?? false;
+      final previousManualOverride = currentUserStatus?['manualOverride'] as bool? ?? false;
+      final manualOverride = (wasInZone && (previousWasAutoUpdated || previousManualOverride));
+      final locationUnknown = (previousWasAutoUpdated || previousManualOverride) && !wasInZone;
 
       log('[StatusService] 📍 Usuario estaba en zona: $wasInZone${wasInZone ? ' ($previousZoneName)' : ''}');
 
@@ -151,9 +173,11 @@ class StatusService {
         'statusType': newStatus.id,
         'timestamp': FieldValue.serverTimestamp(),
         'autoUpdated': false, // Estado manual
-        'customEmoji': null, // Limpiar emoji de zona
-        'zoneName': null, // Limpiar nombre de zona
-        'zoneId': null, // No está en ninguna zona
+        'manualOverride': manualOverride,
+        'locationUnknown': locationUnknown,
+        'customEmoji': wasInZone ? previousZoneEmoji : null,
+        'zoneName': wasInZone ? previousZoneName : null,
+        'zoneId': wasInZone ? previousZoneId : null,
       };
 
       // Si estaba en una zona, guardar como última zona conocida
@@ -208,6 +232,17 @@ class StatusService {
     } catch (e) {
       log('[StatusService] Error actualizando estado: $e');
       return StatusUpdateResult.error(e.toString());
+    }
+  }
+
+  static Future<bool> _hasZonesConfigured(String circleId) async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').limit(1).get();
+      return snapshot.docs.isNotEmpty;
+    } catch (e) {
+      log('[StatusService] ⚠️ Error verificando zonas configuradas: $e');
+      return false;
     }
   }
 

@@ -107,7 +107,7 @@ class EmojiService {
     // Filtrar estados manuales que conflictúan con zonas configuradas
     final filteredPredefined = predefined.where((status) {
       // home zone configurada → ocultar estado 'available' cuando sea representado por 🏠
-      if (configuredZones.contains('home') && status.id == 'available' && status.emoji == '🏠') {
+      if (configuredZones.contains('home') && status.id == 'fine' && status.emoji == '🏠') {
         return false;
       }
       // school zone configurada → ocultar estado 'studying' cuando sea representado por 🏫

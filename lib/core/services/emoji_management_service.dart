@@ -138,13 +138,13 @@ class EmojiManagementService {
       final batch = _firestore.batch();
 
       for (final memberDoc in membersSnapshot.docs) {
-        log('[EmojiMgmt] 🔄 Cambiando estado de ${memberDoc.id} a "available"');
+        log('[EmojiMgmt] 🔄 Cambiando estado de ${memberDoc.id} a "fine"');
         batch.update(memberDoc.reference, {
           'currentState': {
-            'emojiId': 'available',
-            'emoji': '🟢',
-            'label': 'Disponible',
-            'shortLabel': 'Libre',
+            'emojiId': 'fine',
+            'emoji': '🙂',
+            'label': 'Todo bien',
+            'shortLabel': 'Bien',
             'source': 'auto', // Auto-change por borrado
             'priority': 4,
             'updatedAt': Timestamp.now(),

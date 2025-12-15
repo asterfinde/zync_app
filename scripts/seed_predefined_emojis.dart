@@ -10,10 +10,10 @@ import 'package:zync_app/firebase_options.dart';
 final predefinedEmojis = [
   // FILA 1: ✅ DISPONIBILIDAD (4 estados)
   {
-    'id': 'available',
-    'emoji': '🟢',
-    'label': 'Disponible',
-    'shortLabel': 'Libre',
+    'id': 'fine',
+    'emoji': '🙂',
+    'label': 'Todo bien',
+    'shortLabel': 'Bien',
     'category': 'availability',
     'order': 1,
   },

@@ -14,7 +14,7 @@ class QuickActionsPreferencesService {
 
   /// IDs de Quick Actions por defecto (las 4 más comunes)
   static const List<String> _defaultQuickActionIds = [
-    'available', // 🟢 Disponible
+    'fine',
     'busy', // 🔴 Ocupado
     'away', // 🟡 Ausente
     'sos', // 🆘 SOS

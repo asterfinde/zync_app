@@ -32,7 +32,7 @@ class QuickActionsHandler {
   /// Mapea una acción string a StatusType (carga desde Firebase)
   /// Mapeo de IDs antiguos a nuevos:
   /// - leave → away
-  /// - fine → available
+  /// - fine → fine
   /// - sad, sleepy, worried, thinking, excited → do_not_disturb (estados eliminados)
   /// - busy, sos, meeting → sin cambios
   static Future<StatusType?> _mapActionToStatusType(String action) async {
@@ -46,24 +46,23 @@ class QuickActionsHandler {
         statusId = 'busy'; // Ocupado
         break;
       case 'fine':
-        statusId = 'available'; // Disponible (reemplazo de fine)
+        statusId = 'fine';
         break;
       case 'sad':
       case 'worried':
       case 'sleepy':
       case 'excited':
       case 'thinking':
-        statusId =
-            'do_not_disturb'; // No molestar (reemplazo de estados emocionales)
+        statusId = 'do_not_disturb'; // No molestar (reemplazo de estados emocionales)
         break;
       case 'ready':
-        statusId = 'available'; // Disponible (reemplazo de ready)
+        statusId = 'fine';
         break;
       case 'sos':
         statusId = 'sos'; // SOS
         break;
       case 'happy':
-        statusId = 'available'; // Disponible (reemplazo de happy)
+        statusId = 'fine';
         break;
       case 'meeting':
         statusId = 'meeting'; // Reunión

@@ -152,7 +152,6 @@ class MockData {
       'excited': 'Emocionado',
       'thinking': 'Pensando',
       'worried': 'Preocupado',
-      'available': 'Disponible',
       'away': 'Ausente',
       'focus': 'Concentrado',
       'tired': 'Cansado',

@@ -381,12 +381,13 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       };
     }
 
-    final statusType = statusData['statusType'] as String?;
+    final rawStatusType = statusData['statusType'] as String?;
+    final statusType = rawStatusType == 'available' ? 'fine' : rawStatusType;
     final autoUpdated = statusData['autoUpdated'] as bool? ?? false;
     final customEmoji = statusData['customEmoji'] as String?;
     final zoneName = statusData['zoneName'] as String?;
-    final lastKnownZone = statusData['lastKnownZone'] as String?;
-    final lastKnownZoneTime = statusData['lastKnownZoneTime'] as Timestamp?;
+    final manualOverride = statusData['manualOverride'] as bool?;
+    final locationUnknown = statusData['locationUnknown'] as bool?;
 
     print(
         '[InCircleView] 📊 Datos recibidos: statusType=$statusType, autoUpdated=$autoUpdated, customEmoji=$customEmoji, zoneName=$zoneName');
@@ -404,6 +405,41 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       showManualBadge = false; // Automático, sin badge
       locationInfo = null;
       print('[InCircleView] 🏠 CASO 1: Zona automática - emoji: $emoji, zona: $zoneName');
+    }
+    // CASO 1.5: Override manual mientras SIGUE dentro de una zona
+    // (customEmoji/zoneName presentes, pero autoUpdated=false)
+    else if (!autoUpdated && customEmoji != null && statusType != null) {
+      try {
+        final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
+        final statusEnum = emojis.firstWhere(
+          (s) => s.id == statusType,
+          orElse: () {
+            print(
+                "⚠️ [InCircleView] Status '$statusType' no encontrado en emojis cargados (${emojis.length} disponibles), reintentando carga...");
+            _loadPredefinedEmojis();
+            return StatusType(
+              id: statusType,
+              emoji: '⏳',
+              label: 'Cargando...',
+              shortLabel: '...',
+              category: 'custom',
+              order: 999,
+              isPredefined: false,
+              canDelete: false,
+            );
+          },
+        );
+        emoji = statusEnum.emoji;
+        displayText = statusEnum.label;
+      } catch (e) {
+        print("❌ [InCircleView] Error parsing status enum (manual-in-zone): $e");
+        emoji = '😊';
+        displayText = 'Todo bien';
+      }
+
+      showManualBadge = manualOverride == true;
+      locationInfo = locationUnknown == true ? '❓ Ubicación desconocida' : null;
+      print('[InCircleView] ✋ CASO 1.5: Manual dentro de zona - emoji: $emoji, status: $statusType, zona: $zoneName');
     }
     // CASO 2: Estado manual (sin customEmoji, solo statusType)
     else if (statusType != null && customEmoji == null) {
@@ -438,17 +474,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         displayText = 'Todo bien';
       }
 
-      // Estado manual: mostrar badge + ubicación SOLO si cambió desde una zona
-      // (es decir, si tiene lastKnownZone o lastKnownZoneTime)
-      if (lastKnownZone != null || lastKnownZoneTime != null) {
-        showManualBadge = true;
-        // Siempre mostrar ubicación desconocida cuando cambió desde una zona
-        locationInfo = '❓ Ubicación desconocida';
-      } else {
-        // Estado manual normal (sin zona previa): NO mostrar badges
-        showManualBadge = false;
-        locationInfo = null;
-      }
+      // Estado manual: mostrar badge SOLO si el usuario sobre-escribe un estado automático (Geofencing)
+      showManualBadge = manualOverride == true;
+
+      // Caso 3.2: si salió de zona y estaba en manual override, mostrar ubicación desconocida
+      locationInfo = locationUnknown == true ? '❓ Ubicación desconocida' : null;
     }
 
     final coordinates = statusData['coordinates'] as Map<String, dynamic>?;
@@ -689,7 +719,13 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     try {
       final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
-      final defaultStatus = emojis.firstWhere((s) => s.id == 'available', orElse: () => emojis.first);
+      final defaultStatus = emojis.firstWhere(
+        (s) => s.id == 'fine',
+        orElse: () => emojis.firstWhere(
+          (s) => s.id == 'available',
+          orElse: () => emojis.first,
+        ),
+      );
       print('[InCircleView] ✅ Enviando estado rápido: ${defaultStatus.label}');
       final result = await StatusService.updateUserStatus(defaultStatus);
 
@@ -1023,9 +1059,7 @@ class _MemberListItem extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
-                              autoUpdated
-                                  ? 'Desde ${_formatAbsoluteTime(lastUpdate)}' // "Desde 10:30 AM"
-                                  : 'Hace ${_getTimeAgo(lastUpdate)}', // "Hace 15 min"
+                              _formatTimestamp(lastUpdate),
                               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                             ),
                           ),
@@ -1093,22 +1127,12 @@ class _MemberListItem extends StatelessWidget {
     );
   }
 
-  // --- Método Helper _formatAbsoluteTime ---
-  String _formatAbsoluteTime(DateTime dt) {
-    final hour = dt.hour;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    return '$displayHour:$minute $period';
-  }
-
-  // --- Método Helper _getTimeAgo ---
-  String _getTimeAgo(DateTime dt) {
+  String _formatTimestamp(DateTime dt) {
     final difference = DateTime.now().difference(dt);
-    if (difference.inSeconds < 60) return 'Justo ahora'; // Más claro
-    if (difference.inMinutes < 60) return '${difference.inMinutes} min';
-    if (difference.inHours < 24) return '${difference.inHours} h';
-    return '${difference.inDays} d';
+    if (difference.inSeconds < 60) return 'Justo Ahora';
+    if (difference.inMinutes < 60) return 'Hace ${difference.inMinutes} min';
+    if (difference.inHours < 24) return 'Hace ${difference.inHours} h';
+    return 'Hace ${difference.inDays} d';
   }
 } // Fin de _MemberListItem
 

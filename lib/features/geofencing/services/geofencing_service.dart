@@ -235,7 +235,7 @@ class GeofencingService {
         } else {
           // Zona personalizada: emoji genérico (📍)
           statusData['customEmoji'] = '📍';
-          statusData['statusType'] = 'available';
+          statusData['statusType'] = 'fine';
         }
 
         statusData['zoneName'] = zone.name;
@@ -270,7 +270,7 @@ class GeofencingService {
   String _getStatusFromZoneType(ZoneType type) {
     switch (type) {
       case ZoneType.home:
-        return 'available'; // 🟢 Disponible
+        return 'fine';
       case ZoneType.school:
         return 'studying'; // 📚 Estudiando
       case ZoneType.university:
@@ -278,7 +278,7 @@ class GeofencingService {
       case ZoneType.work:
         return 'busy'; // 🔴 Ocupado
       default:
-        return 'available';
+        return 'fine';
     }
   }
 }
