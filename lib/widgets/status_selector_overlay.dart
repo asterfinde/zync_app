@@ -32,6 +32,15 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   // Grid dinámico cargado desde Firebase (predefinidos + personalizados)
   List<StatusType?> _statusGrid = [];
 
+  bool _zonesConfigured = false;
+
+  static const Set<String> _blockedZoneStatusIds = {
+    'home',
+    'school',
+    'work',
+    'university',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +62,10 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       final circleId = userDoc.data()?['circleId'] as String?;
       if (circleId == null) throw Exception('Usuario sin círculo');
 
+      final zonesSnapshot =
+          await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').limit(1).get();
+      _zonesConfigured = zonesSnapshot.docs.isNotEmpty;
+
       // Cargar TODOS los emojis (predefinidos + personalizados)
       final emojis = await EmojiService.getAllEmojisForCircle(circleId);
       log('[StatusSelectorOverlay] ✅ Recibidos ${emojis.length} emojis (predefinidos + personalizados): ${emojis.map((e) => e.emoji).join(", ")}');
@@ -71,6 +84,52 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         setState(() => _statusGrid = StatusType.fallbackPredefined.take(16).toList());
       }
     }
+  }
+
+  Future<void> _showZoneSelectionNotAllowedModal() async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.grey.shade300.withOpacity(0.92),
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Acción no permitida',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'No puedes seleccionar zonas manualmente. El estado de zonas se actualiza automáticamente por geofencing.',
+                  style: TextStyle(fontSize: 14, color: Colors.black),
+                ),
+                const SizedBox(height: 18),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text(
+                      'Entendido',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _setupAnimations() {
@@ -106,6 +165,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   Future<void> _handleStatusSelection(StatusType status) async {
     if (_isUpdating) return;
 
+    if (_zonesConfigured && _blockedZoneStatusIds.contains(status.id)) {
+      await _showZoneSelectionNotAllowedModal();
+      return;
+    }
+
     setState(() => _isUpdating = true);
 
     try {
@@ -125,7 +189,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         await Future.delayed(const Duration(milliseconds: 800));
         _closeModal();
       } else {
-        _showErrorFeedback(result.errorMessage ?? 'Error desconocido');
+        if (result.errorMessage == 'zone_manual_selection_not_allowed') {
+          await _showZoneSelectionNotAllowedModal();
+        } else {
+          _showErrorFeedback(result.errorMessage ?? 'Error desconocido');
+        }
       }
     } catch (e) {
       log('[StatusSelectorOverlay] Error: $e');
@@ -260,6 +328,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   /// Construye botón de estado individual
   Widget _buildStatusButton(StatusType status) {
+    final isBlockedZone = _zonesConfigured && _blockedZoneStatusIds.contains(status.id);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -267,7 +336,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            color: _isUpdating
+            color: (_isUpdating || isBlockedZone)
                 ? Colors.grey.shade800.withOpacity(0.3)
                 : Colors.grey.shade800.withOpacity(0.6), // Fondo oscuro transparente
             borderRadius: BorderRadius.circular(12),
@@ -282,7 +351,10 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
             children: [
               Text(
                 status.emoji,
-                style: const TextStyle(fontSize: 24),
+                style: TextStyle(
+                  fontSize: 24,
+                  color: isBlockedZone ? Colors.white.withOpacity(0.35) : Colors.white,
+                ),
               ),
               const SizedBox(height: 2),
               Flexible(
@@ -290,7 +362,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                   status.shortDescription,
                   style: TextStyle(
                     fontSize: 9,
-                    color: Colors.white.withOpacity(0.8),
+                    color: isBlockedZone ? Colors.white.withOpacity(0.35) : Colors.white.withOpacity(0.8),
                     fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,

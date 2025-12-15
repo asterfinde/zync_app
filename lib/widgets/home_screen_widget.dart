@@ -13,8 +13,7 @@ class HomeScreenWidget extends ConsumerStatefulWidget {
   ConsumerState<HomeScreenWidget> createState() => _HomeScreenWidgetState();
 }
 
-class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
-    with TickerProviderStateMixin {
+class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget> with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   String? _lastSelectedEmoji;
@@ -27,9 +26,9 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
   static const _emojiMapping = [
     'away', // Ausente (antes leave)
     'busy', // Ocupado
-    'available', // Disponible (antes fine)
+    'fine',
     'do_not_disturb', // No molestar (antes sad)
-    'available', // Disponible (antes ready)
+    'fine',
     'sos', // SOS
   ];
 
@@ -59,8 +58,7 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
       }
     } catch (e) {
       if (mounted) {
-        setState(
-            () => _emojis = StatusType.fallbackPredefined.take(6).toList());
+        setState(() => _emojis = StatusType.fallbackPredefined.take(6).toList());
       }
     }
   }
@@ -131,8 +129,7 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
 
   Future<void> _showSuccessFeedback(String emoji) async {
     await HomeWidget.saveWidgetData('lastStatus', emoji);
-    await HomeWidget.saveWidgetData(
-        'lastUpdate', DateTime.now().toIso8601String());
+    await HomeWidget.saveWidgetData('lastUpdate', DateTime.now().toIso8601String());
     await _updateWidgetData();
 
     setState(() {
@@ -198,14 +195,10 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
                       scale: isProcessing ? _scaleAnimation.value : 1.0,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF1CE4B3).withValues(alpha: 0.2)
-                              : Colors.transparent,
+                          color: isSelected ? const Color(0xFF1CE4B3).withValues(alpha: 0.2) : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFF1CE4B3)
-                                : Colors.grey.withValues(alpha: 0.3),
+                            color: isSelected ? const Color(0xFF1CE4B3) : Colors.grey.withValues(alpha: 0.3),
                             width: isSelected ? 2 : 1,
                           ),
                         ),
@@ -221,12 +214,8 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget>
                               emojiData.shortLabel,
                               style: TextStyle(
                                 fontSize: 10,
-                                color: isSelected
-                                    ? const Color(0xFF1CE4B3)
-                                    : Colors.grey,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                                color: isSelected ? const Color(0xFF1CE4B3) : Colors.grey,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
                           ],

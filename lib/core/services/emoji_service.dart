@@ -34,10 +34,7 @@ class EmojiService {
     try {
       log('[EmojiService] 📡 Cargando predefinidos desde Firebase...');
 
-      final snapshot = await _firestore
-          .collection('predefinedEmojis')
-          .orderBy('order')
-          .get();
+      final snapshot = await _firestore.collection('predefinedEmojis').orderBy('order').get();
 
       if (snapshot.docs.isEmpty) {
         log('[EmojiService] ⚠️ Firebase vacío, usando fallback hardcoded');
@@ -45,8 +42,7 @@ class EmojiService {
         return _cachedPredefined!;
       }
 
-      _cachedPredefined =
-          snapshot.docs.map((doc) => StatusType.fromFirestore(doc)).toList();
+      _cachedPredefined = snapshot.docs.map((doc) => StatusType.fromFirestore(doc)).toList();
 
       log('[EmojiService] ✓ ${_cachedPredefined!.length} predefinidos cargados desde Firebase');
       return _cachedPredefined!;
@@ -79,8 +75,7 @@ class EmojiService {
           .orderBy('usageCount', descending: true) // Más usados primero
           .get();
 
-      final customEmojis =
-          snapshot.docs.map((doc) => StatusType.fromFirestore(doc)).toList();
+      final customEmojis = snapshot.docs.map((doc) => StatusType.fromFirestore(doc)).toList();
 
       _cachedCustomByCircle[circleId] = customEmojis;
 
@@ -96,11 +91,62 @@ class EmojiService {
   /// (predefinidos + custom del círculo)
   ///
   /// Útil para modal de selección
+  /// NUEVO: Filtra estados conflictivos si hay zonas predefinidas configuradas
   static Future<List<StatusType>> getAllEmojisForCircle(String circleId) async {
     final predefined = await getPredefinedEmojis();
     final custom = await getCustomEmojis(circleId);
 
-    return [...predefined, ...custom];
+    // Obtener zonas configuradas para filtrar estados conflictivos
+    final configuredZones = await _getConfiguredPredefinedZones(circleId);
+
+    // Si no hay zonas predefinidas, retornar todos los emojis
+    if (configuredZones.isEmpty) {
+      return [...predefined, ...custom];
+    }
+
+    // Filtrar estados manuales que conflictúan con zonas configuradas
+    final filteredPredefined = predefined.where((status) {
+      // home zone configurada → ocultar estado 'available' cuando sea representado por 🏠
+      if (configuredZones.contains('home') && status.id == 'fine' && status.emoji == '🏠') {
+        return false;
+      }
+      // school zone configurada → ocultar estado 'studying' cuando sea representado por 🏫
+      if (configuredZones.contains('school') && status.id == 'studying' && status.emoji == '🏫') {
+        return false;
+      }
+      // university zone configurada → ocultar estado 'studying' cuando sea representado por 🎓
+      if (configuredZones.contains('university') && status.id == 'studying' && status.emoji == '🎓') {
+        return false;
+      }
+      // work zone configurada → ocultar estado 'busy' cuando sea representado por 💼
+      if (configuredZones.contains('work') && status.id == 'busy' && status.emoji == '💼') {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    return [...filteredPredefined, ...custom];
+  }
+
+  /// Helper: Obtiene tipos de zonas predefinidas configuradas en un círculo
+  static Future<List<String>> _getConfiguredPredefinedZones(String circleId) async {
+    try {
+      final zonesSnapshot = await _firestore
+          .collection('circles')
+          .doc(circleId)
+          .collection('zones')
+          .where('isPredefined', isEqualTo: true)
+          .get();
+
+      return zonesSnapshot.docs
+          .map((doc) => doc.data()['type'] as String?)
+          .where((type) => type != null)
+          .cast<String>()
+          .toList();
+    } catch (e) {
+      log('[EmojiService] ❌ Error obteniendo zonas configuradas: $e');
+      return [];
+    }
   }
 
   /// Busca un emoji por ID en predefinidos
@@ -162,12 +208,7 @@ class EmojiService {
       );
 
       // Guardar en Firebase
-      await _firestore
-          .collection('circles')
-          .doc(circleId)
-          .collection('customEmojis')
-          .doc(id)
-          .set({
+      await _firestore.collection('circles').doc(circleId).collection('customEmojis').doc(id).set({
         ...customEmoji.toFirestore(),
         'createdBy': createdBy,
         'createdAt': FieldValue.serverTimestamp(),
@@ -193,12 +234,7 @@ class EmojiService {
     required String userId,
   }) async {
     try {
-      final doc = await _firestore
-          .collection('circles')
-          .doc(circleId)
-          .collection('customEmojis')
-          .doc(emojiId)
-          .get();
+      final doc = await _firestore.collection('circles').doc(circleId).collection('customEmojis').doc(emojiId).get();
 
       if (!doc.exists) return false;
 
@@ -230,12 +266,7 @@ class EmojiService {
     required String emojiId,
   }) async {
     try {
-      await _firestore
-          .collection('circles')
-          .doc(circleId)
-          .collection('customEmojis')
-          .doc(emojiId)
-          .update({
+      await _firestore.collection('circles').doc(circleId).collection('customEmojis').doc(emojiId).update({
         'usageCount': FieldValue.increment(1),
         'lastUsed': FieldValue.serverTimestamp(),
       });

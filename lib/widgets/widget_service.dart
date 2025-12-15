@@ -19,8 +19,7 @@ class WidgetService {
     await HomeWidget.saveWidgetData('currentStatus', 'fine');
     await HomeWidget.saveWidgetData('currentEmoji', '😊');
     await HomeWidget.saveWidgetData('circleName', 'Sin círculo');
-    await HomeWidget.saveWidgetData(
-        'lastUpdate', DateTime.now().toIso8601String());
+    await HomeWidget.saveWidgetData('lastUpdate', DateTime.now().toIso8601String());
   }
 
   static Future<void> _updateWidget() async {
@@ -55,13 +54,13 @@ class WidgetService {
         statusId = 'busy'; // Sin cambio
         break;
       case 'good':
-        statusId = 'available'; // Reemplazo de fine
+        statusId = 'fine';
         break;
       case 'bad':
         statusId = 'do_not_disturb'; // Reemplazo de sad
         break;
       case 'available':
-        statusId = 'available'; // Reemplazo de ready
+        statusId = 'fine';
         break;
       case 'emergency':
         statusId = 'sos'; // Sin cambio
@@ -89,8 +88,7 @@ class WidgetService {
 
     await HomeWidget.saveWidgetData('currentStatus', status);
     await HomeWidget.saveWidgetData('currentEmoji', emoji);
-    await HomeWidget.saveWidgetData(
-        'lastUpdate', DateTime.now().toIso8601String());
+    await HomeWidget.saveWidgetData('lastUpdate', DateTime.now().toIso8601String());
     await HomeWidget.saveWidgetData('status', 'success');
     await _updateWidget();
 
@@ -110,7 +108,7 @@ class WidgetService {
       case 'bad':
         return '😢';
       case 'available':
-        return '✅';
+        return '🙂';
       case 'emergency':
         return '🆘';
       default:

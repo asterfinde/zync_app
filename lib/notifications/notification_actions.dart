@@ -10,9 +10,9 @@ class NotificationActions {
   static const Map<String, String> actionStatusMap = {
     'status_leave': 'away', // Ausente (reemplazo de leave)
     'status_busy': 'busy', // Ocupado
-    'status_fine': 'available', // Disponible (reemplazo de fine)
+    'status_fine': 'fine',
     'status_sad': 'do_not_disturb', // No molestar (reemplazo de sad)
-    'status_ready': 'available', // Disponible (reemplazo de ready)
+    'status_ready': 'fine',
     'status_sos': 'sos', // SOS
   };
 

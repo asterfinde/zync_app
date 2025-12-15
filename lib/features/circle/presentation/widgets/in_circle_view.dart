@@ -16,6 +16,7 @@ import '../../../../core/services/status_service.dart';
 import '../../../../core/services/emoji_service.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../../core/models/user_status.dart';
+import '../../../geofencing/services/geofencing_service.dart'; // Servicio de geofencing
 // CACHE-FIRST: Importar caches
 import '../../../../core/cache/in_memory_cache.dart';
 import '../../../../core/cache/persistent_cache.dart';
@@ -111,6 +112,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   // StreamSubscription para poder cancelarlo en dispose()
   StreamSubscription<DocumentSnapshot>? _circleListenerSubscription;
   StreamSubscription<QuerySnapshot>? _customEmojisListener;
+
+  // Servicio de geofencing
+  final GeofencingService _geofencingService = GeofencingService();
   // --- FIN DE LA MODIFICACIÓN ---
 
   @override
@@ -146,6 +150,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     // PASO 3: Refrescar datos en background (Firebase, sin await)
     _refreshDataInBackground();
+
+    // PASO 4: Iniciar monitoreo de geofencing
+    _startGeofencingMonitoring();
     // =============================================================
   }
 
@@ -158,6 +165,10 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     // Cancelar la suscripción al listener de Firestore para evitar memory leaks
     _circleListenerSubscription?.cancel();
     _customEmojisListener?.cancel();
+
+    // Detener monitoreo de geofencing
+    _stopGeofencingMonitoring();
+
     print("[InCircleView] Listeners cancelados.");
     super.dispose();
   }
@@ -182,6 +193,20 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     });
   }
 
+  /// Iniciar monitoreo de geofencing para el círculo actual
+  void _startGeofencingMonitoring() {
+    _geofencingService.startMonitoring(widget.circle.id).catchError((error) {
+      print('[InCircleView] ❌ Error iniciando geofencing: $error');
+    });
+  }
+
+  /// Detener monitoreo de geofencing
+  void _stopGeofencingMonitoring() {
+    _geofencingService.stopMonitoring().catchError((error) {
+      print('[InCircleView] ❌ Error deteniendo geofencing: $error');
+    });
+  }
+
   /// Carga TODOS los emojis (predefinidos + personalizados) desde Firebase
   Future<void> _loadPredefinedEmojis() async {
     try {
@@ -191,8 +216,8 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         setState(() {
           _predefinedEmojis = emojis;
         });
-        // Forzar actualización del cache con los nuevos emojis
-        _refreshMemberDataWithNewEmojis();
+        // NO llamar a _refreshMemberDataWithNewEmojis() porque sobrescribe emojis de zonas
+        // Los emojis se actualizan correctamente a través del listener de Firebase
       }
       print('[InCircleView] ✅ ${emojis.length} emojis cargados (predefinidos + personalizados)');
     } catch (e) {
@@ -203,46 +228,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           _predefinedEmojis = StatusType.fallbackPredefined;
         });
       }
-    }
-  }
-
-  /// Actualiza el memberDataCache cuando se cargan nuevos emojis personalizados
-  void _refreshMemberDataWithNewEmojis() {
-    if (_predefinedEmojis == null) return;
-
-    bool hasChanges = false;
-    final Map<String, Map<String, dynamic>> updates = {};
-
-    _memberDataCache.forEach((memberId, memberData) {
-      final statusType = memberData['status'] as String?;
-      if (statusType != null) {
-        try {
-          final statusEnum = _predefinedEmojis!.firstWhere(
-            (s) => s.id == statusType,
-            orElse: () => throw Exception('Status not found'),
-          );
-
-          // Actualizar emoji si cambió
-          if (memberData['emoji'] != statusEnum.emoji) {
-            updates[memberId] = {
-              ...memberData,
-              'emoji': statusEnum.emoji,
-            };
-            hasChanges = true;
-          }
-        } catch (e) {
-          // Status no encontrado, mantener datos actuales
-        }
-      }
-    });
-
-    if (hasChanges && mounted) {
-      setState(() {
-        updates.forEach((memberId, newData) {
-          _memberDataCache[memberId] = newData;
-        });
-      });
-      print('[InCircleView] 🔄 Cache actualizado con nuevos emojis personalizados');
     }
   }
 
@@ -382,13 +367,82 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   Map<String, dynamic> _parseMemberData(dynamic statusData) {
     if (statusData is! Map<String, dynamic>) {
       // Valor por defecto si la data está mal formada
-      return {'emoji': '❓', 'status': 'unknown', 'hasGPS': false, 'coordinates': null, 'lastUpdate': null};
+      return {
+        'emoji': '❓',
+        'status': 'unknown',
+        'hasGPS': false,
+        'coordinates': null,
+        'lastUpdate': null,
+        'autoUpdated': false,
+        'zoneName': null,
+        'displayText': null,
+        'showManualBadge': false,
+        'locationInfo': null,
+      };
     }
 
-    final statusType = statusData['statusType'] as String?;
-    String emoji = '😊'; // Default emoji
+    final rawStatusType = statusData['statusType'] as String?;
+    final statusType = rawStatusType == 'available' ? 'fine' : rawStatusType;
+    final autoUpdated = statusData['autoUpdated'] as bool? ?? false;
+    final customEmoji = statusData['customEmoji'] as String?;
+    final zoneName = statusData['zoneName'] as String?;
+    final manualOverride = statusData['manualOverride'] as bool?;
+    final locationUnknown = statusData['locationUnknown'] as bool?;
 
-    if (statusType != null) {
+    print(
+        '[InCircleView] 📊 Datos recibidos: statusType=$statusType, autoUpdated=$autoUpdated, customEmoji=$customEmoji, zoneName=$zoneName');
+
+    String emoji = '😊'; // Default emoji
+    String? displayText;
+    bool showManualBadge = false;
+    String? locationInfo;
+
+    // CASO 1: Si es actualización automática y tiene customEmoji (entrada a zona)
+    // PRIORIDAD MÁXIMA: Este caso debe ejecutarse SIEMPRE que haya customEmoji
+    if (autoUpdated && customEmoji != null) {
+      emoji = customEmoji; // Usar emoji de la zona (🏠, 🏫, 🎓, 💼, 📍, 🚗)
+      displayText = zoneName; // "En Jaus", "En Torre Real", "En camino"
+      showManualBadge = false; // Automático, sin badge
+      locationInfo = null;
+      print('[InCircleView] 🏠 CASO 1: Zona automática - emoji: $emoji, zona: $zoneName');
+    }
+    // CASO 1.5: Override manual mientras SIGUE dentro de una zona
+    // (customEmoji/zoneName presentes, pero autoUpdated=false)
+    else if (!autoUpdated && customEmoji != null && statusType != null) {
+      try {
+        final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
+        final statusEnum = emojis.firstWhere(
+          (s) => s.id == statusType,
+          orElse: () {
+            print(
+                "⚠️ [InCircleView] Status '$statusType' no encontrado en emojis cargados (${emojis.length} disponibles), reintentando carga...");
+            _loadPredefinedEmojis();
+            return StatusType(
+              id: statusType,
+              emoji: '⏳',
+              label: 'Cargando...',
+              shortLabel: '...',
+              category: 'custom',
+              order: 999,
+              isPredefined: false,
+              canDelete: false,
+            );
+          },
+        );
+        emoji = statusEnum.emoji;
+        displayText = statusEnum.label;
+      } catch (e) {
+        print("❌ [InCircleView] Error parsing status enum (manual-in-zone): $e");
+        emoji = '😊';
+        displayText = 'Todo bien';
+      }
+
+      showManualBadge = manualOverride == true;
+      locationInfo = locationUnknown == true ? '❓ Ubicación desconocida' : null;
+      print('[InCircleView] ✋ CASO 1.5: Manual dentro de zona - emoji: $emoji, status: $statusType, zona: $zoneName');
+    }
+    // CASO 2: Estado manual (sin customEmoji, solo statusType)
+    else if (statusType != null && customEmoji == null) {
       try {
         final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
         final statusEnum = emojis.firstWhere(
@@ -413,10 +467,18 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           },
         );
         emoji = statusEnum.emoji;
+        displayText = statusEnum.label; // "Estudiando", "Cansado", etc.
       } catch (e) {
         print("❌ [InCircleView] Error parsing status enum: $e, using default emoji.");
         emoji = '😊'; // Mantener default si hay error
+        displayText = 'Todo bien';
       }
+
+      // Estado manual: mostrar badge SOLO si el usuario sobre-escribe un estado automático (Geofencing)
+      showManualBadge = manualOverride == true;
+
+      // Caso 3.2: si salió de zona y estaba en manual override, mostrar ubicación desconocida
+      locationInfo = locationUnknown == true ? '❓ Ubicación desconocida' : null;
     }
 
     final coordinates = statusData['coordinates'] as Map<String, dynamic>?;
@@ -426,19 +488,33 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       lastUpdate = timestamp.toDate();
     }
 
-    return {
+    final result = {
       'emoji': emoji,
       'status': statusType ?? 'fine', // Default status si es null
       'coordinates': coordinates,
       'hasGPS': coordinates != null && statusType == 'sos', // GPS solo relevante para SOS
       'lastUpdate': lastUpdate,
+      'autoUpdated': autoUpdated, // 🆕 Flag para saber si es actualización automática
+      'zoneName': zoneName, // 🆕 Nombre de la zona (opcional)
+      'displayText': displayText, // 🆕 Texto a mostrar (zona o estado)
+      'showManualBadge': showManualBadge, // 🆕 Mostrar badge ✋ Manual
+      'locationInfo': locationInfo, // 🆕 Info de ubicación desconocida/última zona
     };
+
+    print('[InCircleView] 🎯 RETORNANDO: emoji=$emoji, displayText=$displayText, autoUpdated=$autoUpdated');
+    return result;
   }
 
   bool _hasChanged(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
     if (oldData == null) return true; // Siempre cambia si no había data previa
-    // Comparar campos relevantes
-    return oldData['status'] != newData['status'] ||
+    // Comparar campos relevantes (incluyendo emoji que cambia con customEmoji)
+    return oldData['emoji'] != newData['emoji'] || // 🆕 Detecta cambio de emoji de zona
+        oldData['status'] != newData['status'] ||
+        oldData['autoUpdated'] != newData['autoUpdated'] || // 🆕 Detecta cambio manual ↔ automático
+        oldData['zoneName'] != newData['zoneName'] || // 🆕 Detecta cambio de zona
+        oldData['displayText'] != newData['displayText'] || // 🆕 Detecta cambio de texto
+        oldData['showManualBadge'] != newData['showManualBadge'] || // 🆕 Detecta cambio de badge
+        oldData['locationInfo'] != newData['locationInfo'] || // 🆕 Detecta cambio de ubicación
         oldData['lastUpdate']?.millisecondsSinceEpoch != newData['lastUpdate']?.millisecondsSinceEpoch ||
         oldData['coordinates']?.toString() != newData['coordinates']?.toString(); // Comparación simple para coordenadas
   }
@@ -643,7 +719,13 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     try {
       final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
-      final defaultStatus = emojis.firstWhere((s) => s.id == 'available', orElse: () => emojis.first);
+      final defaultStatus = emojis.firstWhere(
+        (s) => s.id == 'fine',
+        orElse: () => emojis.firstWhere(
+          (s) => s.id == 'available',
+          orElse: () => emojis.first,
+        ),
+      );
       print('[InCircleView] ✅ Enviando estado rápido: ${defaultStatus.label}');
       final result = await StatusService.updateUserStatus(defaultStatus);
 
@@ -897,7 +979,14 @@ class _MemberListItem extends StatelessWidget {
     final hasGPS = memberData['hasGPS'] as bool? ?? false;
     final coordinates = memberData['coordinates'] as Map<String, dynamic>?;
     final lastUpdate = memberData['lastUpdate'] as DateTime?;
+    final autoUpdated = memberData['autoUpdated'] as bool? ?? false; // 🆕
+    final displayText = memberData['displayText'] as String?; // 🆕 Texto del estado o zona
+    final showManualBadge = memberData['showManualBadge'] as bool? ?? false; // 🆕
+    final locationInfo = memberData['locationInfo'] as String?; // 🆕
     final isSOS = status == 'sos';
+
+    print(
+        '[_MemberListItem] 🎨 RENDERIZANDO: nickname=$nickname, emoji=$emoji, displayText=$displayText, autoUpdated=$autoUpdated');
 
     return Material(
       color: _AppColors.background,
@@ -923,7 +1012,10 @@ class _MemberListItem extends StatelessWidget {
                 children: [
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 150),
-                    child: Text(emoji, key: ValueKey(status), style: const TextStyle(fontSize: 32)),
+                    child: Text(emoji,
+                        key: ValueKey(emoji),
+                        style:
+                            const TextStyle(fontSize: 32)), // 🆕 Cambio: ValueKey(emoji) detecta cambios de customEmoji
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -956,10 +1048,44 @@ class _MemberListItem extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          _getStatusLabel(status), // Mostrará "Cargando..." si es necesario
-                          style: isSOS ? _AppTextStyles.sosStatus : _AppTextStyles.memberStatus,
-                        ),
+                        // Mostrar displayText si está disponible (nombre de zona o label de estado)
+                        if (displayText != null)
+                          Text(
+                            displayText,
+                            style: isSOS ? _AppTextStyles.sosStatus : _AppTextStyles.memberStatus,
+                          ),
+                        // Mostrar timestamp con formato según autoUpdated
+                        if (lastUpdate != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              _formatTimestamp(lastUpdate),
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ),
+                        // Badge ✋ Manual (SOLO cuando showManualBadge es true, que ocurre solo en estados manuales)
+                        if (showManualBadge) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              '✋ Manual',
+                              style: TextStyle(fontSize: 11, color: Colors.orange),
+                            ),
+                          ),
+                        ],
+                        // Ubicación desconocida o última zona (SOLO cuando locationInfo no es null, que ocurre solo en estados manuales)
+                        if (locationInfo != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            locationInfo,
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                        ],
                         if (isFirst && status != 'loading') // No mostrar "Creador" si está cargando
                           Text(
                             'Creador',
@@ -972,11 +1098,6 @@ class _MemberListItem extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (lastUpdate != null)
-                    Text(
-                      _getTimeAgo(lastUpdate),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]), // Mantener gris o usar textSecondary
-                    ),
                 ],
               ),
               // Mostrar sección SOS solo si el status NO es 'loading'
@@ -1006,57 +1127,9 @@ class _MemberListItem extends StatelessWidget {
     );
   }
 
-  // --- Método Helper _getStatusLabel ---
-  String _getStatusLabel(String s) {
-    if (s == 'loading') {
-      return 'Cargando...'; // Texto para el estado inicial
-    }
-
-    // NUEVO: Buscar en la lista de emojis cargados (predefinidos + personalizados)
-    if (predefinedEmojis != null) {
-      try {
-        final statusType = predefinedEmojis!.firstWhere(
-          (emoji) => emoji.id == s,
-          orElse: () => throw Exception('Status not found'),
-        );
-        return statusType.label; // Retornar el label del emoji
-      } catch (e) {
-        // Si no se encuentra, continuar con el fallback
-        print('[InCircleView] ⚠️ Status "$s" no encontrado en emojis cargados');
-      }
-    }
-
-    // FALLBACK: Mapeo hardcoded para compatibilidad (solo si no se cargaron emojis)
-    final labels = {
-      'fine': 'Todo bien',
-      'sos': '¡Necesito ayuda!',
-      'meeting': 'En reunión',
-      'ready': 'Listo',
-      'leave': 'De salida',
-      'happy': 'Feliz',
-      'sad': 'Triste',
-      'busy': 'Ocupado',
-      'sleepy': 'Con sueño',
-      'excited': 'Emocionado',
-      'thinking': 'Pensando',
-      'worried': 'Preocupado',
-      'available': 'Disponible',
-      'away': 'Ausente',
-      'focus': 'Concentrado',
-      'tired': 'Cansado',
-      'stressed': 'Estresado',
-      'traveling': 'Viajando',
-      'studying': 'Estudiando',
-      'eating': 'Comiendo',
-      'unknown': 'Desconocido',
-    };
-    return labels[s] ?? s.capitalize(); // Fallback: capitalizar el status si no está en el mapa
-  }
-
-  // --- Método Helper _getTimeAgo ---
-  String _getTimeAgo(DateTime dt) {
+  String _formatTimestamp(DateTime dt) {
     final difference = DateTime.now().difference(dt);
-    if (difference.inSeconds < 60) return 'Ahora'; // Más preciso
+    if (difference.inSeconds < 60) return 'Justo Ahora';
     if (difference.inMinutes < 60) return 'Hace ${difference.inMinutes} min';
     if (difference.inHours < 24) return 'Hace ${difference.inHours} h';
     return 'Hace ${difference.inDays} d';

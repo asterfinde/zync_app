@@ -56,7 +56,7 @@ class WidgetConfiguration {
         WidgetStatus(emoji: '🔥', statusType: 'busy', label: 'Ocupado', updatedAt: DateTime.now()),
         WidgetStatus(emoji: '😊', statusType: 'good', label: 'Bien', updatedAt: DateTime.now()),
         WidgetStatus(emoji: '😢', statusType: 'bad', label: 'Mal', updatedAt: DateTime.now()),
-        WidgetStatus(emoji: '✅', statusType: 'available', label: 'Listo', updatedAt: DateTime.now()),
+        WidgetStatus(emoji: '🙂', statusType: 'fine', label: 'Todo bien', updatedAt: DateTime.now()),
         WidgetStatus(emoji: '🆘', statusType: 'emergency', label: 'SOS', updatedAt: DateTime.now()),
       ],
       isEnabled: true,
