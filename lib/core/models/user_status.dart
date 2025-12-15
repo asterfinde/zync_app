@@ -34,7 +34,7 @@ class StatusType extends Equatable {
     final data = doc.data() as Map<String, dynamic>;
     return StatusType(
       id: doc.id,
-      emoji: data['emoji'] as String,
+      emoji: _sanitizeEmoji(doc.id, data['emoji'] as String),
       label: data['label'] as String,
       shortLabel: data['shortLabel'] as String,
       category: data['category'] as String? ?? 'custom', // Default para custom emojis
@@ -48,7 +48,7 @@ class StatusType extends Equatable {
   factory StatusType.fromMap(Map<String, dynamic> map) {
     return StatusType(
       id: map['id'] as String,
-      emoji: map['emoji'] as String,
+      emoji: _sanitizeEmoji(map['id'] as String, map['emoji'] as String),
       label: map['label'] as String,
       shortLabel: map['shortLabel'] as String,
       category: map['category'] as String,
@@ -56,6 +56,34 @@ class StatusType extends Equatable {
       isPredefined: map['isPredefined'] as bool? ?? true,
       canDelete: map['canDelete'] as bool? ?? false,
     );
+  }
+
+  static String _sanitizeEmoji(String id, String emoji) {
+    final e = emoji.trim();
+    if (id == 'meeting') {
+      // Algunos emojis de "reunión" (burbujas de chat) no están soportados en
+      // ciertos dispositivos y se ven como tofu/rectángulo.
+      const unsupportedMeetingEmojis = {
+        '🗣',
+        '🗣️',
+        '💬',
+        '🗨',
+        '🗨️',
+      };
+      if (unsupportedMeetingEmojis.contains(e)) {
+        return '📅';
+      }
+    }
+
+    final isInvalid = e.isEmpty || e == '?' || e.contains('\uFFFD');
+    if (!isInvalid) return emoji;
+
+    switch (id) {
+      case 'meeting':
+        return '📅';
+      default:
+        return '❓';
+    }
   }
 
   /// Conversión a Map para Firestore
@@ -106,8 +134,7 @@ class StatusType extends Equatable {
   /// Estados predefinidos hardcoded como fallback (si Firebase falla)
   static final List<StatusType> fallbackPredefined = [
     // FILA 1: DISPONIBILIDAD
-    StatusType(
-        id: 'fine', emoji: '🙂', label: 'Todo bien', shortLabel: 'Bien', category: 'availability', order: 1),
+    StatusType(id: 'fine', emoji: '�', label: 'Todo bien', shortLabel: 'Bien', category: 'availability', order: 1),
     StatusType(id: 'busy', emoji: '🔴', label: 'Ocupado', shortLabel: 'Ocupado', category: 'availability', order: 2),
     StatusType(id: 'away', emoji: '🟡', label: 'Ausente', shortLabel: 'Ausente', category: 'availability', order: 3),
     StatusType(
