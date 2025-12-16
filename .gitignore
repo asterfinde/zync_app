@@ -27,6 +27,7 @@ ios/Flutter/pod_install_lockfile
 android/key.properties
 android/*.keystore
 android/app/src/main/assets/flutter_assets/kernel_blob.bin
+android/local.properties
 
 # IntelliJ
 .idea/

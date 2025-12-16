@@ -718,6 +718,12 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     });
 
     try {
+      // PA2 FIX: Asegurar que _predefinedEmojis esté cargado antes de usarlo
+      if (_predefinedEmojis == null || _predefinedEmojis!.isEmpty) {
+        print('[InCircleView] ⚠️ Emojis no cargados, cargando ahora...');
+        await _loadPredefinedEmojis();
+      }
+
       final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
       final defaultStatus = emojis.firstWhere(
         (s) => s.id == 'fine',
@@ -738,6 +744,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         _showError(context, 'Error actualizando estado');
       }
     } finally {
+      // PA2 FIX: Asegurar que siempre se resetea el estado de loading
       if (mounted) {
         setState(() {
           _isUpdatingStatus = false;

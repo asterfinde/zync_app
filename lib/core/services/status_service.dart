@@ -147,8 +147,11 @@ class StatusService {
 
       final previousWasAutoUpdated = currentUserStatus?['autoUpdated'] as bool? ?? false;
       final previousManualOverride = currentUserStatus?['manualOverride'] as bool? ?? false;
+      // PA1 FIX: Solo marcar manualOverride si el usuario SIGUE en la zona
+      // Si salió de la zona, NO marcar locationUnknown para estados "fine" (Todo bien)
       final manualOverride = (wasInZone && (previousWasAutoUpdated || previousManualOverride));
-      final locationUnknown = (previousWasAutoUpdated || previousManualOverride) && !wasInZone;
+      final locationUnknown =
+          (previousWasAutoUpdated || previousManualOverride) && !wasInZone && newStatus.id != 'fine';
 
       log('[StatusService] 📍 Usuario estaba en zona: $wasInZone${wasInZone ? ' ($previousZoneName)' : ''}');
 
