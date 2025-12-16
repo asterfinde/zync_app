@@ -185,8 +185,8 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         // Mostrar feedback visual rápido
         _showSuccessFeedback(status);
 
-        // Cerrar modal después de un breve delay
-        await Future.delayed(const Duration(milliseconds: 800));
+        // PM2 FIX: Cerrar modal inmediatamente después de seleccionar emoji
+        await Future.delayed(const Duration(milliseconds: 300));
         _closeModal();
       } else {
         if (result.errorMessage == 'zone_manual_selection_not_allowed') {

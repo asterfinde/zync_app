@@ -78,8 +78,7 @@ class QuickActionsService {
   static Future<void> _setupUserStatusShortcuts() async {
     try {
       // Obtener las 4 Quick Actions configuradas por el usuario
-      final userQuickActions =
-          await QuickActionsPreferencesService.getUserQuickActions();
+      final userQuickActions = await QuickActionsPreferencesService.getUserQuickActions();
 
       // Convertir a formato nativo
       final shortcuts = userQuickActions.map((status) {
@@ -113,7 +112,7 @@ class QuickActionsService {
       await _platform.invokeMethod('updateShortcuts', {
         'hasCircle': true,
         'shortcuts': [
-          {'type': 'fine', 'emoji': '🟢', 'label': 'Todo bien'},
+          {'type': 'fine', 'emoji': '🙂', 'label': 'Todo bien'},
           {'type': 'busy', 'emoji': '🔴', 'label': 'Ocupado'},
           {'type': 'sos', 'emoji': '🆘', 'label': 'SOS'},
           {'type': 'meeting', 'emoji': '💼', 'label': 'En reunión'},
@@ -147,8 +146,7 @@ class QuickActionsService {
 
   /// Actualiza los Quick Actions cuando el usuario cambia su configuración
   /// Point 14: Permite configuración personalizada de 4 Quick Actions
-  static Future<void> updateUserQuickActions(
-      List<StatusType> newQuickActions) async {
+  static Future<void> updateUserQuickActions(List<StatusType> newQuickActions) async {
     try {
       if (newQuickActions.length != 4) {
         log('[QuickActionsService] ❌ Error: Debe haber exactamente 4 Quick Actions');
@@ -156,8 +154,7 @@ class QuickActionsService {
       }
 
       // Guardar las nuevas preferencias
-      final saved = await QuickActionsPreferencesService.saveUserQuickActions(
-          newQuickActions);
+      final saved = await QuickActionsPreferencesService.saveUserQuickActions(newQuickActions);
 
       if (saved) {
         // Actualizar los Quick Actions del sistema
@@ -172,8 +169,7 @@ class QuickActionsService {
   }
 
   /// Método legacy mantenido para compatibilidad
-  static Future<void> updateQuickActions(
-      List<StatusType> enabledStatuses) async {
+  static Future<void> updateQuickActions(List<StatusType> enabledStatuses) async {
     await updateUserQuickActions(enabledStatuses);
   }
 }
