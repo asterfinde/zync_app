@@ -102,7 +102,7 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyC0cqR514ZQdfWTvstg_pdmUWWeQOSCbSQ"/>
+            android:value="${GOOGLE_MAPS_API_KEY}"/>
                 
         <!-- Servicio foreground para ubicación -->
         <service
