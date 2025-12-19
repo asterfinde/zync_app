@@ -66,14 +66,36 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
           await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').limit(1).get();
       _zonesConfigured = zonesSnapshot.docs.isNotEmpty;
 
-      // Cargar TODOS los emojis (predefinidos + personalizados)
-      final emojis = await EmojiService.getAllEmojisForCircle(circleId);
-      log('[StatusSelectorOverlay] ✅ Recibidos ${emojis.length} emojis (predefinidos + personalizados): ${emojis.map((e) => e.emoji).join(", ")}');
+      // PM5 FIX: Cargar solo los 16 emojis predefinidos (sin custom)
+      final emojis = await EmojiService.getPredefinedEmojis();
+      log('[StatusSelectorOverlay] ✅ Recibidos ${emojis.length} emojis predefinidos: ${emojis.map((e) => e.emoji).join(", ")}');
 
-      // NO filtrar por _gridIds - mostrar TODOS los emojis
-      final grid = emojis.map((e) => e as StatusType?).toList();
+      // PM5 FIX: Filtrar estados legacy y validar que sean los 16 correctos
+      final validIds = [
+        'fine', 'busy', 'away', 'do_not_disturb', // FILA 1
+        'home', 'school', 'work', 'medical', // FILA 2
+        'meeting', 'studying', 'eating', 'exercising', // FILA 3
+        'driving', 'walking', 'public_transport', 'sos' // FILA 4
+      ];
 
-      log('[StatusSelectorOverlay] ✅ Grid construido con ${grid.length} emojis');
+      final grid = emojis.where((e) => validIds.contains(e.id)).take(16).toList();
+
+      // Si Firebase tiene menos de 16, completar con fallback
+      if (grid.length < 16) {
+        log('[StatusSelectorOverlay] ⚠️ Solo ${grid.length}/16 emojis válidos, completando con fallback');
+        final fallbackGrid = StatusType.fallbackPredefined;
+        for (final fallbackStatus in fallbackGrid) {
+          if (!grid.any((s) => s.id == fallbackStatus.id)) {
+            grid.add(fallbackStatus);
+          }
+          if (grid.length >= 16) break;
+        }
+      }
+
+      // Ordenar por 'order' para mantener consistencia
+      grid.sort((a, b) => a.order.compareTo(b.order));
+
+      log('[StatusSelectorOverlay] ✅ Grid construido con ${grid.length} emojis válidos');
 
       if (mounted) {
         setState(() => _statusGrid = grid);
@@ -81,7 +103,8 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
     } catch (e) {
       log('[StatusSelectorOverlay] ❌ ERROR cargando grid: $e');
       if (mounted) {
-        setState(() => _statusGrid = StatusType.fallbackPredefined.take(16).toList());
+        // PM5 FIX: Garantizar siempre los 16 estados correctos
+        setState(() => _statusGrid = StatusType.fallbackPredefined);
       }
     }
   }
@@ -176,19 +199,28 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       // Haptic feedback
       HapticFeedback.lightImpact();
 
+      log('[StatusSelectorOverlay] 🎯 Iniciando actualización de estado: ${status.description}');
+
       // Usar el StatusService existente - ¡Sin romper nada!
       final result = await StatusService.updateUserStatus(status);
 
+      log('[StatusSelectorOverlay] 📦 Resultado de actualización: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
+
       if (result.isSuccess) {
-        log('[StatusSelectorOverlay] Estado actualizado: ${status.description}');
+        log('[StatusSelectorOverlay] ✅ Estado actualizado exitosamente: ${status.description}');
 
         // Mostrar feedback visual rápido
         _showSuccessFeedback(status);
 
         // PM2 FIX: Cerrar modal inmediatamente después de seleccionar emoji
+        log('[StatusSelectorOverlay] 🚪 Iniciando cierre automático del modal...');
         await Future.delayed(const Duration(milliseconds: 300));
-        _closeModal();
+
+        log('[StatusSelectorOverlay] 🚪 Ejecutando _closeModal()...');
+        await _closeModal();
+        log('[StatusSelectorOverlay] ✅ Modal cerrado exitosamente');
       } else {
+        log('[StatusSelectorOverlay] ⚠️ Actualización falló: ${result.errorMessage}');
         if (result.errorMessage == 'zone_manual_selection_not_allowed') {
           await _showZoneSelectionNotAllowedModal();
         } else {
@@ -196,10 +228,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         }
       }
     } catch (e) {
-      log('[StatusSelectorOverlay] Error: $e');
+      log('[StatusSelectorOverlay] ❌ Excepción durante actualización: $e');
       _showErrorFeedback(e.toString());
     } finally {
       if (mounted) {
+        log('[StatusSelectorOverlay] 🔄 Finalizando actualización, reseteando _isUpdating');
         setState(() => _isUpdating = false);
       }
     }
@@ -229,15 +262,38 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   /// Cierra el modal con animación
   Future<void> _closeModal() async {
-    await _animationController.reverse();
-    if (mounted) {
-      Navigator.of(context).pop();
-      widget.onClose?.call();
+    log('[StatusSelectorOverlay] 🚪 _closeModal() llamado, iniciando animación de cierre...');
+    try {
+      await _animationController.reverse();
+      log('[StatusSelectorOverlay] ✅ Animación de cierre completada');
+
+      if (mounted) {
+        log('[StatusSelectorOverlay] 🚪 Widget mounted, ejecutando Navigator.pop()...');
+        Navigator.of(context).pop();
+        log('[StatusSelectorOverlay] ✅ Navigator.pop() ejecutado');
+
+        widget.onClose?.call();
+        log('[StatusSelectorOverlay] ✅ Callback onClose ejecutado');
+      } else {
+        log('[StatusSelectorOverlay] ⚠️ Widget no mounted, no se puede cerrar');
+      }
+    } catch (e) {
+      log('[StatusSelectorOverlay] ❌ Error durante cierre: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // PM1 FIX: Calcular tamaños responsive para uniformidad entre pantallas
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Usar porcentajes para tamaño responsive
+    final modalMargin = screenWidth * 0.08; // 8% del ancho de pantalla
+    final maxGridHeight = screenHeight * 0.55; // 55% de la altura de pantalla
+
+    log('[StatusSelectorOverlay] 📐 Screen: ${screenWidth}x$screenHeight, margin: $modalMargin, maxHeight: $maxGridHeight');
+
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -251,8 +307,9 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                 child: Transform.scale(
                   scale: _scaleAnimation.value,
                   child: Container(
-                    margin: const EdgeInsets.all(32),
-                    padding: const EdgeInsets.all(20),
+                    // PM1 FIX: Margen responsive en lugar de fijo
+                    margin: EdgeInsets.all(modalMargin),
+                    padding: const EdgeInsets.all(12), // PM5 FIX: Reducido de 20 a 12 para emojis más grandes
                     decoration: BoxDecoration(
                       color: Colors.grey.shade900.withOpacity(0.95), // Fondo oscuro transparente
                       borderRadius: BorderRadius.circular(20),
@@ -271,10 +328,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Grid DINÁMICO scrollable con altura máxima
+                        // Grid DINÁMICO scrollable con altura máxima RESPONSIVE
                         ConstrainedBox(
                           constraints: BoxConstraints(
-                            maxHeight: 340, // Altura fija para mostrar ~4 filas y forzar scroll
+                            // PM1 FIX: Altura responsive en lugar de fija
+                            maxHeight: maxGridHeight,
                           ),
                           child: Scrollbar(
                             thumbVisibility: true, // Barra de scroll siempre visible
@@ -283,11 +341,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                             child: GridView.builder(
                               shrinkWrap: true, // CRÍTICO: Permite que el GridView se ajuste al contenido
                               physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(8), // PM5 FIX: Reducido de 16 a 8 para emojis más grandes
                               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 4,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 8, // PM5 FIX: Reducido de 10 a 8
+                                mainAxisSpacing: 8, // PM5 FIX: Reducido de 10 a 8
                                 childAspectRatio: 1,
                               ),
                               itemCount: _statusGrid.length,
