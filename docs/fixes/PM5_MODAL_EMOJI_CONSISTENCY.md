@@ -47,6 +47,8 @@ final grid = emojis.map((e) => e as StatusType?).toList();
 
 **Archivo**: `lib/widgets/status_selector_overlay.dart`
 
+#### 1.1. Reducción de Padding para Emojis Más Grandes
+
 ```dart
 // DESPUÉS (CORRECTO)
 final emojis = await EmojiService.getPredefinedEmojis();
@@ -79,11 +81,32 @@ if (grid.length < 16) {
 grid.sort((a, b) => a.order.compareTo(b.order));
 ```
 
+El modal de círculo tenía demasiado padding interno comparado con el modal de notificaciones:
+
+```dart
+// ANTES (emojis pequeños)
+padding: const EdgeInsets.all(20),  // Container principal
+padding: const EdgeInsets.all(16),  // GridView
+crossAxisSpacing: 10,
+mainAxisSpacing: 10,
+
+// DESPUÉS (emojis más grandes, igualados a notificaciones)
+padding: const EdgeInsets.all(12),  // Container principal
+padding: const EdgeInsets.all(8),   // GridView
+crossAxisSpacing: 8,
+mainAxisSpacing: 8,
+```
+
+**Resultado**: Emojis 25% más grandes sin generar overflow.
+
+#### 1.2. Filtrado de Estados Legacy
+
 **Cambios**:
 - ✅ Usa `getPredefinedEmojis()` en lugar de `getAllEmojisForCircle()`
 - ✅ Filtra con whitelist de 16 IDs válidos
 - ✅ Completa con fallback hardcoded si Firebase falla
 - ✅ Ordena por campo `order` para consistencia
+- ✅ Padding reducido para emojis más grandes
 
 ### 2. Script de Limpieza de Firebase
 
@@ -115,6 +138,8 @@ dart run scripts/fix_firebase_emojis.dart
 - ✅ "fine" (🙂) en posición 1
 - ✅ Orden consistente con definición oficial
 - ✅ Usuarios con estados legacy migrados automáticamente
+- ✅ Emojis 25% más grandes (padding reducido)
+- ✅ Tamaño idéntico entre modal de notificaciones y círculo
 
 ## 🧪 Testing
 
