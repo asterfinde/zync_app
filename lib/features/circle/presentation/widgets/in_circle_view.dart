@@ -408,7 +408,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     }
     // CASO 1.5: Override manual mientras SIGUE dentro de una zona
     // (customEmoji/zoneName presentes, pero autoUpdated=false)
-    else if (!autoUpdated && customEmoji != null && statusType != null) {
+    else if (!autoUpdated && customEmoji != null) {
       try {
         final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
         final statusEnum = emojis.firstWhere(
@@ -438,7 +438,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       print('[InCircleView] ✋ CASO 1.5: Manual dentro de zona - emoji: $emoji, status: $statusType, zona: $zoneName');
     }
     // CASO 2: Estado manual (sin customEmoji, solo statusType)
-    else if (statusType != null && customEmoji == null) {
+    else if (customEmoji == null) {
       try {
         final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
         final statusEnum = emojis.firstWhere(
@@ -480,7 +480,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     final result = {
       'emoji': emoji,
-      'status': statusType ?? 'fine', // Default status si es null
+      'status': statusType,
       'coordinates': coordinates,
       'hasGPS': coordinates != null && statusType == 'sos', // GPS solo relevante para SOS
       'lastUpdate': lastUpdate,

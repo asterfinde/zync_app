@@ -6,8 +6,8 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../lib/firebase_options.dart';
-import '../lib/core/models/user_status.dart';
+import 'package:zync_app/firebase_options.dart';
+import 'package:zync_app/core/models/user_status.dart';
 
 Future<void> main() async {
   print('🔧 Iniciando reparación de emojis en Firebase...\n');

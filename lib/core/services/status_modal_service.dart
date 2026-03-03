@@ -2,15 +2,14 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../widgets/status_selector_overlay.dart'; // Corregido: lib/widgets/
+import '../../widgets/notification_status_selector.dart'; // NUEVO: Modal específico para notificaciones
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../main.dart'; // Para acceder al navigatorKey global
 
 /// Servicio para manejar la nueva StatusModalActivity transparente (Point 15)
 /// Permite abrir modales sin mostrar la app completa
 class StatusModalService {
-  static const MethodChannel _channel =
-      MethodChannel('com.datainfers.zync/status_modal');
+  static const MethodChannel _channel = MethodChannel('com.datainfers.zync/status_modal');
 
   static bool _isInitialized = false;
 
@@ -97,13 +96,13 @@ class StatusModalService {
       final finalContext = navigatorKey.currentContext!;
       log('[StatusModalService] ✅ Context disponible - mostrando overlay');
 
-      // Abrir el StatusSelectorOverlay
+      // Abrir el NotificationStatusSelector (específico para notificaciones)
       Navigator.of(finalContext).push(
         PageRouteBuilder(
           opaque: false, // Transparente
           barrierDismissible: true,
           pageBuilder: (context, animation, secondaryAnimation) {
-            return StatusSelectorOverlay(
+            return NotificationStatusSelector(
               onClose: () async {
                 log('[StatusModalService] Modal cerrado por usuario');
                 // Cerrar la activity nativa
