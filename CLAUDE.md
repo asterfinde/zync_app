@@ -465,6 +465,20 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 
 ---
 
+## 14. Próximos Pasos (Estado de Sesión)
+
+> Esta tabla se actualiza al cierre de cada sesión para permitir reconexión inmediata al flujo de trabajo.
+> La IA la lee al inicio y resume el estado antes de comenzar.
+> Los ítems completados se eliminan de la tabla.
+
+| # | Acción | Responsable | Estado |
+|---|--------|-------------|--------|
+| 1 | Hacer PR de rama `fix/pm3-pm4-pm5-modal-consistency` | Dante | Pendiente |
+| 2 | Conectar dispositivo Android y ejecutar app | Dante | Pendiente |
+| 3 | Reportar pruebas fallidas a Claude para revisión | Dante | Pendiente |
+
+---
+
 ## 13. Nota Final
 
 - Este archivo es un documento vivo. Se actualiza conforme el proyecto avanza.
