@@ -382,7 +382,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     }
 
     final rawStatusType = statusData['statusType'] as String?;
-    final statusType = rawStatusType == 'available' ? 'fine' : rawStatusType;
+    final statusType = _migrateOldStatus(rawStatusType);
     final autoUpdated = statusData['autoUpdated'] as bool? ?? false;
     final customEmoji = statusData['customEmoji'] as String?;
     final zoneName = statusData['zoneName'] as String?;
@@ -408,24 +408,20 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     }
     // CASO 1.5: Override manual mientras SIGUE dentro de una zona
     // (customEmoji/zoneName presentes, pero autoUpdated=false)
-    else if (!autoUpdated && customEmoji != null && statusType != null) {
+    else if (!autoUpdated && customEmoji != null) {
       try {
         final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
         final statusEnum = emojis.firstWhere(
           (s) => s.id == statusType,
           orElse: () {
+            // PM3 FIX: Estado no encontrado (emoji eliminado o legacy)
             print(
-                "⚠️ [InCircleView] Status '$statusType' no encontrado en emojis cargados (${emojis.length} disponibles), reintentando carga...");
-            _loadPredefinedEmojis();
-            return StatusType(
-              id: statusType,
-              emoji: '⏳',
-              label: 'Cargando...',
-              shortLabel: '...',
-              category: 'custom',
-              order: 999,
-              isPredefined: false,
-              canDelete: false,
+                "⚠️ [InCircleView] Status '$statusType' no encontrado (posible emoji eliminado), usando 'fine' default");
+            _loadPredefinedEmojis(); // Recargar por si acaso
+            // Buscar 'fine' como fallback seguro
+            return emojis.firstWhere(
+              (s) => s.id == 'fine',
+              orElse: () => StatusType.fallbackPredefined.first, // Último recurso
             );
           },
         );
@@ -442,27 +438,21 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       print('[InCircleView] ✋ CASO 1.5: Manual dentro de zona - emoji: $emoji, status: $statusType, zona: $zoneName');
     }
     // CASO 2: Estado manual (sin customEmoji, solo statusType)
-    else if (statusType != null && customEmoji == null) {
+    else if (customEmoji == null) {
       try {
         final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
         final statusEnum = emojis.firstWhere(
           (s) => s.id == statusType,
           orElse: () {
-            // Si no encontramos el emoji, usar un placeholder pero mantener el statusType
+            // PM3 FIX: Estado no encontrado (emoji personalizado eliminado o legacy)
             print(
-                "⚠️ [InCircleView] Status '$statusType' no encontrado en emojis cargados (${emojis.length} disponibles), reintentando carga...");
+                "⚠️ [InCircleView] Status '$statusType' no encontrado (posible emoji eliminado), usando 'fine' default");
             // Recargar emojis en background para próxima vez
             _loadPredefinedEmojis();
-            // Retornar un StatusType temporal con emoji genérico
-            return StatusType(
-              id: statusType,
-              emoji: '⏳', // Emoji temporal mientras se recarga
-              label: 'Cargando...',
-              shortLabel: '...',
-              category: 'custom',
-              order: 999,
-              isPredefined: false,
-              canDelete: false,
+            // Buscar 'fine' como fallback seguro
+            return emojis.firstWhere(
+              (s) => s.id == 'fine',
+              orElse: () => StatusType.fallbackPredefined.first, // Último recurso
             );
           },
         );
@@ -490,7 +480,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     final result = {
       'emoji': emoji,
-      'status': statusType ?? 'fine', // Default status si es null
+      'status': statusType,
       'coordinates': coordinates,
       'hasGPS': coordinates != null && statusType == 'sos', // GPS solo relevante para SOS
       'lastUpdate': lastUpdate,
@@ -709,6 +699,24 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   // === Métodos Auxiliares (sin cambios respecto a tu código original) ===
   // =========================================================================
 
+  /// PM3/PM4 FIX: Migrar estados del sistema viejo (enum) al nuevo (class)
+  String _migrateOldStatus(String? oldStatus) {
+    if (oldStatus == null) return 'fine';
+
+    switch (oldStatus) {
+      case 'available': // "Libre" en sistema viejo → "Todo bien" en nuevo
+        return 'fine';
+      case 'leave': // "Saliendo" en sistema viejo → "Ausente" en nuevo
+        return 'away';
+      case 'ready': // "Listo" en sistema viejo → "Todo bien" en nuevo
+        return 'fine';
+      case 'sad': // "Triste" en sistema viejo → "No molestar" en nuevo
+        return 'do_not_disturb';
+      default:
+        return oldStatus; // Estados válidos pasan sin cambios
+    }
+  }
+
   /// Actualización rápida del estado a "fine" (✅)
   Future<void> _quickStatusUpdate() async {
     if (_isUpdatingStatus) return;
@@ -727,10 +735,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
       final defaultStatus = emojis.firstWhere(
         (s) => s.id == 'fine',
-        orElse: () => emojis.firstWhere(
-          (s) => s.id == 'available',
-          orElse: () => emojis.first,
-        ),
+        orElse: () => StatusType.fallbackPredefined.first, // PM4 FIX: Siempre hay fallback
       );
       print('[InCircleView] ✅ Enviando estado rápido: ${defaultStatus.label}');
       final result = await StatusService.updateUserStatus(defaultStatus);
