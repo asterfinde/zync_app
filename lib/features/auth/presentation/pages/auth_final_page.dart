@@ -23,6 +23,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  bool _isConfirmPasswordObscured = true;
   bool _isLogin = true;
   bool _isPasswordObscured = true;
   bool _isLoading = false;
@@ -117,7 +119,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       }
     } on FirebaseAuthException catch (e) {
       setState(() {
-        _message = getAuthErrorMessage(e.code);
+        _message = getAuthErrorMessage(e.code, isLogin: true);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -202,7 +204,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       }
     } on FirebaseAuthException catch (e) {
       setState(() {
-        _message = getAuthErrorMessage(e.code);
+        _message = getAuthErrorMessage(e.code, isLogin: false);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -223,20 +225,34 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
     }
   }
 
-  String getAuthErrorMessage(String code) {
-    switch (code) {
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'El correo o la contraseña son inválidos.';
-      case 'email-already-in-use':
-        return 'El correo ya está registrado.';
-      case 'invalid-email':
-        return 'Correo inválido.';
-      case 'weak-password':
-        return 'La contraseña es muy débil.';
-      default:
-        return 'Error inesperado de autenticación.';
+  String getAuthErrorMessage(String code, {bool isLogin = true}) {
+    if (isLogin) {
+      switch (code) {
+        case 'user-not-found':
+          return 'No encontramos una cuenta con ese correo.';
+        case 'wrong-password':
+        case 'invalid-credential':
+          return 'La contraseña es incorrecta. Verifica e intenta de nuevo.';
+        case 'invalid-email':
+          return 'El formato del correo no es válido.';
+        case 'user-disabled':
+          return 'Esta cuenta ha sido deshabilitada.';
+        case 'too-many-requests':
+          return 'Demasiados intentos fallidos. Espera unos minutos.';
+        default:
+          return 'Error inesperado de autenticación.';
+      }
+    } else {
+      switch (code) {
+        case 'email-already-in-use':
+          return 'Este correo ya tiene una cuenta registrada. Inicia sesión.';
+        case 'weak-password':
+          return 'Contraseña muy débil. Usa al menos 6 caracteres.';
+        case 'invalid-email':
+          return 'El formato del correo no es válido.';
+        default:
+          return 'Error inesperado de autenticación.';
+      }
     }
   }
 
@@ -678,7 +694,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       if (_isLogin) {
         _isFormValid = emailValid && passwordValid;
       } else {
-        _isFormValid = nicknameValid && emailValid && passwordValid;
+        final confirmPassword = _confirmPasswordController.text;
+        final confirmPasswordValid = confirmPassword == _passwordController.text && confirmPassword.isNotEmpty;
+        _isFormValid = nicknameValid && emailValid && passwordValid && confirmPasswordValid;
       }
     });
   }
@@ -825,6 +843,43 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     ),
                   ),
                 ),
+                if (!_isLogin) ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _confirmPasswordController,
+                    onChanged: (_) => _updateFormValid(),
+                    obscureText: _isConfirmPasswordObscured,
+                    style: TextStyle(color: primaryTextColor),
+                    decoration: InputDecoration(
+                      labelText: 'Confirmar Contraseña',
+                      labelStyle: TextStyle(color: secondaryTextColor),
+                      prefixIcon: Icon(Icons.lock_outline, color: secondaryTextColor),
+                      filled: true,
+                      fillColor: inputFillColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: accentColor, width: 2),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isConfirmPasswordObscured
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: secondaryTextColor,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 if (_isLoading)
                   CircularProgressIndicator(

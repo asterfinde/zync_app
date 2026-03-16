@@ -42,6 +42,41 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     );
   }
 
+  void _showAccountDialog(BuildContext context) {
+    final authState = ref.read(authProvider);
+    if (authState is! Authenticated) return;
+    final user = authState.user;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Mi Cuenta',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Nickname', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(user.nickname, style: const TextStyle(color: Colors.white, fontSize: 16)),
+            const SizedBox(height: 16),
+            const Text('Email', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(user.email, style: const TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar', style: TextStyle(color: Colors.tealAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -142,6 +177,12 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ],
                 ),
               ),
+              IconButton(
+                onPressed: () => _showAccountDialog(context),
+                icon: const Icon(Icons.account_circle_outlined, color: Colors.white, size: 28),
+                tooltip: 'Mi Cuenta',
+              ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
