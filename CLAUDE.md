@@ -369,17 +369,56 @@ service cloud.firestore {
 
 ### Flujos prioritarios a automatizar
 
-#### Fase 1 — Registro y Login de Usuarios (sesión actual)
-1. **Registro exitoso** — nickname + email + contraseña + confirmación coinciden → usuario creado en Firebase Auth y Firestore
-2. **Registro fallido — contraseñas no coinciden** → botón "Crear Cuenta" deshabilitado
-3. **Registro fallido — email ya registrado** → mensaje "Este correo ya tiene una cuenta registrada. Inicia sesión."
-4. **Login exitoso** — credenciales válidas → acceso a la app
-5. **Login fallido — correo no encontrado** → mensaje "No encontramos una cuenta con ese correo."
-6. **Login fallido — contraseña incorrecta** → mensaje "La contraseña es incorrecta. Verifica e intenta de nuevo."
-7. **Recuperación de contraseña** — correo válido registrado → email de recuperación enviado
-8. **Cierre de sesión** → regreso a pantalla de login
+> Leyenda de tipo: 🔬 Test unitario | 🔗 Test de integración | 👁 Solo manual (no automatizable)
 
-#### Fase 2 — Círculos (próxima sesión)
+#### Fase 1 — Registro y Login de Usuarios
+
+| No. | Caso de prueba | Resultado esperado | Tipo |
+|:---:|:---|:---|:---:|
+| 1 | Registro exitoso — nickname + email + contraseña + confirmación coinciden | Usuario creado en Firebase Auth y Firestore | 🔗 |
+| 2 | Registro fallido — contraseñas no coinciden | Botón "Crear Cuenta" deshabilitado | 🔬 |
+| 3 | Registro fallido — email ya registrado | Mensaje "Este correo ya tiene una cuenta registrada. Inicia sesión." | 🔗 |
+| 4 | Login exitoso — credenciales válidas | Acceso a la app | 🔗 |
+| 5 | Login fallido — correo no encontrado | Mensaje "No encontramos una cuenta con ese correo." | 🔗 |
+| 6 | Login fallido — contraseña incorrecta | Mensaje "La contraseña es incorrecta. Verifica e intenta de nuevo." | 🔗 |
+| 7 | Recuperación de contraseña — correo válido registrado | Email de recuperación enviado | 🔗 |
+| 8 | Cierre de sesión | Regreso a pantalla de login | 🔗 |
+
+#### Fase 2 — Círculos
+
+| No. | Caso de prueba | Resultado esperado | Tipo |
+|:---:|:---|:---:|:---:|
+| 1 | Creación de un círculo | Círculo creado en Firestore, código de invitación generado | 🔗 |
+| 2 | Eliminación de un círculo | Solo el **creador** puede eliminar el círculo. Los miembros solo pueden abandonarlo. Al eliminarse, todos los miembros quedan desvinculados y regresan a "Aún no estás en un círculo". | 🔗 |
+| 3 | Intento de crear más de un círculo | **MVP: un círculo por usuario.** La app bloquea la creación de un segundo círculo. Múltiples círculos evaluados para v2.0 — la agencia del adolescente se expresa en *qué comparte*, no en *cuántos círculos tiene*. | 🔗 |
+| 4 | Generación del código de invitación | Código único generado y visible para compartir | 🔗 |
+| 5 | Estado/emoji inicial al unirse a un círculo | Se muestra "Todo bien" como estado por defecto | 🔗 |
+| 6 | Cambiar de estado/emoji | Estado actualizado en Firestore y visible para los miembros del círculo | 🔗 |
+
+#### Fase 3 — Actualización de Emojis / Estados
+
+| No. | Caso de prueba | Resultado esperado | Tipo |
+|:---:|:---|:---|:---:|
+| 1 | Estado default al unirse a un círculo | Emoji "Todo bien" asignado automáticamente | 🔗 |
+| 2 | Cambio de estado desde modal del círculo | Actualización sin demora, visible para todos los miembros | 🔗 |
+| 10.1 | Sin zonas configuradas — cualquier estado elegido | Muestra: emoji · nickname · estado · dd/mm/aa hh:mm:ss | 🔗 |
+| 20.1 | Con zonas activas — usuario entra a una zona | Estado actualizado automáticamente con emoji de la zona | 👁 |
+| 20.2 | Con zonas activas — usuario sale de una zona | Estado cambia a "En camino" automáticamente | 👁 |
+| 30.1 | Dentro de zona, usuario cambia estado manualmente a no-zona | Muestra: emoji · nickname · estado · tiempo · ⚡ Manual | 🔗 |
+| 30.2 | Fuera de zona, usuario cambia estado manualmente | Muestra: emoji · nickname · estado · tiempo · ⚡ Manual · 📍 Ubicación desconocida | 🔗 |
+| 30.3 | Intento de cambiar zona automática por otra zona | Comportamiento bloqueado, se mantiene el estado actual | 🔗 |
+
+#### Fase 4 — Modo Silent
+
+| No. | Caso de prueba | Resultado esperado | Tipo |
+|:---:|:---|:---|:---:|
+| 4.1 | App minimizada | Ícono visible en barra superior del dispositivo | 👁 |
+| 4.2 | Sin cierre de sesión, app minimizada | App permanece activa en modo silent con ícono visible | 👁 |
+| 4.3 | Con cierre de sesión | Ícono desaparece de la barra superior *(comportamiento a confirmar)* | 👁 |
+| 4.4 | Toque del ícono en barra superior | Abre ventana de selección de estados con mismo layout que Fase 3 caso 2 | 👁 |
+| 4.5 | Selección de estado desde modo silent | Estado actualizado sin abrir la app | 👁 |
+
+#### Fase 5 — Modo Configuración
 > Pendiente de definir.
 
 
@@ -486,6 +525,8 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 | [fecha] | Se descartó Clean Architecture | Sobreingeniería para el alcance del MVP. Se adoptó estructura por features. |
 | [fecha] | Se descartó Patrol para testing | Incompatibilidad de versiones con Flutter [versión]. Se usa flutter_test estándar. |
 | 2026-03-16 | `auth_final_page.dart` es el ÚNICO archivo activo de autenticación | Este archivo maneja login, registro, recuperación de contraseña y navegación post-auth de forma autónoma. `sign_in_page.dart` y `auth_form.dart` son legacy sin uso. La IA debe trabajar SOLO en `auth_final_page.dart` para cualquier tarea de auth. |
+| 2026-03-17 | Solo el creador de un círculo puede eliminarlo | Los miembros solo pueden abandonarlo. Al eliminar, todos los miembros quedan desvinculados. Evita círculos "zombie" en Firestore y mantiene la jerarquía clara dentro del grupo. |
+| 2026-03-17 | MVP: un único círculo por usuario | Múltiples círculos generan fricción (¿a cuál actualizo mi estado?). La agencia del adolescente se expresa en *qué comparte y cuándo*, no en cuántos círculos tiene. Múltiples círculos evaluados para v2.0. |
 
 ---
 
