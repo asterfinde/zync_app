@@ -368,8 +368,46 @@ service cloud.firestore {
 - **Requisito:** Todo widget interactuable debe tener un `Key` asignado
 
 ### Flujos prioritarios a automatizar
-1. Login con email/password
 
+#### Fase 1 — Registro y Login de Usuarios (sesión actual)
+1. **Registro exitoso** — nickname + email + contraseña + confirmación coinciden → usuario creado en Firebase Auth y Firestore
+2. **Registro fallido — contraseñas no coinciden** → botón "Crear Cuenta" deshabilitado
+3. **Registro fallido — email ya registrado** → mensaje "Este correo ya tiene una cuenta registrada. Inicia sesión."
+4. **Login exitoso** — credenciales válidas → acceso a la app
+5. **Login fallido — correo no encontrado** → mensaje "No encontramos una cuenta con ese correo."
+6. **Login fallido — contraseña incorrecta** → mensaje "La contraseña es incorrecta. Verifica e intenta de nuevo."
+7. **Recuperación de contraseña** — correo válido registrado → email de recuperación enviado
+8. **Cierre de sesión** → regreso a pantalla de login
+
+#### Fase 2 — Círculos (próxima sesión)
+> Pendiente de definir.
+
+
+### Protocolo de pruebas manuales en dispositivo físico
+
+**Antes de cada sesión de pruebas:**
+1. Abrir PowerShell como Administrador
+2. `adb kill-server; adb start-server` — reiniciar daemon ADB
+3. `flutter run -d R58W315389R` — compilar e instalar
+4. Si aparece error `DDS shut down too early` → abrir la app manualmente en el dispositivo
+5. Verificar que el timestamp `v HH:MM:SS` en la pantalla de login está actualizándose — confirma que es el build correcto
+
+**Durante las pruebas:**
+- Probar un flujo completo a la vez
+- Registrar resultado por caso: ✅ pasa / ❌ falla / ⚠️ comportamiento inesperado
+- Si falla → fix → `flutter run` nuevo → re-probar ese caso antes de continuar
+- No avanzar al siguiente flujo si el anterior tiene un ❌ sin resolver
+
+**Cuando los cambios no se reflejan:**
+
+| Situación | Comando |
+|-----------|---------|
+| Cambio solo de UI (colores, textos) | `r` en terminal |
+| Cambio en lógica de widget | `R` en terminal |
+| Cambio en servicios o providers | `Ctrl+C` → `flutter run -d R58W315389R` |
+| Nada de lo anterior funciona | `Ctrl+C` → `flutter clean` → `flutter run -d R58W315389R` |
+
+**Device ID del dispositivo de pruebas:** `R58W315389R` (SM A145M — Android 15)
 
 ### Reglas generales
 - No instalar frameworks de testing adicionales sin aprobación.
@@ -447,7 +485,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 |-------|----------|-------|
 | [fecha] | Se descartó Clean Architecture | Sobreingeniería para el alcance del MVP. Se adoptó estructura por features. |
 | [fecha] | Se descartó Patrol para testing | Incompatibilidad de versiones con Flutter [versión]. Se usa flutter_test estándar. |
-| | | |
+| 2026-03-16 | `auth_final_page.dart` es el ÚNICO archivo activo de autenticación | Este archivo maneja login, registro, recuperación de contraseña y navegación post-auth de forma autónoma. `sign_in_page.dart` y `auth_form.dart` son legacy sin uso. La IA debe trabajar SOLO en `auth_final_page.dart` para cualquier tarea de auth. |
 
 ---
 
@@ -461,7 +499,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 
 | Problema | Prioridad | Notas |
 |----------|-----------|-------|
-| | | |
+| Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Contienen cambios que no afectan la app. El flujo activo usa `auth_final_page.dart` directamente. Evaluar eliminación post-MVP. |
 
 ---
 
