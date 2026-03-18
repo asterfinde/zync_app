@@ -14,15 +14,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _service = CircleService();
+  bool _isEmailVerified = true;
 
   @override
   void initState() {
     super.initState();
-    // FASE 2B: Guardar sesión PROACTIVAMENTE al llegar a HomePage
     _saveSessionProactively();
+    _checkEmailVerification();
   }
-  
-  /// Guardar sesión inmediatamente (no esperar a minimizar)
+
   void _saveSessionProactively() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -37,11 +37,76 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _checkEmailVerification() async {
+    await FirebaseAuth.instance.currentUser?.reload();
+    if (mounted) {
+      setState(() {
+        _isEmailVerified = FirebaseAuth.instance.currentUser?.emailVerified ?? true;
+      });
+    }
+  }
+
+  Future<void> _resendVerificationEmail() async {
+    try {
+      await FirebaseAuth.instance.currentUser?.sendEmailVerification();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Correo de verificación reenviado.', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.teal,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo reenviar. Intenta más tarde.', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildEmailVerificationBanner() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF2A1F00),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.mark_email_unread_outlined, color: Colors.amber, size: 20),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Verifica tu correo para activar todas las funciones',
+              style: TextStyle(color: Colors.amber, fontSize: 13),
+            ),
+          ),
+          TextButton(
+            onPressed: _checkEmailVerification,
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+            child: const Text('Ya lo hice', style: TextStyle(color: Colors.amber, fontSize: 12)),
+          ),
+          TextButton(
+            onPressed: _resendVerificationEmail,
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+            child: const Text('Reenviar', style: TextStyle(color: Colors.amber, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: StreamBuilder<Circle?>(
+      body: Column(
+        children: [
+          if (!_isEmailVerified) _buildEmailVerificationBanner(),
+          Expanded(child: StreamBuilder<Circle?>(
         stream: _service.getUserCircleStream(),
         builder: (context, snapshot) {
           // Mostrar loading solo en la primera carga
@@ -68,6 +133,8 @@ class _HomePageState extends State<HomePage> {
             return const NoCircleView();
           }
         },
+      )),
+        ],
       ),
     );
   }

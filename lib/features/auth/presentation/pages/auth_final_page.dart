@@ -168,6 +168,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         'updatedAt': FieldValue.serverTimestamp(),
         'uid': userCredential.user?.uid,
       });
+      await userCredential.user?.sendEmailVerification();
       if (mounted) {
         // Activar funcionalidad silenciosa después del registro exitoso
         print(
@@ -687,9 +688,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
       final emailValid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
       final nickname = _nicknameController.text.trim();
       final password = _passwordController.text;
-      final nicknameValid = nickname.length >= 3;
+      final nicknameValid = nickname.isNotEmpty;
       final passwordValid = password.length >= 6 &&
-          password.length <= 10 &&
           password.trim().isNotEmpty;
       if (_isLogin) {
         _isFormValid = emailValid && passwordValid;
@@ -762,7 +762,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                         decoration: InputDecoration(
                           labelText: 'Nickname',
                           labelStyle: TextStyle(color: secondaryTextColor),
-                          hintText: 'Tu apodo público',
+                          hintText: 'Tu apodo público (mínimo 1 caracter)',
                           hintStyle: TextStyle(
                               color: secondaryTextColor.withValues(alpha: 0.5)),
                           prefixIcon: Icon(Icons.person_outline,
