@@ -150,6 +150,7 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
                 Form(
                   key: _formKey,
                   child: TextFormField(
+                    key: const Key('field_emoji_name'),
                     controller: _nameController,
                     style: const TextStyle(color: _AppColors.textPrimary),
                     decoration: InputDecoration(
@@ -204,6 +205,7 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
+                      key: const Key('btn_create_emoji'),
                       onPressed: _isCreating ? null : _handleCreate,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _AppColors.accent,
@@ -236,6 +238,7 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
 
   Widget _buildEmojiSelector() {
     return InkWell(
+      key: const Key('btn_select_emoji'),
       onTap: () => setState(() => _showEmojiPicker = !_showEmojiPicker),
       borderRadius: BorderRadius.circular(12),
       child: Container(

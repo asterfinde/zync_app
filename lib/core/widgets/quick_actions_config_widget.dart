@@ -282,6 +282,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
                 final isSelected = _selectedQuickActions.contains(status);
 
                 return GestureDetector(
+                  key: ValueKey('qa_option_${status.id}'),
                   onTap: () => _toggleSelection(status),
                   child: Container(
                     decoration: BoxDecoration(
@@ -333,6 +334,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
               // --- INICIO DE LA MEJORA: BOTÓN RESET ---
               Expanded(
                 child: ElevatedButton.icon(
+                  key: const Key('btn_reset_quick_actions'),
                   onPressed: _isSaving ? null : _resetToDefaults,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _AppColors.inputFill, // <-- CAMBIO DE UI
@@ -359,6 +361,7 @@ class _QuickActionsConfigWidgetState extends State<QuickActionsConfigWidget> {
               Expanded(
                 flex: 2,
                 child: ElevatedButton.icon(
+                  key: const Key('btn_save_quick_actions'),
                   onPressed: (_selectedQuickActions.length == 4 && !_isSaving) ? _saveConfiguration : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _AppColors.accent, // <-- CAMBIO DE UI

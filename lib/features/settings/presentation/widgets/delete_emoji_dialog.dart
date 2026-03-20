@@ -232,6 +232,7 @@ class _DeleteEmojiDialogState extends State<DeleteEmojiDialog> {
       ),
       actions: [
         TextButton(
+          key: const Key('btn_delete_emoji_cancel'),
           onPressed: _isDeleting ? null : () => Navigator.pop(context),
           child: const Text(
             'Cancelar',
@@ -239,6 +240,7 @@ class _DeleteEmojiDialogState extends State<DeleteEmojiDialog> {
           ),
         ),
         ElevatedButton(
+          key: const Key('btn_delete_emoji_confirm'),
           onPressed: _isDeleting ? null : _handleDelete,
           style: ElevatedButton.styleFrom(
             backgroundColor: _AppColors.sosRed,
