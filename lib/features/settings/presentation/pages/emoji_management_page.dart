@@ -176,6 +176,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
         width: 56,
         height: 56,
         child: FloatingActionButton(
+          key: const Key('fab_create_emoji'),
           onPressed: _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? null : _handleCreateEmoji,
           backgroundColor:
               _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? _AppColors.cardBorder : _AppColors.accent,
@@ -387,6 +388,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
               // Delete button (solo para custom)
               if (showDeleteButton)
                 IconButton(
+                  key: ValueKey('btn_delete_emoji_${emoji.id}'),
                   icon: const Icon(Icons.delete_outline),
                   color: (_deletePermissions[emoji.id] ?? false)
                       ? _AppColors.textSecondary

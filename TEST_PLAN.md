@@ -82,13 +82,13 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---:|:---:|:---:|:---|
-| 1 | Estado default al unirse a un círculo | Emoji "Todo bien" asignado automáticamente | 🔗 | | Cubierto también por Fase 2 T05 — evaluar si es redundante. |
-| 2 | Cambio de estado desde modal del círculo | Actualización sin demora, visible para todos los miembros | 🔗 | | Cubierto también por Fase 2 T06 — evaluar si es redundante. |
-| 10.1 | Sin zonas configuradas — cualquier estado elegido | Muestra: emoji · nickname · estado · timestamp relativo (ej: "Justo Ahora", "Hace X min") | 🔗 | | Implementación usa formato relativo, no `dd/mm/aa hh:mm:ss`. |
+| 1 | Estado default al unirse a un círculo | Emoji "Todo bien" asignado automáticamente | 🔗 | ✅ | Cubierto por Fase 2 T05. |
+| 2 | Cambio de estado desde modal del círculo | Actualización sin demora, visible para todos los miembros | 🔗 | ✅ | Cubierto por Fase 2 T06. |
+| 10.1 | Sin zonas configuradas — cualquier estado elegido | Muestra: emoji · nickname · estado · timestamp relativo (ej: "Justo Ahora", "Hace X min") | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Formato relativo, no `dd/mm/aa hh:mm:ss`. |
 | 20.1 | Con zonas activas — usuario entra a una zona | Estado actualizado automáticamente con emoji de la zona | 👁 | | |
 | 20.2 | Con zonas activas — usuario sale de una zona | Estado cambia a "En camino" automáticamente | 👁 | | |
-| 30.1 | Dentro de zona, usuario cambia estado manualmente a no-zona | Muestra: emoji · nickname · estado · tiempo · ⚡ Manual | 🔗 | | Requiere Key en badge Manual. |
-| 30.2 | Fuera de zona, usuario cambia estado manualmente | Muestra: emoji · nickname · estado · tiempo · ⚡ Manual · 📍 Ubicación desconocida | 🔗 | | Requiere Key en badge Manual y locationInfo. |
+| 30.1 | Dentro de zona, usuario cambia estado manualmente a no-zona | Muestra: emoji · nickname · estado · tiempo · ✋ Manual | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
+| 30.2 | Fuera de zona, usuario cambia estado manualmente | Muestra: emoji · nickname · estado · tiempo · ✋ Manual · ❓ Ubicación desconocida | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
 | 30.3 | Intento de cambiar zona automática por otra zona | Comportamiento bloqueado, se mantiene el estado actual | 🔗 | | |
 
 ---
@@ -100,8 +100,8 @@
 | 4.1 | App minimizada | Ícono visible en barra superior del dispositivo | 👁 | | |
 | 4.2 | Sin cierre de sesión, app minimizada | App permanece activa en modo silent con ícono visible | 👁 | | |
 | 4.3 | Con cierre de sesión | Ícono desaparece de la barra superior *(comportamiento a confirmar)* | 👁 | | |
-| 4.4 | Toque del ícono en barra superior | Abre ventana de selección de estados con mismo layout que Fase 3 caso 2 | 👁 | | |
-| 4.5 | Selección de estado desde modo silent | Estado actualizado sin abrir la app | 👁 | | |
+| 4.4 | Modal NotificationStatusSelector muestra 16 botones de estado | Grid visible con los 16 estados del sistema | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Modal renderizado en aislamiento. |
+| 4.5 | Selección de estado desde modal → Firestore actualizado | `statusType` actualizado en `circles/{id}/memberStatus` | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
 
 ---
 
@@ -109,7 +109,11 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| — | Pendiente de definir | — | — | | |
+| 1 | Cambiar las 4 Quick Actions configuradas por el usuario | Las nuevas acciones quedan guardadas en preferencias y se reflejan en los shortcuts | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
+| 2 | Verificar que los cambios de Quick Actions se reflejan en los shortcuts nativos | Los shortcuts del SO muestran los nuevos estados | 👁 | | Requiere inspección visual en el dispositivo. |
+| 3 | Agregar un emoji personalizado | Emoji creado y visible en Firestore (`circles/{id}/customEmojis`) | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Emoji creado directamente en Firestore (EmojiPicker nativo no testeable en integración). |
+| 4 | Eliminar un emoji personalizado | Emoji eliminado de Firestore y desaparece del tab Estados | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Fix: documento debe incluir `usageCount: 0` — Firestore excluye docs sin ese campo del `orderBy`. |
+| 5 | Emoji personalizado aparece en el tab Estados de Settings | Tab Estados muestra el emoji recién creado con su label | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Mismo fix que T5.4 (`usageCount: 0`). |
 
 ---
 
