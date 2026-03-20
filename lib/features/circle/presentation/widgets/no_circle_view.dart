@@ -5,6 +5,7 @@ import '../../../auth/presentation/provider/auth_provider.dart';
 import '../../../auth/presentation/provider/auth_state.dart';
 import '../../../auth/presentation/pages/auth_final_page.dart';
 import '../../../../core/services/session_cache_service.dart';
+import '../../../../services/circle_service.dart';
 import 'create_circle_view.dart';
 import 'join_circle_view.dart';
 
@@ -69,8 +70,203 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         ),
         actions: [
           TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _showDeleteAccountDialog(context);
+            },
+            child: const Text('Eliminar Cuenta', style: TextStyle(color: Colors.red)),
+          ),
+          TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cerrar', style: TextStyle(color: Colors.tealAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Eliminar Cuenta', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          '¿Estás seguro? Esta acción es irreversible. Se eliminarán tu cuenta y todos tus datos.',
+          style: TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              await _executeDeleteAccount(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Eliminar Cuenta'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _executeDeleteAccount(BuildContext context) async {
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.tealAccent),
+        ),
+      ),
+    );
+
+    try {
+      await SessionCacheService.clearSession();
+      await CircleService().deleteAccount();
+
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+          (route) => false,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      if (e.code == 'requires-recent-login') {
+        _showReauthDialog(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showReauthDialog(BuildContext context) {
+    final passwordController = TextEditingController();
+    final email = FirebaseAuth.instance.currentUser?.email ?? '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Confirmar identidad', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Por seguridad, ingresa tu contraseña para confirmar la eliminación.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Contraseña',
+                labelStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.tealAccent, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.tealAccent),
+                  ),
+                ),
+              );
+
+              try {
+                final credential = EmailAuthProvider.credential(
+                  email: email,
+                  password: passwordController.text,
+                );
+                await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(credential);
+                await CircleService().deleteAccount();
+
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+                    (route) => false,
+                  );
+                }
+              } on FirebaseAuthException catch (e) {
+                if (!context.mounted) return;
+                Navigator.of(context, rootNavigator: true).pop();
+                final msg = (e.code == 'wrong-password' || e.code == 'invalid-credential')
+                    ? 'Contraseña incorrecta. Intenta de nuevo.'
+                    : 'Error de autenticación. Intenta de nuevo.';
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(msg, style: const TextStyle(color: Colors.white)),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Confirmar'),
           ),
         ],
       ),
@@ -99,6 +295,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
             ),
           ),
           TextButton(
+            key: const Key('dialog_btn_logout_confirm'),
             onPressed: () async {
               Navigator.of(context).pop();
               try {
@@ -184,6 +381,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
+                key: const Key('btn_logout'),
                 onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF6B6B),

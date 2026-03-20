@@ -375,14 +375,17 @@ service cloud.firestore {
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| 1 | Registro exitoso — nickname + email + contraseña + confirmación coinciden | Usuario creado en Firebase Auth y Firestore | 🔗 | | |
-| 2 | Registro fallido — contraseñas no coinciden | Botón "Crear Cuenta" deshabilitado | 🔬 | | |
-| 3 | Registro fallido — email ya registrado | Mensaje "Este correo ya tiene una cuenta registrada. Inicia sesión." | 🔗 | | |
-| 4 | Login exitoso — credenciales válidas | Acceso a la app | 🔗 | | |
-| 5 | Login fallido — correo no encontrado | Mensaje "No encontramos una cuenta con ese correo." | 🔗 | | |
-| 6 | Login fallido — contraseña incorrecta | Mensaje "La contraseña es incorrecta. Verifica e intenta de nuevo." | 🔗 | | |
-| 7 | Recuperación de contraseña — correo válido registrado | Email de recuperación enviado | 🔗 | | |
-| 8 | Cierre de sesión | Regreso a pantalla de login | 🔗 | | |
+| 1 | Registro exitoso — nickname + email + contraseña + confirmación coinciden | Usuario creado en Firebase Auth y Firestore | 🔗 | ✅ | Lógica verificada 2026-03-20. Error post-test en infra (AuthNotifier dispose tras delete()) — no afecta funcionalidad. |
+| 2 | Registro fallido — contraseñas no coinciden | Botón "Crear Cuenta" deshabilitado | 🔬 | ✅ | Test automatizado pasando 2026-03-20. |
+| 3 | Registro fallido — email ya registrado | Mensaje "Este correo ya tiene una cuenta registrada. Inicia sesión." | 🔗 | ⚠️ | Lógica correcta. Test falla por teclado virtual del test anterior que bloquea el tap en modo integración. Retomar si se resuelve el reset de teclado entre tests. |
+| 4 | Login exitoso — credenciales válidas | Acceso a la app | 🔗 | ✅ | Lógica verificada 2026-03-20. Error post-test en infra (Firestore stream permission-denied al hacer signOut) — no afecta funcionalidad. |
+| 5 | Login fallido — correo no encontrado | Mensaje "No encontramos una cuenta con ese correo." | 👁 | | Firebase email-enumeration-protection devuelve `invalid-credential` en vez de `user-not-found`. No automatizable sin cambiar config de Firebase. |
+| 6 | Login fallido — contraseña incorrecta | Mensaje "La contraseña es incorrecta. Verifica e intenta de nuevo." | 🔗 | ⚠️ | Lógica correcta. Test falla porque `pumpAndSettle(10s)` descarta el SnackBar (duración 4s) antes del `expect`. Retomar ajustando timing. |
+| 7 | Recuperación de contraseña — correo válido registrado | Email de recuperación enviado | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
+| 8 | Cierre de sesión | Regreso a pantalla de login | 🔗 | ✅ | Lógica verificada 2026-03-20. Error post-test en infra (mismo Firestore stream que T04) — no afecta funcionalidad. |
+| 9 | Eliminación de cuenta — usuario sin círculo | Cuenta eliminada de Auth y Firestore. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-18. Acceso desde "Mi Cuenta" en NoCircleView. |
+| 10 | Eliminación de cuenta — usuario con círculo (miembro o creador) | Usuario sale del círculo, cuenta eliminada de Auth y Firestore. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-18. Acceso desde Settings → sección "Sesión". |
+| 11 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | App solicita contraseña, re-autentica y elimina. Si contraseña incorrecta: SnackBar rojo, cuenta intacta. | 👁 | | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
 
 #### Fase 2 — Círculos
 
@@ -390,7 +393,7 @@ service cloud.firestore {
 |:---:|:---|:---|:---:|:---:|:---|
 | 1 | Creación de un círculo | Círculo creado en Firestore, código de invitación generado | 🔗 | | |
 | 2 | Eliminación de un círculo | Solo el **creador** puede eliminar el círculo. Los miembros solo pueden abandonarlo. Al eliminarse, todos los miembros quedan desvinculados y regresan a "Aún no estás en un círculo". | 🔗 | | |
-| 3 | Intento de crear más de un círculo | **MVP: un círculo por usuario.** La app bloquea la creación de un segundo círculo. Múltiples círculos evaluados para v2.0 — la agencia del adolescente se expresa en *qué comparte*, no en *cuántos círculos tiene*. | 🔗 | | |
+| 3 | Intento de crear más de un círculo | **MVP: un círculo por usuario.** La app bloquea la creación de un segundo círculo. | 👁 | | Funcionalidad no implementada en MVP — excluido de automatización. |
 | 4 | Generación del código de invitación | Código único generado y visible para compartir | 🔗 | | |
 | 5 | Estado/emoji inicial al unirse a un círculo | Se muestra "Todo bien" como estado por defecto | 🔗 | | |
 | 6 | Cambiar de estado/emoji | Estado actualizado en Firestore y visible para los miembros del círculo | 🔗 | | |
