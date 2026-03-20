@@ -81,19 +81,9 @@ class MainActivity: FlutterActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 🎨 SPLASH: Instalar y controlar el splash screen nativo (2 segundos)
-        var keepSplashOnScreen = true
-        val splashScreen = installSplashScreen()
-        
-        // Mantener el splash visible por exactamente 2 segundos
-        splashScreen.setKeepOnScreenCondition { keepSplashOnScreen }
-        
-        // Programar que se oculte después de 2 segundos
-        Handler(Looper.getMainLooper()).postDelayed({
-            keepSplashOnScreen = false
-            Log.d(TAG, "🎨 [SPLASH] Splash nativo completado (2s)")
-        }, 2000)
-        
+        // 🎨 SPLASH: Instalar splash nativo — se cierra cuando Flutter dibuja su primer frame
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
         
         // Registrar BroadcastReceiver para actualizar estado sin abrir app

@@ -22,7 +22,6 @@ import 'package:zync_app/core/services/emoji_service.dart'; // Para cargar emoji
 import 'package:zync_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
 // StatusType class
 import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
-import 'package:zync_app/core/splash/splash_screen.dart'; // Splash screen con breathing effect
 
 import 'core/global_keys.dart';
 
@@ -33,16 +32,47 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🚀 SOLO Firebase Init (rápido para que splash nativo sea breve)
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
-  print('✅ [main] Firebase inicializado.');
 
-  // 🎯 RENDERIZAR INMEDIATAMENTE - resto se inicializa en OptimizedSplashScreen
+  // SessionCache debe estar listo antes de que AuthWrapper renderice
+  await SessionCacheService.init();
+
   runApp(const ProviderScope(child: MyApp()));
+
+  // Inicializaciones en background tras el primer frame
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await SilentFunctionalityCoordinator.initializeServices();
+    await EmojiCacheService.syncEmojisToNativeCache();
+
+    const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
+    statusUpdateChannel.setMethodCallHandler((call) async {
+      if (call.method == 'updateStatus') {
+        final statusTypeName = call.arguments['statusType'] as String?;
+        if (statusTypeName != null) {
+          await _updateStatusFromNative(statusTypeName);
+        }
+      }
+    });
+
+    try {
+      const platform = MethodChannel('com.datainfers.zync/pending_status');
+      final pendingStatus = await platform.invokeMethod('getPendingStatus');
+      if (pendingStatus != null && pendingStatus is Map) {
+        final statusTypeName = pendingStatus['statusType'] as String?;
+        final timestamp = pendingStatus['timestamp'] as int?;
+        if (statusTypeName != null && timestamp != null) {
+          await _updateStatusFromNative(statusTypeName);
+          await platform.invokeMethod('clearPendingStatus');
+        }
+      }
+    } catch (_) {
+      // No hay estado pendiente
+    }
+  });
 }
 
 /// Helper para actualizar estado desde nativo (reutilizable)
@@ -233,60 +263,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       theme: baseTheme,
       navigatorKey: navigatorKey, // Point 21 FASE 5: Para acceso desde StatusModalService
       scaffoldMessengerKey: rootScaffoldMessengerKey,
-      // Splash con breathing effect (4s) después del splash nativo (breve)
-      home: OptimizedSplashScreen(
-        onInitialize: () async {
-          // 🎯 TODAS LAS INICIALIZACIONES AQUÍ (durante breathing effect)
-
-          // SessionCache
-          await SessionCacheService.init();
-          print('✅ [Splash] SessionCache inicializado.');
-
-          // Silent Functionality
-          await SilentFunctionalityCoordinator.initializeServices();
-          print('✅ [Splash] SilentFunctionalityCoordinator inicializado.');
-
-          // Sincronizar emojis a cache nativo
-          await EmojiCacheService.syncEmojisToNativeCache();
-          print('✅ [Splash] Emojis sincronizados a cache nativo.');
-
-          // Handler de estado nativo
-          const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
-          statusUpdateChannel.setMethodCallHandler((call) async {
-            if (call.method == 'updateStatus') {
-              final statusTypeName = call.arguments['statusType'] as String?;
-              print('👆 [NATIVE→FLUTTER] Recibido estado: $statusTypeName');
-              if (statusTypeName != null) {
-                await _updateStatusFromNative(statusTypeName);
-              }
-            }
-          });
-          print('✅ [Splash] Handler de estado nativo configurado.');
-
-          // Verificar estado pendiente del cache
-          try {
-            const platform = MethodChannel('com.datainfers.zync/pending_status');
-            final pendingStatus = await platform.invokeMethod('getPendingStatus');
-
-            if (pendingStatus != null && pendingStatus is Map) {
-              final statusTypeName = pendingStatus['statusType'] as String?;
-              final timestamp = pendingStatus['timestamp'] as int?;
-
-              if (statusTypeName != null && timestamp != null) {
-                print('💾 [HYBRID] Estado pendiente encontrado: $statusTypeName');
-                await _updateStatusFromNative(statusTypeName);
-                await platform.invokeMethod('clearPendingStatus');
-                print('✅ [HYBRID] Estado pendiente procesado');
-              }
-            }
-          } catch (e) {
-            print('ℹ️ [HYBRID] No hay estado pendiente: $e');
-          }
-
-          print('✅ [Splash] Inicialización completa');
-        },
-        child: const AuthWrapper(),
-      ),
+      home: const AuthWrapper(),
     );
   }
 }
