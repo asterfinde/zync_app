@@ -136,6 +136,7 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
 
             // Input para nombre del círculo
             TextFormField(
+              key: const Key('field_circle_name'),
               controller: _createController,
               onChanged: (_) => _validateForm(),
               style: const TextStyle(color: Colors.white),
@@ -161,6 +162,7 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
 
             // Botón Crear Círculo
             ElevatedButton(
+              key: const Key('btn_create_circle'),
               onPressed: _isFormValid ? _onCreateCircle : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor:

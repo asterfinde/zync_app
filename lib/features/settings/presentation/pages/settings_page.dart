@@ -327,6 +327,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
             ),
           ),
           ElevatedButton(
+            key: const Key('dialog_btn_leave_circle_confirm'),
             onPressed: () {
               Navigator.pop(context);
               _leaveCircle();
@@ -1001,6 +1002,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
+                  key: const Key('btn_leave_circle'),
                   onPressed: _showLeaveCircleDialog,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _AppColors.sosRed,

@@ -444,6 +444,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 16),
                     child: ElevatedButton(
+                      key: const Key('btn_navigate_create_circle'),
                       onPressed: _navigateToCreateCircle,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1CE4B3),
@@ -513,6 +514,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 16),
                     child: ElevatedButton(
+                      key: const Key('btn_navigate_join_circle'),
                       onPressed: _navigateToJoinCircle,
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
