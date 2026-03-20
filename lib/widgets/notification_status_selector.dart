@@ -284,14 +284,15 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
                 child: Transform.scale(
                   scale: _scaleAnimation.value,
                   child: Container(
+                    key: const Key('notification_status_selector'),
                     margin: EdgeInsets.all(modalMargin),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.95), // PRUEBA: Fondo ROJO para confirmar que es el nuevo modal
+                      color: Colors.grey.shade900.withOpacity(0.95),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: Colors.yellow.withOpacity(0.9), // PRUEBA: Borde AMARILLO
-                        width: 3,
+                        color: Colors.grey.shade700.withOpacity(0.5),
+                        width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -304,16 +305,6 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // PRUEBA: Título grande para confirmar componente
-                        const Text(
-                          '🚨 MODAL DE NOTIFICACIONES 🚨',
-                          style: TextStyle(
-                            color: Colors.yellow,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
                         ConstrainedBox(
                           constraints: BoxConstraints(maxHeight: maxGridHeight),
                           child: Scrollbar(
@@ -354,6 +345,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
     final isBlockedZone = _zonesConfigured && _blockedZoneStatusIds.contains(status.id);
 
     return Material(
+      key: ValueKey('btn_status_${status.id}'),
       color: Colors.transparent,
       child: InkWell(
         onTap: _isUpdating ? null : () => _handleStatusSelection(status),
