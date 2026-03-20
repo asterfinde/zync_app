@@ -85,6 +85,35 @@ Widget _homeWrapper() => const ProviderScope(
     );
 
 // ---------------------------------------------------------------------------
+// Seguimiento de resultados para el resumen final
+// ---------------------------------------------------------------------------
+final _testResults = <String, String>{};
+
+Future<void> _track(
+    String label, WidgetTester tester, Future<void> Function() body) async {
+  try {
+    await body();
+    _testResults[label] = '✅ PASS';
+  } catch (e) {
+    _testResults[label] = '❌ FAIL: ${e.toString().split('\n').first}';
+    rethrow;
+  }
+}
+
+void _printSummary() {
+  final sep = '═' * 54;
+  debugPrint('\n$sep');
+  debugPrint('  FASE 1 — RESUMEN DE TESTS');
+  debugPrint(sep);
+  const order = ['T01', 'T02', 'T03', 'T04', 'T06', 'T07', 'T08'];
+  for (final key in order) {
+    final result = _testResults[key] ?? '⚠️  NO EJECUTADO';
+    debugPrint('  $key  $result');
+  }
+  debugPrint(sep);
+}
+
+// ---------------------------------------------------------------------------
 // Helpers de interacción
 // ---------------------------------------------------------------------------
 
@@ -126,41 +155,41 @@ void main() {
   tearDownAll(() async {
     // Garantizar cleanup de test_new aunque T01 haya fallado.
     await _cleanupNewAccount();
+    _printSummary();
   });
 
   // -------------------------------------------------------------------------
   // T01 — Registro exitoso
   // -------------------------------------------------------------------------
   testWidgets('T01 — Registro exitoso con datos válidos', (tester) async {
-    await tester.pumpWidget(_authWrapper());
-    await tester.pumpAndSettle();
+    await _track('T01', tester, () async {
+      await tester.pumpWidget(_authWrapper());
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('btn_toggle_mode')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_toggle_mode')));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-        find.byKey(const Key('field_nickname')), 'TestUser');
-    await tester.enterText(find.byKey(const Key('field_email')), _newEmail);
-    await tester.enterText(
-        find.byKey(const Key('field_password')), _newPassword);
-    await tester.enterText(
-        find.byKey(const Key('field_confirm_password')), _newPassword);
-    await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('field_nickname')), 'TestUser');
+      await tester.enterText(find.byKey(const Key('field_email')), _newEmail);
+      await tester.enterText(
+          find.byKey(const Key('field_password')), _newPassword);
+      await tester.enterText(
+          find.byKey(const Key('field_confirm_password')), _newPassword);
+      await tester.pumpAndSettle();
 
-    await _tapAuthButton(tester);
-    await tester.pumpAndSettle(const Duration(seconds: 15));
+      await _tapAuthButton(tester);
+      await tester.pumpAndSettle(const Duration(seconds: 15));
 
-    expect(find.byKey(const Key('btn_logout')), findsOneWidget);
+      expect(find.byKey(const Key('btn_logout')), findsOneWidget);
 
-    // Cerrar sesión via UI para desmontar HomePage y cancelar el stream
-    // de Firestore antes de que el test termine.
-    await _logoutViaUI(tester);
+      await _logoutViaUI(tester);
 
-    // Cleanup: eliminar la cuenta recién creada (programático, sin widget).
-    await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _newEmail, password: _newPassword);
-    await FirebaseAuth.instance.currentUser?.delete();
-    await FirebaseAuth.instance.signOut();
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _newEmail, password: _newPassword);
+      await FirebaseAuth.instance.currentUser?.delete();
+      await FirebaseAuth.instance.signOut();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -168,100 +197,106 @@ void main() {
   // -------------------------------------------------------------------------
   testWidgets('T02 — Botón deshabilitado cuando contraseñas no coinciden',
       (tester) async {
-    await tester.pumpWidget(_authWrapper());
-    await tester.pumpAndSettle();
+    await _track('T02', tester, () async {
+      await tester.pumpWidget(_authWrapper());
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('btn_toggle_mode')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_toggle_mode')));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-        find.byKey(const Key('field_nickname')), 'TestUser');
-    await tester.enterText(
-        find.byKey(const Key('field_email')), 'test@example.com');
-    await tester.enterText(
-        find.byKey(const Key('field_password')), 'password123');
-    await tester.enterText(
-        find.byKey(const Key('field_confirm_password')), 'diferente456');
-    await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('field_nickname')), 'TestUser');
+      await tester.enterText(
+          find.byKey(const Key('field_email')), 'test@example.com');
+      await tester.enterText(
+          find.byKey(const Key('field_password')), 'password123');
+      await tester.enterText(
+          find.byKey(const Key('field_confirm_password')), 'diferente456');
+      await tester.pumpAndSettle();
 
-    final btn =
-        tester.widget<ElevatedButton>(find.byKey(const Key('btn_auth')));
-    expect(btn.onPressed, isNull,
-        reason:
-            'El botón debe estar deshabilitado cuando las contraseñas no coinciden');
+      final btn =
+          tester.widget<ElevatedButton>(find.byKey(const Key('btn_auth')));
+      expect(btn.onPressed, isNull,
+          reason:
+              'El botón debe estar deshabilitado cuando las contraseñas no coinciden');
+    });
   });
 
   // -------------------------------------------------------------------------
   // T03 — Registro fallido: email ya registrado
   // -------------------------------------------------------------------------
   testWidgets('T03 — Registro fallido: email ya registrado', (tester) async {
-    await tester.pumpWidget(_authWrapper());
-    await tester.pumpAndSettle();
+    await _track('T03', tester, () async {
+      await tester.pumpWidget(_authWrapper());
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('btn_toggle_mode')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_toggle_mode')));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-        find.byKey(const Key('field_nickname')), 'TestUser');
-    await tester.enterText(find.byKey(const Key('field_email')), _testEmail);
-    await tester.enterText(
-        find.byKey(const Key('field_password')), _testPassword);
-    await tester.enterText(
-        find.byKey(const Key('field_confirm_password')), _testPassword);
-    await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('field_nickname')), 'TestUser');
+      await tester.enterText(find.byKey(const Key('field_email')), _testEmail);
+      await tester.enterText(
+          find.byKey(const Key('field_password')), _testPassword);
+      await tester.enterText(
+          find.byKey(const Key('field_confirm_password')), _testPassword);
+      await tester.pumpAndSettle();
 
-    // ensureVisible desplaza el scroll para que btn_auth no quede
-    // oculto detrás del teclado virtual.
-    await _tapAuthButton(tester);
-    await tester.pumpAndSettle(const Duration(seconds: 10));
+      await _tapAuthButton(tester);
+      await tester.pumpAndSettle(const Duration(seconds: 10));
 
-    expect(
-      find.text('Este correo ya tiene una cuenta registrada. Inicia sesión.'),
-      findsOneWidget,
-    );
+      expect(
+        find.text(
+            'Este correo ya tiene una cuenta registrada. Inicia sesión.'),
+        findsOneWidget,
+      );
+    });
   });
 
   // -------------------------------------------------------------------------
   // T04 — Login exitoso
   // -------------------------------------------------------------------------
   testWidgets('T04 — Login exitoso con credenciales válidas', (tester) async {
-    await tester.pumpWidget(_authWrapper());
-    await tester.pumpAndSettle();
+    await _track('T04', tester, () async {
+      await tester.pumpWidget(_authWrapper());
+      await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('field_email')), _testEmail);
-    await tester.enterText(
-        find.byKey(const Key('field_password')), _testPassword);
-    await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('field_email')), _testEmail);
+      await tester.enterText(
+          find.byKey(const Key('field_password')), _testPassword);
+      await tester.pumpAndSettle();
 
-    await _tapAuthButton(tester);
-    await tester.pumpAndSettle(const Duration(seconds: 15));
+      await _tapAuthButton(tester);
+      await tester.pumpAndSettle(const Duration(seconds: 15));
 
-    expect(find.byKey(const Key('btn_logout')), findsOneWidget);
+      expect(find.byKey(const Key('btn_logout')), findsOneWidget);
 
-    // Cerrar sesión via UI para cancelar el stream de Firestore.
-    await _logoutViaUI(tester);
-    expect(find.byKey(const Key('btn_auth')), findsOneWidget);
+      await _logoutViaUI(tester);
+      expect(find.byKey(const Key('btn_auth')), findsOneWidget);
+    });
   });
 
   // -------------------------------------------------------------------------
   // T06 — Login fallido: contraseña incorrecta
   // -------------------------------------------------------------------------
   testWidgets('T06 — Login fallido: contraseña incorrecta', (tester) async {
-    await tester.pumpWidget(_authWrapper());
-    await tester.pumpAndSettle();
+    await _track('T06', tester, () async {
+      await tester.pumpWidget(_authWrapper());
+      await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('field_email')), _testEmail);
-    await tester.enterText(
-        find.byKey(const Key('field_password')), 'contraseñaIncorrecta999');
-    await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('field_email')), _testEmail);
+      await tester.enterText(
+          find.byKey(const Key('field_password')), 'contraseñaIncorrecta999');
+      await tester.pumpAndSettle();
 
-    await _tapAuthButton(tester);
-    await tester.pumpAndSettle(const Duration(seconds: 10));
+      await _tapAuthButton(tester);
+      await tester.pumpAndSettle(const Duration(seconds: 10));
 
-    expect(
-      find.text('La contraseña es incorrecta. Verifica e intenta de nuevo.'),
-      findsOneWidget,
-    );
+      expect(
+        find.text('La contraseña es incorrecta. Verifica e intenta de nuevo.'),
+        findsOneWidget,
+      );
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -269,24 +304,26 @@ void main() {
   // -------------------------------------------------------------------------
   testWidgets('T07 — Recuperación de contraseña: instrucciones enviadas',
       (tester) async {
-    await tester.pumpWidget(_authWrapper());
-    await tester.pumpAndSettle();
+    await _track('T07', tester, () async {
+      await tester.pumpWidget(_authWrapper());
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('btn_forgot_password')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_forgot_password')));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-        find.byKey(const Key('field_reset_email')), _testEmail);
-    await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const Key('field_reset_email')), _testEmail);
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('btn_send_reset')));
-    await tester.pumpAndSettle(const Duration(seconds: 10));
+      await tester.tap(find.byKey(const Key('btn_send_reset')));
+      await tester.pumpAndSettle(const Duration(seconds: 10));
 
-    expect(
-      find.text(
-          'Hemos enviado las instrucciones. Si no las recibes, verifica que el correo esté registrado.'),
-      findsOneWidget,
-    );
+      expect(
+        find.text(
+            'Hemos enviado las instrucciones. Si no las recibes, verifica que el correo esté registrado.'),
+        findsOneWidget,
+      );
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -294,18 +331,20 @@ void main() {
   // -------------------------------------------------------------------------
   testWidgets('T08 — Cierre de sesión regresa a pantalla de login',
       (tester) async {
-    await FirebaseAuth.instance.signInWithEmailAndPassword(
-      email: _testEmail,
-      password: _testPassword,
-    );
+    await _track('T08', tester, () async {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _testEmail,
+        password: _testPassword,
+      );
 
-    await tester.pumpWidget(_homeWrapper());
-    await tester.pumpAndSettle(const Duration(seconds: 10));
+      await tester.pumpWidget(_homeWrapper());
+      await tester.pumpAndSettle(const Duration(seconds: 10));
 
-    expect(find.byKey(const Key('btn_logout')), findsOneWidget);
+      expect(find.byKey(const Key('btn_logout')), findsOneWidget);
 
-    await _logoutViaUI(tester);
+      await _logoutViaUI(tester);
 
-    expect(find.byKey(const Key('btn_auth')), findsOneWidget);
+      expect(find.byKey(const Key('btn_auth')), findsOneWidget);
+    });
   });
 }

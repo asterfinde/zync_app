@@ -135,6 +135,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
 
             // Input para código de invitación
             TextFormField(
+              key: const Key('field_invite_code'),
               controller: _joinController,
               onChanged: (_) => _validateForm(),
               style: const TextStyle(color: Colors.white),
@@ -160,6 +161,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
 
             // Botón Unirse a Círculo
             ElevatedButton(
+              key: const Key('btn_join_circle'),
               onPressed: _isFormValid ? _onJoinCircle : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor:

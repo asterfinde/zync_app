@@ -544,6 +544,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                   ),
                 ),
                 ElevatedButton.icon(
+                  key: const Key('btn_settings'),
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -609,7 +610,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                         Row(
                           children: [
                             Expanded(
-                              child: Text(circle.invitationCode, style: _AppTextStyles.invitationCode),
+                              child: Text(circle.invitationCode, key: const Key('text_invite_code'), style: _AppTextStyles.invitationCode),
                             ),
                             IconButton(
                               onPressed: () => _copyToClipboard(context, circle.invitationCode),
@@ -764,6 +765,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
+          key: const Key('btn_change_status'),
           onPressed: _isUpdatingStatus ? null : () => _quickStatusUpdate(),
           style: ElevatedButton.styleFrom(
             backgroundColor: _AppColors.accent,
@@ -1071,6 +1073,7 @@ class _MemberListItem extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
+                              key: const Key('text_member_timestamp'),
                               _formatTimestamp(lastUpdate),
                               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                             ),
@@ -1085,6 +1088,7 @@ class _MemberListItem extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
+                              key: Key('badge_manual'),
                               '✋ Manual',
                               style: TextStyle(fontSize: 11, color: Colors.orange),
                             ),
@@ -1094,6 +1098,7 @@ class _MemberListItem extends StatelessWidget {
                         if (locationInfo != null) ...[
                           const SizedBox(height: 4),
                           Text(
+                            key: const Key('text_location_info'),
                             locationInfo,
                             style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                           ),
