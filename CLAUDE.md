@@ -427,14 +427,17 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 3. Si se detectaron problemas no resueltos, la IA propone la entrada para la sección 12 y espera aprobación.
 4. Commit con mensaje descriptivo.
 
-### Límite de Contexto (≥ 90%)
-Cuando la sesión alcance o supere el 90% del contexto disponible, la IA **debe** — sin esperar instrucción — guardar en el sistema de memoria persistente (`memory/`) un archivo de tipo `project` con:
-- Rama activa y archivos modificados pendientes de commit.
-- Estado exacto de la tarea en curso (qué se hizo, qué falta).
-- Decisiones técnicas tomadas que aún no están en la sección 11.
-- Próximo paso concreto para retomar en la nueva sesión.
+### Gestión de contexto
 
-Luego avisar al desarrollador que el contexto está lleno y que la memoria fue guardada.
+- Al recibir un resumen de sesión comprimida por el sistema: guardar estado en `memory/` antes de continuar.
+- Antes de cambiar a un feature no relacionado con la tarea en curso: guardar memoria y sugerir `/clear` al desarrollador.
+- Si el desarrollador dice "nueva tarea": guardar memoria → sugerir `/clear`.
+- El contenido a guardar siempre incluye:
+  - Rama activa y archivos modificados pendientes de commit
+  - Estado exacto de la tarea (qué se hizo, qué falta)
+  - Próximo paso concreto para retomar
+  - Decisiones técnicas no registradas aún en sección 11
+- La memoria persistente vive en `memory/` — no duplicar en este archivo.
 
 ---
 
@@ -471,7 +474,64 @@ Luego avisar al desarrollador que el contexto está lleno y que la memoria fue g
 
 ---
 
-## 13. Nota Final
+## 13. Sistema de Memoria Persistente
+
+> La memoria permite que la IA retenga contexto entre sesiones separadas.
+> Sin ella, cada sesión comienza desde cero.
+
+### Ubicación
+
+```
+C:\Users\dante\.claude\projects\c--Users-dante-projects-zync-app\memory\
+```
+
+El índice vive en `MEMORY.md` dentro de esa carpeta. Ese archivo se carga automáticamente al inicio de cada sesión — es lo primero que la IA lee para orientarse.
+
+### Tipos de memoria
+
+| Tipo | Qué guarda | Cuándo usarlo |
+|------|------------|---------------|
+| `user` | Rol, preferencias, nivel técnico del desarrollador | Al aprender algo sobre cómo trabaja el desarrollador |
+| `feedback` | Correcciones y ajustes de comportamiento | Cuando el desarrollador dice "no hagas X" o "en vez de X haz Y" |
+| `project` | Estado de tareas, decisiones pendientes, próximo paso | Al cerrar sesión o antes de un `/clear` |
+| `reference` | Dónde vive información externa (Linear, Slack, Grafana, etc.) | Al aprender sobre recursos externos al repo |
+
+### Estructura de cada archivo de memoria
+
+```markdown
+---
+name: nombre descriptivo
+description: una línea — se usa para decidir si es relevante en futuras sesiones
+type: user | feedback | project | reference
+---
+
+Contenido. Para tipos feedback y project, incluir siempre:
+**Why:** razón por la que se guarda
+**How to apply:** cuándo y cómo aplicarlo
+```
+
+### Qué NO guardar en memoria
+
+- Código, arquitectura o estructura de archivos (se lee del repo)
+- Historial de git o cambios recientes (usar `git log`)
+- Soluciones a bugs (el fix está en el código; el contexto en el commit)
+- Nada que ya esté en este CLAUDE.md
+- Estado efímero de la conversación actual
+
+### Protocolo de cierre de sesión (obligatorio)
+
+Al cerrar cada sesión, la IA **debe** proponer al desarrollador una entrada de memoria de tipo `project` con:
+
+1. **Feature activo** — qué se estaba trabajando
+2. **Archivos modificados** — con estado (commiteados o pendientes)
+3. **Próximo paso** — acción concreta para retomar en la siguiente sesión
+4. **Decisiones técnicas** — las que no están aún en la sección 11
+
+El desarrollador aprueba o ajusta antes de que se guarde.
+
+---
+
+## 14. Nota Final
 
 - Este archivo es un documento vivo. Se actualiza conforme el proyecto avanza.
 - La IA debe tratarlo como su fuente de verdad y nunca contradecir lo que aquí se establece.
