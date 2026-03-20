@@ -471,6 +471,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   ),
                   const SizedBox(height: 24),
                   TextField(
+                    key: const Key('field_reset_email'),
                     controller: resetEmailController,
                     keyboardType: TextInputType.emailAddress,
                     style: TextStyle(color: Colors.white),
@@ -502,6 +503,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
+                        key: const Key('btn_send_reset'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFF7EAEA0),
                           shape: RoundedRectangleBorder(
@@ -756,6 +758,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   Column(
                     children: [
                       TextField(
+                        key: const Key('field_nickname'),
                         controller: _nicknameController,
                         onChanged: (_) => _updateFormValid(),
                         style: TextStyle(color: primaryTextColor),
@@ -784,6 +787,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     ],
                   ),
                 TextField(
+                  key: const Key('field_email'),
                   controller: _emailController,
                   onChanged: (_) => _updateFormValid(),
                   style: TextStyle(color: primaryTextColor),
@@ -809,6 +813,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                 ),
                 const SizedBox(height: 16),
                 TextField(
+                  key: const Key('field_password'),
                   controller: _passwordController,
                   onChanged: (_) => _updateFormValid(),
                   obscureText: _isPasswordObscured,
@@ -846,6 +851,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                 if (!_isLogin) ...[
                   const SizedBox(height: 16),
                   TextField(
+                    key: const Key('field_confirm_password'),
                     controller: _confirmPasswordController,
                     onChanged: (_) => _updateFormValid(),
                     obscureText: _isConfirmPasswordObscured,
@@ -909,6 +915,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                         ],
                       ),
                       child: ElevatedButton(
+                        key: const Key('btn_auth'),
                         onPressed: _isFormValid && !_isLoading
                             ? (_isLogin ? _login : _register)
                             : null,
@@ -950,6 +957,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                             style: TextStyle(color: secondaryTextColor),
                           ),
                           TextButton(
+                            key: const Key('btn_toggle_mode'),
                             onPressed: () {
                               setState(() {
                                 _isLogin = !_isLogin;
@@ -972,6 +980,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                       ),
                       if (_isLogin)
                         TextButton(
+                          key: const Key('btn_forgot_password'),
                           onPressed: () {
                             _showResetPasswordModal(
                               context,

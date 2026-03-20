@@ -327,6 +327,31 @@ class CircleService {
     }
   }
   
+  /// Elimina la cuenta del usuario actual.
+  /// Si pertenece a un círculo, lo abandona primero.
+  /// Borra el documento de Firestore y luego la cuenta de Firebase Auth.
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Usuario no autenticado');
+
+    final uid = user.uid;
+
+    // 1. Salir del círculo si pertenece a uno
+    final userDoc = await _firestore.collection('users').doc(uid).get();
+    if (userDoc.exists) {
+      final circleId = userDoc.data()?['circleId'] as String?;
+      if (circleId != null && circleId.isNotEmpty) {
+        await leaveCircle();
+      }
+    }
+
+    // 2. Borrar documento del usuario en Firestore
+    await _firestore.collection('users').doc(uid).delete();
+
+    // 3. Borrar cuenta de Firebase Auth
+    await user.delete();
+  }
+
   /// Método para forzar actualización manual del stream
   static void forceRefresh() {
     _refreshController.add(null);
