@@ -117,6 +117,22 @@
 
 ---
 
+## Resumen — Tests Manuales Pendientes
+
+| ID | Fase | Caso de prueba | Notas |
+|:--:|:----:|:---|:---|
+| T1.5 | 1 | Login fallido — correo no encontrado | Firebase email-enumeration-protection devuelve `invalid-credential`. No automatizable sin cambiar config Firebase. |
+| T1.11 | 1 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
+| T2.3 | 2 | Intento de crear más de un círculo | Funcionalidad no implementada en MVP. Verificar que la app bloquea correctamente. |
+| T3.20.1 | 3 | Con zonas activas — usuario entra a una zona | Requiere GPS activo y zona configurada en el círculo. |
+| T3.20.2 | 3 | Con zonas activas — usuario sale de una zona | Verificar cambio automático a "En camino". |
+| T4.1 | 4 | App minimizada — ícono visible en barra superior | Inspección visual en dispositivo físico. |
+| T4.2 | 4 | App minimizada sin cerrar sesión — modo silent activo | Verificar que el ícono persiste y el servicio sigue vivo. |
+| T4.3 | 4 | Cerrar sesión — ícono desaparece de barra superior | Comportamiento a confirmar. |
+| T5.2 | 5 | Quick Actions reflejadas en shortcuts nativos del SO | Inspección visual: mantener pulsado el ícono de la app en el launcher. |
+
+---
+
 ## Fase 6 — Funcionamiento UI/UX
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
