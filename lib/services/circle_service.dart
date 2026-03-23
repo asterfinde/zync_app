@@ -10,12 +10,14 @@ class Circle {
   final String name;
   final String invitationCode;
   final List<String> members;
+  final String creatorId;
 
   Circle({
     required this.id,
     required this.name,
     required this.invitationCode,
     required this.members,
+    required this.creatorId,
   });
 
   factory Circle.fromFirestore(DocumentSnapshot doc) {
@@ -25,6 +27,7 @@ class Circle {
       name: data['name'] ?? '',
       invitationCode: data['invitation_code'] ?? '',
       members: List<String>.from(data['members'] ?? []),
+      creatorId: data['creatorId'] ?? '',
     );
   }
 }
@@ -45,6 +48,15 @@ class CircleService {
       throw Exception('Usuario no autenticado');
     }
 
+    // Validación MVP: un solo círculo por usuario
+    final existingUserDoc = await _firestore.collection('users').doc(user.uid).get();
+    if (existingUserDoc.exists) {
+      final existingCircleId = existingUserDoc.data()?['circleId'] as String?;
+      if (existingCircleId != null && existingCircleId.isNotEmpty) {
+        throw Exception('Ya perteneces a un círculo. En esta versión solo puedes pertenecer a uno.');
+      }
+    }
+
     final circleRef = _firestore.collection('circles').doc();
     final invitationCode = circleRef.id.substring(0, 6).toUpperCase();
 
@@ -59,6 +71,7 @@ class CircleService {
       'invitation_code': invitationCode,
       'members': [user.uid],
       'memberStatus': {user.uid: initialStatus},
+      'creatorId': user.uid,
     };
 
     // Usar batch para operación atómica
@@ -328,7 +341,8 @@ class CircleService {
   }
   
   /// Elimina la cuenta del usuario actual.
-  /// Si pertenece a un círculo, lo abandona primero.
+  /// Si es creador del círculo: elimina el círculo y desvincula a todos los miembros.
+  /// Si es miembro común: solo lo remueve del círculo.
   /// Borra el documento de Firestore y luego la cuenta de Firebase Auth.
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
@@ -336,12 +350,33 @@ class CircleService {
 
     final uid = user.uid;
 
-    // 1. Salir del círculo si pertenece a uno
+    // 1. Manejar círculo según rol (creador vs miembro común)
     final userDoc = await _firestore.collection('users').doc(uid).get();
     if (userDoc.exists) {
       final circleId = userDoc.data()?['circleId'] as String?;
       if (circleId != null && circleId.isNotEmpty) {
-        await leaveCircle();
+        final circleDoc = await _firestore.collection('circles').doc(circleId).get();
+        if (circleDoc.exists) {
+          final creatorId = circleDoc.data()?['creatorId'] as String? ?? '';
+          if (uid == creatorId) {
+            // Es el creador: eliminar el círculo y desvincular a todos los miembros
+            final members = List<String>.from(circleDoc.data()?['members'] ?? []);
+            final batch = _firestore.batch();
+            batch.delete(_firestore.collection('circles').doc(circleId));
+            for (final memberId in members) {
+              if (memberId != uid) {
+                batch.update(_firestore.collection('users').doc(memberId), {
+                  'circleId': FieldValue.delete(),
+                });
+              }
+            }
+            await batch.commit();
+            log('[CircleService] ✅ Círculo eliminado por su creador. Miembros desvinculados: ${members.length - 1}');
+          } else {
+            // Es miembro común: solo salir del círculo
+            await leaveCircle();
+          }
+        }
       }
     }
 
