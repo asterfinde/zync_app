@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../services/circle_service.dart';
 import '../widgets/in_circle_view.dart';
 import '../widgets/no_circle_view.dart';
+import '../widgets/pending_request_view.dart';
 import '../../../../core/services/session_cache_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -106,7 +107,7 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         children: [
           if (!_isEmailVerified) _buildEmailVerificationBanner(),
-          Expanded(child: StreamBuilder<Circle?>(
+          Expanded(child: StreamBuilder<UserCircleState>(
         stream: _service.getUserCircleStream(),
         builder: (context, snapshot) {
           // Mostrar loading solo en la primera carga
@@ -123,13 +124,13 @@ class _HomePageState extends State<HomePage> {
             );
           }
 
-          final circle = snapshot.data;
-          
-          if (circle != null) {
-            // Usuario está en un círculo - mostrar InCircleView
-            return InCircleView(circle: circle);
+          final state = snapshot.data;
+
+          if (state is UserInCircle) {
+            return InCircleView(circle: state.circle);
+          } else if (state is UserPendingRequest) {
+            return PendingRequestView(pendingCircleId: state.pendingCircleId);
           } else {
-            // Usuario NO está en círculo - mostrar NoCircleView
             return const NoCircleView();
           }
         },
