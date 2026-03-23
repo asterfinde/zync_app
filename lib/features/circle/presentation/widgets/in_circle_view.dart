@@ -117,6 +117,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   final GeofencingService _geofencingService = GeofencingService();
   // --- FIN DE LA MODIFICACIÓN ---
 
+  // Aprobación de ingreso
+  final _circleService = CircleService();
+  List<JoinRequest> _pendingRequests = [];
+  StreamSubscription<List<JoinRequest>>? _joinRequestsSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -153,6 +158,20 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     // PASO 4: Iniciar monitoreo de geofencing
     _startGeofencingMonitoring();
+
+    // PASO 5: Escuchar solicitudes de ingreso (solo si el usuario actual es el creador)
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUid != null && currentUid == widget.circle.creatorId) {
+      _joinRequestsSubscription = _circleService
+          .getPendingJoinRequestsStream(widget.circle.id)
+          .listen((requests) {
+        if (mounted) {
+          setState(() {
+            _pendingRequests = requests;
+          });
+        }
+      });
+    }
     // =============================================================
   }
 
@@ -165,6 +184,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     // Cancelar la suscripción al listener de Firestore para evitar memory leaks
     _circleListenerSubscription?.cancel();
     _customEmojisListener?.cancel();
+    _joinRequestsSubscription?.cancel();
 
     // Detener monitoreo de geofencing
     _stopGeofencingMonitoring();
@@ -623,6 +643,29 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                     ),
                   ),
 
+                  // --- SOLICITUDES DE INGRESO (solo visible para el creador) ---
+                  if (FirebaseAuth.instance.currentUser?.uid == widget.circle.creatorId &&
+                      _pendingRequests.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        const Icon(Icons.person_add_outlined,
+                            size: 24, color: _AppColors.accent),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Solicitudes de ingreso (${_pendingRequests.length})',
+                          style: _AppTextStyles.screenTitle,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ..._pendingRequests.map((req) => _JoinRequestCard(
+                          request: req,
+                          onApprove: () => _approveRequest(req),
+                          onReject: () => _rejectRequest(req),
+                        )),
+                  ],
+
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24.0),
                     child: Divider(color: _AppColors.cardBorder, thickness: 1),
@@ -755,6 +798,36 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         setState(() {
           _isUpdatingStatus = false;
         });
+      }
+    }
+  }
+
+  Future<void> _approveRequest(JoinRequest request) async {
+    try {
+      await _circleService.approveJoinRequest(widget.circle.id, request.userId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al aprobar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _rejectRequest(JoinRequest request) async {
+    try {
+      await _circleService.rejectJoinRequest(widget.circle.id, request.userId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al rechazar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -959,6 +1032,111 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     );
   } */
 } // Fin de _InCircleViewState
+
+// ==============================================================================
+// JOIN REQUEST CARD — Tarjeta de solicitud de ingreso (visible solo al creador)
+// ==============================================================================
+class _JoinRequestCard extends StatelessWidget {
+  final JoinRequest request;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  const _JoinRequestCard({
+    required this.request,
+    required this.onApprove,
+    required this.onReject,
+  });
+
+  String _timeAgo(DateTime? dt) {
+    if (dt == null) return '';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Ahora mismo';
+    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Hace ${diff.inHours} h';
+    return 'Hace ${diff.inDays} d';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: _AppColors.accent.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.person_outline,
+                  size: 20, color: _AppColors.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  request.nickname.isNotEmpty ? request.nickname : request.userId,
+                  style: _AppTextStyles.memberNickname,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (request.requestedAt != null)
+                Text(
+                  _timeAgo(request.requestedAt),
+                  style: const TextStyle(
+                      fontSize: 12, color: _AppColors.textSecondary),
+                ),
+            ],
+          ),
+          if (request.email.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              request.email,
+              style: const TextStyle(
+                  fontSize: 13, color: _AppColors.textSecondary),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  key: ValueKey('btn_reject_${request.userId}'),
+                  onPressed: onReject,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _AppColors.sosRed,
+                    side: const BorderSide(color: _AppColors.sosRed),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Text('Rechazar'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  key: ValueKey('btn_approve_${request.userId}'),
+                  onPressed: onApprove,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _AppColors.accent,
+                    foregroundColor: _AppColors.background,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    elevation: 0,
+                  ),
+                  child: const Text('Aceptar',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 // ==============================================================================
 // MEMBER LIST ITEM - Widget individual con diseño ultra minimalista

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/global_keys.dart';
 import '../../../../services/circle_service.dart';
-import '../../../../core/services/silent_functionality_coordinator.dart';
-
 class JoinCircleView extends ConsumerStatefulWidget {
   const JoinCircleView({super.key});
 
@@ -35,8 +33,6 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
   }
 
   void _onJoinCircle() async {
-    print('[JoinCircleView] Join button pressed');
-
     if (!mounted) return;
 
     if (_joinController.text.trim().isEmpty) {
@@ -52,40 +48,21 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
     }
 
     final invitationCode = _joinController.text.trim();
-    print('[JoinCircleView] Joining circle with code: $invitationCode');
 
     try {
-      await _service.joinCircle(invitationCode);
-      print('[JoinCircleView] Joined circle successfully');
-
-      // ACTIVAR NOTIFICACIONES después de unirse al círculo
-      if (mounted) {
-        print('[JoinCircleView] Activando notificaciones después de unirse...');
-        await SilentFunctionalityCoordinator.activateAfterLogin(context);
-      }
+      await _service.requestToJoinCircle(invitationCode);
 
       if (mounted) {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
           const SnackBar(
-            content: Text('¡Te uniste al círculo exitosamente!'),
+            content: Text('Solicitud enviada. Esperando aprobación del creador.'),
             backgroundColor: Color(0xFF1CE4B3),
           ),
         );
-
-        // Limpiar el controller
         _joinController.clear();
-      }
-
-      // Forzar actualización del stream
-      CircleService.forceRefresh();
-      print('[JoinCircleView] Forced stream refresh after join');
-
-      // Navegar de vuelta
-      if (mounted) {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      print('[JoinCircleView] Error joining circle: $e');
       if (mounted) {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
