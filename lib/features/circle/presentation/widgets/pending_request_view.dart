@@ -38,6 +38,7 @@ class _PendingRequestViewState extends State<PendingRequestView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: const Key('pending_request_view'),
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Padding(
