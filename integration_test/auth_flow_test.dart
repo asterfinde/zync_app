@@ -118,10 +118,29 @@ void _printSummary() {
 // ---------------------------------------------------------------------------
 
 /// Asegura que btn_auth sea visible (scroll si el teclado lo oculta) y lo toca.
+/// Reintenta hasta 3 veces para manejar el IgnorePointer transitorio que ocurre
+/// cuando la UI está procesando un estado de carga previo. La desaparición de
+/// btn_auth del árbol indica que el tap fue exitoso (_isLoading = true activado).
 Future<void> _tapAuthButton(WidgetTester tester) async {
   await tester.ensureVisible(find.byKey(const Key('btn_auth')));
   await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('btn_auth')));
+  for (int attempt = 0; attempt < 3; attempt++) {
+    await tester.tap(find.byKey(const Key('btn_auth')), warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 300));
+    if (find.byKey(const Key('btn_auth')).evaluate().isEmpty) return;
+    await tester.pumpAndSettle();
+  }
+}
+
+/// Cambia el modo auth (login ↔ registro) y reintenta si IgnorePointer lo bloquea.
+/// El tap fue exitoso cuando field_nickname aparece en el árbol (modo registro visible).
+Future<void> _tapToggleModeButton(WidgetTester tester) async {
+  for (int attempt = 0; attempt < 3; attempt++) {
+    await tester.tap(find.byKey(const Key('btn_toggle_mode')), warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 300));
+    if (find.byKey(const Key('field_nickname')).evaluate().isNotEmpty) return;
+    await tester.pumpAndSettle();
+  }
 }
 
 /// Cierra sesión via UI (logout button → confirmar dialog).
@@ -141,9 +160,11 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
     await _ensureTestAccountExists();
     await _cleanupNewAccount();
   });
@@ -166,8 +187,7 @@ void main() {
       await tester.pumpWidget(_authWrapper());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('btn_toggle_mode')));
-      await tester.pumpAndSettle();
+      await _tapToggleModeButton(tester);
 
       await tester.enterText(
           find.byKey(const Key('field_nickname')), 'TestUser');
@@ -201,8 +221,7 @@ void main() {
       await tester.pumpWidget(_authWrapper());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('btn_toggle_mode')));
-      await tester.pumpAndSettle();
+      await _tapToggleModeButton(tester);
 
       await tester.enterText(
           find.byKey(const Key('field_nickname')), 'TestUser');
@@ -230,8 +249,7 @@ void main() {
       await tester.pumpWidget(_authWrapper());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('btn_toggle_mode')));
-      await tester.pumpAndSettle();
+      await _tapToggleModeButton(tester);
 
       await tester.enterText(
           find.byKey(const Key('field_nickname')), 'TestUser');

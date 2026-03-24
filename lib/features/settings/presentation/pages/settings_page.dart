@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../features/auth/presentation/provider/auth_provider.dart';
 import '../../../../features/auth/presentation/provider/auth_state.dart';
 import '../../../../features/auth/presentation/pages/auth_final_page.dart';
-import '../../../../notifications/notification_service.dart';
 import '../../../../core/widgets/quick_actions_config_widget.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
 import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout
@@ -288,95 +287,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
       }
     } catch (e) {
       debugPrint('[SettingsPage] Error actualizando círculo: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: ${e.toString()}'),
-            backgroundColor: _AppColors.sosRed, // <-- CAMBIO DE UI
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  /// Muestra diálogo de confirmación para salir del círculo
-  void _showLeaveCircleDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _AppColors.cardBackground, // <-- CAMBIO DE UI
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // <-- CAMBIO DE UI
-        title: Text(
-          'Salir del círculo',
-          style: _AppTextStyles.cardTitle.copyWith(color: _AppColors.sosRed), // <-- CAMBIO DE UI
-        ),
-        content: Text(
-          '¿Estás seguro de que quieres salir del círculo "${_currentCircleName ?? 'actual'}"?\n\nEsta acción no se puede deshacer.',
-          style: _AppTextStyles.textBody, // <-- CAMBIO DE UI
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: _AppColors.textSecondary), // <-- CAMBIO DE UI
-            ),
-          ),
-          ElevatedButton(
-            key: const Key('dialog_btn_leave_circle_confirm'),
-            onPressed: () {
-              Navigator.pop(context);
-              _leaveCircle();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _AppColors.sosRed, // <-- CAMBIO DE UI
-              foregroundColor: _AppColors.textPrimary, // <-- CAMBIO DE UI
-            ),
-            child: const Text('Salir del círculo'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Sale del círculo actual
-  Future<void> _leaveCircle() async {
-    if (_userId == null || _circleId == null) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // CRÍTICO: Cancelar notificaciones antes de salir del círculo
-      // Esto previene inconsistencias donde el usuario ya no está en el círculo
-      // pero las notificaciones permiten actualizaciones de estado inválidas
-      await NotificationService.cancelQuickActionNotification();
-
-      // Remover usuario del círculo
-      await FirebaseFirestore.instance.collection('circles').doc(_circleId).collection('members').doc(_userId).delete();
-
-      // Actualizar el perfil del usuario para remover circleId
-      await FirebaseFirestore.instance.collection('users').doc(_userId).update({'circleId': FieldValue.delete()});
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Has salido del círculo'),
-            backgroundColor: Colors.green, // <-- CAMBIO DE UI (Se mantiene verde para éxito)
-          ),
-        );
-
-        // Navegar de vuelta a la pantalla principal
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AuthFinalPage()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      debugPrint('[SettingsPage] Error saliendo del círculo: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1006,49 +916,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 24),
-
-          // Sección: Salir del círculo
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: _AppColors.sosRed.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _AppColors.sosRed.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Zona de peligro',
-                  style: _AppTextStyles.destructiveLabel,
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Salir del círculo eliminará tu acceso a toda la información compartida.',
-                  style: _AppTextStyles.textBody,
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  key: const Key('btn_leave_circle'),
-                  onPressed: _showLeaveCircleDialog,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _AppColors.sosRed,
-                    side: const BorderSide(color: _AppColors.sosRed, width: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.exit_to_app),
-                  label: const Text('Salir del Círculo'),
-                ),
-              ],
-            ),
           ),
         ],
       ),
