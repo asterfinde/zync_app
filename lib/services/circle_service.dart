@@ -329,7 +329,9 @@ class CircleService {
   
   /// Elimina la cuenta del usuario actual.
   /// Si pertenece a un círculo, lo abandona primero.
-  /// Borra el documento de Firestore y luego la cuenta de Firebase Auth.
+  /// Borra la cuenta de Firebase Auth antes del documento de Firestore
+  /// para evitar que el stream del usuario dispare navegación antes de
+  /// que el diálogo de reautenticación pueda mostrarse.
   Future<void> deleteAccount() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Usuario no autenticado');
@@ -345,11 +347,14 @@ class CircleService {
       }
     }
 
-    // 2. Borrar documento del usuario en Firestore
-    await _firestore.collection('users').doc(uid).delete();
-
-    // 3. Borrar cuenta de Firebase Auth
+    // 2. Borrar cuenta de Firebase Auth PRIMERO
+    // Si la sesión no es reciente, lanza requires-recent-login aquí,
+    // sin haber borrado el documento del usuario en Firestore todavía.
     await user.delete();
+
+    // 3. Borrar documento del usuario en Firestore
+    // (solo se ejecuta si user.delete() fue exitoso)
+    await _firestore.collection('users').doc(uid).delete();
   }
 
   /// Método para forzar actualización manual del stream

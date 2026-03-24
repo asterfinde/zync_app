@@ -59,13 +59,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 const HomePage(),
                 // Verificar autenticación real en background
                 _BackgroundAuthVerification(
-                  onInvalidSession: () {
+                  onInvalidSession: () async {
                     if (mounted) {
-                      SessionCacheService.clearSession();
-                      setState(() {
-                        _lastAuthenticatedUserId = null;
-                        _isSilentFunctionalityInitialized = false;
-                      });
+                      await SessionCacheService.clearSession();
+                      if (mounted) {
+                        setState(() {
+                          _lastAuthenticatedUserId = null;
+                          _isSilentFunctionalityInitialized = false;
+                        });
+                      }
                     }
                   },
                 ),
@@ -372,7 +374,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 /// FASE 2B: Mientras mostramos HomePage con cache, verificamos si la sesión
 /// de Firebase es válida. Si no lo es, limpiamos y volvemos a login.
 class _BackgroundAuthVerification extends StatefulWidget {
-  final VoidCallback onInvalidSession;
+  final Future<void> Function() onInvalidSession;
 
   const _BackgroundAuthVerification({
     required this.onInvalidSession,

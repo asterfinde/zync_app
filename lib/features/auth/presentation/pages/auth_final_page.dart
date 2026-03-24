@@ -233,7 +233,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
           return 'No encontramos una cuenta con ese correo.';
         case 'wrong-password':
         case 'invalid-credential':
-          return 'La contraseña es incorrecta. Verifica e intenta de nuevo.';
+          return 'Correo o contraseña incorrectos. Verifica que te has registrado e intenta de nuevo.';
         case 'invalid-email':
           return 'El formato del correo no es válido.';
         case 'user-disabled':
