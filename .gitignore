@@ -64,3 +64,7 @@ nul
 .watchdog.pid
 .watchdog_temp.sh
 *.code-workspace
+
+# Documentos de planificación efímera (work plans, análisis de impacto)
+WORK_PLAN_*.md
+IMPACT_*.md
