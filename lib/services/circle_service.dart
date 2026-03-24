@@ -495,13 +495,23 @@ class CircleService {
             .collection('users')
             .doc(user.uid)
             .snapshots()
-            .listen(processUserSnapshot);
+            .listen(
+          processUserSnapshot,
+          onError: (e) {
+            log('[CircleService] Stream: Error en userSubscription (logout?): $e');
+            if (!controller.isClosed) {
+              controller.add(UserNoCircle());
+            }
+          },
+        );
 
         // Escuchar señales de refresh manual
         refreshSubscription = _refreshController.stream.listen((_) async {
+          final currentUser = _auth.currentUser;
+          if (currentUser == null) return;
           log('[CircleService] Stream: Refresh manual activado');
           final userDoc =
-              await _firestore.collection('users').doc(user.uid).get();
+              await _firestore.collection('users').doc(currentUser.uid).get();
           processUserSnapshot(userDoc);
         });
       },

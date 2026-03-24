@@ -99,7 +99,8 @@ Future<void> _ensureUserDoc(String uid, String email) async {
   }
 }
 
-/// Garantiza que el usuario no pertenezca a ningún círculo.
+/// Garantiza que el usuario no pertenezca a ningún círculo ni tenga
+/// solicitudes pendientes. Limpia circleId y pendingCircleId.
 Future<void> _ensureNoCircle(String email, String password) async {
   try {
     await FirebaseAuth.instance
@@ -107,15 +108,22 @@ Future<void> _ensureNoCircle(String email, String password) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userDoc = await userRef.get();
 
     if (userDoc.exists) {
-      final circleId = userDoc.data()?['circleId'] as String?;
+      final data = userDoc.data()!;
+      final circleId = data['circleId'] as String?;
+      final pendingCircleId = data['pendingCircleId'] as String?;
+
+      // Limpiar circleId via leaveCircle si existe
       if (circleId != null && circleId.isNotEmpty) {
         await CircleService().leaveCircle();
+      }
+
+      // Limpiar pendingCircleId si existe (solicitud pendiente residual)
+      if (pendingCircleId != null && pendingCircleId.isNotEmpty) {
+        await userRef.update({'pendingCircleId': FieldValue.delete()});
       }
     }
   } catch (_) {
@@ -224,7 +232,7 @@ void main() {
   // -------------------------------------------------------------------------
   // T02 — Salir del círculo via Settings
   // -------------------------------------------------------------------------
-  testWidgets('T02 — Salir del círculo via Settings elimina InCircleView',
+  testWidgets('T02 — Settings no muestra opción de salir del círculo (Brecha 1)',
       (tester) async {
     await _track('T02', tester, () async {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -241,24 +249,14 @@ void main() {
       await tester.tap(find.byKey(const Key('btn_settings')));
       await tester.pumpAndSettle();
 
-      // SettingsPage abre en tab "Cuenta" (índice 0).
-      // btn_leave_circle está en tab "Círculo" (índice 1) → tap en el tab.
+      // Ir al tab "Círculo"
       await tester.tap(find.text('Círculo'));
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.byKey(const Key('btn_leave_circle')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('btn_leave_circle')));
-      await tester.pumpAndSettle();
+      // btn_leave_circle fue eliminado en Brecha 1 — no debe existir
+      expect(find.byKey(const Key('btn_leave_circle')), findsNothing);
 
-      await tester
-          .tap(find.byKey(const Key('dialog_btn_leave_circle_confirm')));
-      await tester.pumpAndSettle(const Duration(seconds: 8));
-
-      // InCircleView no debe estar visible
-      expect(find.byKey(const Key('btn_settings')), findsNothing);
-
-      await FirebaseAuth.instance.signOut();
+      await _signOutFromCircle(tester);
     });
   });
 
@@ -287,7 +285,7 @@ void main() {
   // -------------------------------------------------------------------------
   // T05 — Estado "Todo bien" al unirse a un círculo
   // -------------------------------------------------------------------------
-  testWidgets('T05 — Estado "Todo bien" asignado al unirse a un círculo',
+  testWidgets('T05 — Solicitar unirse a un círculo muestra PendingRequestView',
       (tester) async {
     await _track('T05', tester, () async {
       // test_ci crea el círculo
@@ -298,7 +296,7 @@ void main() {
       final inviteCode = await _createCircleProgrammatically();
       await FirebaseAuth.instance.signOut();
 
-      // test_ci2 se une al círculo via UI
+      // test_ci2 solicita unirse via UI
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _test2Email,
         password: _test2Password,
@@ -321,26 +319,28 @@ void main() {
       await tester.tap(find.byKey(const Key('btn_join_circle')));
       await tester.pumpAndSettle(const Duration(seconds: 10));
 
-      // InCircleView debe estar visible
-      expect(find.byKey(const Key('btn_settings')), findsOneWidget);
+      // Con el flujo de aprobación, el usuario queda en PendingRequestView
+      expect(find.byKey(const Key('pending_request_view')), findsOneWidget);
 
-      // Verificar estado inicial 'fine' en Firestore
+      // Verificar en Firestore: pendingCircleId seteado y joinRequest pendiente
       final user2 = FirebaseAuth.instance.currentUser!;
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user2.uid)
           .get();
-      final circleId = userDoc.data()!['circleId'] as String;
-      final circleDoc = await FirebaseFirestore.instance
+      expect(userDoc.data()!['pendingCircleId'], isNotNull);
+
+      final circleId = userDoc.data()!['pendingCircleId'] as String;
+      final requestDoc = await FirebaseFirestore.instance
           .collection('circles')
           .doc(circleId)
+          .collection('joinRequests')
+          .doc(user2.uid)
           .get();
-      final memberStatus =
-          circleDoc.data()!['memberStatus'] as Map<String, dynamic>;
-      final status = memberStatus[user2.uid] as Map<String, dynamic>;
-      expect(status['statusType'], equals('fine'));
+      expect(requestDoc.exists, isTrue);
+      expect(requestDoc.data()!['status'], equals('pending'));
 
-      await _signOutFromCircle(tester);
+      await FirebaseAuth.instance.signOut();
     });
   });
 
