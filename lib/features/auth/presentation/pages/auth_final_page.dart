@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});
@@ -71,8 +72,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         email: email,
         password: _passwordController.text,
       );
-      // Login exitoso — AuthWrapper detecta el cambio via authStateChanges()
-      // y navega a HomePage. Los servicios se inicializan desde AuthWrapper.
+      // Login exitoso — navegar a HomePage reemplazando la ruta actual.
+      // Los servicios se inicializan desde AuthWrapper (sin duplicación).
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         _message = getAuthErrorMessage(e.code, isLogin: true);
@@ -125,8 +131,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         'uid': userCredential.user?.uid,
       });
       await userCredential.user?.sendEmailVerification();
-      // Registro exitoso — AuthWrapper detecta el cambio via authStateChanges()
-      // y navega a HomePage. Los servicios se inicializan desde AuthWrapper.
+      // Registro exitoso — navegar a HomePage reemplazando la ruta actual.
+      // Los servicios se inicializan desde AuthWrapper (sin duplicación).
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         _message = getAuthErrorMessage(e.code, isLogin: false);
