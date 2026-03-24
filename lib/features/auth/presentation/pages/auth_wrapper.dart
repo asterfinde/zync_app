@@ -34,60 +34,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    // FASE 2B: UI Optimista - Intentar restaurar desde cache primero
-    return FutureBuilder<Map<String, String>?>(
-      future: SessionCacheService.restoreSession(),
-      builder: (context, cacheSnapshot) {
-        // Si hay sesión cacheada, mostrar HomePage INMEDIATAMENTE
-        if (cacheSnapshot.connectionState == ConnectionState.done &&
-            cacheSnapshot.hasData &&
-            cacheSnapshot.data != null) {
-          final cachedUserId = cacheSnapshot.data!['userId'];
-
-          if (cachedUserId != null && cachedUserId.isNotEmpty) {
-            print('⚡ [AuthWrapper] Usando sesión cacheada: $cachedUserId');
-
-            // Inicializar servicios en background si es necesario
-            if (_lastAuthenticatedUserId != cachedUserId) {
-              _lastAuthenticatedUserId = cachedUserId;
-              _initializeSilentFunctionalityIfNeeded(cachedUserId);
-            }
-
-            // Mostrar HomePage con verificación en background
-            return Stack(
-              children: [
-                const HomePage(),
-                // Verificar autenticación real en background
-                _BackgroundAuthVerification(
-                  onInvalidSession: () {
-                    if (mounted) {
-                      SessionCacheService.clearSession();
-                      setState(() {
-                        _lastAuthenticatedUserId = null;
-                        _isSilentFunctionalityInitialized = false;
-                      });
-                    }
-                  },
-                ),
-              ],
-            );
-          }
-        }
-
-        // Si no hay cache o aún está cargando, usar StreamBuilder normal
-        return _buildStreamAuth();
-      },
-    );
-  }
-
-  /// StreamBuilder normal para autenticación (fallback cuando no hay cache)
-  Widget _buildStreamAuth() {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Mostrar loading SOLO en la conexión inicial (no en rebuilds)
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
+        // Fast render: Firebase Auth persiste localmente (igual que apps nativas).
+        // currentUser es sincrónico (0ms) — elimina la necesidad de un cache propio.
+        final user = snapshot.data ?? FirebaseAuth.instance.currentUser;
+
+        // Loading solo cuando genuinamente no se conoce el estado aún
+        if (snapshot.connectionState == ConnectionState.waiting && user == null) {
           return const Scaffold(
             backgroundColor: Colors.black,
             body: Center(
@@ -95,16 +50,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Color(0xFF1EE9A4)),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1EE9A4)),
                   ),
                   SizedBox(height: 16),
                   Text(
                     'Verificando sesión...',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ],
               ),
@@ -112,41 +63,54 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
-        // Verificar si hay un error
         if (snapshot.hasError) {
-          print(
-              '❌ [AuthWrapper] Error en stream de autenticación: ${snapshot.error}');
+          print('❌ [AuthWrapper] Error en stream de autenticación: ${snapshot.error}');
           return const AuthFinalPage();
         }
 
-        final user = snapshot.data;
-
         if (user != null) {
-          // Usuario autenticado → ir a HomePage
-
-          // OPTIMIZACIÓN: Solo inicializar si el usuario cambió o es la primera vez
           if (_lastAuthenticatedUserId != user.uid) {
             print('✅ [AuthWrapper] Usuario autenticado: ${user.uid}');
             _lastAuthenticatedUserId = user.uid;
             _initializeSilentFunctionalityIfNeeded(user.uid);
+            _verifyUserAccountOnServer(user);
           }
-
           return const HomePage();
         } else {
-          // Usuario NO autenticado → mostrar pantalla de login
-
-          // OPTIMIZACIÓN: Solo limpiar si había un usuario antes
           if (_lastAuthenticatedUserId != null) {
             print('🔴 [AuthWrapper] Usuario desautenticado');
             _lastAuthenticatedUserId = null;
             _isSilentFunctionalityInitialized = false;
             _cleanupSilentFunctionalityIfNeeded();
           }
-
           return const AuthFinalPage();
         }
       },
     );
+  }
+
+  /// Verifica contra el servidor que la cuenta sigue existiendo en Firebase.
+  /// Fire-and-forget: si falla, cierra sesión y el stream detecta el cambio.
+  void _verifyUserAccountOnServer(User user) {
+    Future.microtask(() async {
+      try {
+        await user.reload();
+        if (FirebaseAuth.instance.currentUser == null) {
+          print('⚠️ [AuthWrapper] Cuenta eliminada en servidor, cerrando sesión...');
+          await SessionCacheService.clearSession();
+          if (mounted) {
+            setState(() {
+              _lastAuthenticatedUserId = null;
+              _isSilentFunctionalityInitialized = false;
+            });
+          }
+        }
+      } catch (e) {
+        print('⚠️ [AuthWrapper] Token inválido al verificar cuenta: $e — cerrando sesión...');
+        await FirebaseAuth.instance.signOut();
+        await SessionCacheService.clearSession();
+      }
+    });
   }
 
   /// Inicializa la funcionalidad silenciosa si el usuario está autenticado
@@ -364,52 +328,5 @@ class _AuthWrapperState extends State<AuthWrapper> {
         print('❌ [AuthWrapper] Error limpiando listeners: $e');
       }
     });
-  }
-}
-
-/// Widget invisible que verifica autenticación en background
-///
-/// FASE 2B: Mientras mostramos HomePage con cache, verificamos si la sesión
-/// de Firebase es válida. Si no lo es, limpiamos y volvemos a login.
-class _BackgroundAuthVerification extends StatefulWidget {
-  final VoidCallback onInvalidSession;
-
-  const _BackgroundAuthVerification({
-    required this.onInvalidSession,
-  });
-
-  @override
-  State<_BackgroundAuthVerification> createState() =>
-      _BackgroundAuthVerificationState();
-}
-
-class _BackgroundAuthVerificationState
-    extends State<_BackgroundAuthVerification> {
-  @override
-  void initState() {
-    super.initState();
-    _verifyAuth();
-  }
-
-  Future<void> _verifyAuth() async {
-    // Esperar un momento para no interrumpir la UI
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Verificar si el usuario de Firebase es válido
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      // Sesión cache inválida, limpiar y volver a login
-      print('⚠️ [BackgroundAuth] Sesión cache inválida, limpiando...');
-      widget.onInvalidSession();
-    } else {
-      print('✅ [BackgroundAuth] Sesión verificada: ${user.uid}');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Widget invisible
-    return const SizedBox.shrink();
   }
 }

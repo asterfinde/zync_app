@@ -334,6 +334,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
 
   Future<void> _executeDeleteAccount(BuildContext context) async {
     if (!context.mounted) return;
+
+    final currentCircle = await CircleService().getUserCircle();
+    final wasInCircle = currentCircle != null;
+
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -364,7 +370,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
       Navigator.of(context, rootNavigator: true).pop();
 
       if (e.code == 'requires-recent-login') {
-        _showReauthDialog(context);
+        _showReauthDialog(context, wasInCircle: wasInCircle);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -386,7 +392,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
     }
   }
 
-  void _showReauthDialog(BuildContext context) {
+  void _showReauthDialog(BuildContext context, {bool wasInCircle = false}) {
     final passwordController = TextEditingController();
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
 
@@ -429,7 +435,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              if (wasInCircle && context.mounted) {
+                _showCircleLostInfoDialog(context);
+              }
+            },
             child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
           ),
           TextButton(
@@ -487,6 +498,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
               }
             },
             child: const Text('Confirmar', style: TextStyle(color: _AppColors.sosRed)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCircleLostInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: _AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Ya no estás en tu círculo', style: TextStyle(color: _AppColors.textPrimary)),
+        content: const Text(
+          'Al cancelar la eliminación saliste de tu círculo. Para volver, pídele a alguien del grupo que te comparta el código de invitación.',
+          style: TextStyle(color: _AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Entendido', style: TextStyle(color: _AppColors.accent)),
           ),
         ],
       ),
