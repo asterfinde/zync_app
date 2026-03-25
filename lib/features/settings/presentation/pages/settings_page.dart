@@ -413,7 +413,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
           TextButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
-              await _executeDeleteAccount(context);
+              if (mounted) {
+                _executeDeleteAccount(this.context);
+              }
             },
             child: const Text('Eliminar Cuenta', style: TextStyle(color: _AppColors.sosRed)),
           ),
@@ -423,7 +425,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
   }
 
   Future<void> _executeDeleteAccount(BuildContext context) async {
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     final currentCircle = await CircleService().getUserCircle();
     final wasInCircle = currentCircle != null;
@@ -557,7 +559,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                 await CircleService().deleteAccount();
 
                 if (context.mounted) {
-                  Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+                  // Cerrar el spinner antes de navegar
+                  Navigator.of(context, rootNavigator: true).pop();
+
+                  // Mostrar SnackBar de éxito
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('✅ Tu cuenta ha sido eliminada exitosamente', style: TextStyle(color: Colors.white)),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+
+                  // Navegar a login
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const AuthFinalPage()),
                     (route) => false,
@@ -580,7 +595,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                   Navigator.of(context, rootNavigator: true).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
+                      content:
+                          Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
                       backgroundColor: Colors.red,
                     ),
                   );

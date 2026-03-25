@@ -62,6 +62,8 @@
 | 9 | Eliminación de cuenta — usuario sin círculo | Cuenta eliminada de Auth y Firestore. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-18. Acceso desde "Mi Cuenta" en NoCircleView. |
 | 10 | Eliminación de cuenta — usuario con círculo (miembro o creador) | Usuario sale del círculo, cuenta eliminada de Auth y Firestore. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-18. Acceso desde Settings → sección "Sesión". |
 | 11 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | App solicita contraseña, re-autentica y elimina. Si contraseña incorrecta: SnackBar rojo, cuenta intacta. | 👁 | | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
+| 12 | App sin sesión activa (inicio en frío) → redirige a login | Sin usuarios en Firebase o con sesión cerrada, la app va directo a la pantalla de login sin parpadeos ni redirecciones intermedias. | 👁 | ✅ | Probado 2026-03-24 post-refactor auth (single source of truth). |
+| 13 | Minimizar app y restaurar → sin parpadeo de login | Al minimizar y restaurar la app con sesión activa, se restaura instantáneamente en HomePage sin mostrar la pantalla de login. | 👁 | ✅ | Probado 2026-03-24 post-refactor auth (single source of truth). |
 
 ---
 

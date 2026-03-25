@@ -20,9 +20,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   String _getCurrentUserNickname() {
     final authState = ref.watch(authProvider);
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty
-          ? authState.user.nickname
-          : authState.user.email.split('@')[0];
+      return authState.user.nickname.isNotEmpty ? authState.user.nickname : authState.user.email.split('@')[0];
     }
     return 'Usuario';
   }
@@ -101,8 +99,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
           TextButton(
             onPressed: () async {
               await FirebaseAuth.instance.currentUser?.reload();
-              final verified =
-                  FirebaseAuth.instance.currentUser?.emailVerified ?? false;
+              final verified = FirebaseAuth.instance.currentUser?.emailVerified ?? false;
               if (verified) {
                 if (dialogContext.mounted) Navigator.of(dialogContext).pop();
                 onVerified();
@@ -170,9 +167,9 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
+  void _showDeleteAccountDialog(BuildContext parentContext) {
     showDialog(
-      context: context,
+      context: parentContext,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: Colors.grey[900],
@@ -188,9 +185,12 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
             child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
-            onPressed: () async {
+            onPressed: () {
               Navigator.of(dialogContext).pop();
-              await _executeDeleteAccount(context);
+              // FIX: Usar mounted del State y this.context en lugar del context del diálogo
+              if (mounted) {
+                _executeDeleteAccount(context);
+              }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Eliminar Cuenta'),
@@ -201,7 +201,12 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   }
 
   Future<void> _executeDeleteAccount(BuildContext context) async {
-    if (!context.mounted) return;
+    debugPrint('[NoCircleView] _executeDeleteAccount: INICIO');
+    if (!context.mounted) {
+      debugPrint('[NoCircleView] _executeDeleteAccount: context no montado, saliendo');
+      return;
+    }
+    debugPrint('[NoCircleView] _executeDeleteAccount: Mostrando spinner...');
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -213,8 +218,11 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     );
 
     try {
+      debugPrint('[NoCircleView] _executeDeleteAccount: Limpiando SessionCache...');
       await SessionCacheService.clearSession();
+      debugPrint('[NoCircleView] _executeDeleteAccount: Llamando CircleService().deleteAccount()...');
       await CircleService().deleteAccount();
+      debugPrint('[NoCircleView] _executeDeleteAccount: deleteAccount() completado SIN excepción');
 
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
@@ -238,14 +246,23 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         );
       }
     } catch (e) {
+      debugPrint('[NoCircleView] ❌ Error genérico en deleteAccount: $e (tipo: ${e.runtimeType})');
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
-          ),
-        );
+
+        // FIX: Verificar si es FirebaseAuthException por runtimeType (en caso de que el catch tipado falle)
+        if (e is FirebaseAuthException && e.code == 'requires-recent-login') {
+          debugPrint(
+              '[NoCircleView] 🔄 Detectado requires-recent-login en catch genérico, mostrando diálogo de reauth');
+          _showReauthDialog(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -253,107 +270,135 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   void _showReauthDialog(BuildContext context) {
     final passwordController = TextEditingController();
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
+    bool isPasswordObscured = true;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Confirmar identidad', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Por seguridad, ingresa tu contraseña para confirmar la eliminación.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Contraseña',
-                labelStyle: const TextStyle(color: Colors.grey),
-                filled: true,
-                fillColor: Colors.black26,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.tealAccent, width: 2),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Confirmar identidad', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Por seguridad, ingresa tu contraseña para confirmar la eliminación.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: isPasswordObscured,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.black26,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.tealAccent, width: 2),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setDialogState(() {
+                        isPasswordObscured = !isPasswordObscured;
+                      });
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(dialogContext).pop();
-              if (!context.mounted) return;
-
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) => const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.tealAccent),
-                  ),
-                ),
-              );
-
-              try {
-                final credential = EmailAuthProvider.credential(
-                  email: email,
-                  password: passwordController.text,
-                );
-                await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(credential);
-                await CircleService().deleteAccount();
-
-                if (context.mounted) {
-                  Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const AuthFinalPage()),
-                    (route) => false,
-                  );
-                }
-              } on FirebaseAuthException catch (e) {
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
                 if (!context.mounted) return;
-                Navigator.of(context, rootNavigator: true).pop();
-                final msg = (e.code == 'wrong-password' || e.code == 'invalid-credential')
-                    ? 'Contraseña incorrecta. Intenta de nuevo.'
-                    : 'Error de autenticación. Intenta de nuevo.';
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(msg, style: const TextStyle(color: Colors.white)),
-                    backgroundColor: Colors.red,
+
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.tealAccent),
+                    ),
                   ),
                 );
-              } catch (e) {
-                if (context.mounted) {
+
+                try {
+                  final credential = EmailAuthProvider.credential(
+                    email: email,
+                    password: passwordController.text,
+                  );
+                  await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(credential);
+                  await CircleService().deleteAccount();
+
+                  if (context.mounted) {
+                    // Cerrar el spinner antes de navegar
+                    Navigator.of(context, rootNavigator: true).pop();
+
+                    // Mostrar SnackBar de éxito
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content:
+                            Text('✅ Tu cuenta ha sido eliminada exitosamente', style: TextStyle(color: Colors.white)),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+
+                    // Navegar a login
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+                      (route) => false,
+                    );
+                  }
+                } on FirebaseAuthException catch (e) {
+                  if (!context.mounted) return;
                   Navigator.of(context, rootNavigator: true).pop();
+                  final msg = (e.code == 'wrong-password' || e.code == 'invalid-credential')
+                      ? 'Contraseña incorrecta. Intenta de nuevo.'
+                      : 'Error de autenticación. Intenta de nuevo.';
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
+                    SnackBar(
+                      content: Text(msg, style: const TextStyle(color: Colors.white)),
                       backgroundColor: Colors.red,
                     ),
                   );
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error al eliminar la cuenta. Intenta de nuevo.',
+                            style: TextStyle(color: Colors.white)),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Confirmar'),
-          ),
-        ],
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -384,8 +429,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
             onPressed: () async {
               Navigator.of(context).pop();
               try {
-                print(
-                    '🔴 [LOGOUT] Iniciando logout desde NoCircleView (sin círculo)...');
+                print('🔴 [LOGOUT] Iniciando logout desde NoCircleView (sin círculo)...');
 
                 // PASO 1: Limpiar cache PRIMERO (evita parpadeo de NoCircleView)
                 print('🔴 [LOGOUT] Limpiando SessionCache...');
@@ -471,8 +515,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF6B6B),
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -576,8 +619,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   // Divider OR
                   Row(
                     children: [
-                      Expanded(
-                          child: Divider(color: Colors.white.withOpacity(0.3))),
+                      Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Text(
@@ -589,8 +631,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                           ),
                         ),
                       ),
-                      Expanded(
-                          child: Divider(color: Colors.white.withOpacity(0.3))),
+                      Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -602,8 +643,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       key: const Key('btn_navigate_join_circle'),
                       onPressed: _navigateToJoinCircle,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            const Color.fromARGB(255, 91, 207, 139),
+                        backgroundColor: const Color.fromARGB(255, 91, 207, 139),
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         shape: RoundedRectangleBorder(

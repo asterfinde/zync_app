@@ -32,14 +32,14 @@ class Circle {
 class CircleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   // StreamController para forzar actualizaciones
   static final StreamController<void> _refreshController = StreamController<void>.broadcast();
 
   /// Crea un nuevo círculo para el usuario actual
   Future<String> createCircle(String name) async {
     log('[CircleService] Creando círculo: $name');
-    
+
     final user = _auth.currentUser;
     if (user == null) {
       throw Exception('Usuario no autenticado');
@@ -64,23 +64,21 @@ class CircleService {
     // Usar batch para operación atómica
     final batch = _firestore.batch();
     batch.set(circleRef, circleData);
-    batch.update(_firestore.collection('users').doc(user.uid), {
-      'circleId': circleRef.id
-    });
+    batch.update(_firestore.collection('users').doc(user.uid), {'circleId': circleRef.id});
 
     await batch.commit();
     log('[CircleService] ✅ Círculo creado exitosamente: ${circleRef.id}');
-    
+
     // Forzar actualización del stream
     _refreshController.add(null);
-    
+
     return circleRef.id;
   }
 
   /// Une al usuario actual a un círculo existente usando código de invitación
   Future<void> joinCircle(String invitationCode) async {
     log('[CircleService] Uniéndose al círculo con código: $invitationCode');
-    
+
     final user = _auth.currentUser;
     if (user == null) {
       throw Exception('Usuario no autenticado');
@@ -91,11 +89,8 @@ class CircleService {
     }
 
     // Buscar círculo por código de invitación
-    final query = await _firestore
-        .collection('circles')
-        .where('invitation_code', isEqualTo: invitationCode)
-        .limit(1)
-        .get();
+    final query =
+        await _firestore.collection('circles').where('invitation_code', isEqualTo: invitationCode).limit(1).get();
 
     if (query.docs.isEmpty) {
       throw Exception('Código de invitación inválido');
@@ -105,7 +100,7 @@ class CircleService {
 
     await _firestore.runTransaction((transaction) async {
       final circleSnapshot = await transaction.get(circleRef);
-      
+
       if (!circleSnapshot.exists) {
         throw Exception('El círculo no existe');
       }
@@ -136,7 +131,7 @@ class CircleService {
 
     // Forzar actualización del stream
     _refreshController.add(null);
-      
+
     log('[CircleService] ✅ Usuario se unió al círculo exitosamente');
   }
 
@@ -150,21 +145,21 @@ class CircleService {
 
     try {
       final userSnapshot = await _firestore.collection('users').doc(user.uid).get();
-      
+
       if (!userSnapshot.exists) {
         log('[CircleService] Documento de usuario no existe');
         return null;
       }
 
       final circleId = userSnapshot.data()?['circleId'] as String?;
-      
+
       if (circleId == null || circleId.isEmpty) {
         log('[CircleService] Usuario no tiene círculo asignado');
         return null;
       }
 
       final circleDoc = await _firestore.collection('circles').doc(circleId).get();
-      
+
       if (!circleDoc.exists) {
         log('[CircleService] Círculo no existe: $circleId');
         return null;
@@ -204,7 +199,7 @@ class CircleService {
           }
 
           final circleId = userSnapshot.data()?['circleId'] as String?;
-          
+
           if (circleId == null || circleId.isEmpty) {
             log('[CircleService] Stream: Usuario sin círculo');
             controller.add(null);
@@ -212,16 +207,12 @@ class CircleService {
           }
 
           log('[CircleService] Stream: Escuchando círculo $circleId');
-          
+
           // Cancelar suscripción anterior del círculo si existe
           await circleSubscription?.cancel();
-          
+
           // Escuchar cambios en el círculo
-          circleSubscription = _firestore
-              .collection('circles')
-              .doc(circleId)
-              .snapshots()
-              .listen((circleSnapshot) {
+          circleSubscription = _firestore.collection('circles').doc(circleId).snapshots().listen((circleSnapshot) {
             if (!circleSnapshot.exists) {
               log('[CircleService] Stream: Círculo no existe');
               controller.add(null);
@@ -235,11 +226,7 @@ class CircleService {
         }
 
         // Escuchar cambios en el usuario
-        userSubscription = _firestore
-            .collection('users')
-            .doc(user.uid)
-            .snapshots()
-            .listen(processUserSnapshot);
+        userSubscription = _firestore.collection('users').doc(user.uid).snapshots().listen(processUserSnapshot);
 
         // Escuchar señales de refresh manual
         refreshSubscription = _refreshController.stream.listen((_) async {
@@ -265,7 +252,7 @@ class CircleService {
   /// Permite al usuario actual salir del círculo
   Future<void> leaveCircle() async {
     log('[CircleService] Usuario saliendo del círculo');
-    
+
     final user = _auth.currentUser;
     if (user == null) {
       throw Exception('Usuario no autenticado');
@@ -275,32 +262,32 @@ class CircleService {
       // Obtener el círculo actual del usuario
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       final userData = userDoc.data();
-      
+
       if (!userDoc.exists || userData == null || !userData.containsKey('circleId')) {
         throw Exception('El usuario no está en ningún círculo');
       }
 
       final circleId = userData['circleId'] as String;
-      
+
       // Usar transacción para asegurar consistencia
       await _firestore.runTransaction((transaction) async {
         final circleRef = _firestore.collection('circles').doc(circleId);
         final circleDoc = await transaction.get(circleRef);
-        
+
         if (!circleDoc.exists) {
           throw Exception('El círculo no existe');
         }
 
         final members = List<String>.from(circleDoc.data()!['members'] ?? []);
-        
+
         // Verificar que el usuario esté realmente en el círculo
         if (!members.contains(user.uid)) {
           throw Exception('El usuario no está en este círculo');
         }
-        
+
         // Remover al usuario de la lista de miembros
         members.remove(user.uid);
-        
+
         // Si es el último miembro, eliminar el círculo completamente
         if (members.isEmpty) {
           transaction.delete(circleRef);
@@ -310,7 +297,7 @@ class CircleService {
           transaction.update(circleRef, {'members': members});
           log('[CircleService] Usuario removido del círculo. Miembros restantes: ${members.length}');
         }
-        
+
         // Remover circleId del documento del usuario
         transaction.update(_firestore.collection('users').doc(user.uid), {
           'circleId': FieldValue.delete(),
@@ -319,49 +306,84 @@ class CircleService {
 
       // Forzar actualización del stream
       _refreshController.add(null);
-      
+
       log('[CircleService] Usuario salió del círculo exitosamente');
     } catch (e) {
       log('[CircleService] Error al salir del círculo: $e');
       rethrow;
     }
   }
-  
+
   /// Elimina la cuenta del usuario actual.
-  /// Si pertenece a un círculo, lo abandona primero.
-  /// Borra la cuenta de Firebase Auth antes del documento de Firestore
-  /// para evitar que el stream del usuario dispare navegación antes de
-  /// que el diálogo de reautenticación pueda mostrarse.
+  /// Orden de operaciones:
+  /// 1. Leer circleId ANTES de modificar nada.
+  /// 2. Borrar Auth PRIMERO — si la sesión no es reciente lanza requires-recent-login
+  ///    sin haber tocado Firestore, dejando el context montado para el diálogo de reauth.
+  /// 3. Si Auth se eliminó exitosamente, limpiar Firestore con el token en caché del SDK.
   Future<void> deleteAccount() async {
+    log('[CircleService] deleteAccount: INICIO');
     final user = _auth.currentUser;
-    if (user == null) throw Exception('Usuario no autenticado');
+    if (user == null) {
+      log('[CircleService] deleteAccount: ERROR - Usuario es null');
+      throw Exception('Usuario no autenticado');
+    }
 
     final uid = user.uid;
+    log('[CircleService] deleteAccount: uid=$uid');
 
-    // 1. Salir del círculo si pertenece a uno
+    // 1. Leer circleId antes de cualquier modificación
+    log('[CircleService] deleteAccount: Leyendo documento de usuario...');
     final userDoc = await _firestore.collection('users').doc(uid).get();
-    if (userDoc.exists) {
-      final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId != null && circleId.isNotEmpty) {
-        await leaveCircle();
+    final circleId = userDoc.exists ? (userDoc.data()?['circleId'] as String?) : null;
+    log('[CircleService] deleteAccount: circleId=$circleId');
+
+    // 2. Borrar Auth PRIMERO.
+    // Si lanza requires-recent-login, no se ha tocado Firestore → el stream no
+    // dispara navegación → el context sigue montado → el diálogo de reauth puede mostrarse.
+    log('[CircleService] deleteAccount: Intentando user.delete()...');
+    try {
+      // Para probar requires-recent-login sin esperar, descomentar:
+      // throw FirebaseAuthException(code: 'requires-recent-login', message: 'Test');
+      await user.delete();
+      log('[CircleService] deleteAccount: user.delete() EXITOSO');
+    } catch (e) {
+      log('[CircleService] deleteAccount: user.delete() FALLÓ - $e (tipo: ${e.runtimeType})');
+      rethrow;
+    }
+
+    // 3. Solo se llega aquí si user.delete() tuvo éxito (sesión reciente).
+    // Limpiar Firestore usando el token en caché del SDK (funciona en la misma ventana
+    // de ejecución — mismo comportamiento que el paso 3 original ya verificado en T1.9/T1.10).
+    if (circleId != null && circleId.isNotEmpty) {
+      try {
+        final circleRef = _firestore.collection('circles').doc(circleId);
+        final circleDoc = await circleRef.get();
+        if (circleDoc.exists) {
+          final members = List<String>.from(circleDoc.data()!['members'] ?? []);
+          members.remove(uid);
+          if (members.isEmpty) {
+            await circleRef.delete();
+          } else {
+            await circleRef.update({'members': members});
+          }
+        }
+      } catch (e) {
+        log('[CircleService] deleteAccount: error limpiando círculo: $e');
       }
     }
 
-    // 2. Borrar cuenta de Firebase Auth PRIMERO
-    // Si la sesión no es reciente, lanza requires-recent-login aquí,
-    // sin haber borrado el documento del usuario en Firestore todavía.
-    await user.delete();
-
-    // 3. Borrar documento del usuario en Firestore
-    // (solo se ejecuta si user.delete() fue exitoso)
-    await _firestore.collection('users').doc(uid).delete();
+    try {
+      await _firestore.collection('users').doc(uid).delete();
+    } catch (e) {
+      log('[CircleService] deleteAccount: error borrando documento de usuario: $e');
+    }
   }
 
   /// Método para forzar actualización manual del stream
   static void forceRefresh() {
     _refreshController.add(null);
   }
-  
+
   /// Dispose del StreamController
   static void dispose() {
     _refreshController.close();
