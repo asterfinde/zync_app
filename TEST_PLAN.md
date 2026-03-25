@@ -55,14 +55,14 @@
 | 2 | Registro fallido — contraseñas no coinciden | Botón "Crear Cuenta" deshabilitado | 🔬 | ✅ | Test automatizado pasando 2026-03-20. |
 | 3 | Registro fallido — email ya registrado | Mensaje "Este correo ya tiene una cuenta registrada. Inicia sesión." | 🔗 | ✅ | Test pasando 2026-03-23. Fix: retry loop en `_tapToggleModeButton` resuelve bloqueo por `RenderIgnorePointer` transitorio entre tests. |
 | 4 | Login exitoso — credenciales válidas | Acceso a la app | 🔗 | ✅ | Lógica verificada 2026-03-20. Error post-test en infra (Firestore stream permission-denied al hacer signOut) — no afecta funcionalidad. |
-| 5 | Login fallido — correo no encontrado | Mensaje "No encontramos una cuenta con ese correo." | 👁 | | Firebase email-enumeration-protection devuelve `invalid-credential` en vez de `user-not-found`. No automatizable sin cambiar config de Firebase. |
+| 5 | Login fallido — correo no encontrado | Mensaje "Correo o contraseña incorrectos. Verifica que te has registrado e intenta de nuevo" | 👁 | ✅ | Firebase email-enumeration-protection devuelve `invalid-credential` en vez de `user-not-found`. No automatizable sin cambiar config de Firebase. |
 | 6 | Login fallido — contraseña incorrecta | Mensaje "La contraseña es incorrecta. Verifica e intenta de nuevo." | 🔗 | ✅ | Test pasando 2026-03-23. |
 | 7 | Recuperación de contraseña — correo válido registrado | Email de recuperación enviado | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
 | 8 | Cierre de sesión | Regreso a pantalla de login | 🔗 | ✅ | Lógica verificada 2026-03-20. Error post-test en infra (mismo Firestore stream que T04) — no afecta funcionalidad. |
 | 9 | Eliminación de cuenta — usuario sin círculo | Cuenta eliminada de Auth y Firestore. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-18. Re-verificar post-implementación de Brecha 2 (bajo riesgo). |
-| 10 | Eliminación de cuenta — usuario es **miembro común** del círculo | Solo ese usuario es removido del círculo. El círculo y los demás miembros permanecen intactos. Redirige al login. | 👁 |  | Pendiente. Requiere implementar Brecha 2 (`creatorId` + lógica diferenciada en `deleteAccount()`). |
-| 11 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | App solicita contraseña, re-autentica y elimina. Si contraseña incorrecta: SnackBar rojo, cuenta intacta. | 👁 | | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
-| 12 | Eliminación de cuenta — usuario es **creador** del círculo | El círculo entero es eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo". Redirige al login. | 👁 |  | Pendiente. Requiere implementar Brecha 2. Ver T2.8 para pasos detallados. |
+| 10 | Eliminación de cuenta — usuario es **miembro común** del círculo | Solo ese usuario es removido del círculo. El círculo y los demás miembros permanecen intactos. Redirige al login. | 👁 |  | Pendiente. Requiere implementar Brecha 2 (`creatorId` + lógica diferenciada en `deleteAccount()`). Requiere dos dispositivos|
+| 11 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | App solicita contraseña, re-autentica y elimina. Si contraseña incorrecta: SnackBar rojo, cuenta intacta. | 👁 | ✅ | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
+| 12 | Eliminación de cuenta — usuario es **creador** del círculo | El círculo entero es eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo". Redirige al login. | 👁 |  | Pendiente. Requiere implementar Brecha 2. Ver T2.8 para pasos detallados. Requiere dos dispositivos|
 
 ---
 
