@@ -179,7 +179,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   void didUpdateWidget(InCircleView oldWidget) {
     super.didUpdateWidget(oldWidget);
     final newMembers = widget.circle.members
-        .where((id) => !_memberNicknamesCache.containsKey(id))
+        .where((id) => !_memberNicknamesCache.containsKey(id) || _memberNicknamesCache[id] == '...')
         .toList();
     if (newMembers.isNotEmpty) {
       _getAllMemberNicknames(newMembers).then((nicknames) {
@@ -941,16 +941,14 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           else if (email.isNotEmpty)
             finalNickname = email.split('@')[0];
           else
-            finalNickname = uid.length > 8 ? uid.substring(0, 8) : uid; // Fallback
+            finalNickname = '...';
           return MapEntry(uid, finalNickname);
         } else {
-          final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
-          return MapEntry(uid, fallback); // Fallback si el doc no existe
+          return MapEntry(uid, '...');
         }
       } catch (e) {
         print("Error fetching nickname for $uid: $e");
-        final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
-        return MapEntry(uid, fallback); // Fallback en caso de error
+        return MapEntry(uid, '...');
       }
     });
 
