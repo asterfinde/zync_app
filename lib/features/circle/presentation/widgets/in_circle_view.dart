@@ -175,6 +175,22 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     // =============================================================
   }
 
+  @override
+  void didUpdateWidget(InCircleView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newMembers = widget.circle.members
+        .where((id) => !_memberNicknamesCache.containsKey(id))
+        .toList();
+    if (newMembers.isNotEmpty) {
+      _getAllMemberNicknames(newMembers).then((nicknames) {
+        if (!mounted) return;
+        setState(() => _memberNicknamesCache.addAll(nicknames));
+        InMemoryCache.set('nicknames_${widget.circle.id}', _memberNicknamesCache);
+        PersistentCache.saveNicknames(_memberNicknamesCache);
+      });
+    }
+  }
+
   // --- INICIO DE LA MODIFICACIÓN ---
   @override
   void dispose() {
@@ -690,11 +706,12 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                             final memberId = entry.value;
 
                             // Obtener nickname del caché (ya no hay FutureBuilder)
-                            final nickname = _memberNicknamesCache[memberId] ??
-                                (memberId.length > 8 ? memberId.substring(0, 8) : memberId);
-
                             final currentUser = FirebaseAuth.instance.currentUser;
                             final isCurrentUser = currentUser?.uid == memberId;
+                            final nickname = _memberNicknamesCache[memberId] ??
+                                (isCurrentUser
+                                    ? _getCurrentUserNickname(ref)
+                                    : (memberId.length > 8 ? memberId.substring(0, 8) : memberId));
 
                             // --- INICIO DE LA MODIFICACIÓN ---
                             // Obtener datos del caché. Si aún no ha llegado el primer snapshot,

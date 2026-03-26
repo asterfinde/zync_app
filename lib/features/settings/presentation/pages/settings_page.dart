@@ -487,11 +487,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
   void _showReauthDialog(BuildContext context, {bool wasInCircle = false}) {
     final passwordController = TextEditingController();
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
+    bool obscurePassword = true;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
         backgroundColor: _AppColors.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Confirmar identidad', style: TextStyle(color: _AppColors.textPrimary)),
@@ -506,7 +508,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
             const SizedBox(height: 16),
             TextField(
               controller: passwordController,
-              obscureText: true,
+              obscureText: obscurePassword,
               style: const TextStyle(color: _AppColors.textPrimary),
               decoration: InputDecoration(
                 labelText: 'Contraseña',
@@ -520,6 +522,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: _AppColors.accent, width: 2),
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    color: _AppColors.textSecondary,
+                  ),
+                  onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
                 ),
               ),
             ),
@@ -607,6 +616,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
           ),
         ],
       ),
+        ),
     );
   }
 

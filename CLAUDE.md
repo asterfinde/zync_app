@@ -471,6 +471,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 | Problema | Prioridad | Notas |
 |----------|-----------|-------|
 | Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Contienen cambios que no afectan la app. El flujo activo usa `auth_final_page.dart` directamente. Evaluar eliminación post-MVP. |
+| Scripts `.ps1` en raíz del proyecto | Baja | No son parte del código fuente. Mover a carpeta externa al repo (ej. `C:\Users\dante\scripts\zync\`) o a carpeta `scripts/` ignorada por git. Decidir destino antes de ejecutar. |
 
 ---
 

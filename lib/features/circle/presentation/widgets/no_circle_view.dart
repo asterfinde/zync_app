@@ -26,104 +26,39 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   }
 
   void _navigateToCreateCircle() {
-    final verified = FirebaseAuth.instance.currentUser?.emailVerified ?? true;
-    if (!verified) {
-      _showVerificationRequiredModal(() {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const CreateCircleView()),
-        );
-      });
-      return;
-    }
+    // TODO: re-enable email verification gate after defining UX (see deuda técnica)
+    // final verified = FirebaseAuth.instance.currentUser?.emailVerified ?? true;
+    // if (!verified) {
+    //   _showVerificationRequiredModal(() {
+    //     Navigator.of(context).push(
+    //       MaterialPageRoute(builder: (context) => const CreateCircleView()),
+    //     );
+    //   });
+    //   return;
+    // }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const CreateCircleView()),
     );
   }
 
   void _navigateToJoinCircle() {
-    final verified = FirebaseAuth.instance.currentUser?.emailVerified ?? true;
-    if (!verified) {
-      _showVerificationRequiredModal(() {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const JoinCircleView()),
-        );
-      });
-      return;
-    }
+    // TODO: re-enable email verification gate after defining UX (see deuda técnica)
+    // final verified = FirebaseAuth.instance.currentUser?.emailVerified ?? true;
+    // if (!verified) {
+    //   _showVerificationRequiredModal(() {
+    //     Navigator.of(context).push(
+    //       MaterialPageRoute(builder: (context) => const JoinCircleView()),
+    //     );
+    //   });
+    //   return;
+    // }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const JoinCircleView()),
     );
   }
 
-  void _showVerificationRequiredModal(VoidCallback onVerified) {
-    final email = FirebaseAuth.instance.currentUser?.email ?? '';
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Verifica tu correo',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          'Te enviamos un correo a $email. Ábrelo y toca el enlace de verificación para continuar.',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              try {
-                await FirebaseAuth.instance.currentUser?.sendEmailVerification();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Correo reenviado. Revisa tu bandeja.',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.teal,
-                    ),
-                  );
-                }
-              } catch (_) {}
-            },
-            child: const Text('Reenviar', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () async {
-              await FirebaseAuth.instance.currentUser?.reload();
-              final verified = FirebaseAuth.instance.currentUser?.emailVerified ?? false;
-              if (verified) {
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-                onVerified();
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Todavía no recibimos tu verificación. Revisa tu bandeja.',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                }
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.tealAccent),
-            child: const Text('Ya lo hice'),
-          ),
-        ],
-      ),
-    );
-  }
+  // TODO: re-enable after defining email verification UX (see deuda técnica)
+  // void _showVerificationRequiredModal(VoidCallback onVerified) { ... }
 
   void _showAccountDialog(BuildContext context) {
     final authState = ref.read(authProvider);
