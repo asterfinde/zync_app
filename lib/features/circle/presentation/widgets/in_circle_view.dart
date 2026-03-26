@@ -711,7 +711,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                             final nickname = _memberNicknamesCache[memberId] ??
                                 (isCurrentUser
                                     ? _getCurrentUserNickname(ref)
-                                    : (memberId.length > 8 ? memberId.substring(0, 8) : memberId));
+                                    : '...');
 
                             // --- INICIO DE LA MODIFICACIÓN ---
                             // Obtener datos del caché. Si aún no ha llegado el primer snapshot,
