@@ -246,7 +246,13 @@ Dado el avance del proyecto, esta estructura NO se cambia. No se agregan capas a
 
 ---
 
-## 4. Convenciones de Código
+## 4. Comunicación con la IA
+
+- **Idioma:** Español neutro latinoamericano. Nunca usar modismos, conjugaciones o expresiones del español rioplatense/argentino (ej: "andá", "hacés", "vos", "resolvés", "abrís", "tenés"). Usar formas neutras: "ve", "haces", "tú/usted", "resuelves", "abres", "tienes".
+
+---
+
+## 5. Convenciones de Código
 
 ### Naming
 - Archivos: `snake_case.dart`
@@ -471,7 +477,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 | Problema | Prioridad | Notas |
 |----------|-----------|-------|
 | Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Contienen cambios que no afectan la app. El flujo activo usa `auth_final_page.dart` directamente. Evaluar eliminación post-MVP. |
-| Scripts `.ps1` en raíz del proyecto | Baja | No son parte del código fuente. Mover a carpeta externa al repo (ej. `C:\Users\dante\scripts\zync\`) o a carpeta `scripts/` ignorada por git. Decidir destino antes de ejecutar. |
+| Scripts `.ps1` en raíz del proyecto: `launch_emulator.ps1`, `run_devices.ps1` | Media | No son parte del código fuente. Ambos scripts fueron escritos pero no funcionaron de forma confiable: problemas de ADB offline en Windows impidieron detectar el emulador. Requieren revisión antes de usarse. Evaluar si vale la pena mantenerlos o reemplazar por flujo manual con dispositivo físico. Mover fuera del repo una vez resuelto. |
 
 ---
 
