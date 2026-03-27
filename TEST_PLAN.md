@@ -62,7 +62,7 @@
 | 9 | Eliminación de cuenta — usuario sin círculo | Cuenta eliminada de Auth y Firestore. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-18. Re-verificar post-implementación de Brecha 2 (bajo riesgo). |
 | 10 | Eliminación de cuenta — usuario es **miembro común** del círculo | Solo ese usuario es removido del círculo. El círculo y los demás miembros permanecen intactos. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-26 con un solo dispositivo (flujo A crea círculo → B se une → B elimina cuenta → A verifica círculo intacto). Fix requerido: nickname del nuevo miembro aparecía como uid en primera carga (timing Firestore). Resuelto en PR #42. |
 | 11 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | App solicita contraseña, re-autentica y elimina. Si contraseña incorrecta: SnackBar rojo, cuenta intacta. | 👁 | ✅ | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
-| 12 | Eliminación de cuenta — usuario es **creador** del círculo | El círculo entero es eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo". Redirige al login. | 👁 |  | Pendiente. Requiere implementar Brecha 2. Ver T2.8 para pasos detallados. Requiere dos dispositivos|
+| 12 | Eliminación de cuenta — usuario es **creador** del círculo | El círculo entero es eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo". Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-27. Fix requerido: doble invocación de `deactivateAfterLogout()` desde `auth_provider` + context shadow en `StatefulBuilder` impedían la navegación post-delete. Resuelto en PR #43. |
 
 ---
 
@@ -143,10 +143,9 @@
 | 1 | T1.5 | 1 | Login fallido — correo no encontrado | Firebase email-enumeration-protection devuelve `invalid-credential`. No automatizable sin cambiar config Firebase. |
 | 2 | T1.10 | 1 | Eliminación de cuenta — usuario es **miembro común** del círculo | Requiere Brecha 2 implementada. Solo ese usuario removido; círculo y demás miembros intactos. |
 | 3 | T1.11 | 1 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
-| 4 | T1.12 | 1 | Eliminación de cuenta — usuario es **creador** del círculo | Requiere Brecha 2 implementada. Círculo eliminado; todos los ex-miembros regresan a NoCircleView. |
-| 5 | T2.3 | 2 | Intento de crear más de un círculo | Requiere agregar validación en `createCircle()`. Pendiente del sprint de Brecha 2. |
-| 6 | T2.8 | 2 | Eliminar cuenta siendo creador — otros miembros activos | Requiere Brecha 2. Ver pasos en la fila T2.8 de Fase 2. |
-| 7 | T2.9 | 2 | Eliminar cuenta siendo miembro común — creador sigue activo | Requiere Brecha 2. Ver pasos en la fila T2.9 de Fase 2. |
+| 4 | T2.3 | 2 | Intento de crear más de un círculo | Requiere agregar validación en `createCircle()`. Pendiente del sprint de Brecha 2. |
+| 5 | T2.8 | 2 | Eliminar cuenta siendo creador — otros miembros activos | Requiere Brecha 2. Ver pasos en la fila T2.8 de Fase 2. |
+| 6 | T2.9 | 2 | Eliminar cuenta siendo miembro común — creador sigue activo | Requiere Brecha 2. Ver pasos en la fila T2.9 de Fase 2. |
 | 8 | T2.10 | 2 | Solicitud de ingreso — flujo completo manual | Estado inicial cubierto por test automatizado. Verificar manualmente: PendingRequestView visible, datos correctos en Firestore, UX del solicitante. |
 | 9 | T2.11 | 2 | Creador aprueba solicitud | A ve la solicitud en InCircleView y aprueba. B pasa automáticamente a InCircleView. |
 | 10 | T2.12 | 2 | Creador rechaza solicitud | A rechaza. B regresa a NoCircleView. `pendingCircleId` eliminado en Firestore. |
