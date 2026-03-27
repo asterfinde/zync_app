@@ -445,130 +445,138 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-        backgroundColor: _AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Confirmar identidad', style: TextStyle(color: _AppColors.textPrimary)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Por seguridad, ingresa tu contraseña para confirmar la eliminación.',
-              style: TextStyle(color: _AppColors.textSecondary),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              obscureText: obscurePassword,
-              style: const TextStyle(color: _AppColors.textPrimary),
-              decoration: InputDecoration(
-                labelText: 'Contraseña',
-                labelStyle: const TextStyle(color: _AppColors.textSecondary),
-                filled: true,
-                fillColor: _AppColors.inputFill,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: _AppColors.accent, width: 2),
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    color: _AppColors.textSecondary,
+          backgroundColor: _AppColors.cardBackground,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Confirmar identidad', style: TextStyle(color: _AppColors.textPrimary)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Por seguridad, ingresa tu contraseña para confirmar la eliminación.',
+                style: TextStyle(color: _AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: obscurePassword,
+                style: const TextStyle(color: _AppColors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  labelStyle: const TextStyle(color: _AppColors.textSecondary),
+                  filled: true,
+                  fillColor: _AppColors.inputFill,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
-                  onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: _AppColors.accent, width: 2),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: _AppColors.textSecondary,
+                    ),
+                    onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              if (wasInCircle && context.mounted) {
-                _showCircleLostInfoDialog(context);
-              }
-            },
-            child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(dialogContext).pop();
-              if (!context.mounted) return;
-
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) => const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1EE9A4)),
-                  ),
-                ),
-              );
-
-              try {
-                final credential = EmailAuthProvider.credential(
-                  email: email,
-                  password: passwordController.text,
-                );
-                await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(credential);
-                await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
-                  const Duration(seconds: 10),
-                  onTimeout: () {},
-                );
-                await SessionCacheService.clearSession();
-
-                // Cerrar spinner ANTES de deleteAccount() — el stream de Firestore
-                // puede desmontar el contexto durante la eliminación.
-                if (context.mounted) {
-                  Navigator.of(context, rootNavigator: true).pop();
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                if (wasInCircle && context.mounted) {
+                  _showCircleLostInfoDialog(context);
                 }
-
-                await CircleService().deleteAccount();
-
-                // La navegación al login ocurre automáticamente vía AuthWrapper
-                // cuando Firebase Auth detecta que la cuenta fue eliminada.
-                // Este pushAndRemoveUntil es un respaldo por si el contexto sigue montado.
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const AuthFinalPage()),
-                    (route) => false,
-                  );
-                }
-              } on FirebaseAuthException catch (e) {
+              },
+              child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
                 if (!context.mounted) return;
-                Navigator.of(context, rootNavigator: true).pop();
-                final msg = (e.code == 'wrong-password' || e.code == 'invalid-credential')
-                    ? 'Contraseña incorrecta. Intenta de nuevo.'
-                    : 'Error de autenticación. Intenta de nuevo.';
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(msg, style: const TextStyle(color: Colors.white)),
-                    backgroundColor: Colors.red,
+
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1EE9A4)),
+                    ),
                   ),
                 );
-              } catch (e) {
-                if (context.mounted) {
+
+                try {
+                  final credential = EmailAuthProvider.credential(
+                    email: email,
+                    password: passwordController.text,
+                  );
+                  await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(credential);
+                  await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
+                    const Duration(seconds: 10),
+                    onTimeout: () {},
+                  );
+                  await SessionCacheService.clearSession();
+
+                  // Cerrar spinner ANTES de deleteAccount() — el stream de Firestore
+                  // desmonta el contexto durante la eliminación y el spinner quedaría colgado.
+                  if (context.mounted) {
+                    Navigator.of(context, rootNavigator: true).pop();
+                  }
+
+                  debugPrint('[SettingsPage] 🗑️ Iniciando deleteAccount()...');
+                  await CircleService().deleteAccount().timeout(
+                    const Duration(seconds: 30),
+                    onTimeout: () {
+                      debugPrint('[SettingsPage] ⚠️ Timeout en deleteAccount()');
+                      throw Exception('Timeout eliminando cuenta');
+                    },
+                  );
+                  debugPrint('[SettingsPage] ✅ deleteAccount() completado');
+
+                  // AuthWrapper navega al login vía authStateChanges cuando detecta
+                  // que la cuenta fue eliminada. Este bloque es un respaldo.
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+                      (route) => false,
+                    );
+                  }
+                } on FirebaseAuthException catch (e) {
+                  debugPrint('[SettingsPage] ❌ FirebaseAuthException: ${e.code}');
+                  if (!context.mounted) return;
                   Navigator.of(context, rootNavigator: true).pop();
+                  final msg = (e.code == 'wrong-password' || e.code == 'invalid-credential')
+                      ? 'Contraseña incorrecta. Intenta de nuevo.'
+                      : 'Error de autenticación. Intenta de nuevo.';
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
+                    SnackBar(
+                      content: Text(msg, style: const TextStyle(color: Colors.white)),
                       backgroundColor: Colors.red,
                     ),
                   );
+                } catch (e) {
+                  debugPrint('[SettingsPage] ❌ Error en deleteAccount: $e');
+                  if (context.mounted) {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error al eliminar la cuenta: $e', style: const TextStyle(color: Colors.white)),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
-              }
-            },
-            child: const Text('Confirmar', style: TextStyle(color: _AppColors.sosRed)),
-          ),
-        ],
-      ),
+              },
+              child: const Text('Confirmar', style: TextStyle(color: _AppColors.sosRed)),
+            ),
+          ],
         ),
+      ),
     );
   }
 
