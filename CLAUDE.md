@@ -463,6 +463,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 | 2026-03-16 | `auth_final_page.dart` es el ÚNICO archivo activo de autenticación | Este archivo maneja login, registro, recuperación de contraseña y navegación post-auth de forma autónoma. `sign_in_page.dart` y `auth_form.dart` son legacy sin uso. La IA debe trabajar SOLO en `auth_final_page.dart` para cualquier tarea de auth. |
 | 2026-03-17 | Solo el creador de un círculo puede eliminarlo | Los miembros solo pueden abandonarlo. Al eliminar, todos los miembros quedan desvinculados. Evita círculos "zombie" en Firestore y mantiene la jerarquía clara dentro del grupo. |
 | 2026-03-17 | MVP: un único círculo por usuario | Múltiples círculos generan fricción (¿a cuál actualizo mi estado?). La agencia del adolescente se expresa en *qué comparte y cuándo*, no en cuántos círculos tiene. Múltiples círculos evaluados para v2.0. |
+| 2026-03-27 | Filosofía "estás o no estás" — sin opción de salir del círculo sin eliminar cuenta | Usuarios registrados sin círculo son ruido en los datos y no tienen funcionalidad. La única salida del círculo es eliminar la cuenta. `btn_leave_circle` y su lógica (`_leaveCircle`, `_showLeaveCircleDialog`) eliminados de `settings_page.dart`. No existe acción "eliminar círculo" explícita: ocurre como efecto del creador eliminando su cuenta. |
 
 ---
 
