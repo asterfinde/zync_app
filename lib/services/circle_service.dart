@@ -468,6 +468,10 @@ class CircleService {
                 .listen((circleSnapshot) {
               if (!circleSnapshot.exists) {
                 log('[CircleService] Stream: Círculo eliminado');
+                // Limpiar circleId del propio usuario (escritura en doc propio — permitida por reglas)
+                _firestore.collection('users').doc(user.uid).update({
+                  'circleId': FieldValue.delete(),
+                }).catchError((_) {}); // silencioso si el doc ya no existe
                 controller.add(UserNoCircle());
                 return;
               }
@@ -621,21 +625,11 @@ class CircleService {
           final creatorId =
               circleDoc.data()?['creatorId'] as String? ?? '';
           if (uid == creatorId) {
-            // Es el creador: eliminar el círculo y desvincular a todos los miembros
-            final members = List<String>.from(
-                circleDoc.data()?['members'] ?? []);
-            final batch = _firestore.batch();
-            batch.delete(_firestore.collection('circles').doc(circleId));
-            for (final memberId in members) {
-              if (memberId != uid) {
-                batch.update(
-                    _firestore.collection('users').doc(memberId), {
-                  'circleId': FieldValue.delete(),
-                });
-              }
-            }
-            await batch.commit();
-            log('[CircleService] ✅ Círculo eliminado por su creador. Miembros desvinculados: ${members.length - 1}');
+            // Es el creador: eliminar el círculo.
+            // Cada miembro limpiará su propio circleId cuando su stream
+            // detecte que el círculo ya no existe (getUserCircleStream).
+            await _firestore.collection('circles').doc(circleId).delete();
+            log('[CircleService] ✅ Círculo eliminado por su creador.');
           } else {
             // Es miembro común: solo salir del círculo
             await leaveCircle();
