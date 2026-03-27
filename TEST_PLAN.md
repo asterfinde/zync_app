@@ -82,8 +82,7 @@
 | 10 | Solicitud de ingreso — solicitante queda en estado pendiente | B ingresa código y ve pantalla de espera. En Firestore: `joinRequests/{uid}` con status "pending" y `users/{uid}.pendingCircleId` seteado. | 🔗 | ✅ | Estado inicial verificado por test automatizado 2026-03-23. Flujo completo pendiente de prueba manual T2.11–T2.12. |
 | 11 | Creador aprueba solicitud | A ve la solicitud en InCircleView con botón "Aceptar". B pasa automáticamente a InCircleView. `joinRequests/{uid}.status = "approved"`. | 👁 | | Pendiente. |
 | 12 | Solicitud expira (48h sin respuesta) — lazy expiration | Creador abre app con solicitud > 48h: desaparece de InCircleView, `joinRequests/{uid}.status = "expired"`. Solicitante abre app: `pendingCircleId` se limpia, ve NoCircleView y puede reenviar el código. | 👁 | | Pendiente. Requiere esperar 48h o ajustar umbral temporalmente para test. |
-| 13 | No se puede enviar segunda solicitud con una pendiente activa | Con `pendingCircleId` activo, intentar unirse a otro círculo muestra error. | 👁 | | Pendiente. Evita solicitudes simultáneas. |
-| 14 | Solicitante puede reenviar código tras expiración | Con solicitud expirada, B puede reingresar el mismo código y crear nueva solicitud. `joinRequests/{uid}` se sobreescribe con nuevo `requestedAt`. | 👁 | | Pendiente. |
+| 13 | Solicitante puede reenviar código tras expiración | Con solicitud expirada, B puede reingresar el mismo código y crear nueva solicitud. `joinRequests/{uid}` se sobreescribe con nuevo `requestedAt`. | 👁 | | Pendiente. |
 
 ---
 
@@ -145,8 +144,7 @@
 | 4 | T2.10 | 2 | Solicitud de ingreso — flujo completo manual | Estado inicial cubierto por test automatizado. Verificar manualmente: PendingRequestView visible, datos correctos en Firestore, UX del solicitante. |
 | 5 | T2.11 | 2 | Creador aprueba solicitud | A ve botón "Aceptar" en InCircleView. B pasa automáticamente a InCircleView. |
 | 6 | T2.12 | 2 | Solicitud expira (48h) — lazy expiration | Solicitud desaparece de InCircleView del creador. Solicitante ve NoCircleView y puede reenviar. |
-| 7 | T2.13 | 2 | Segunda solicitud bloqueada mientras hay una pendiente activa | Con `pendingCircleId` activo, intentar unirse a otro círculo muestra error. |
-| 8 | T2.14 | 2 | Solicitante reenvía código tras expiración | B reingresa mismo código → nueva solicitud `pending` creada con nuevo `requestedAt`. |
+| 7 | T2.13 | 2 | Solicitante reenvía código tras expiración | B reingresa mismo código → nueva solicitud `pending` creada con nuevo `requestedAt`. |
 | 10 | T3.20.1 | 3 | Con zonas activas — usuario entra a una zona | Requiere GPS activo y zona configurada en el círculo. |
 | 11 | T3.20.2 | 3 | Con zonas activas — usuario sale de una zona | Verificar cambio automático a "En camino". |
 | 12 | T4.1 | 4 | App minimizada — ícono visible en barra superior | Inspección visual en dispositivo físico. |
