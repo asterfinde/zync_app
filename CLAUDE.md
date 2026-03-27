@@ -479,6 +479,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 |----------|-----------|-------|
 | Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Contienen cambios que no afectan la app. El flujo activo usa `auth_final_page.dart` directamente. Evaluar eliminación post-MVP. |
 | Scripts `.ps1` en raíz del proyecto: `launch_emulator.ps1`, `run_devices.ps1`, `clean_and_run.ps1` | Media | No son parte del código fuente. `launch_emulator.ps1` y `run_devices.ps1` no funcionaron de forma confiable (ADB offline en Windows). `clean_and_run.ps1` limpia Firebase Auth + Firestore y lanza la app — pendiente de prueba. Mover los tres fuera del repo una vez validados. |
+| Restaurar umbral de expiración a 48h antes del PR a main | Alta | `circle_service.dart` — `getPendingJoinRequestsStream()` tiene `age.inMinutes >= 1` (bajado para T2.12/T2.13 en rama `test/t2-12-t2-13-expiration`). Restaurar a `age.inHours >= 48` antes de mergear esa rama. |
 
 ---
 
