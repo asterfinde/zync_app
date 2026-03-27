@@ -62,7 +62,7 @@
 | 9 | Eliminación de cuenta — usuario sin círculo | Cuenta eliminada de Auth y Firestore. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-18. Re-verificar post-implementación de Brecha 2 (bajo riesgo). |
 | 10 | Eliminación de cuenta — usuario es **miembro común** del círculo | Solo ese usuario es removido del círculo. El círculo y los demás miembros permanecen intactos. Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-26 con un solo dispositivo (flujo A crea círculo → B se une → B elimina cuenta → A verifica círculo intacto). Fix requerido: nickname del nuevo miembro aparecía como uid en primera carga (timing Firestore). Resuelto en PR #42. |
 | 11 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | App solicita contraseña, re-autentica y elimina. Si contraseña incorrecta: SnackBar rojo, cuenta intacta. | 👁 | ✅ | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
-| 12 | Eliminación de cuenta — usuario es **creador** del círculo | El círculo entero es eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo". Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-27. Fix requerido: doble invocación de `deactivateAfterLogout()` desde `auth_provider` + context shadow en `StatefulBuilder` impedían la navegación post-delete. Resuelto en PR #43. |
+| 12 | Eliminación de cuenta — usuario es **creador** del círculo | El círculo entero es eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo". Redirige al login. | 👁 | ✅ | Probado manualmente 2026-03-27. Fix requerido: doble invocación de `deactivateAfterLogout()` desde `auth_provider` + context shadow en `StatefulBuilder` impedían la navegación post-delete. Resuelto en PR #43. Verificar que se elimine el Círculo y que no quede vacío|
 
 ---
 
@@ -79,12 +79,11 @@
 | 7 | La UI no ofrece "Salir del Círculo" sin eliminar cuenta | El usuario dentro de un círculo no encuentra ninguna opción para salir sin eliminar su cuenta (Settings u otra pantalla) | 🔗 | ✅ | Test automatizado pasando 2026-03-23. Verifica ausencia de `btn_leave_circle` en Settings. Decisión de diseño confirmada 2026-03-27: filosofía "estás o no estás" — `btn_leave_circle` y su lógica eliminados de `settings_page.dart`. |
 | 8 | Eliminar cuenta siendo **creador** — otros miembros activos | Círculo eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo". | 👁 | ✅ | Cubierto por T1.12 ✅. La lógica de eliminación del círculo y notificación a miembros vía Firestore streams es idéntica independientemente del número de miembros activos. No requiere test adicional. |
 | 9 | Eliminar cuenta siendo **miembro común** — creador sigue activo | Solo ese miembro es removido. El círculo y los demás miembros siguen sin cambios. | 👁 | ✅ | Cubierto por T1.10 ✅ (flujo explícito: A crea círculo → B se une → B elimina cuenta → A verifica círculo intacto). Escenario idéntico. No requiere test adicional. |
-| 10 | Solicitud de ingreso — solicitante queda en estado pendiente | B ingresa código y ve pantalla de espera. En Firestore: `joinRequests/{uid}` con status "pending" y `users/{uid}.pendingCircleId` seteado. | 🔗 | ✅ | Estado inicial verificado por test automatizado 2026-03-23. Flujo completo (aprobación/rechazo) pendiente de prueba manual T2.11–T2.15. |
-| 11 | Creador aprueba solicitud | A ve la solicitud en InCircleView y aprueba. B pasa automáticamente a InCircleView. `joinRequests/{uid}.status = "approved"`. | 👁 | | Pendiente. Requiere `WORK_PLAN_JOIN_APPROVAL.md`. |
-| 12 | Creador rechaza solicitud | A rechaza. B regresa a NoCircleView. En Firestore: `joinRequests/{uid}.status = "rejected"`, `pendingCircleId` eliminado. | 👁 | | Pendiente. Requiere `WORK_PLAN_JOIN_APPROVAL.md`. |
-| 13 | Solicitante rechazado intenta unirse de nuevo al mismo círculo | App muestra error. No se crea nueva solicitud. | 👁 | | Pendiente. Opción A confirmada: rechazo permanente de ese círculo. |
-| 14 | Solicitante rechazado puede crear su propio círculo | Después del rechazo, B puede crear un círculo nuevo sin restricción. | 👁 | | Pendiente. Verificar que el rechazo no bloquea otras opciones. |
-| 15 | No se puede enviar segunda solicitud con una pendiente activa | Con `pendingCircleId` activo, intentar unirse a otro círculo muestra error. | 👁 | | Pendiente. Evita solicitudes simultáneas. |
+| 10 | Solicitud de ingreso — solicitante queda en estado pendiente | B ingresa código y ve pantalla de espera. En Firestore: `joinRequests/{uid}` con status "pending" y `users/{uid}.pendingCircleId` seteado. | 🔗 | ✅ | Estado inicial verificado por test automatizado 2026-03-23. Flujo completo pendiente de prueba manual T2.11–T2.12. |
+| 11 | Creador aprueba solicitud | A ve la solicitud en InCircleView con botón "Aceptar". B pasa automáticamente a InCircleView. `joinRequests/{uid}.status = "approved"`. | 👁 | | Pendiente. |
+| 12 | Solicitud expira (48h sin respuesta) — lazy expiration | Creador abre app con solicitud > 48h: desaparece de InCircleView, `joinRequests/{uid}.status = "expired"`. Solicitante abre app: `pendingCircleId` se limpia, ve NoCircleView y puede reenviar el código. | 👁 | | Pendiente. Requiere esperar 48h o ajustar umbral temporalmente para test. |
+| 13 | No se puede enviar segunda solicitud con una pendiente activa | Con `pendingCircleId` activo, intentar unirse a otro círculo muestra error. | 👁 | | Pendiente. Evita solicitudes simultáneas. |
+| 14 | Solicitante puede reenviar código tras expiración | Con solicitud expirada, B puede reingresar el mismo código y crear nueva solicitud. `joinRequests/{uid}` se sobreescribe con nuevo `requestedAt`. | 👁 | | Pendiente. |
 
 ---
 
@@ -144,11 +143,10 @@
 | 2 | T1.10 | 1 | Eliminación de cuenta — usuario es **miembro común** del círculo | Requiere Brecha 2 implementada. Solo ese usuario removido; círculo y demás miembros intactos. |
 | 3 | T1.11 | 1 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
 | 4 | T2.10 | 2 | Solicitud de ingreso — flujo completo manual | Estado inicial cubierto por test automatizado. Verificar manualmente: PendingRequestView visible, datos correctos en Firestore, UX del solicitante. |
-| 5 | T2.11 | 2 | Creador aprueba solicitud | A ve la solicitud en InCircleView y aprueba. B pasa automáticamente a InCircleView. |
-| 6 | T2.12 | 2 | Creador rechaza solicitud | A rechaza. B regresa a NoCircleView. `pendingCircleId` eliminado en Firestore. |
-| 7 | T2.13 | 2 | Solicitante rechazado intenta unirse al mismo círculo | App muestra error. No se crea nueva solicitud (rechazo permanente). |
-| 8 | T2.14 | 2 | Solicitante rechazado puede crear su propio círculo | Después del rechazo, B puede crear un círculo nuevo sin restricción. |
-| 9 | T2.15 | 2 | Segunda solicitud bloqueada mientras hay una pendiente activa | Con `pendingCircleId` activo, intentar unirse a otro círculo muestra error. |
+| 5 | T2.11 | 2 | Creador aprueba solicitud | A ve botón "Aceptar" en InCircleView. B pasa automáticamente a InCircleView. |
+| 6 | T2.12 | 2 | Solicitud expira (48h) — lazy expiration | Solicitud desaparece de InCircleView del creador. Solicitante ve NoCircleView y puede reenviar. |
+| 7 | T2.13 | 2 | Segunda solicitud bloqueada mientras hay una pendiente activa | Con `pendingCircleId` activo, intentar unirse a otro círculo muestra error. |
+| 8 | T2.14 | 2 | Solicitante reenvía código tras expiración | B reingresa mismo código → nueva solicitud `pending` creada con nuevo `requestedAt`. |
 | 10 | T3.20.1 | 3 | Con zonas activas — usuario entra a una zona | Requiere GPS activo y zona configurada en el círculo. |
 | 11 | T3.20.2 | 3 | Con zonas activas — usuario sale de una zona | Verificar cambio automático a "En camino". |
 | 12 | T4.1 | 4 | App minimizada — ícono visible en barra superior | Inspección visual en dispositivo físico. |
