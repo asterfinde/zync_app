@@ -579,6 +579,22 @@ class CircleService {
             // Cada miembro limpiará su propio circleId cuando su stream
             // detecte que el círculo ya no existe (getUserCircleStream).
             log('[CircleService] 👑 Usuario es creador, eliminando círculo...');
+            // Primero limpiar subcolección joinRequests (Firestore no la borra automáticamente)
+            log('[CircleService] 🗑️ Limpiando subcolección joinRequests...');
+            final joinRequestsSnapshot = await _firestore
+                .collection('circles')
+                .doc(circleId)
+                .collection('joinRequests')
+                .get();
+            if (joinRequestsSnapshot.docs.isNotEmpty) {
+              final batch = _firestore.batch();
+              for (final doc in joinRequestsSnapshot.docs) {
+                batch.delete(doc.reference);
+              }
+              await batch.commit();
+              log('[CircleService] ✅ joinRequests eliminados: ${joinRequestsSnapshot.docs.length}');
+            }
+            // Luego borrar el documento del círculo
             await _firestore.collection('circles').doc(circleId).delete();
             log('[CircleService] ✅ Círculo eliminado por su creador.');
           } else {
