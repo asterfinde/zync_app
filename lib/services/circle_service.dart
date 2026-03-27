@@ -365,7 +365,8 @@ class CircleService {
             final age = request.requestedAt != null
                 ? now.difference(request.requestedAt!)
                 : Duration.zero;
-            if (age.inHours >= 48) {
+            // TODO: restaurar a age.inHours >= 48 antes del release
+            if (age.inMinutes >= 1) {
               // Expiración lazy: marcar en Firestore (fire-and-forget)
               doc.reference.update({'status': 'expired'}).catchError((_) {});
               log('[CircleService] ⏰ Solicitud expirada: ${request.userId}');
