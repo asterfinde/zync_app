@@ -521,23 +521,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                   onTimeout: () {},
                 );
                 await SessionCacheService.clearSession();
+
+                // Cerrar spinner ANTES de deleteAccount() — el stream de Firestore
+                // puede desmontar el contexto durante la eliminación.
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true).pop();
+                }
+
                 await CircleService().deleteAccount();
 
+                // La navegación al login ocurre automáticamente vía AuthWrapper
+                // cuando Firebase Auth detecta que la cuenta fue eliminada.
+                // Este pushAndRemoveUntil es un respaldo por si el contexto sigue montado.
                 if (context.mounted) {
-                  // Cerrar el spinner antes de navegar
-                  Navigator.of(context, rootNavigator: true).pop();
-
-                  // Mostrar SnackBar de éxito
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('✅ Tu cuenta ha sido eliminada exitosamente', style: TextStyle(color: Colors.white)),
-                      backgroundColor: Colors.green,
-                      duration: Duration(seconds: 3),
-                    ),
-                  );
-
-                  // Navegar a login
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const AuthFinalPage()),
                     (route) => false,
