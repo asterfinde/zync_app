@@ -678,7 +678,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                     ..._pendingRequests.map((req) => _JoinRequestCard(
                           request: req,
                           onApprove: () => _approveRequest(req),
-                          onReject: () => _rejectRequest(req),
                         )),
                   ],
 
@@ -827,21 +826,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al aprobar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _rejectRequest(JoinRequest request) async {
-    try {
-      await _circleService.rejectJoinRequest(widget.circle.id, request.userId);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al rechazar: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1054,12 +1038,10 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 class _JoinRequestCard extends StatelessWidget {
   final JoinRequest request;
   final VoidCallback onApprove;
-  final VoidCallback onReject;
 
   const _JoinRequestCard({
     required this.request,
     required this.onApprove,
-    required this.onReject,
   });
 
   String _timeAgo(DateTime? dt) {
@@ -1112,40 +1094,22 @@ class _JoinRequestCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  key: ValueKey('btn_reject_${request.userId}'),
-                  onPressed: onReject,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _AppColors.sosRed,
-                    side: const BorderSide(color: _AppColors.sosRed),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  child: const Text('Rechazar'),
-                ),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              key: ValueKey('btn_approve_${request.userId}'),
+              onPressed: onApprove,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _AppColors.accent,
+                foregroundColor: _AppColors.background,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                elevation: 0,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  key: ValueKey('btn_approve_${request.userId}'),
-                  onPressed: onApprove,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _AppColors.accent,
-                    foregroundColor: _AppColors.background,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    elevation: 0,
-                  ),
-                  child: const Text('Aceptar',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+              child: const Text('Aceptar',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),

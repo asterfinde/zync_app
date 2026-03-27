@@ -232,15 +232,16 @@ class CircleService {
       throw Exception('Ya tienes una solicitud pendiente');
     }
 
-    // ¿Fue rechazado anteriormente en este círculo?
+    // ¿Tiene una solicitud activa (pending) en este círculo?
     final existingRequest =
         await _firestore.collection('circles').doc(circleId).collection('joinRequests').doc(user.uid).get();
 
     if (existingRequest.exists) {
       final status = existingRequest.data()?['status'] as String?;
-      if (status == 'rejected') {
-        throw Exception('Tu solicitud fue rechazada anteriormente por este círculo');
+      if (status == 'pending') {
+        throw Exception('Ya tienes una solicitud pendiente en este círculo');
       }
+      // status = 'approved' | 'expired' → se permite continuar (set sobreescribe)
     }
 
     // Obtener nickname y email del solicitante (desnormalización)
@@ -347,6 +348,8 @@ class CircleService {
 
   /// Stream de las solicitudes pendientes de ingreso a un círculo.
   /// Solo el creador debería suscribirse a este stream.
+  /// Aplica expiración lazy: solicitudes con más de 48h se marcan "expired"
+  /// en Firestore y se excluyen del resultado.
   Stream<List<JoinRequest>> getPendingJoinRequestsStream(String circleId) {
     return _firestore
         .collection('circles')
@@ -354,7 +357,24 @@ class CircleService {
         .collection('joinRequests')
         .where('status', isEqualTo: 'pending')
         .snapshots()
-        .map((snapshot) => snapshot.docs.map(JoinRequest.fromFirestore).toList());
+        .map((snapshot) {
+          final now = DateTime.now();
+          final active = <JoinRequest>[];
+          for (final doc in snapshot.docs) {
+            final request = JoinRequest.fromFirestore(doc);
+            final age = request.requestedAt != null
+                ? now.difference(request.requestedAt!)
+                : Duration.zero;
+            if (age.inHours >= 48) {
+              // Expiración lazy: marcar en Firestore (fire-and-forget)
+              doc.reference.update({'status': 'expired'}).catchError((_) {});
+              log('[CircleService] ⏰ Solicitud expirada: ${request.userId}');
+            } else {
+              active.add(request);
+            }
+          }
+          return active;
+        });
   }
 
   /// Obtiene el círculo actual del usuario
@@ -441,11 +461,32 @@ class CircleService {
               controller.add(state);
             });
           } else if (pendingCircleId != null && pendingCircleId.isNotEmpty) {
-            // Usuario tiene solicitud pendiente
-            log('[CircleService] Stream: Solicitud pendiente en $pendingCircleId');
+            // Verificar si la solicitud sigue pendiente o ya expiró
+            log('[CircleService] Stream: Verificando solicitud pendiente en $pendingCircleId');
             await circleSubscription?.cancel();
             circleSubscription = null;
-            controller.add(UserPendingRequest(pendingCircleId));
+            try {
+              final joinRequestDoc = await _firestore
+                  .collection('circles')
+                  .doc(pendingCircleId)
+                  .collection('joinRequests')
+                  .doc(user.uid)
+                  .get();
+              final status = joinRequestDoc.data()?['status'] as String?;
+              if (status == 'expired' || !joinRequestDoc.exists) {
+                // Solicitud expirada: limpiar pendingCircleId del propio doc
+                log('[CircleService] Stream: Solicitud expirada — limpiando pendingCircleId');
+                _firestore.collection('users').doc(user.uid).update({
+                  'pendingCircleId': FieldValue.delete(),
+                }).catchError((_) {});
+                controller.add(UserNoCircle());
+              } else {
+                controller.add(UserPendingRequest(pendingCircleId));
+              }
+            } catch (e) {
+              log('[CircleService] Stream: Error verificando joinRequest: $e');
+              controller.add(UserPendingRequest(pendingCircleId));
+            }
           } else {
             // Sin círculo
             log('[CircleService] Stream: Usuario sin círculo');
