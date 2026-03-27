@@ -444,7 +444,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (sbContext, setDialogState) => AlertDialog(
           backgroundColor: _AppColors.cardBackground,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Confirmar identidad', style: TextStyle(color: _AppColors.textPrimary)),
@@ -497,8 +497,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
             ),
             TextButton(
               onPressed: () async {
+                final sw = Stopwatch()..start();
+                debugPrint('[DELETE][1] Confirmar presionado — cerrando diálogo de contraseña');
                 Navigator.of(dialogContext).pop();
-                if (!context.mounted) return;
+                debugPrint('[DELETE][2] Diálogo cerrado — context.mounted: ${context.mounted} | ${sw.elapsed}');
+                if (!context.mounted) {
+                  debugPrint('[DELETE][2x] context no montado — saliendo temprano');
+                  return;
+                }
 
                 showDialog(
                   context: context,
@@ -509,45 +515,62 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                     ),
                   ),
                 );
+                debugPrint('[DELETE][3] Spinner mostrado | ${sw.elapsed}');
 
                 try {
+                  debugPrint('[DELETE][4] Iniciando reauthenticateWithCredential... | ${sw.elapsed}');
                   final credential = EmailAuthProvider.credential(
                     email: email,
                     password: passwordController.text,
                   );
                   await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(credential);
+                  debugPrint('[DELETE][5] Reautenticación exitosa | ${sw.elapsed}');
+
+                  debugPrint('[DELETE][6] Iniciando deactivateAfterLogout() con timeout 10s... | ${sw.elapsed}');
                   await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
                     const Duration(seconds: 10),
-                    onTimeout: () {},
+                    onTimeout: () {
+                      debugPrint('[DELETE][6x] TIMEOUT en deactivateAfterLogout() | ${sw.elapsed}');
+                    },
                   );
+                  debugPrint('[DELETE][7] deactivateAfterLogout completado | ${sw.elapsed}');
+
+                  debugPrint('[DELETE][8] Iniciando clearSession()... | ${sw.elapsed}');
                   await SessionCacheService.clearSession();
+                  debugPrint('[DELETE][9] clearSession completado | ${sw.elapsed}');
 
                   // Cerrar spinner ANTES de deleteAccount() — el stream de Firestore
                   // desmonta el contexto durante la eliminación y el spinner quedaría colgado.
+                  debugPrint('[DELETE][10] Cerrando spinner — context.mounted: ${context.mounted} | ${sw.elapsed}');
                   if (context.mounted) {
                     Navigator.of(context, rootNavigator: true).pop();
                   }
+                  debugPrint('[DELETE][11] Spinner cerrado | ${sw.elapsed}');
 
-                  debugPrint('[SettingsPage] 🗑️ Iniciando deleteAccount()...');
+                  debugPrint('[DELETE][12] Iniciando deleteAccount() con timeout 30s... | ${sw.elapsed}');
                   await CircleService().deleteAccount().timeout(
                     const Duration(seconds: 30),
                     onTimeout: () {
-                      debugPrint('[SettingsPage] ⚠️ Timeout en deleteAccount()');
+                      debugPrint('[DELETE][12x] TIMEOUT en deleteAccount() | ${sw.elapsed}');
                       throw Exception('Timeout eliminando cuenta');
                     },
                   );
-                  debugPrint('[SettingsPage] ✅ deleteAccount() completado');
+                  debugPrint('[DELETE][13] deleteAccount completado | ${sw.elapsed}');
 
                   // AuthWrapper navega al login vía authStateChanges cuando detecta
                   // que la cuenta fue eliminada. Este bloque es un respaldo.
+                  debugPrint('[DELETE][14] Intentando navegar a AuthFinalPage — context.mounted: ${context.mounted} | ${sw.elapsed}');
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const AuthFinalPage()),
                       (route) => false,
                     );
+                    debugPrint('[DELETE][15] Navegación a AuthFinalPage ejecutada | ${sw.elapsed}');
+                  } else {
+                    debugPrint('[DELETE][14x] context no montado — navegación omitida (AuthWrapper tomará control) | ${sw.elapsed}');
                   }
                 } on FirebaseAuthException catch (e) {
-                  debugPrint('[SettingsPage] ❌ FirebaseAuthException: ${e.code}');
+                  debugPrint('[DELETE][ERR-AUTH] FirebaseAuthException: ${e.code} | ${sw.elapsed}');
                   if (!context.mounted) return;
                   Navigator.of(context, rootNavigator: true).pop();
                   final msg = (e.code == 'wrong-password' || e.code == 'invalid-credential')
@@ -560,7 +583,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                     ),
                   );
                 } catch (e) {
-                  debugPrint('[SettingsPage] ❌ Error en deleteAccount: $e');
+                  debugPrint('[DELETE][ERR] Error genérico: $e | ${sw.elapsed}');
                   if (context.mounted) {
                     Navigator.of(context, rootNavigator: true).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
