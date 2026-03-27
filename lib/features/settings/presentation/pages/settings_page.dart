@@ -432,66 +432,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
 
     if (!context.mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1EE9A4)),
-        ),
-      ),
-    );
-
-    try {
-      await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {},
-      );
-      await SessionCacheService.clearSession();
-      await CircleService().deleteAccount();
-
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AuthFinalPage()),
-          (route) => false,
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-
-      if (e.code == 'requires-recent-login') {
-        _showReauthDialog(context, wasInCircle: wasInCircle);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    _showReauthDialog(context, wasInCircle: wasInCircle);
   }
 
   void _showReauthDialog(BuildContext context, {bool wasInCircle = false}) {
     final passwordController = TextEditingController();
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
+    bool obscurePassword = true;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
         backgroundColor: _AppColors.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Confirmar identidad', style: TextStyle(color: _AppColors.textPrimary)),
@@ -506,7 +459,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
             const SizedBox(height: 16),
             TextField(
               controller: passwordController,
-              obscureText: true,
+              obscureText: obscurePassword,
               style: const TextStyle(color: _AppColors.textPrimary),
               decoration: InputDecoration(
                 labelText: 'Contraseña',
@@ -520,6 +473,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: _AppColors.accent, width: 2),
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    color: _AppColors.textSecondary,
+                  ),
+                  onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
                 ),
               ),
             ),
@@ -556,6 +516,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                   password: passwordController.text,
                 );
                 await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(credential);
+                await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
+                  const Duration(seconds: 10),
+                  onTimeout: () {},
+                );
+                await SessionCacheService.clearSession();
                 await CircleService().deleteAccount();
 
                 if (context.mounted) {
@@ -607,6 +572,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
           ),
         ],
       ),
+        ),
     );
   }
 

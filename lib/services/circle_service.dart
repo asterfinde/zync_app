@@ -656,14 +656,14 @@ class CircleService {
       }
     }
 
-    // 2. Borrar cuenta de Firebase Auth PRIMERO
-    // Si la sesión no es reciente, lanza requires-recent-login aquí,
-    // sin haber borrado el documento del usuario en Firestore todavía.
-    await user.delete();
-
-    // 3. Borrar documento del usuario en Firestore
-    // (solo se ejecuta si user.delete() fue exitoso)
+    // 2. Borrar documento del usuario en Firestore PRIMERO
+    // (request.auth sigue válido aquí; la sesión todavía existe)
     await _firestore.collection('users').doc(uid).delete();
+
+    // 3. Borrar cuenta de Firebase Auth
+    // Si la sesión no es reciente, lanza requires-recent-login.
+    // El doc de Firestore ya fue eliminado, pero el usuario puede reintentar.
+    await user.delete();
   }
 
   /// Método para forzar actualización manual del stream

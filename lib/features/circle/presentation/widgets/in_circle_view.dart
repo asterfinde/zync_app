@@ -175,6 +175,22 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     // =============================================================
   }
 
+  @override
+  void didUpdateWidget(InCircleView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newMembers = widget.circle.members
+        .where((id) => !_memberNicknamesCache.containsKey(id) || _memberNicknamesCache[id] == '...')
+        .toList();
+    if (newMembers.isNotEmpty) {
+      _getAllMemberNicknames(newMembers).then((nicknames) {
+        if (!mounted) return;
+        setState(() => _memberNicknamesCache.addAll(nicknames));
+        InMemoryCache.set('nicknames_${widget.circle.id}', _memberNicknamesCache);
+        PersistentCache.saveNicknames(_memberNicknamesCache);
+      });
+    }
+  }
+
   // --- INICIO DE LA MODIFICACIÓN ---
   @override
   void dispose() {
@@ -690,11 +706,12 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                             final memberId = entry.value;
 
                             // Obtener nickname del caché (ya no hay FutureBuilder)
-                            final nickname = _memberNicknamesCache[memberId] ??
-                                (memberId.length > 8 ? memberId.substring(0, 8) : memberId);
-
                             final currentUser = FirebaseAuth.instance.currentUser;
                             final isCurrentUser = currentUser?.uid == memberId;
+                            final nickname = _memberNicknamesCache[memberId] ??
+                                (isCurrentUser
+                                    ? _getCurrentUserNickname(ref)
+                                    : '...');
 
                             // --- INICIO DE LA MODIFICACIÓN ---
                             // Obtener datos del caché. Si aún no ha llegado el primer snapshot,
@@ -924,16 +941,14 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           else if (email.isNotEmpty)
             finalNickname = email.split('@')[0];
           else
-            finalNickname = uid.length > 8 ? uid.substring(0, 8) : uid; // Fallback
+            finalNickname = '...';
           return MapEntry(uid, finalNickname);
         } else {
-          final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
-          return MapEntry(uid, fallback); // Fallback si el doc no existe
+          return MapEntry(uid, '...');
         }
       } catch (e) {
         print("Error fetching nickname for $uid: $e");
-        final fallback = uid.length > 8 ? uid.substring(0, 8) : uid;
-        return MapEntry(uid, fallback); // Fallback en caso de error
+        return MapEntry(uid, '...');
       }
     });
 

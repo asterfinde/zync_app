@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:zync_app/core/services/session_cache_service.dart';
+import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
 
 class PendingRequestView extends StatefulWidget {
   final String pendingCircleId;
@@ -107,6 +110,23 @@ class _PendingRequestViewState extends State<PendingRequestView> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              TextButton(
+                onPressed: () async {
+                  await SessionCacheService.clearSession();
+                  await FirebaseAuth.instance.signOut();
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+                      (route) => false,
+                    );
+                  }
+                },
+                child: const Text(
+                  'Cerrar sesión',
+                  style: TextStyle(color: Colors.white38),
                 ),
               ),
             ],
