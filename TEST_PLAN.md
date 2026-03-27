@@ -71,12 +71,12 @@
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
 | 1 | Creación de un círculo | Círculo creado en Firestore, código de invitación generado | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
-| 2 | Eliminación de un círculo | Solo el **creador** puede eliminar el círculo. Los miembros solo pueden abandonarlo. Al eliminarse, todos los miembros quedan desvinculados y regresan a "Aún no estás en un círculo". | 👁 | | Test automatizado repropuesto para cubrir T2.7. Verificación manual pendiente (T2.8, T2.9). |
-| 3 | Intento de crear más de un círculo | **MVP: un círculo por usuario.** La app bloquea la creación de un segundo círculo. | 👁 | | No implementado. Agregar validación en `createCircle()` (verificar si `circleId` ya existe en el doc del usuario) como parte del sprint de Brecha 2. |
+| 2 | Eliminación de un círculo | No existe acción explícita "eliminar círculo". El círculo se elimina como efecto secundario cuando el creador elimina su cuenta (T1.12 ✅). Los miembros no pueden salir sin eliminar su cuenta (filosofía MVP: "estás o no estás"). | 👁 | ✅ | Cubierto por T1.12 (creador) y T1.10 (miembro). Filosofía confirmada 2026-03-27: sin opción de salir del círculo sin eliminar cuenta. |
+| 3 | Intento de crear más de un círculo | **MVP: un círculo por usuario.** La app bloquea la creación de un segundo círculo. | 👁 | ✅ | Cubierto por diseño de UI: el botón "Crear Círculo" solo existe en `NoCircleView`, que nunca se muestra si el usuario ya pertenece a un círculo. Validación backend de respaldo en `CircleService.createCircle()`. No requiere test manual. Verificado 2026-03-27. |
 | 4 | Generación del código de invitación | Código único generado y visible para compartir | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
 | 5 | Estado/emoji inicial al unirse a un círculo | Se muestra "Todo bien" como estado por defecto | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
 | 6 | Cambiar de estado/emoji | Estado actualizado en Firestore y visible para los miembros del círculo | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
-| 7 | La UI no ofrece "Salir del Círculo" sin eliminar cuenta | El usuario dentro de un círculo no encuentra ninguna opción para salir sin eliminar su cuenta (Settings u otra pantalla) | 🔗 | ✅ | Test automatizado pasando 2026-03-23. Verifica ausencia de `btn_leave_circle` en Settings (Brecha 1 implementada). |
+| 7 | La UI no ofrece "Salir del Círculo" sin eliminar cuenta | El usuario dentro de un círculo no encuentra ninguna opción para salir sin eliminar su cuenta (Settings u otra pantalla) | 🔗 | ✅ | Test automatizado pasando 2026-03-23. Verifica ausencia de `btn_leave_circle` en Settings. Decisión de diseño confirmada 2026-03-27: filosofía "estás o no estás" — `btn_leave_circle` y su lógica eliminados de `settings_page.dart`. |
 | 8 | Eliminar cuenta siendo **creador** — otros miembros activos | Círculo eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo". | 👁 | | Pendiente. Pasos: (1) Usuario A crea círculo. (2) Usuario B se une. (3) A elimina cuenta. (4) Verificar en Firestore y en la app del Usuario B. |
 | 9 | Eliminar cuenta siendo **miembro común** — creador sigue activo | Solo ese miembro es removido. El círculo y los demás miembros siguen sin cambios. | 👁 | | Pendiente. Pasos: (1) A crea círculo. (2) B se une. (3) B elimina cuenta. (4) Verificar que el círculo de A sigue intacto. |
 | 10 | Solicitud de ingreso — solicitante queda en estado pendiente | B ingresa código y ve pantalla de espera. En Firestore: `joinRequests/{uid}` con status "pending" y `users/{uid}.pendingCircleId` seteado. | 🔗 | ✅ | Estado inicial verificado por test automatizado 2026-03-23. Flujo completo (aprobación/rechazo) pendiente de prueba manual T2.11–T2.15. |
@@ -143,9 +143,8 @@
 | 1 | T1.5 | 1 | Login fallido — correo no encontrado | Firebase email-enumeration-protection devuelve `invalid-credential`. No automatizable sin cambiar config Firebase. |
 | 2 | T1.10 | 1 | Eliminación de cuenta — usuario es **miembro común** del círculo | Requiere Brecha 2 implementada. Solo ese usuario removido; círculo y demás miembros intactos. |
 | 3 | T1.11 | 1 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
-| 4 | T2.3 | 2 | Intento de crear más de un círculo | Requiere agregar validación en `createCircle()`. Pendiente del sprint de Brecha 2. |
-| 5 | T2.8 | 2 | Eliminar cuenta siendo creador — otros miembros activos | Requiere Brecha 2. Ver pasos en la fila T2.8 de Fase 2. |
-| 6 | T2.9 | 2 | Eliminar cuenta siendo miembro común — creador sigue activo | Requiere Brecha 2. Ver pasos en la fila T2.9 de Fase 2. |
+| 4 | T2.8 | 2 | Eliminar cuenta siendo creador — otros miembros activos | Requiere dos dispositivos. Ver pasos en la fila T2.8 de Fase 2. |
+| 5 | T2.9 | 2 | Eliminar cuenta siendo miembro común — creador sigue activo | Requiere dos dispositivos. Ver pasos en la fila T2.9 de Fase 2. |
 | 8 | T2.10 | 2 | Solicitud de ingreso — flujo completo manual | Estado inicial cubierto por test automatizado. Verificar manualmente: PendingRequestView visible, datos correctos en Firestore, UX del solicitante. |
 | 9 | T2.11 | 2 | Creador aprueba solicitud | A ve la solicitud en InCircleView y aprueba. B pasa automáticamente a InCircleView. |
 | 10 | T2.12 | 2 | Creador rechaza solicitud | A rechaza. B regresa a NoCircleView. `pendingCircleId` eliminado en Firestore. |
