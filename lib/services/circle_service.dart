@@ -85,8 +85,7 @@ class CircleService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // StreamController para forzar actualizaciones
-  static final StreamController<void> _refreshController =
-      StreamController<void>.broadcast();
+  static final StreamController<void> _refreshController = StreamController<void>.broadcast();
 
   /// Crea un nuevo círculo para el usuario actual
   Future<String> createCircle(String name) async {
@@ -98,20 +97,15 @@ class CircleService {
     }
 
     // Validación MVP: un solo círculo por usuario
-    final existingUserDoc =
-        await _firestore.collection('users').doc(user.uid).get();
+    final existingUserDoc = await _firestore.collection('users').doc(user.uid).get();
     if (existingUserDoc.exists) {
-      final existingCircleId =
-          existingUserDoc.data()?['circleId'] as String?;
+      final existingCircleId = existingUserDoc.data()?['circleId'] as String?;
       if (existingCircleId != null && existingCircleId.isNotEmpty) {
-        throw Exception(
-            'Ya perteneces a un círculo. En esta versión solo puedes pertenecer a uno.');
+        throw Exception('Ya perteneces a un círculo. En esta versión solo puedes pertenecer a uno.');
       }
-      final pendingCircleId =
-          existingUserDoc.data()?['pendingCircleId'] as String?;
+      final pendingCircleId = existingUserDoc.data()?['pendingCircleId'] as String?;
       if (pendingCircleId != null && pendingCircleId.isNotEmpty) {
-        throw Exception(
-            'Tienes una solicitud de ingreso pendiente. Cancela la solicitud antes de crear un círculo.');
+        throw Exception('Tienes una solicitud de ingreso pendiente. Cancela la solicitud antes de crear un círculo.');
       }
     }
 
@@ -135,9 +129,7 @@ class CircleService {
     // Usar batch para operación atómica
     final batch = _firestore.batch();
     batch.set(circleRef, circleData);
-    batch.update(_firestore.collection('users').doc(user.uid), {
-      'circleId': circleRef.id
-    });
+    batch.update(_firestore.collection('users').doc(user.uid), {'circleId': circleRef.id});
 
     await batch.commit();
     log('[CircleService] ✅ Círculo creado exitosamente: ${circleRef.id}');
@@ -163,11 +155,8 @@ class CircleService {
     }
 
     // Buscar círculo por código de invitación
-    final query = await _firestore
-        .collection('circles')
-        .where('invitation_code', isEqualTo: invitationCode)
-        .limit(1)
-        .get();
+    final query =
+        await _firestore.collection('circles').where('invitation_code', isEqualTo: invitationCode).limit(1).get();
 
     if (query.docs.isEmpty) {
       throw Exception('Código de invitación inválido');
@@ -182,8 +171,7 @@ class CircleService {
         throw Exception('El círculo no existe');
       }
 
-      final currentMembers =
-          List<String>.from(circleSnapshot.get('members') ?? []);
+      final currentMembers = List<String>.from(circleSnapshot.get('members') ?? []);
 
       if (currentMembers.contains(user.uid)) {
         throw Exception('Ya eres miembro de este círculo');
@@ -223,11 +211,8 @@ class CircleService {
     if (invitationCode.isEmpty) throw Exception('Código de invitación vacío');
 
     // Buscar el círculo por código
-    final query = await _firestore
-        .collection('circles')
-        .where('invitation_code', isEqualTo: invitationCode)
-        .limit(1)
-        .get();
+    final query =
+        await _firestore.collection('circles').where('invitation_code', isEqualTo: invitationCode).limit(1).get();
 
     if (query.docs.isEmpty) throw Exception('Código de invitación inválido');
 
@@ -235,34 +220,26 @@ class CircleService {
     final circleId = circleDoc.id;
 
     // ¿Ya es miembro?
-    final currentMembers =
-        List<String>.from(circleDoc.data()['members'] ?? []);
+    final currentMembers = List<String>.from(circleDoc.data()['members'] ?? []);
     if (currentMembers.contains(user.uid)) {
       throw Exception('Ya eres miembro de este círculo');
     }
 
     // ¿Ya tiene una solicitud pendiente (en cualquier círculo)?
-    final userDoc =
-        await _firestore.collection('users').doc(user.uid).get();
-    final existingPending =
-        userDoc.data()?['pendingCircleId'] as String?;
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final existingPending = userDoc.data()?['pendingCircleId'] as String?;
     if (existingPending != null && existingPending.isNotEmpty) {
       throw Exception('Ya tienes una solicitud pendiente');
     }
 
     // ¿Fue rechazado anteriormente en este círculo?
-    final existingRequest = await _firestore
-        .collection('circles')
-        .doc(circleId)
-        .collection('joinRequests')
-        .doc(user.uid)
-        .get();
+    final existingRequest =
+        await _firestore.collection('circles').doc(circleId).collection('joinRequests').doc(user.uid).get();
 
     if (existingRequest.exists) {
       final status = existingRequest.data()?['status'] as String?;
       if (status == 'rejected') {
-        throw Exception(
-            'Tu solicitud fue rechazada anteriormente por este círculo');
+        throw Exception('Tu solicitud fue rechazada anteriormente por este círculo');
       }
     }
 
@@ -273,11 +250,7 @@ class CircleService {
     // Batch: crear joinRequest + setear pendingCircleId
     final batch = _firestore.batch();
     batch.set(
-      _firestore
-          .collection('circles')
-          .doc(circleId)
-          .collection('joinRequests')
-          .doc(user.uid),
+      _firestore.collection('circles').doc(circleId).collection('joinRequests').doc(user.uid),
       {
         'nickname': nickname,
         'email': email,
@@ -296,8 +269,7 @@ class CircleService {
 
   /// Aprueba la solicitud de ingreso de [requestingUserId] al [circleId].
   /// Solo el creador del círculo puede llamar a este método.
-  Future<void> approveJoinRequest(
-      String circleId, String requestingUserId) async {
+  Future<void> approveJoinRequest(String circleId, String requestingUserId) async {
     log('[CircleService] Aprobando solicitud de $requestingUserId en $circleId');
 
     final user = _auth.currentUser;
@@ -342,8 +314,7 @@ class CircleService {
 
   /// Rechaza la solicitud de ingreso de [requestingUserId] al [circleId].
   /// Solo el creador del círculo puede llamar a este método.
-  Future<void> rejectJoinRequest(
-      String circleId, String requestingUserId) async {
+  Future<void> rejectJoinRequest(String circleId, String requestingUserId) async {
     log('[CircleService] Rechazando solicitud de $requestingUserId en $circleId');
 
     final user = _auth.currentUser;
@@ -383,8 +354,7 @@ class CircleService {
         .collection('joinRequests')
         .where('status', isEqualTo: 'pending')
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map(JoinRequest.fromFirestore).toList());
+        .map((snapshot) => snapshot.docs.map(JoinRequest.fromFirestore).toList());
   }
 
   /// Obtiene el círculo actual del usuario
@@ -396,8 +366,7 @@ class CircleService {
     }
 
     try {
-      final userSnapshot =
-          await _firestore.collection('users').doc(user.uid).get();
+      final userSnapshot = await _firestore.collection('users').doc(user.uid).get();
 
       if (!userSnapshot.exists) {
         log('[CircleService] Documento de usuario no existe');
@@ -411,8 +380,7 @@ class CircleService {
         return null;
       }
 
-      final circleDoc =
-          await _firestore.collection('circles').doc(circleId).get();
+      final circleDoc = await _firestore.collection('circles').doc(circleId).get();
 
       if (!circleDoc.exists) {
         log('[CircleService] Círculo no existe: $circleId');
@@ -437,16 +405,13 @@ class CircleService {
     }
 
     late StreamController<UserCircleState> controller;
-    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
-        userSubscription;
-    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
-        circleSubscription;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? userSubscription;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? circleSubscription;
     StreamSubscription<void>? refreshSubscription;
 
     controller = StreamController<UserCircleState>(
       onListen: () {
-        void processUserSnapshot(
-            DocumentSnapshot<Map<String, dynamic>> userSnapshot) async {
+        void processUserSnapshot(DocumentSnapshot<Map<String, dynamic>> userSnapshot) async {
           if (!userSnapshot.exists) {
             log('[CircleService] Stream: Usuario no existe');
             controller.add(UserNoCircle());
@@ -461,13 +426,13 @@ class CircleService {
             // Usuario está en un círculo → escuchar cambios del círculo
             log('[CircleService] Stream: Escuchando círculo $circleId');
             await circleSubscription?.cancel();
-            circleSubscription = _firestore
-                .collection('circles')
-                .doc(circleId)
-                .snapshots()
-                .listen((circleSnapshot) {
+            circleSubscription = _firestore.collection('circles').doc(circleId).snapshots().listen((circleSnapshot) {
               if (!circleSnapshot.exists) {
                 log('[CircleService] Stream: Círculo eliminado');
+                // Limpiar circleId del propio usuario (escritura en doc propio — permitida por reglas)
+                _firestore.collection('users').doc(user.uid).update({
+                  'circleId': FieldValue.delete(),
+                }).catchError((_) {}); // silencioso si el doc ya no existe
                 controller.add(UserNoCircle());
                 return;
               }
@@ -491,11 +456,7 @@ class CircleService {
         }
 
         // Escuchar cambios en el documento del usuario
-        userSubscription = _firestore
-            .collection('users')
-            .doc(user.uid)
-            .snapshots()
-            .listen(
+        userSubscription = _firestore.collection('users').doc(user.uid).snapshots().listen(
           processUserSnapshot,
           onError: (e) {
             log('[CircleService] Stream: Error en userSubscription (logout?): $e');
@@ -510,8 +471,7 @@ class CircleService {
           final currentUser = _auth.currentUser;
           if (currentUser == null) return;
           log('[CircleService] Stream: Refresh manual activado');
-          final userDoc =
-              await _firestore.collection('users').doc(currentUser.uid).get();
+          final userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
           processUserSnapshot(userDoc);
         });
       },
@@ -540,13 +500,10 @@ class CircleService {
 
     try {
       // Obtener el círculo actual del usuario
-      final userDoc =
-          await _firestore.collection('users').doc(user.uid).get();
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
       final userData = userDoc.data();
 
-      if (!userDoc.exists ||
-          userData == null ||
-          !userData.containsKey('circleId')) {
+      if (!userDoc.exists || userData == null || !userData.containsKey('circleId')) {
         throw Exception('El usuario no está en ningún círculo');
       }
 
@@ -561,8 +518,7 @@ class CircleService {
           throw Exception('El círculo no existe');
         }
 
-        final members =
-            List<String>.from(circleDoc.data()!['members'] ?? []);
+        final members = List<String>.from(circleDoc.data()!['members'] ?? []);
 
         // Verificar que el usuario esté realmente en el círculo
         if (!members.contains(user.uid)) {
@@ -578,14 +534,12 @@ class CircleService {
           log('[CircleService] Círculo eliminado (último miembro salió)');
         } else {
           // Actualizar la lista de miembros del círculo
-          transaction
-              .update(circleRef, {'members': members});
+          transaction.update(circleRef, {'members': members});
           log('[CircleService] Usuario removido del círculo. Miembros restantes: ${members.length}');
         }
 
         // Remover circleId del documento del usuario
-        transaction
-            .update(_firestore.collection('users').doc(user.uid), {
+        transaction.update(_firestore.collection('users').doc(user.uid), {
           'circleId': FieldValue.delete(),
         });
       });
@@ -609,61 +563,69 @@ class CircleService {
     if (user == null) throw Exception('Usuario no autenticado');
 
     final uid = user.uid;
+    log('[CircleService] 🗑️ Iniciando deleteAccount() para uid: $uid');
 
     // 1. Manejar círculo según rol (creador vs miembro común)
     final userDoc = await _firestore.collection('users').doc(uid).get();
     if (userDoc.exists) {
       final circleId = userDoc.data()?['circleId'] as String?;
       if (circleId != null && circleId.isNotEmpty) {
-        final circleDoc =
-            await _firestore.collection('circles').doc(circleId).get();
+        log('[CircleService] 🔍 Usuario pertenece al círculo: $circleId');
+        final circleDoc = await _firestore.collection('circles').doc(circleId).get();
         if (circleDoc.exists) {
-          final creatorId =
-              circleDoc.data()?['creatorId'] as String? ?? '';
+          final creatorId = circleDoc.data()?['creatorId'] as String? ?? '';
           if (uid == creatorId) {
-            // Es el creador: eliminar el círculo y desvincular a todos los miembros
-            final members = List<String>.from(
-                circleDoc.data()?['members'] ?? []);
-            final batch = _firestore.batch();
-            batch.delete(_firestore.collection('circles').doc(circleId));
-            for (final memberId in members) {
-              if (memberId != uid) {
-                batch.update(
-                    _firestore.collection('users').doc(memberId), {
-                  'circleId': FieldValue.delete(),
-                });
-              }
-            }
-            await batch.commit();
-            log('[CircleService] ✅ Círculo eliminado por su creador. Miembros desvinculados: ${members.length - 1}');
+            // Es el creador: eliminar el círculo.
+            // Cada miembro limpiará su propio circleId cuando su stream
+            // detecte que el círculo ya no existe (getUserCircleStream).
+            log('[CircleService] 👑 Usuario es creador, eliminando círculo...');
+            await _firestore.collection('circles').doc(circleId).delete();
+            log('[CircleService] ✅ Círculo eliminado por su creador.');
           } else {
-            // Es miembro común: solo salir del círculo
-            await leaveCircle();
+            // Es miembro común: solo salir del círculo (sin transacción para evitar deadlock)
+            log('[CircleService] 👤 Usuario es miembro, saliendo del círculo...');
+            try {
+              final members = List<String>.from(circleDoc.data()!['members'] ?? []);
+              members.remove(uid);
+              await _firestore.collection('circles').doc(circleId).update({
+                'members': members,
+              });
+              log('[CircleService] ✅ Usuario removido del círculo.');
+            } catch (e) {
+              log('[CircleService] ⚠️ Error removiendo del círculo (continuando): $e');
+            }
           }
         }
       }
 
       // Limpiar pendingCircleId si existe
-      final pendingCircleId =
-          userDoc.data()?['pendingCircleId'] as String?;
+      final pendingCircleId = userDoc.data()?['pendingCircleId'] as String?;
       if (pendingCircleId != null && pendingCircleId.isNotEmpty) {
-        await _firestore
-            .collection('circles')
-            .doc(pendingCircleId)
-            .collection('joinRequests')
-            .doc(uid)
-            .update({'status': 'cancelled'});
+        log('[CircleService] 🔄 Limpiando pendingCircleId...');
+        try {
+          await _firestore
+              .collection('circles')
+              .doc(pendingCircleId)
+              .collection('joinRequests')
+              .doc(uid)
+              .update({'status': 'cancelled'});
+        } catch (e) {
+          log('[CircleService] ⚠️ Error limpiando pendingCircleId (continuando): $e');
+        }
       }
     }
 
     // 2. Borrar documento del usuario en Firestore PRIMERO
     // (request.auth sigue válido aquí; la sesión todavía existe)
+    log('[CircleService] 🗑️ Eliminando documento de usuario...');
     await _firestore.collection('users').doc(uid).delete();
+    log('[CircleService] ✅ Documento de usuario eliminado.');
 
     // 3. Borrar cuenta de Firebase Auth
     // Si la sesión no es reciente, lanza requires-recent-login.
-    // El doc de Firestore ya fue eliminado, pero el usuario puede reintentar.
+    log('[CircleService] 🔐 Eliminando cuenta de Firebase Auth...');
     await user.delete();
+    log('[CircleService] ✅ Cuenta de Firebase Auth eliminada.');
   }
 
   /// Método para forzar actualización manual del stream

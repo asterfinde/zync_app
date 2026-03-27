@@ -246,6 +246,14 @@ class SilentFunctionalityCoordinator {
     print('=== DEACTIVATE AFTER LOGOUT CALLED ===');
     print('[SilentCoordinator] 🔒 MÉTODO deactivateAfterLogout() EJECUTÁNDOSE');
 
+    // Guard: si ya hay un logout en progreso, ignorar llamada duplicada.
+    // Evita que auth_provider u otros listeners disparen una segunda limpieza
+    // mientras deleteAccount() ya está ejecutando la primera.
+    if (_isManualLogoutInProgress) {
+      print('[SilentCoordinator] ⚠️ Logout ya en progreso — llamada duplicada ignorada');
+      return;
+    }
+
     // Point 1.1: Marcar que hay un logout manual en progreso (Dart)
     _isManualLogoutInProgress = true;
 

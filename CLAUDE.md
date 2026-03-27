@@ -477,7 +477,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 | Problema | Prioridad | Notas |
 |----------|-----------|-------|
 | Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Contienen cambios que no afectan la app. El flujo activo usa `auth_final_page.dart` directamente. Evaluar eliminación post-MVP. |
-| Scripts `.ps1` en raíz del proyecto: `launch_emulator.ps1`, `run_devices.ps1` | Media | No son parte del código fuente. Ambos scripts fueron escritos pero no funcionaron de forma confiable: problemas de ADB offline en Windows impidieron detectar el emulador. Requieren revisión antes de usarse. Evaluar si vale la pena mantenerlos o reemplazar por flujo manual con dispositivo físico. Mover fuera del repo una vez resuelto. |
+| Scripts `.ps1` en raíz del proyecto: `launch_emulator.ps1`, `run_devices.ps1`, `clean_and_run.ps1` | Media | No son parte del código fuente. `launch_emulator.ps1` y `run_devices.ps1` no funcionaron de forma confiable (ADB offline en Windows). `clean_and_run.ps1` limpia Firebase Auth + Firestore y lanza la app — pendiente de prueba. Mover los tres fuera del repo una vez validados. |
 
 ---
 
