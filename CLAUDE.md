@@ -479,6 +479,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 |----------|-----------|-------|
 | Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Contienen cambios que no afectan la app. El flujo activo usa `auth_final_page.dart` directamente. Evaluar eliminación post-MVP. |
 | Scripts `.ps1` en raíz del proyecto: `launch_emulator.ps1`, `run_devices.ps1`, `clean_and_run.ps1` | Media | No son parte del código fuente. `launch_emulator.ps1` y `run_devices.ps1` no funcionaron de forma confiable (ADB offline en Windows). `clean_and_run.ps1` limpia Firebase Auth + Firestore y lanza la app — pendiente de prueba. Mover los tres fuera del repo una vez validados. |
+| Archivos y carpetas de desarrollo dentro de `lib/`: `main_test.dart`, `main_minimal_test.dart`, `dev_auth_simple/`, `dev_auth_test/`, `dev_test/`, `dev_utils/` | **Alta** | `dev_utils/` contiene `clean_auth.dart` y `clean_firestore.dart` — riesgo de ejecución accidental en producción. Eliminar o mover fuera de `lib/` antes del build de release. Revisar previo al lanzamiento del MVP. |
 
 ---
 
