@@ -540,6 +540,65 @@ El desarrollador aprueba o ajusta antes de que se guarde.
 
 ---
 
+## 15. Seguridad
+
+> Esta sección documenta el estado de seguridad de ZYNC, distinguiendo
+> lo que ya está cubierto, lo que debe resolverse antes del lanzamiento,
+> y lo que puede esperar al post-MVP.
+>
+> **Responsabilidad:** La IA no modifica configuraciones de seguridad
+> sin aprobación explícita. Si detecta un riesgo nuevo, lo reporta aquí.
+
+---
+
+### Lo que ya está cubierto
+
+| Capa | Mecanismo | Notas |
+|------|-----------|-------|
+| Autenticación | Firebase Auth | Email/password + re-auth para operaciones críticas |
+| Autorización | Firestore Security Rules | Acceso por rol: owner vs member, validación de mismo círculo |
+| Datos en tránsito | HTTPS/TLS | Todas las comunicaciones Firebase van cifradas por defecto |
+| Datos en reposo | Firebase encryption | Firestore y Auth cifran en reposo — gestionado por Google |
+| Signing key Android | `android/key.properties` | Excluido del repo via `.gitignore` ✅ |
+| Service account | `scripts/serviceAccountKey.json` | Excluido del repo via `.gitignore` ✅ |
+
+---
+
+### Pendientes pre-lanzamiento (obligatorios antes de publicar en Play Store)
+
+| Ítem | Riesgo | Acción requerida |
+|------|--------|-----------------|
+| **Política de privacidad** | Alto — Google Play la exige | Redactar y publicar en URL pública. Debe cubrir: datos recolectados (email, nickname, Location GPS), uso, retención y eliminación |
+| **Justificación `ACCESS_BACKGROUND_LOCATION`** | Alto — permiso de alto riesgo | Google Play exige declaración explícita de uso. Justificación: geofencing para actualización automática de Status. Sin esto, la app puede ser rechazada |
+| **API Key de Anthropic** | Alto — no se encontró en código | Verificar dónde vive esta key. Si está en el cliente (hardcodeada o en assets), debe moverse a Cloud Function o Firebase Remote Config con acceso restringido. Una key de cliente es extraíble con ingeniería inversa del APK |
+| **Firebase API Key en `firebase_options.dart`** | Bajo — comportamiento normal de Firebase | La Firebase API key es un identificador público (no un secret). La protección real son las Security Rules. Verificar que las rules estén correctamente configuradas en producción |
+| **Validación server-side de inputs** | Medio | Actualmente solo hay validación en UI. Agregar validación en Cloud Functions o Firestore Rules para campos críticos (nickname, circleId, statusType) |
+| **Logs con datos de usuario** | Medio | Auditar usos de `debugPrint()` y `log()` que puedan exponer UIDs, emails o coordenadas GPS en builds de release. Usar `kDebugMode` para condicionar los logs |
+
+---
+
+### Pendientes post-MVP (buenas prácticas para v2.0)
+
+| Ítem | Descripción |
+|------|-------------|
+| **Auditoría de dependencias** | Ejecutar `flutter pub audit` o equivalente para detectar paquetes con CVEs conocidos |
+| **Rate limiting** | Limitar operaciones críticas (crear Circle, activar SOS, enviar JoinRequest) para prevenir abuso |
+| **Penetration testing** | Revisión formal de seguridad por tercero antes de escalar usuarios |
+| **Certificate pinning** | Protección adicional contra ataques MITM — evaluar costo/beneficio para v2.0 |
+| **Ofuscación del APK** | ProGuard/R8 para dificultar ingeniería inversa — relevante si la app escala |
+| **Retención y eliminación de datos GPS** | Definir política formal: cuánto tiempo se guardan los ZoneEvents y coordenadas de SOS |
+
+---
+
+### Reglas para la IA en materia de seguridad
+
+- **Nunca** sugerir almacenar secrets (API keys, tokens) en el código fuente o en assets del APK.
+- **Nunca** modificar Firestore Security Rules sin aprobación explícita.
+- **Siempre** condicionar logs con datos sensibles a `kDebugMode`.
+- Si se detecta una key o secret expuesto en código: reportarlo de inmediato como bloqueante.
+
+---
+
 ## 14. Nota Final
 
 - Este archivo es un documento vivo. Se actualiza conforme el proyecto avanza.
