@@ -25,7 +25,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   late Animation<double> _scaleAnimation;
 
   bool _isUpdating = false;
-  bool _zonesConfigured = false;
+  Set<String> _configuredZoneTypes = {};
 
   // CRÍTICO: Grid hardcodeado con los 16 emojis correctos
   static final List<StatusType> _statusGrid = [
@@ -70,13 +70,6 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
         order: 15),
     StatusType(id: 'sos', emoji: '🆘', label: 'SOS', shortLabel: 'SOS', category: 'emergency', order: 16),
   ];
-
-  static const Set<String> _blockedZoneStatusIds = {
-    'home',
-    'school',
-    'work',
-    'medical',
-  };
 
   @override
   void initState() {
@@ -135,18 +128,18 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
         return type != null && ['home', 'school', 'work', 'medical'].contains(type);
       }).toList();
 
-      final hasZones = predefinedZones.isNotEmpty;
+      final configuredTypes = predefinedZones
+          .map((doc) => doc.data()['type'] as String)
+          .toSet();
 
-      print('[NotificationStatusSelector] 📍 Zonas encontradas: ${predefinedZones.length}');
-      print('[NotificationStatusSelector] 🎨 Opacidad será aplicada: $hasZones');
+      print('[NotificationStatusSelector] 📍 Tipos de zona configurados: $configuredTypes');
 
       if (mounted) {
         setState(() {
-          _zonesConfigured = hasZones;
+          _configuredZoneTypes = configuredTypes;
         });
 
-        // Forzar rebuild adicional para asegurar opacidad
-        if (hasZones) {
+        if (configuredTypes.isNotEmpty) {
           Future.delayed(const Duration(milliseconds: 200), () {
             if (mounted) setState(() {});
           });
@@ -156,7 +149,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
       print('[NotificationStatusSelector] ❌ Error verificando zonas: $e');
       if (mounted) {
         setState(() {
-          _zonesConfigured = false;
+          _configuredZoneTypes = {};
         });
       }
     }
@@ -171,7 +164,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   Future<void> _handleStatusSelection(StatusType status) async {
     if (_isUpdating) return;
 
-    if (_zonesConfigured && _blockedZoneStatusIds.contains(status.id)) {
+    if (_configuredZoneTypes.contains(status.id)) {
       await _showZoneWarningModal();
       return;
     }
@@ -342,7 +335,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   }
 
   Widget _buildStatusButton(StatusType status) {
-    final isBlockedZone = _zonesConfigured && _blockedZoneStatusIds.contains(status.id);
+    final isBlockedZone = _configuredZoneTypes.contains(status.id);
 
     return Material(
       key: ValueKey('btn_status_${status.id}'),

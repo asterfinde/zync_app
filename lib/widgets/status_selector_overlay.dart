@@ -30,15 +30,10 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   // HOTFIX: Inicializar con fallbackPredefined INMEDIATAMENTE para evitar timing issues
   List<StatusType?> _statusGrid = StatusType.fallbackPredefined;
 
-  bool _zonesConfigured = false;
+  // Solo los tipos de zona que el usuario configuró geográficamente.
+  // Únicamente esos botones se inhabilitan en el selector.
+  Set<String> _configuredZoneTypes = {};
   bool _isLoadingGrid = true; // NUEVO: Prevenir render antes de cargar zonas
-
-  static const Set<String> _blockedZoneStatusIds = {
-    'home',
-    'school',
-    'work',
-    'medical', // Usar 'medical' (🏥) en lugar de 'university'
-  };
 
   @override
   void initState() {
@@ -86,44 +81,28 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         return type != null && ['home', 'school', 'work', 'medical'].contains(type);
       }).toList();
 
-      final hasZones = predefinedZones.isNotEmpty;
+      // Recopilar los tipos de zona efectivamente configurados
+      final configuredTypes = predefinedZones
+          .map((doc) => doc.data()['type'] as String)
+          .toSet();
       print(
-          '[StatusSelectorOverlay] 📍 Zonas predefinidas configuradas: $hasZones (${predefinedZones.length} zonas de ${zonesSnapshot.docs.length} totales)');
+          '[StatusSelectorOverlay] 📍 Tipos de zona configurados: $configuredTypes (${predefinedZones.length} de ${zonesSnapshot.docs.length} totales)');
 
-      // PM5 FIX: USAR DIRECTAMENTE fallbackPredefined para evitar emojis viejos de Firebase
-      // Firebase tiene emojis legacy (como 'available' 🟢) que no deben aparecer
-      // HOTFIX CRÍTICO: Ya no construir grid, usar el que ya está inicializado
       print('[StatusSelectorOverlay] ✅ Grid ya inicializado con ${_statusGrid.length} emojis');
-      print('[StatusSelectorOverlay] 📋 Emojis: ${_statusGrid.map((e) => e?.emoji ?? "null").join(", ")}');
-      print('[StatusSelectorOverlay] 📋 IDs: ${_statusGrid.map((e) => e?.id ?? "null").join(", ")}');
 
-      // CRÍTICO: Dar un pequeño delay para asegurar que todo esté sincronizado
-      // Esto es especialmente importante cuando se abre desde notificaciones
       await Future.delayed(const Duration(milliseconds: 50));
 
       if (mounted) {
         setState(() {
-          // Grid ya está inicializado, solo actualizar zonas
-          _zonesConfigured = hasZones; // PM5 FIX: Actualizar estado de zonas
-          _isLoadingGrid = false; // CRÍTICO: Marcar como cargado
+          _configuredZoneTypes = configuredTypes;
+          _isLoadingGrid = false;
         });
         print(
-            '[StatusSelectorOverlay] 🔧 Estado actualizado: _zonesConfigured=$_zonesConfigured, grid.length=${_statusGrid.length}, _isLoadingGrid=false');
-        print('[StatusSelectorOverlay] 🎨 Opacidad aplicada a zonas: ${_zonesConfigured ? 'SÍ' : 'NO'}');
+            '[StatusSelectorOverlay] 🔧 Estado actualizado: _configuredZoneTypes=$_configuredZoneTypes, grid.length=${_statusGrid.length}');
 
-        // CRÍTICO: Forzar rebuild adicional después de setState para asegurar que la opacidad se aplique
-        // Esto es necesario cuando el modal se abre desde notificaciones
-        // Aumentamos el delay a 300ms para dar más tiempo
-        if (hasZones) {
+        if (configuredTypes.isNotEmpty) {
           Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              setState(() {
-                // Forzar reconstrucción del widget tree
-                _zonesConfigured = hasZones; // Reafirmar el valor
-                print(
-                    '[StatusSelectorOverlay] 🔄 Forzando rebuild para aplicar opacidad (zonas configuradas=$_zonesConfigured)');
-              });
-            }
+            if (mounted) setState(() {});
           });
         }
       }
@@ -132,8 +111,8 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       if (mounted) {
         setState(() {
           _statusGrid = StatusType.fallbackPredefined;
-          _zonesConfigured = false; // PM5 FIX: Sin zonas en caso de error
-          _isLoadingGrid = false; // Marcar como cargado incluso en error
+          _configuredZoneTypes = {};
+          _isLoadingGrid = false;
         });
       }
     }
@@ -218,7 +197,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   Future<void> _handleStatusSelection(StatusType status) async {
     if (_isUpdating) return;
 
-    if (_zonesConfigured && _blockedZoneStatusIds.contains(status.id)) {
+    if (_configuredZoneTypes.contains(status.id)) {
       await _showZoneSelectionNotAllowedModal();
       return;
     }
@@ -428,21 +407,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   /// Construye botón de estado individual
   Widget _buildStatusButton(StatusType status) {
-    final isBlockedZone = _zonesConfigured && _blockedZoneStatusIds.contains(status.id);
-
-    // DIAGNÓSTICO: Log para TODAS las zonas, no solo las bloqueadas
-    if (_blockedZoneStatusIds.contains(status.id)) {
-      print(
-          '[StatusSelectorOverlay] 🔍 Zona ${status.id} (${status.emoji}): _zonesConfigured=$_zonesConfigured, isBlockedZone=$isBlockedZone, opacidad=${isBlockedZone ? '0.35' : '1.0'}');
-    }
-
-    // Log adicional para verificar que se está aplicando la opacidad
-    if (isBlockedZone) {
-      print('[StatusSelectorOverlay] 🎨 ✅ APLICANDO OPACIDAD 0.35 a ${status.id} (${status.emoji})');
-    } else if (_blockedZoneStatusIds.contains(status.id)) {
-      print(
-          '[StatusSelectorOverlay] ⚠️ NO aplicando opacidad a ${status.id} (${status.emoji}) - _zonesConfigured=$_zonesConfigured');
-    }
+    final isBlockedZone = _configuredZoneTypes.contains(status.id);
 
     return Material(
       color: Colors.transparent,
