@@ -108,14 +108,13 @@ class GeofencingService {
         return;
       }
 
-      // Verificar en qué zona está el usuario
-      Zone? detectedZone;
-      for (final zone in zones) {
-        if (zone.containsLocation(latitude, longitude)) {
-          detectedZone = zone;
-          break; // Solo consideramos la primera zona donde está
-        }
-      }
+      // Verificar en qué zona está el usuario.
+      // Si hay zonas solapadas, gana la de menor radio (más específica).
+      final containingZones = zones
+          .where((z) => z.containsLocation(latitude, longitude))
+          .toList()
+        ..sort((a, b) => a.radiusMeters.compareTo(b.radiusMeters));
+      final detectedZone = containingZones.isNotEmpty ? containingZones.first : null;
 
       // Detectar cambios de zona
       await _detectZoneTransition(
