@@ -5,10 +5,10 @@
 // T10.1 🔗 Sin zonas — card de miembro muestra timestamp relativo
 // T30.1 🔗 manualOverride=true, locationUnknown=false → badge ✋ Manual visible, sin badge de ubicación
 // T30.2 🔗 manualOverride=true, locationUnknown=true  → badge ✋ Manual + ❓ Ubicación desconocida visibles
+// T30.3 👁 Manual — con zonas configuradas, seleccionar zona bloqueada muestra modal "Acción no permitida"
 //
 // Nota: T1 y T2 están cubiertos por Fase 2 T05 y T06 respectivamente.
-// Nota: T20.1 y T20.2 son 👁 manuales (requieren geofencing físico).
-// Nota: T30.3 pendiente — requiere simular bloqueo de zona automática.
+// Nota: T20.1, T20.2 y T30.3 son 👁 manuales.
 //
 // Credenciales de prueba:
 //   Cuenta primaria: test_ci@zync.test / ZyncTest2025!
@@ -279,4 +279,5 @@ void main() {
       await _signOutFromCircle(tester);
     });
   });
+
 }

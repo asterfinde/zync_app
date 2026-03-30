@@ -63,6 +63,54 @@ Ejemplo:
 
 ---
 
+## 4.3 Modelo formal de estados (implementación)
+
+Los 5 estados del sistema, con sus campos internos en Firestore (`memberStatus.{uid}`):
+
+| Estado | Origen | autoUpdated | manualOverride | locationUnknown | Muestra en círculo |
+|--------|--------|:-----------:|:--------------:|:---------------:|-------------------|
+| **INITIAL** | Alta al círculo | `false` | `false` | `false` | emoji default · timestamp |
+| **AUTO_ZONA** | `GeoEnterZone` | `true` | `false` | `false` | emoji zona · nombre zona · timestamp |
+| **MANUAL_EN_ZONA** | `UserSelectNonZone` desde AUTO_ZONA | `false` | `true` | `false` | emoji elegido · timestamp · ✋ Manual |
+| **AUTO_EN_CAMINO** | `GeoExitZone` | `true` | `false` | `false` | 🚗 En camino · timestamp |
+| **MANUAL_FUERA_DE_ZONA** | `UserSelectNonZone` desde AUTO_EN_CAMINO o INITIAL | `false` | `false` | `true` | emoji elegido · timestamp · ❓ Ubicación desconocida |
+
+### Regla de transición entre estados (resumen visual)
+
+```
+            ┌─────────────────────────────────────────────────────────┐
+            │                       INITIAL                           │
+            │                  (alta en círculo)                      │
+            └───────┬──────────────────────────────┬──────────────────┘
+                    │ GeoEnterZone                 │ UserSelectNonZone
+                    ▼                              ▼
+        ┌───────────────────┐          ┌─────────────────────────────┐
+        │    AUTO_ZONA      │          │   MANUAL_FUERA_DE_ZONA      │
+        │  autoUpdated=true │          │  locationUnknown=true       │
+        └──────┬────────────┘          └─────────────────────────────┘
+               │ UserSelectNonZone        ▲  GeoEnterZone
+               ▼                         │
+   ┌──────────────────────┐              │
+   │  MANUAL_EN_ZONA      │              │
+   │  manualOverride=true │              │
+   └──────┬───────────────┘              │
+          │ GeoEnterZone / GeoExitZone   │
+          │ (GPS siempre gana)           │
+          ▼                              │
+   ┌───────────────────┐                 │
+   │  AUTO_EN_CAMINO   │─────────────────┘
+   │  autoUpdated=true │  UserSelectNonZone ──► MANUAL_FUERA_DE_ZONA
+   └───────┬───────────┘
+           │ GeoEnterZone
+           ▼
+       AUTO_ZONA
+```
+
+> **Principio "GPS siempre gana":** cualquier evento de Geofencing (`E3`/`E4`) fuerza la transición
+> hacia `AUTO_ZONA` o `AUTO_EN_CAMINO` sin importar el estado actual — incluyendo `MANUAL_EN_ZONA`.
+
+---
+
 ## 5. Eventos
 
 - **E1: UserSelectNonZone(state)**
@@ -109,10 +157,15 @@ Ejemplo:
 
 ### 7.1 `✋ Manual`
 
-Se muestra cuando el **último cambio de estado principal** fue realizado manualmente por el Usuario, seleccionando un estado **no-zona**.
+Se muestra cuando el Usuario **sobreescribe deliberadamente** un estado que el GPS puso automáticamente al detectar una zona.
 
-- Se activa con `E1: UserSelectNonZone(state)`.
-- Se desactiva cuando el estado principal cambia por Geofencing (`E3` o `E4`).
+- **Se activa** con `E1: UserSelectNonZone(state)` **únicamente si** el estado previo era `AUTO_ZONA` (`autoUpdated=true`).
+- **No se activa** si el estado previo era `AUTO_EN_CAMINO`, `INITIAL`, o cualquier estado manual — el usuario no está mintiendo sobre su ubicación, simplemente elige un estado.
+- **Se desactiva** cuando el GPS detecta una transición de zona (`E3` o `E4`).
+
+> **Propósito:** alerta para padres — el hijo está físicamente en una zona conocida pero eligió mostrar otra cosa.
+
+> **Corrección 2026-03-30:** la descripción anterior decía "cualquier UserSelectNonZone". El comportamiento correcto (confirmado por Prueba B2, B3 y T3.30.2 del TEST_PLAN) es que `✋ Manual` solo aplica sobre estados automáticos de zona.
 
 ### 7.2 `❓ Ubicación desconocida`
 
@@ -149,8 +202,13 @@ Caso borde. Se muestra cuando existe al menos una de estas condiciones:
 - Evento: `E1: UserSelectNonZone(state)`
 - Acción:
   - Estado principal := `state`
-  - `✋ Manual` := ON
+  - `✋ Manual` := **ON** — **solo si** el estado anterior fue establecido por Geofencing (`autoUpdated=true`, es decir, el usuario estaba en estado `AUTO_ZONA`)
+  - `✋ Manual` := **OFF** (sin cambio) — si el estado anterior NO fue automático (estado `AUTO_EN_CAMINO`, `INITIAL` u otro estado manual)
   - Actualiza timestamp
+
+> **Corrección 2026-03-30:** La versión anterior decía `✋ Manual := ON` de forma incondicional.
+> El comportamiento correcto (confirmado por Prueba B2, B3 y T3.30.2) es que `✋ Manual`
+> solo aparece cuando el usuario sobreescribe deliberadamente un estado que el GPS puso automáticamente en una zona.
 
 #### Regla M2 — Usuario intenta seleccionar una Zona (NO permitido)
 - Evento: `E2: UserSelectZone(zoneState)`
@@ -215,6 +273,10 @@ Para mantener el comportamiento determinista, si múltiples Zonas coinciden al m
 - Gana la Zona de **menor radio** (más específica).
 - En caso de empate:
   - Gana la Zona creada primero (o la de mayor prioridad si existe ese atributo).
+
+> **Implementado 2026-03-30 (PR #54):** El código en `GeofencingService._onLocationUpdate` ahora
+> ordena las zonas contenedoras por `radiusMeters` ascendente y toma la primera.
+> Antes del fix el comportamiento era no-determinista (dependía del orden de la consulta a Firestore).
 
 ---
 

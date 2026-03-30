@@ -97,7 +97,7 @@
 | 20.2 | Con zonas activas — usuario sale de una zona | Estado cambia a "En camino" automáticamente | 👁 |✅ | Geofencing manual funciona correctamente |
 | 30.1 | Dentro de zona, usuario cambia estado manualmente a no-zona | Muestra: emoji · nickname · estado · tiempo · ✋ Manual | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
 | 30.2 | Fuera de zona, usuario cambia estado manualmente | Muestra: emoji · nickname · estado · tiempo · ❓ Ubicación desconocida (sin ✋ Manual — `manualOverride=false` cuando `zoneId=null`) | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Corregido 2026-03-30: ✋ no aplica desde AUTO_DRIVING porque `wasInZone=false`. Confirmado por máquina de estados (Prueba B3). |
-| 30.3 | Intento de cambiar zona automática por otra zona | Comportamiento bloqueado, se mantiene el estado actual | 🔗 | | |
+| 30.3 | Intento de cambiar zona automática por otra zona | Comportamiento bloqueado, se mantiene el estado actual | 👁 | ✅ | Verificado manualmente 2026-03-30. Ver procedimiento en tabla de pruebas manuales. No automatizable: `StatusSelectorOverlay` carga Firebase via fire-and-forget en initState, sin streams activos el event loop del test binding no procesa las platform channel callbacks. |
 
 ---
 
@@ -147,6 +147,7 @@
 | 7 | T2.13 | 2 | Solicitante reenvía código tras expiración | B reingresa mismo código → nueva solicitud `pending` creada con nuevo `requestedAt`. |
 | 10 | T3.20.1 | 3 | Con zonas activas — usuario entra a una zona | Requiere GPS activo y zona configurada en el círculo. |
 | 11 | T3.20.2 | 3 | Con zonas activas — usuario sale de una zona | Verificar cambio automático a "En camino". |
+| 11b | T3.30.3 | 3 | Intento de cambiar zona automática por zona predefinida | Precondición: círculo con al menos una zona configurada. Pasos: tocar propio avatar → selector abre → botones 🏠🏫🏢🏥 con opacidad reducida → tocar cualquiera → modal "Acción no permitida" aparece → tocar "Entendido" → estado no cambió. |
 | 12 | T4.1 | 4 | App minimizada — ícono visible en barra superior | Inspección visual en dispositivo físico. |
 | 13 | T4.2 | 4 | App minimizada sin cerrar sesión — modo silent activo | Verificar que el ícono persiste y el servicio sigue vivo. |
 | 14 | T4.3 | 4 | Cerrar sesión — ícono desaparece de barra superior | Comportamiento a confirmar. |
