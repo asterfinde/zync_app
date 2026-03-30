@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -34,6 +35,14 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   // Únicamente esos botones se inhabilitan en el selector.
   Set<String> _configuredZoneTypes = {};
   bool _isLoadingGrid = true; // NUEVO: Prevenir render antes de cargar zonas
+
+  // SOS press & hold
+  Timer? _sosTimer;
+  double _sosHoldProgress = 0.0;
+  bool _sosHolding = false;
+
+  // Grid sin SOS (SOS va en botón separado)
+  List<StatusType?> get _displayGrid => _statusGrid.where((s) => s?.id != 'sos').toList();
 
   @override
   void initState() {
@@ -78,7 +87,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       // Filtrar zonas que sean de tipo predefinido
       final predefinedZones = zonesSnapshot.docs.where((doc) {
         final type = doc.data()['type'] as String?;
-        return type != null && ['home', 'school', 'work', 'medical'].contains(type);
+        return type != null && ['home', 'school', 'university', 'work'].contains(type);
       }).toList();
 
       // Recopilar los tipos de zona efectivamente configurados
@@ -189,8 +198,98 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   @override
   void dispose() {
+    _sosTimer?.cancel();
     _animationController.dispose();
     super.dispose();
+  }
+
+  void _startSosHold() {
+    if (_isUpdating) return;
+    setState(() {
+      _sosHolding = true;
+      _sosHoldProgress = 0.0;
+    });
+    _sosTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _sosHoldProgress += 30 / 1500);
+      if (_sosHoldProgress >= 1.0) {
+        timer.cancel();
+        _triggerSos();
+      }
+    });
+  }
+
+  void _cancelSosHold() {
+    _sosTimer?.cancel();
+    _sosTimer = null;
+    if (mounted) {
+      setState(() {
+        _sosHolding = false;
+        _sosHoldProgress = 0.0;
+      });
+    }
+  }
+
+  Future<void> _triggerSos() async {
+    final sos = StatusType.fallbackPredefined.firstWhere((s) => s.id == 'sos');
+    _cancelSosHold();
+    await _handleStatusSelection(sos);
+  }
+
+  Widget _buildSosButton() {
+    return GestureDetector(
+      onTapDown: (_) => _startSosHold(),
+      onTapUp: (_) => _cancelSosHold(),
+      onTapCancel: _cancelSosHold,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: _sosHolding
+              ? Colors.red.withOpacity(0.25)
+              : Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _sosHolding ? Colors.red : Colors.red.withOpacity(0.5),
+            width: _sosHolding ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_sosHolding) ...[
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  value: _sosHoldProgress,
+                  color: Colors.red,
+                  strokeWidth: 3,
+                  backgroundColor: Colors.red.withOpacity(0.2),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ] else ...[
+              const Text('🆘', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              _sosHolding ? 'Enviando SOS...' : 'SOS  —  Mantén presionado',
+              style: TextStyle(
+                color: Colors.red.shade300,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Maneja la selección de estado reutilizando StatusService existente
@@ -369,10 +468,9 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                                       mainAxisSpacing: 8, // PM5 FIX: Reducido de 10 a 8
                                       childAspectRatio: 1,
                                     ),
-                                    itemCount: _statusGrid.length,
+                                    itemCount: _displayGrid.length,
                                     itemBuilder: (context, index) {
-                                      // Validar que tenemos suficientes items en el grid
-                                      if (_statusGrid.isEmpty || index >= _statusGrid.length) {
+                                      if (_displayGrid.isEmpty || index >= _displayGrid.length) {
                                         return const Center(
                                           child: CircularProgressIndicator(
                                             color: Color(0xFF1EE9A4),
@@ -381,9 +479,8 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                                         );
                                       }
 
-                                      final gridItem = _statusGrid[index];
+                                      final gridItem = _displayGrid[index];
 
-                                      // Mostrar todos los emojis
                                       if (gridItem != null) {
                                         return _buildStatusButton(gridItem);
                                       }
@@ -393,6 +490,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                                   ),
                                 ),
                               ),
+                        _buildSosButton(),
                       ],
                     ),
                   ),

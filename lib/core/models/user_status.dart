@@ -145,34 +145,43 @@ class StatusType extends Equatable {
         category: 'availability',
         order: 4),
 
-    // FILA 2: UBICACIÓN
+    // FILA 2: UBICACIÓN (4 zonas con ZoneType correspondiente)
     StatusType(id: 'home', emoji: '🏠', label: 'En casa', shortLabel: 'Casa', category: 'location', order: 5),
     StatusType(
         id: 'school', emoji: '🏫', label: 'En el colegio', shortLabel: 'Colegio', category: 'location', order: 6),
-    StatusType(id: 'work', emoji: '🏢', label: 'En el trabajo', shortLabel: 'Trabajo', category: 'location', order: 7),
     StatusType(
-        id: 'medical', emoji: '🏥', label: 'En consulta', shortLabel: 'Consulta', category: 'location', order: 8),
+        id: 'university',
+        emoji: '🎓',
+        label: 'En la universidad',
+        shortLabel: 'Universidad',
+        category: 'location',
+        order: 7),
+    StatusType(id: 'work', emoji: '🏢', label: 'En el trabajo', shortLabel: 'Trabajo', category: 'location', order: 8),
 
     // FILA 3: ACTIVIDAD
-    StatusType(id: 'meeting', emoji: '👥', label: 'Reunión', shortLabel: 'Reunión', category: 'activity', order: 9),
     StatusType(
-        id: 'studying', emoji: '📚', label: 'Estudiando', shortLabel: 'Estudia', category: 'activity', order: 10),
-    StatusType(id: 'eating', emoji: '🍽️', label: 'Comiendo', shortLabel: 'Comiendo', category: 'activity', order: 11),
+        id: 'medical', emoji: '🏥', label: 'En consulta', shortLabel: 'Consulta', category: 'location', order: 9),
+    StatusType(id: 'meeting', emoji: '👥', label: 'Reunión', shortLabel: 'Reunión', category: 'activity', order: 10),
     StatusType(
-        id: 'exercising', emoji: '💪', label: 'Ejercicio', shortLabel: 'Ejercicio', category: 'activity', order: 12),
+        id: 'studying', emoji: '📚', label: 'Estudiando', shortLabel: 'Estudia', category: 'activity', order: 11),
+    StatusType(id: 'eating', emoji: '🍽️', label: 'Comiendo', shortLabel: 'Comiendo', category: 'activity', order: 12),
 
-    // FILA 4: TRANSPORTE + SOS
-    StatusType(id: 'driving', emoji: '🚗', label: 'En camino', shortLabel: 'Camino', category: 'transport', order: 13),
+    // FILA 4: TRANSPORTE
     StatusType(
-        id: 'walking', emoji: '🚶', label: 'Caminando', shortLabel: 'Caminando', category: 'transport', order: 14),
+        id: 'exercising', emoji: '💪', label: 'Ejercicio', shortLabel: 'Ejercicio', category: 'activity', order: 13),
+    StatusType(id: 'driving', emoji: '🚗', label: 'En camino', shortLabel: 'Camino', category: 'transport', order: 14),
+    StatusType(
+        id: 'walking', emoji: '🚶', label: 'Caminando', shortLabel: 'Caminando', category: 'transport', order: 15),
     StatusType(
         id: 'public_transport',
         emoji: '🚌',
         label: 'En transporte',
         shortLabel: 'Transporte',
         category: 'transport',
-        order: 15),
-    StatusType(id: 'sos', emoji: '🆘', label: 'SOS', shortLabel: 'SOS', category: 'emergency', order: 16),
+        order: 16),
+
+    // SOS: se muestra como botón separado (no en el grid principal)
+    StatusType(id: 'sos', emoji: '🆘', label: 'SOS', shortLabel: 'SOS', category: 'emergency', order: 17),
   ];
 }
 

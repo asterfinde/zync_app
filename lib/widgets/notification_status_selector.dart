@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -27,7 +28,15 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   bool _isUpdating = false;
   Set<String> _configuredZoneTypes = {};
 
-  // CRÍTICO: Grid hardcodeado con los 16 emojis correctos
+  // SOS press & hold
+  Timer? _sosTimer;
+  double _sosHoldProgress = 0.0;
+  bool _sosHolding = false;
+
+  // Grid sin SOS (SOS va en botón separado)
+  List<StatusType> get _displayGrid => _statusGrid.where((s) => s.id != 'sos').toList();
+
+  // CRÍTICO: Grid hardcodeado con los 17 emojis (16 en grid + SOS separado)
   static final List<StatusType> _statusGrid = [
     // FILA 1: DISPONIBILIDAD
     StatusType(id: 'fine', emoji: '🙂', label: 'Todo bien', shortLabel: 'Bien', category: 'availability', order: 1),
@@ -41,34 +50,43 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
         category: 'availability',
         order: 4),
 
-    // FILA 2: UBICACIÓN (ZONAS)
+    // FILA 2: UBICACIÓN (4 zonas con ZoneType correspondiente)
     StatusType(id: 'home', emoji: '🏠', label: 'En casa', shortLabel: 'Casa', category: 'location', order: 5),
     StatusType(
         id: 'school', emoji: '🏫', label: 'En el colegio', shortLabel: 'Colegio', category: 'location', order: 6),
-    StatusType(id: 'work', emoji: '🏢', label: 'En el trabajo', shortLabel: 'Trabajo', category: 'location', order: 7),
     StatusType(
-        id: 'medical', emoji: '🏥', label: 'En consulta', shortLabel: 'Consulta', category: 'location', order: 8),
+        id: 'university',
+        emoji: '🎓',
+        label: 'En la universidad',
+        shortLabel: 'Universidad',
+        category: 'location',
+        order: 7),
+    StatusType(id: 'work', emoji: '🏢', label: 'En el trabajo', shortLabel: 'Trabajo', category: 'location', order: 8),
 
     // FILA 3: ACTIVIDAD
-    StatusType(id: 'meeting', emoji: '👥', label: 'Reunión', shortLabel: 'Reunión', category: 'activity', order: 9),
     StatusType(
-        id: 'studying', emoji: '📚', label: 'Estudiando', shortLabel: 'Estudia', category: 'activity', order: 10),
-    StatusType(id: 'eating', emoji: '🍽️', label: 'Comiendo', shortLabel: 'Comiendo', category: 'activity', order: 11),
+        id: 'medical', emoji: '🏥', label: 'En consulta', shortLabel: 'Consulta', category: 'location', order: 9),
+    StatusType(id: 'meeting', emoji: '👥', label: 'Reunión', shortLabel: 'Reunión', category: 'activity', order: 10),
     StatusType(
-        id: 'exercising', emoji: '💪', label: 'Ejercicio', shortLabel: 'Ejercicio', category: 'activity', order: 12),
+        id: 'studying', emoji: '📚', label: 'Estudiando', shortLabel: 'Estudia', category: 'activity', order: 11),
+    StatusType(id: 'eating', emoji: '🍽️', label: 'Comiendo', shortLabel: 'Comiendo', category: 'activity', order: 12),
 
-    // FILA 4: TRANSPORTE + SOS
-    StatusType(id: 'driving', emoji: '🚗', label: 'En camino', shortLabel: 'Camino', category: 'transport', order: 13),
+    // FILA 4: TRANSPORTE
     StatusType(
-        id: 'walking', emoji: '🚶', label: 'Caminando', shortLabel: 'Caminando', category: 'transport', order: 14),
+        id: 'exercising', emoji: '💪', label: 'Ejercicio', shortLabel: 'Ejercicio', category: 'activity', order: 13),
+    StatusType(id: 'driving', emoji: '🚗', label: 'En camino', shortLabel: 'Camino', category: 'transport', order: 14),
+    StatusType(
+        id: 'walking', emoji: '🚶', label: 'Caminando', shortLabel: 'Caminando', category: 'transport', order: 15),
     StatusType(
         id: 'public_transport',
         emoji: '🚌',
         label: 'En transporte',
         shortLabel: 'Transporte',
         category: 'transport',
-        order: 15),
-    StatusType(id: 'sos', emoji: '🆘', label: 'SOS', shortLabel: 'SOS', category: 'emergency', order: 16),
+        order: 16),
+
+    // SOS: botón separado (no aparece en el grid principal)
+    StatusType(id: 'sos', emoji: '🆘', label: 'SOS', shortLabel: 'SOS', category: 'emergency', order: 17),
   ];
 
   @override
@@ -125,7 +143,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
 
       final predefinedZones = zonesSnapshot.docs.where((doc) {
         final type = doc.data()['type'] as String?;
-        return type != null && ['home', 'school', 'work', 'medical'].contains(type);
+        return type != null && ['home', 'school', 'university', 'work'].contains(type);
       }).toList();
 
       final configuredTypes = predefinedZones
@@ -157,8 +175,98 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
 
   @override
   void dispose() {
+    _sosTimer?.cancel();
     _animationController.dispose();
     super.dispose();
+  }
+
+  void _startSosHold() {
+    if (_isUpdating) return;
+    setState(() {
+      _sosHolding = true;
+      _sosHoldProgress = 0.0;
+    });
+    _sosTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _sosHoldProgress += 30 / 1500);
+      if (_sosHoldProgress >= 1.0) {
+        timer.cancel();
+        _triggerSos();
+      }
+    });
+  }
+
+  void _cancelSosHold() {
+    _sosTimer?.cancel();
+    _sosTimer = null;
+    if (mounted) {
+      setState(() {
+        _sosHolding = false;
+        _sosHoldProgress = 0.0;
+      });
+    }
+  }
+
+  Future<void> _triggerSos() async {
+    final sos = _statusGrid.firstWhere((s) => s.id == 'sos');
+    _cancelSosHold();
+    await _handleStatusSelection(sos);
+  }
+
+  Widget _buildSosButton() {
+    return GestureDetector(
+      onTapDown: (_) => _startSosHold(),
+      onTapUp: (_) => _cancelSosHold(),
+      onTapCancel: _cancelSosHold,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: _sosHolding
+              ? Colors.red.withOpacity(0.25)
+              : Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _sosHolding ? Colors.red : Colors.red.withOpacity(0.5),
+            width: _sosHolding ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_sosHolding) ...[
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  value: _sosHoldProgress,
+                  color: Colors.red,
+                  strokeWidth: 3,
+                  backgroundColor: Colors.red.withOpacity(0.2),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ] else ...[
+              const Text('🆘', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              _sosHolding ? 'Enviando SOS...' : 'SOS  —  Mantén presionado',
+              style: TextStyle(
+                color: Colors.red.shade300,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _handleStatusSelection(StatusType status) async {
@@ -314,14 +422,15 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
                                 mainAxisSpacing: 8,
                                 childAspectRatio: 1,
                               ),
-                              itemCount: _statusGrid.length,
+                              itemCount: _displayGrid.length,
                               itemBuilder: (context, index) {
-                                final status = _statusGrid[index];
+                                final status = _displayGrid[index];
                                 return _buildStatusButton(status);
                               },
                             ),
                           ),
                         ),
+                        _buildSosButton(),
                       ],
                     ),
                   ),
