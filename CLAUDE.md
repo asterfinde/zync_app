@@ -39,6 +39,20 @@
 - Confirmar el alcance exacto de cada cambio antes de ejecutarlo.
 - Al cierre de sesión, proponer entradas para las secciones 11 y 12 si corresponde, y esperar aprobación.
 
+### Modo autónomo vs. modo con autorización
+
+El desarrollador puede controlar el nivel de autonomía de la IA mediante prefijos en sus instrucciones:
+
+| Prefijo | Significado | Comportamiento |
+|---------|-------------|----------------|
+| `SOLO` | Sin interrupciones | La IA ejecuta todos los pasos de forma autónoma: cambios, commit, PR, merge y limpieza de ramas. No pide autorización en ningún punto del proceso. |
+| `AUTH` | Con autorización (default) | La IA muestra el alcance de cada cambio y espera aprobación antes de proceder. Este es el comportamiento por defecto. |
+
+**Reglas de aplicación:**
+- El prefijo aplica únicamente a la instrucción que lo lleva, no a las siguientes.
+- Si no hay prefijo, se asume `AUTH`.
+- En modo `SOLO`, la IA igual reporta al final un resumen de todo lo ejecutado.
+
 ---
 
 ## 3. Estructura del Proyecto
