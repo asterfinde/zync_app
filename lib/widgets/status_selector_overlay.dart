@@ -214,7 +214,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         timer.cancel();
         return;
       }
-      setState(() => _sosHoldProgress += 30 / 1500);
+      setState(() => _sosHoldProgress += 30 / 1000);
       if (_sosHoldProgress >= 1.0) {
         timer.cancel();
         _triggerSos();
@@ -249,13 +249,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
-          color: _sosHolding
-              ? Colors.red.withOpacity(0.25)
-              : Colors.red.withOpacity(0.1),
+          color: Colors.red,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _sosHolding ? Colors.red : Colors.red.withOpacity(0.5),
-            width: _sosHolding ? 2 : 1,
+            color: Colors.red,
+            width: 2,
           ),
         ),
         child: Column(
@@ -268,27 +266,29 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                 height: 22,
                 child: CircularProgressIndicator(
                   value: _sosHoldProgress,
-                  color: Colors.red,
+                  color: Colors.white,
                   strokeWidth: 3,
-                  backgroundColor: Colors.red.withOpacity(0.2),
+                  backgroundColor: Colors.red.shade700,
                 ),
               )
             else
-              Text(
+              const Text(
                 'S.O.S',
                 style: TextStyle(
-                  color: Colors.red.shade300,
+                  color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
+                  decoration: TextDecoration.none,
                 ),
               ),
             const SizedBox(height: 4),
             Text(
               _sosHolding ? 'Enviando SOS...' : 'Mantén presionado para enviar',
-              style: TextStyle(
-                color: Colors.red.shade300,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 11,
+                decoration: TextDecoration.none,
               ),
               textAlign: TextAlign.center,
             ),
