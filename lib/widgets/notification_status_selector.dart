@@ -7,7 +7,7 @@ import '../core/models/user_status.dart';
 import '../core/services/status_service.dart';
 
 /// Modal de selección de estado ESPECÍFICO para notificaciones
-/// Grid hardcodeado de 16 emojis sin lógica asíncrona compleja
+/// Idéntico al StatusSelectorOverlay del Círculo — fuente de verdad: fallbackPredefined
 class NotificationStatusSelector extends StatefulWidget {
   final VoidCallback? onClose;
 
@@ -26,7 +26,13 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   late Animation<double> _scaleAnimation;
 
   bool _isUpdating = false;
+
+  // Grid dinámico — inicializado con fallbackPredefined para evitar timing issues
+  List<StatusType?> _statusGrid = StatusType.fallbackPredefined;
+
+  // Solo los tipos de zona configurados geográficamente se inhabilitan en el selector
   Set<String> _configuredZoneTypes = {};
+  bool _isLoadingGrid = true;
 
   // SOS press & hold
   Timer? _sosTimer;
@@ -34,67 +40,70 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   bool _sosHolding = false;
 
   // Grid sin SOS (SOS va en botón separado)
-  List<StatusType> get _displayGrid => _statusGrid.where((s) => s.id != 'sos').toList();
-
-  // CRÍTICO: Grid hardcodeado con los 17 emojis (16 en grid + SOS separado)
-  static final List<StatusType> _statusGrid = [
-    // FILA 1: DISPONIBILIDAD
-    StatusType(id: 'fine', emoji: '🙂', label: 'Todo bien', shortLabel: 'Bien', category: 'availability', order: 1),
-    StatusType(id: 'busy', emoji: '🔴', label: 'Ocupado', shortLabel: 'Ocupado', category: 'availability', order: 2),
-    StatusType(id: 'away', emoji: '🟡', label: 'Ausente', shortLabel: 'Ausente', category: 'availability', order: 3),
-    StatusType(
-        id: 'do_not_disturb',
-        emoji: '🔕',
-        label: 'No molestar',
-        shortLabel: 'No molestar',
-        category: 'availability',
-        order: 4),
-
-    // FILA 2: UBICACIÓN (4 zonas con ZoneType correspondiente)
-    StatusType(id: 'home', emoji: '🏠', label: 'En casa', shortLabel: 'Casa', category: 'location', order: 5),
-    StatusType(
-        id: 'school', emoji: '🏫', label: 'En el colegio', shortLabel: 'Colegio', category: 'location', order: 6),
-    StatusType(
-        id: 'university',
-        emoji: '🎓',
-        label: 'En la universidad',
-        shortLabel: 'Universidad',
-        category: 'location',
-        order: 7),
-    StatusType(id: 'work', emoji: '🏢', label: 'En el trabajo', shortLabel: 'Trabajo', category: 'location', order: 8),
-
-    // FILA 3: ACTIVIDAD
-    StatusType(
-        id: 'medical', emoji: '🏥', label: 'En consulta', shortLabel: 'Consulta', category: 'location', order: 9),
-    StatusType(id: 'meeting', emoji: '👥', label: 'Reunión', shortLabel: 'Reunión', category: 'activity', order: 10),
-    StatusType(
-        id: 'studying', emoji: '📚', label: 'Estudiando', shortLabel: 'Estudia', category: 'activity', order: 11),
-    StatusType(id: 'eating', emoji: '🍽️', label: 'Comiendo', shortLabel: 'Comiendo', category: 'activity', order: 12),
-
-    // FILA 4: TRANSPORTE
-    StatusType(
-        id: 'exercising', emoji: '💪', label: 'Ejercicio', shortLabel: 'Ejercicio', category: 'activity', order: 13),
-    StatusType(id: 'driving', emoji: '🚗', label: 'En camino', shortLabel: 'Camino', category: 'transport', order: 14),
-    StatusType(
-        id: 'walking', emoji: '🚶', label: 'Caminando', shortLabel: 'Caminando', category: 'transport', order: 15),
-    StatusType(
-        id: 'public_transport',
-        emoji: '🚌',
-        label: 'En transporte',
-        shortLabel: 'Transporte',
-        category: 'transport',
-        order: 16),
-
-    // SOS: botón separado (no aparece en el grid principal)
-    StatusType(id: 'sos', emoji: '🆘', label: 'SOS', shortLabel: 'SOS', category: 'emergency', order: 17),
-  ];
+  List<StatusType?> get _displayGrid => _statusGrid.where((s) => s?.id != 'sos').toList();
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
-    _checkZones();
-    _animationController.forward();
+    _loadStatusGrid();
+    _waitForGridThenAnimate();
+  }
+
+  /// Espera a que el grid esté cargado antes de animar
+  Future<void> _waitForGridThenAnimate() async {
+    while (_isLoadingGrid && mounted) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+    if (mounted) {
+      _animationController.forward();
+    }
+  }
+
+  Future<void> _loadStatusGrid() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Usuario no autenticado');
+
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final circleId = userDoc.data()?['circleId'] as String?;
+      if (circleId == null) throw Exception('Usuario sin círculo');
+
+      final zonesSnapshot =
+          await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').get();
+
+      final predefinedZones = zonesSnapshot.docs.where((doc) {
+        final type = doc.data()['type'] as String?;
+        return type != null && ['home', 'school', 'university', 'work'].contains(type);
+      }).toList();
+
+      final configuredTypes = predefinedZones
+          .map((doc) => doc.data()['type'] as String)
+          .toSet();
+
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      if (mounted) {
+        setState(() {
+          _configuredZoneTypes = configuredTypes;
+          _isLoadingGrid = false;
+        });
+
+        if (configuredTypes.isNotEmpty) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) setState(() {});
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _statusGrid = StatusType.fallbackPredefined;
+          _configuredZoneTypes = {};
+          _isLoadingGrid = false;
+        });
+      }
+    }
   }
 
   void _setupAnimations() {
@@ -118,59 +127,6 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
       parent: _animationController,
       curve: Curves.elasticOut,
     ));
-  }
-
-  Future<void> _checkZones() async {
-    try {
-      print('[NotificationStatusSelector] 🔍 Verificando zonas configuradas...');
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        print('[NotificationStatusSelector] ❌ Usuario no autenticado');
-        return;
-      }
-
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      final circleId = userDoc.data()?['circleId'] as String?;
-
-      if (circleId == null) {
-        print('[NotificationStatusSelector] ❌ Usuario sin círculo');
-        return;
-      }
-
-      final zonesSnapshot =
-          await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').get();
-
-      final predefinedZones = zonesSnapshot.docs.where((doc) {
-        final type = doc.data()['type'] as String?;
-        return type != null && ['home', 'school', 'university', 'work'].contains(type);
-      }).toList();
-
-      final configuredTypes = predefinedZones
-          .map((doc) => doc.data()['type'] as String)
-          .toSet();
-
-      print('[NotificationStatusSelector] 📍 Tipos de zona configurados: $configuredTypes');
-
-      if (mounted) {
-        setState(() {
-          _configuredZoneTypes = configuredTypes;
-        });
-
-        if (configuredTypes.isNotEmpty) {
-          Future.delayed(const Duration(milliseconds: 200), () {
-            if (mounted) setState(() {});
-          });
-        }
-      }
-    } catch (e) {
-      print('[NotificationStatusSelector] ❌ Error verificando zonas: $e');
-      if (mounted) {
-        setState(() {
-          _configuredZoneTypes = {};
-        });
-      }
-    }
   }
 
   @override
@@ -211,7 +167,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   }
 
   Future<void> _triggerSos() async {
-    final sos = _statusGrid.firstWhere((s) => s.id == 'sos');
+    final sos = StatusType.fallbackPredefined.firstWhere((s) => s.id == 'sos');
     _cancelSosHold();
     await _handleStatusSelection(sos);
   }
@@ -279,7 +235,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
     if (_isUpdating) return;
 
     if (_configuredZoneTypes.contains(status.id)) {
-      await _showZoneWarningModal();
+      await _showZoneSelectionNotAllowedModal();
       return;
     }
 
@@ -287,24 +243,20 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
 
     try {
       HapticFeedback.lightImpact();
-      print('[NotificationStatusSelector] 🎯 Actualizando estado: ${status.label}');
 
       final result = await StatusService.updateUserStatus(status);
 
       if (result.isSuccess) {
-        print('[NotificationStatusSelector] ✅ Estado actualizado');
         HapticFeedback.lightImpact();
         await Future.delayed(const Duration(milliseconds: 300));
         await _closeModal();
       } else {
-        print('[NotificationStatusSelector] ⚠️ Error: ${result.errorMessage}');
         if (result.errorMessage == 'zone_manual_selection_not_allowed') {
-          await _showZoneWarningModal();
+          await _showZoneSelectionNotAllowedModal();
         }
         HapticFeedback.heavyImpact();
       }
     } catch (e) {
-      print('[NotificationStatusSelector] ❌ Excepción: $e');
       HapticFeedback.heavyImpact();
     } finally {
       if (mounted) {
@@ -313,7 +265,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
     }
   }
 
-  Future<void> _showZoneWarningModal() async {
+  Future<void> _showZoneSelectionNotAllowedModal() async {
     if (!mounted) return;
 
     await showDialog<void>(
@@ -367,7 +319,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
         widget.onClose?.call();
       }
     } catch (e) {
-      print('[NotificationStatusSelector] ❌ Error cerrando: $e');
+      // ignore
     }
   }
 
@@ -412,30 +364,53 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: maxGridHeight),
-                          child: Scrollbar(
-                            thumbVisibility: true,
-                            thickness: 4,
-                            radius: const Radius.circular(8),
-                            child: GridView.builder(
-                              shrinkWrap: true,
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.all(8),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                                childAspectRatio: 1,
+                        _isLoadingGrid
+                            ? SizedBox(
+                                height: maxGridHeight,
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF1EE9A4),
+                                  ),
+                                ),
+                              )
+                            : ConstrainedBox(
+                                constraints: BoxConstraints(maxHeight: maxGridHeight),
+                                child: Scrollbar(
+                                  thumbVisibility: true,
+                                  thickness: 4,
+                                  radius: const Radius.circular(8),
+                                  child: GridView.builder(
+                                    shrinkWrap: true,
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.all(8),
+                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 4,
+                                      crossAxisSpacing: 8,
+                                      mainAxisSpacing: 8,
+                                      childAspectRatio: 1,
+                                    ),
+                                    itemCount: _displayGrid.length,
+                                    itemBuilder: (context, index) {
+                                      if (_displayGrid.isEmpty || index >= _displayGrid.length) {
+                                        return const Center(
+                                          child: CircularProgressIndicator(
+                                            color: Color(0xFF1EE9A4),
+                                            strokeWidth: 2,
+                                          ),
+                                        );
+                                      }
+
+                                      final gridItem = _displayGrid[index];
+
+                                      if (gridItem != null) {
+                                        return _buildStatusButton(gridItem);
+                                      }
+
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
+                                ),
                               ),
-                              itemCount: _displayGrid.length,
-                              itemBuilder: (context, index) {
-                                final status = _displayGrid[index];
-                                return _buildStatusButton(status);
-                              },
-                            ),
-                          ),
-                        ),
                         _buildSosButton(),
                       ],
                     ),
@@ -488,7 +463,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
                 child: Opacity(
                   opacity: isBlockedZone ? 0.35 : 0.8,
                   child: Text(
-                    status.shortLabel,
+                    status.shortDescription,
                     style: const TextStyle(
                       fontSize: 9,
                       color: Colors.white,
