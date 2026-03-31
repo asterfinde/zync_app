@@ -105,10 +105,10 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| 4.0 | Modal de barra superior idéntico al modal del Círculo | Ambos modales muestran los mismos 16 estados en el mismo orden, con el mismo botón SOS al fondo | 👁 | ✅ | Verificado manualmente 2026-03-30. Fix: EmojiDialogActivity (nativo) usaba fallback desactualizado y mostraba SOS en el grid. Solución: fallback alineado con StatusType.fallbackPredefined + SOS filtrado del grid + botón press-hold 1s al fondo (PR #59). StatusModalActivity descartada — crea engine Flutter nuevo que rompe silent mode. |
+| 4.0 | Modal de barra superior idéntico al modal del Círculo | Ambos modales muestran los mismos 16 estados en el mismo orden, con el mismo botón SOS al fondo | 👁 | ✅ | Verificado 2026-03-31. PR #61 + commits a144ce2 y 15ee7e6: (1) "Bien" no aparecía — EmojiDialogActivity ahora usa hardcoded fallback como base, ignorando Firebase para predefinidos; (2) zonas configuradas no se bloqueaban — EmojiCacheService sincroniza zone types a SharedPreferences y ZoneService dispara re-sync al crear/editar/eliminar zonas; (3) espacio vacío antes del SOS — ScrollView usa WRAP_CONTENT con AT_MOST en lugar de altura fija; (4) emoji Reunión era 📅 en nativo vs 👥 en fuente de la verdad — corregido en hardcoded fallback. |
 | 4.1 | App minimizada | Ícono visible en barra superior del dispositivo | 👁 | ✅ | Si se aprecia el ícono de la app con el valor "i". Se puede personalizar a otro? |
 | 4.2 | Sin cierre de sesión, app minimizada | App permanece activa en modo silent con ícono visible | 👁 | ✅| Todo Ok pero con la misma duda anterior|
-| 4.3 | Con cierre de sesión | Ícono desaparece de la barra superior *(comportamiento a confirmar)* | 👁 | | |
+| 4.3 | Con cierre de sesión | Ícono desaparece de la barra superior  | 👁 |✅ | El usuario desaparece hasta que no se vuelva a loguear/ registrar _¿es correcto esto, o contradice la filosofía de ZYNC?_|
 | 4.4 | Modal NotificationStatusSelector muestra 16 botones de estado | Grid visible con los 16 estados del sistema | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Modal renderizado en aislamiento. |
 | 4.5 | Selección de estado desde modal → Firestore actualizado | `statusType` actualizado en `circles/{id}/memberStatus` | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
 
@@ -131,6 +131,7 @@
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
 | 6.1 | Al girar el celular el modal de Emojis/Estados no cabe en la pantalla y ocurre un 'overflow' de la misma | Mantener la distribución de los elementos | 👁 | | |
+| 6.2 | Hay una demora en tener el foco el textbox donde se ingresa el nombre para crear un Círculo nuevo  | El foco debe de aparecer por default sobre el textbox de inmediato | 👁 | | |
 
 
 ---
