@@ -126,10 +126,12 @@ class StatusService {
         throw Exception('Usuario no está en ningún círculo');
       }
 
-      final zonesConfigured = await _hasZonesConfigured(circleId);
-      if (zonesConfigured && _blockedZoneStatusIds.contains(newStatus.id)) {
-        log('[StatusService] 🚫 Bloqueado: selección manual de zona (${newStatus.id}) con zonas configuradas');
-        return StatusUpdateResult.error(_zoneManualSelectionNotAllowedError);
+      if (_blockedZoneStatusIds.contains(newStatus.id)) {
+        final isThisZoneConfigured = await _isSpecificZoneTypeConfigured(circleId, newStatus.id);
+        if (isThisZoneConfigured) {
+          log('[StatusService] 🚫 Bloqueado: zona ${newStatus.id} está configurada como zona de geofencing');
+          return StatusUpdateResult.error(_zoneManualSelectionNotAllowedError);
+        }
       }
 
       // Leer el estado actual del usuario para verificar si estaba en una zona
@@ -238,13 +240,18 @@ class StatusService {
     }
   }
 
-  static Future<bool> _hasZonesConfigured(String circleId) async {
+  static Future<bool> _isSpecificZoneTypeConfigured(String circleId, String zoneType) async {
     try {
-      final snapshot =
-          await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').limit(1).get();
+      final snapshot = await FirebaseFirestore.instance
+          .collection('circles')
+          .doc(circleId)
+          .collection('zones')
+          .where('type', isEqualTo: zoneType)
+          .limit(1)
+          .get();
       return snapshot.docs.isNotEmpty;
     } catch (e) {
-      log('[StatusService] ⚠️ Error verificando zonas configuradas: $e');
+      log('[StatusService] ⚠️ Error verificando zona $zoneType: $e');
       return false;
     }
   }
