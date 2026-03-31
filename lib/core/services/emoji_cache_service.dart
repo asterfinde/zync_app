@@ -10,6 +10,8 @@ import 'package:flutter/foundation.dart';
 class EmojiCacheService {
   static const _cacheKey = 'predefined_emojis';
 
+  static const _zonesCacheKey = 'configured_zone_types';
+
   /// Sincroniza emojis desde Firebase a SharedPreferences para acceso nativo
   /// Incluye tanto predefinidos como personalizados del círculo del usuario
   static Future<void> syncEmojisToNativeCache() async {
@@ -21,6 +23,7 @@ class EmojiCacheService {
 
       // Intentar cargar emojis personalizados del círculo del usuario
       List<dynamic> allEmojis = [];
+      String? foundCircleId;
 
       try {
         // Obtener circleId del usuario actual
@@ -30,6 +33,7 @@ class EmojiCacheService {
 
           final circleId = userDoc.data()?['circleId'] as String?;
           if (circleId != null) {
+            foundCircleId = circleId;
             // Cargar emojis personalizados del círculo
             final customEmojis = await EmojiService.getCustomEmojis(circleId);
 
@@ -67,8 +71,43 @@ class EmojiCacheService {
       await prefs.setString(_cacheKey, jsonString);
 
       debugPrint('[EmojiCacheService] ✅ ${allEmojis.length} emojis sincronizados a cache nativo');
+
+      // Sincronizar zonas configuradas para que EmojiDialogActivity pueda bloquearlas
+      await _syncZoneTypesToNativeCache(foundCircleId);
     } catch (e) {
       debugPrint('[EmojiCacheService] ❌ Error sincronizando: $e');
+    }
+  }
+
+  /// Sincroniza los tipos de zona configurados del círculo a SharedPreferences
+  static Future<void> _syncZoneTypesToNativeCache(String? circleId) async {
+    try {
+      final configuredTypes = <String>[];
+
+      if (circleId != null) {
+        final zonesSnapshot = await FirebaseFirestore.instance
+            .collection('circles')
+            .doc(circleId)
+            .collection('zones')
+            .get();
+
+        for (final doc in zonesSnapshot.docs) {
+          final type = doc.data()['type'] as String?;
+          if (type != null && ['home', 'school', 'university', 'work'].contains(type)) {
+            configuredTypes.add(type);
+          }
+        }
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_zonesCacheKey, jsonEncode(configuredTypes));
+      debugPrint('[EmojiCacheService] ✅ ${configuredTypes.length} zona(s) configurada(s) sincronizada(s): $configuredTypes');
+    } catch (e) {
+      debugPrint('[EmojiCacheService] ❌ Error sincronizando zonas: $e');
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_zonesCacheKey, '[]');
+      } catch (_) {}
     }
   }
 
