@@ -6,8 +6,11 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.Gravity
+import android.view.MotionEvent
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
@@ -20,195 +23,164 @@ import java.util.concurrent.TimeUnit
 /**
  * Modal nativo de Android para selección de emojis
  * Lee emojis desde SharedPreferences (cache Firebase sincronizado por Flutter)
+ * Idéntico en contenido al StatusSelectorOverlay de Flutter
  */
 class EmojiDialogActivity : Activity() {
     private val TAG = "EmojiDialogActivity"
-    
+
     // Emojis cargados desde Firebase cache
     private lateinit var emojis: List<Triple<String, String, String>>
-    
+
+    // SOS press & hold
+    private val sosHandler = Handler(Looper.getMainLooper())
+    private var sosHoldRunnable: Runnable? = null
+    private var sosButtonView: LinearLayout? = null
+    private var sosLabelView: TextView? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "⚡ [NATIVE] Abriendo dialog nativo de emojis...")
-        
-        // Cargar emojis desde SharedPreferences (sincronizado desde Firebase)
+
         emojis = loadEmojisFromCache()
-        
         setupActivityUI()
     }
-    
+
+    override fun onDestroy() {
+        sosHoldRunnable?.let { sosHandler.removeCallbacks(it) }
+        super.onDestroy()
+    }
+
     /**
      * Carga emojis desde SharedPreferences (sincronizados desde Firebase por Flutter)
      */
     private fun loadEmojisFromCache(): List<Triple<String, String, String>> {
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val cachedJson = prefs.getString("flutter.predefined_emojis", null)
-        
+
         if (cachedJson != null) {
             try {
                 Log.d(TAG, "📦 [CACHE] JSON encontrado: ${cachedJson.take(100)}...")
-                
+
                 val emojiList = mutableListOf<Triple<String, String, String>>()
-                
-                // Parse JSON: [{"id":"available","emoji":"🟢","shortLabel":"Disponible"}...]
+
                 val jsonTrimmed = cachedJson.trim()
                 if (jsonTrimmed.startsWith("[") && jsonTrimmed.endsWith("]")) {
                     val content = jsonTrimmed.substring(1, jsonTrimmed.length - 1)
-                    
-                    // Split por objetos
+
                     val objects = content.split("},")
                     for (obj in objects) {
                         var cleanObj = obj.trim()
                         if (!cleanObj.endsWith("}")) cleanObj += "}"
                         if (!cleanObj.startsWith("{")) cleanObj = "{$cleanObj"
-                        
-                        // Extraer campos
+
                         var id = ""
                         var emoji = ""
                         var shortLabel = ""
-                        
+
                         val idMatch = Regex(""""id":"([^"]+)"""").find(cleanObj)
                         val emojiMatch = Regex(""""emoji":"([^"]+)"""").find(cleanObj)
                         val labelMatch = Regex(""""shortLabel":"([^"]+)"""").find(cleanObj)
-                        
+
                         if (idMatch != null) id = idMatch.groupValues[1]
                         if (emojiMatch != null) emoji = emojiMatch.groupValues[1]
                         if (labelMatch != null) shortLabel = labelMatch.groupValues[1]
-                        
+
                         if (id.isNotEmpty() && emoji.isNotEmpty()) {
                             emojiList.add(Triple(emoji, shortLabel, id))
                         }
                     }
                 }
-                
+
                 if (emojiList.isNotEmpty()) {
                     Log.d(TAG, "✅ [CACHE] ${emojiList.size} emojis cargados desde Firebase cache")
-                    
-                    // CAMBIO: No limitar a 16, retornar TODOS los emojis
                     return emojiList
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ [CACHE] Error parseando: ${e.message}")
             }
         }
-        
-        // Fallback: 16 emojis predefinidos de Firebase
-        Log.d(TAG, "⚠️ [CACHE] Sin cache, usando fallback (16 emojis Firebase)")
+
+        // Fallback: idéntico a StatusType.fallbackPredefined en user_status.dart
+        Log.d(TAG, "⚠️ [CACHE] Sin cache, usando fallback")
         return listOf(
-            Triple("🟢", "Disponible", "available"),
+            Triple("🙂", "Bien", "fine"),
             Triple("🔴", "Ocupado", "busy"),
-            Triple("🟠", "Ausente", "away"),
-            Triple("⛔", "No molestar", "do_not_disturb"),
+            Triple("🟡", "Ausente", "away"),
+            Triple("🔕", "No molestar", "do_not_disturb"),
             Triple("🏠", "Casa", "home"),
             Triple("🏫", "Colegio", "school"),
+            Triple("🎓", "Universidad", "university"),
             Triple("🏢", "Trabajo", "work"),
             Triple("🏥", "Consulta", "medical"),
-            Triple("👥", "Reunión", "meeting"),
-            Triple("📚", "Estudiando", "studying"),
+            Triple("📅", "Reunión", "meeting"),
+            Triple("📚", "Estudia", "studying"),
             Triple("🍽️", "Comiendo", "eating"),
-            Triple("🏃", "Ejercitando", "exercising"),
-            Triple("🚗", "Conduciendo", "driving"),
+            Triple("💪", "Ejercicio", "exercising"),
+            Triple("🚗", "Camino", "driving"),
             Triple("🚶", "Caminando", "walking"),
             Triple("🚌", "Transporte", "public_transport"),
             Triple("🆘", "SOS", "sos")
         )
     }
-    
+
     private fun setupActivityUI() {
-        // Root container con fondo semi-transparente (85% opacity como Flutter)
+        // SOS separado del grid principal
+        val mainEmojis = emojis.filter { (_, _, id) -> id != "sos" }
+        val sosItem = emojis.find { (_, _, id) -> id == "sos" }
+
+        // Root container con fondo semi-transparente
         val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#D9000000")) // 85% opacity (0.85 * 255 = 217 = D9)
-            
-            // Cerrar al tocar fuera
+            setBackgroundColor(Color.parseColor("#D9000000"))
             setOnClickListener {
                 Log.d(TAG, "❌ [NATIVE] Tap outside - cerrando")
                 finish()
             }
         }
-        
-        // Container principal con marco (EXACTO como Flutter)
+
+        // Container principal
         val mainContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(
-                dpToPx(20), // padding: 20
-                dpToPx(20),
-                dpToPx(20),
-                dpToPx(20)
-            )
-            
-            // Fondo gris oscuro con borde (Colors.grey.shade900.withOpacity(0.95))
+            setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F21E1E1E")) // 95% opacity grey.shade900
-                cornerRadius = dpToPx(20).toFloat() // borderRadius: 20
-                setStroke(
-                    dpToPx(1), // width: 1
-                    Color.parseColor("#80616161") // Colors.grey.shade700.withOpacity(0.5)
-                )
+                setColor(Color.parseColor("#F21E1E1E"))
+                cornerRadius = dpToPx(20).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#80616161"))
             }
-            
-            // Centrar en pantalla con margen de 32dp
             val params = FrameLayout.LayoutParams(
-                dpToPx(340), // ANCHO FIJO para 4 columnas: (65*4) + (10*4) + (20*2) = 340dp
+                dpToPx(340),
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.CENTER
                 setMargins(dpToPx(32), dpToPx(32), dpToPx(32), dpToPx(32))
             }
             layoutParams = params
-            
-            // Evitar que el tap se propague al root
             isClickable = true
         }
-        
-        // NUEVO: ScrollView para hacer el grid scrollable
+
+        // ScrollView con el grid
         val scrollView = android.widget.ScrollView(this).apply {
-            // Altura máxima: 4 filas de emojis (65dp * 4 + spacing) = ~300dp
-            // Esto fuerza el scroll cuando hay más de 16 emojis (4 filas)
-            val maxHeightDp = (65 * 4) + (10 * 4) + 40 // 4 filas + spacing + padding
+            val maxHeightDp = (65 * 4) + (10 * 4) + 40
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dpToPx(maxHeightDp)
             )
-            isVerticalScrollBarEnabled = true // Mostrar scrollbar
+            isVerticalScrollBarEnabled = true
             scrollBarStyle = android.view.View.SCROLLBARS_OUTSIDE_OVERLAY
         }
-        
-        // Crear GridLayout para los emojis
-        val gridLayout = GridLayout(this).apply {
-            columnCount = 4
-            // CAMBIO: No fijar rowCount, dejar que sea dinámico
-            // rowCount calculado automáticamente según cantidad de emojis
-        }
-        
-        // Agregar cada emoji al grid
-        emojis.forEach { (emoji, label, statusType) ->
-            if (emoji.isEmpty()) {
-                // Espacio vacío
-                gridLayout.addView(LinearLayout(this), GridLayout.LayoutParams().apply {
-                    width = dpToPx(65) // Ajustado para 4 columnas
-                    height = dpToPx(65)
-                    setMargins(dpToPx(5), dpToPx(5), dpToPx(5), dpToPx(5)) // spacing: 10 / 2
-                })
-                return@forEach
-            }
-            
-            // Contenedor vertical: emoji arriba, texto abajo
+
+        // Grid con emojis (sin SOS)
+        val gridLayout = GridLayout(this).apply { columnCount = 4 }
+
+        mainEmojis.forEach { (emoji, label, statusId) ->
             val container = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dpToPx(4), dpToPx(6), dpToPx(4), dpToPx(6)) // Padding compacto
-                
-                // Fondo gris oscuro con borde (Colors.grey.shade800.withOpacity(0.6))
+                setPadding(dpToPx(4), dpToPx(6), dpToPx(4), dpToPx(6))
                 background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#99424242")) // 60% opacity grey.shade800
-                    cornerRadius = dpToPx(12).toFloat() // borderRadius: 12
-                    setStroke(
-                        dpToPx(1), // width: 1
-                        Color.parseColor("#66757575") // Colors.grey.shade600.withOpacity(0.4)
-                    )
+                    setColor(Color.parseColor("#99424242"))
+                    cornerRadius = dpToPx(12).toFloat()
+                    setStroke(dpToPx(1), Color.parseColor("#66757575"))
                 }
-                
-                // Ripple effect
                 foreground = android.graphics.drawable.RippleDrawable(
                     android.content.res.ColorStateList.valueOf(Color.parseColor("#1CE4B3")),
                     null,
@@ -217,112 +189,171 @@ class EmojiDialogActivity : Activity() {
                         cornerRadius = dpToPx(12).toFloat()
                     }
                 )
-                
-                // Tamaño del botón COMPACTO para 4 columnas
                 layoutParams = GridLayout.LayoutParams().apply {
-                    width = dpToPx(65) // Reducido para 4 columnas
+                    width = dpToPx(65)
                     height = dpToPx(65)
-                    setMargins(dpToPx(5), dpToPx(5), dpToPx(5), dpToPx(5)) // spacing: 10 / 2
+                    setMargins(dpToPx(5), dpToPx(5), dpToPx(5), dpToPx(5))
                 }
-
-                
                 isClickable = true
             }
-            
-            // Emoji (EXACTO como Flutter: 24sp)
+
             val emojiView = TextView(this).apply {
                 text = emoji
-                textSize = 24f // fontSize: 24 (EXACTO)
+                textSize = 24f
                 gravity = Gravity.CENTER
                 setTextColor(Color.WHITE)
             }
-            
-            // Label (EXACTO como Flutter: 9sp)
+
             val labelView = TextView(this).apply {
                 text = label
-                textSize = 9f // fontSize: 9 (EXACTO)
+                textSize = 9f
                 gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#CCFFFFFF")) // white.withOpacity(0.8)
-                setPadding(0, dpToPx(2), 0, 0) // SizedBox(height: 2)
+                setTextColor(Color.parseColor("#CCFFFFFF"))
+                setPadding(0, dpToPx(2), 0, 0)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            
+
             container.addView(emojiView)
             container.addView(labelView)
-            
-            // Click listener
             container.setOnClickListener {
-                Log.d(TAG, "👆 [NATIVE] Estado seleccionado: $emoji $label ($statusType)")
-                
-                // Feedback visual
                 container.background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#1CE4B3")) // Verde accent
+                    setColor(Color.parseColor("#1CE4B3"))
                     cornerRadius = dpToPx(12).toFloat()
                 }
-                
-                // Esperar un poco y actualizar
-                container.postDelayed({
-                    updateUserStatus(emoji, statusType)
-                }, 150)
+                container.postDelayed({ updateUserStatus(emoji, statusId) }, 150)
             }
-            
+
             gridLayout.addView(container)
         }
-        
-        // Agregar grid al ScrollView
+
         scrollView.addView(gridLayout)
-        
-        // Agregar ScrollView al container principal
         mainContainer.addView(scrollView)
+
+        // Botón SOS especial al fondo
+        if (sosItem != null) {
+            mainContainer.addView(buildSosButton(sosItem))
+        }
+
         root.addView(mainContainer)
         setContentView(root)
     }
-    
+
+    private fun buildSosButton(sosItem: Triple<String, String, String>): LinearLayout {
+        val (sosEmoji, _, sosId) = sosItem
+
+        val button = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dpToPx(16), dpToPx(14), dpToPx(16), dpToPx(14))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#E53935")) // rojo
+                cornerRadius = dpToPx(12).toFloat()
+                setStroke(dpToPx(2), Color.parseColor("#E53935"))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, dpToPx(8), 0, 0)
+            }
+            isClickable = true
+        }
+
+        val titleView = TextView(this).apply {
+            text = "S.O.S"
+            textSize = 18f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            letterSpacing = 0.2f
+        }
+
+        val subtitleView = TextView(this).apply {
+            text = "Mantén presionado para enviar"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setPadding(0, dpToPx(4), 0, 0)
+        }
+
+        button.addView(titleView)
+        button.addView(subtitleView)
+
+        sosButtonView = button
+        sosLabelView = subtitleView
+
+        button.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    subtitleView.text = "Enviando SOS..."
+                    button.background = GradientDrawable().apply {
+                        setColor(Color.parseColor("#B71C1C"))
+                        cornerRadius = dpToPx(12).toFloat()
+                        setStroke(dpToPx(2), Color.parseColor("#B71C1C"))
+                    }
+                    sosHoldRunnable = Runnable {
+                        Log.d(TAG, "🆘 [SOS] Hold completado - enviando SOS")
+                        updateUserStatus(sosEmoji, sosId)
+                    }
+                    sosHandler.postDelayed(sosHoldRunnable!!, 1000)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    sosHoldRunnable?.let { sosHandler.removeCallbacks(it) }
+                    sosHoldRunnable = null
+                    subtitleView.text = "Mantén presionado para enviar"
+                    button.background = GradientDrawable().apply {
+                        setColor(Color.parseColor("#E53935"))
+                        cornerRadius = dpToPx(12).toFloat()
+                        setStroke(dpToPx(2), Color.parseColor("#E53935"))
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        return button
+    }
+
     private fun updateUserStatus(emoji: String, status: String) {
         Log.d(TAG, "🔥 [HYBRID] Actualizando estado: $emoji ($status)")
-        
+
         val timestamp = System.currentTimeMillis()
-        
-        // 🚀 PASO 1: Broadcast inmediato
-        Log.d(TAG, "📡 [HYBRID] Paso 1/3 - Enviando broadcast inmediato")
+
         val intent = Intent("com.datainfers.zync.UPDATE_STATUS").apply {
             putExtra("emoji", emoji)
             putExtra("status", status)
             setPackage(packageName)
         }
         sendBroadcast(intent)
-        
-        // 💾 PASO 2: Guardar en cache
-        Log.d(TAG, "💾 [HYBRID] Paso 2/3 - Guardando en cache")
+
         val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
         prefs.edit()
             .putString("statusType", status)
             .putString("emoji", emoji)
             .putLong("timestamp", timestamp)
             .apply()
-        
-        // 💼 PASO 3: Programar WorkManager como backup
-        Log.d(TAG, "💼 [HYBRID] Paso 3/3 - Programando WorkManager backup")
+
         val workData = Data.Builder()
             .putString("statusType", status)
             .putString("emoji", emoji)
             .putLong("timestamp", timestamp)
             .build()
-        
+
         val workRequest = OneTimeWorkRequestBuilder<StatusUpdateWorker>()
             .setInitialDelay(30, TimeUnit.SECONDS)
             .setInputData(workData)
             .addTag("status_update_$timestamp")
             .build()
-        
+
         WorkManager.getInstance(this).enqueue(workRequest)
-        
-        Log.d(TAG, "✅ [HYBRID] 3 pasos completados - cerrando dialog")
+
+        Log.d(TAG, "✅ [HYBRID] Estado enviado - cerrando dialog")
         finish()
     }
-    
-    // Helper para convertir dp a px
+
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
     }
