@@ -105,7 +105,7 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| 4.0 | Modal de barra superior idéntico al modal del Círculo | Ambos modales muestran los mismos 16 estados en el mismo orden, con el mismo botón SOS al fondo | 👁 | | Uniformización implementada en PR #58 (2026-03-30). Pendiente verificación visual en dispositivo. |
+| 4.0 | Modal de barra superior idéntico al modal del Círculo | Ambos modales muestran los mismos 16 estados en el mismo orden, con el mismo botón SOS al fondo | 👁 | ✅ | Verificado manualmente 2026-03-30. Fix: EmojiDialogActivity (nativo) usaba fallback desactualizado y mostraba SOS en el grid. Solución: fallback alineado con StatusType.fallbackPredefined + SOS filtrado del grid + botón press-hold 1s al fondo (PR #59). StatusModalActivity descartada — crea engine Flutter nuevo que rompe silent mode. |
 | 4.1 | App minimizada | Ícono visible en barra superior del dispositivo | 👁 | ✅ | Si se aprecia el ícono de la app con el valor "i". Se puede personalizar a otro? |
 | 4.2 | Sin cierre de sesión, app minimizada | App permanece activa en modo silent con ícono visible | 👁 | ✅| Todo Ok pero con la misma duda anterior|
 | 4.3 | Con cierre de sesión | Ícono desaparece de la barra superior *(comportamiento a confirmar)* | 👁 | | |
