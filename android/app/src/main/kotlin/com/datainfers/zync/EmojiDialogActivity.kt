@@ -225,11 +225,19 @@ class EmojiDialogActivity : Activity() {
             isClickable = true
         }
 
-        // ScrollView con el grid — altura máxima responsive
-        val scrollView = android.widget.ScrollView(this).apply {
+        // ScrollView con altura máxima responsive — se encoge si el contenido es menor (WRAP_CONTENT + AT_MOST)
+        val maxScrollPx = dpToPx(scrollViewMaxHeightDp)
+        val scrollView = object : android.widget.ScrollView(this) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val constrainedHeight = android.view.View.MeasureSpec.makeMeasureSpec(
+                    maxScrollPx, android.view.View.MeasureSpec.AT_MOST
+                )
+                super.onMeasure(widthMeasureSpec, constrainedHeight)
+            }
+        }.apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dpToPx(scrollViewMaxHeightDp)
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             isVerticalScrollBarEnabled = true
             scrollBarStyle = android.view.View.SCROLLBARS_OUTSIDE_OVERLAY

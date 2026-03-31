@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../domain/entities/zone.dart';
+import '../../../core/services/emoji_cache_service.dart';
 
 /// Servicio para gestión de zonas geográficas
 /// CRUD completo + validaciones de límites
@@ -71,6 +72,9 @@ class ZoneService {
 
     print('✅ [ZoneService] Zona creada: ${zone.name} (${zone.radiusMeters}m)');
 
+    // Actualizar cache nativo para que EmojiDialogActivity refleje la nueva zona
+    await EmojiCacheService.syncEmojisToNativeCache();
+
     return zone;
   }
 
@@ -125,6 +129,9 @@ class ZoneService {
     await zoneRef.update(updates);
 
     print('✅ [ZoneService] Zona actualizada: $zoneId');
+
+    // Actualizar cache nativo para que EmojiDialogActivity refleje el cambio
+    await EmojiCacheService.syncEmojisToNativeCache();
   }
 
   /// Eliminar zona
@@ -146,6 +153,9 @@ class ZoneService {
     await _firestore.collection('circles').doc(circleId).collection('zones').doc(zoneId).delete();
 
     print('✅ [ZoneService] Zona eliminada: $zoneId');
+
+    // Actualizar cache nativo para que EmojiDialogActivity refleje la eliminación
+    await EmojiCacheService.syncEmojisToNativeCache();
   }
 
   /// Obtener todas las zonas de un círculo
