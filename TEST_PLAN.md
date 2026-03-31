@@ -105,6 +105,7 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
+| 4.0 | Modal de barra superior idéntico al modal del Círculo | Ambos modales muestran los mismos 16 estados en el mismo orden, con el mismo botón SOS al fondo | 👁 | | Uniformización implementada en PR #58 (2026-03-30). Pendiente verificación visual en dispositivo. |
 | 4.1 | App minimizada | Ícono visible en barra superior del dispositivo | 👁 | ✅ | Si se aprecia el ícono de la app con el valor "i". Se puede personalizar a otro? |
 | 4.2 | Sin cierre de sesión, app minimizada | App permanece activa en modo silent con ícono visible | 👁 | ✅| Todo Ok pero con la misma duda anterior|
 | 4.3 | Con cierre de sesión | Ícono desaparece de la barra superior *(comportamiento a confirmar)* | 👁 | | |
@@ -129,7 +130,7 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| — | Pendiente de definir | — | — | | |
+| 6.1 | Al girar el celular el modal de Emojis/Estados no cabe en la pantalla y ocurre un 'overflow' de la misma | Mantener la distribución de los elementos | 👁 | | |
 
 
 ---
