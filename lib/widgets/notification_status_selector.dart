@@ -224,7 +224,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
           color: _sosHolding
               ? Colors.red.withOpacity(0.25)
@@ -235,10 +235,11 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
             width: _sosHolding ? 2 : 1,
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (_sosHolding) ...[
+            if (_sosHolding)
               SizedBox(
                 width: 22,
                 height: 22,
@@ -248,20 +249,25 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
                   strokeWidth: 3,
                   backgroundColor: Colors.red.withOpacity(0.2),
                 ),
+              )
+            else
+              Text(
+                'S.O.S',
+                style: TextStyle(
+                  color: Colors.red.shade300,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
               ),
-              const SizedBox(width: 10),
-            ] else ...[
-              const Text('🆘', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: 8),
-            ],
+            const SizedBox(height: 4),
             Text(
-              _sosHolding ? 'Enviando SOS...' : 'SOS  —  Mantén presionado',
+              _sosHolding ? 'Enviando SOS...' : 'Mantén presionado para enviar',
               style: TextStyle(
                 color: Colors.red.shade300,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+                fontSize: 11,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
