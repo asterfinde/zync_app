@@ -28,8 +28,41 @@ import java.util.concurrent.TimeUnit
 class EmojiDialogActivity : Activity() {
     private val TAG = "EmojiDialogActivity"
 
-    // Emojis cargados desde Firebase cache
+    // IDs de emojis predefinidos — deben coincidir con StatusType.fallbackPredefined en Dart
+    private val predefinedIds = setOf(
+        "fine", "busy", "away", "do_not_disturb",
+        "home", "school", "university", "work",
+        "medical", "meeting", "studying", "eating",
+        "exercising", "driving", "walking", "public_transport",
+        "sos"
+    )
+
+    // Fallback hardcodeado — espejo exacto de StatusType.fallbackPredefined
+    private val hardcodedFallback = listOf(
+        Triple("🙂", "Bien", "fine"),
+        Triple("🔴", "Ocupado", "busy"),
+        Triple("🟡", "Ausente", "away"),
+        Triple("🔕", "No molestar", "do_not_disturb"),
+        Triple("🏠", "Casa", "home"),
+        Triple("🏫", "Colegio", "school"),
+        Triple("🎓", "Universidad", "university"),
+        Triple("🏢", "Trabajo", "work"),
+        Triple("🏥", "Consulta", "medical"),
+        Triple("📅", "Reunión", "meeting"),
+        Triple("📚", "Estudia", "studying"),
+        Triple("🍽️", "Comiendo", "eating"),
+        Triple("💪", "Ejercicio", "exercising"),
+        Triple("🚗", "Camino", "driving"),
+        Triple("🚶", "Caminando", "walking"),
+        Triple("🚌", "Transporte", "public_transport"),
+        Triple("🆘", "SOS", "sos")
+    )
+
+    // Emojis cargados: fallback predefinido + custom del círculo
     private lateinit var emojis: List<Triple<String, String, String>>
+
+    // Tipos de zona configurados (se bloquean en el grid)
+    private lateinit var configuredZoneTypes: Set<String>
 
     // SOS press & hold
     private val sosHandler = Handler(Looper.getMainLooper())
@@ -42,6 +75,7 @@ class EmojiDialogActivity : Activity() {
         Log.d(TAG, "⚡ [NATIVE] Abriendo dialog nativo de emojis...")
 
         emojis = loadEmojisFromCache()
+        configuredZoneTypes = loadConfiguredZoneTypes()
         setupActivityUI()
     }
 
@@ -51,17 +85,21 @@ class EmojiDialogActivity : Activity() {
     }
 
     /**
-     * Carga emojis desde SharedPreferences (sincronizados desde Firebase por Flutter)
+     * Carga emojis para el modal.
+     * Estrategia: siempre usa el fallback hardcodeado como base (idéntico al StatusSelectorOverlay
+     * de Flutter) y agrega encima los emojis personalizados del círculo extraídos del cache.
+     * Esto garantiza que los predefinidos siempre coincidan con la fuente de la verdad,
+     * independientemente del estado de Firebase.
      */
     private fun loadEmojisFromCache(): List<Triple<String, String, String>> {
+        val customEmojis = mutableListOf<Triple<String, String, String>>()
+
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val cachedJson = prefs.getString("flutter.predefined_emojis", null)
 
         if (cachedJson != null) {
             try {
                 Log.d(TAG, "📦 [CACHE] JSON encontrado: ${cachedJson.take(100)}...")
-
-                val emojiList = mutableListOf<Triple<String, String, String>>()
 
                 val jsonTrimmed = cachedJson.trim()
                 if (jsonTrimmed.startsWith("[") && jsonTrimmed.endsWith("]")) {
@@ -85,48 +123,78 @@ class EmojiDialogActivity : Activity() {
                         if (emojiMatch != null) emoji = emojiMatch.groupValues[1]
                         if (labelMatch != null) shortLabel = labelMatch.groupValues[1]
 
-                        if (id.isNotEmpty() && emoji.isNotEmpty()) {
-                            emojiList.add(Triple(emoji, shortLabel, id))
+                        // Solo agregar si no es predefinido (son los custom del círculo)
+                        if (id.isNotEmpty() && emoji.isNotEmpty() && !predefinedIds.contains(id)) {
+                            customEmojis.add(Triple(emoji, shortLabel, id))
                         }
                     }
                 }
 
-                if (emojiList.isNotEmpty()) {
-                    Log.d(TAG, "✅ [CACHE] ${emojiList.size} emojis cargados desde Firebase cache")
-                    return emojiList
-                }
+                Log.d(TAG, "✅ [CACHE] ${customEmojis.size} emoji(s) personalizado(s) encontrado(s)")
             } catch (e: Exception) {
                 Log.e(TAG, "❌ [CACHE] Error parseando: ${e.message}")
             }
+        } else {
+            Log.d(TAG, "⚠️ [CACHE] Sin cache de emojis")
         }
 
-        // Fallback: idéntico a StatusType.fallbackPredefined en user_status.dart
-        Log.d(TAG, "⚠️ [CACHE] Sin cache, usando fallback")
-        return listOf(
-            Triple("🙂", "Bien", "fine"),
-            Triple("🔴", "Ocupado", "busy"),
-            Triple("🟡", "Ausente", "away"),
-            Triple("🔕", "No molestar", "do_not_disturb"),
-            Triple("🏠", "Casa", "home"),
-            Triple("🏫", "Colegio", "school"),
-            Triple("🎓", "Universidad", "university"),
-            Triple("🏢", "Trabajo", "work"),
-            Triple("🏥", "Consulta", "medical"),
-            Triple("📅", "Reunión", "meeting"),
-            Triple("📚", "Estudia", "studying"),
-            Triple("🍽️", "Comiendo", "eating"),
-            Triple("💪", "Ejercicio", "exercising"),
-            Triple("🚗", "Camino", "driving"),
-            Triple("🚶", "Caminando", "walking"),
-            Triple("🚌", "Transporte", "public_transport"),
-            Triple("🆘", "SOS", "sos")
-        )
+        val result = hardcodedFallback + customEmojis
+        Log.d(TAG, "✅ [EMOJIS] Total: ${result.size} (${hardcodedFallback.size} predefinidos + ${customEmojis.size} custom)")
+        return result
+    }
+
+    /**
+     * Lee los tipos de zona configurados desde SharedPreferences
+     * (escritos por EmojiCacheService en Flutter)
+     */
+    private fun loadConfiguredZoneTypes(): Set<String> {
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val json = prefs.getString("flutter.configured_zone_types", null)
+            ?: return emptySet<String>().also {
+                Log.d(TAG, "⚠️ [ZONES] Sin cache de zonas configuradas")
+            }
+
+        return try {
+            val result = mutableSetOf<String>()
+            val trimmed = json.trim()
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                val content = trimmed.substring(1, trimmed.length - 1).trim()
+                if (content.isNotEmpty()) {
+                    content.split(",").forEach { item ->
+                        val clean = item.trim().removeSurrounding("\"")
+                        if (clean.isNotEmpty()) result.add(clean)
+                    }
+                }
+            }
+            Log.d(TAG, "✅ [ZONES] Zonas configuradas: $result")
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ [ZONES] Error parseando zonas: ${e.message}")
+            emptySet()
+        }
     }
 
     private fun setupActivityUI() {
         // SOS separado del grid principal
         val mainEmojis = emojis.filter { (_, _, id) -> id != "sos" }
         val sosItem = emojis.find { (_, _, id) -> id == "sos" }
+
+        // Tamaños dinámicos basados en pantalla — espejo del comportamiento responsive de Flutter
+        val screenWidthDp = (resources.displayMetrics.widthPixels / resources.displayMetrics.density).toInt()
+        val screenHeightDp = (resources.displayMetrics.heightPixels / resources.displayMetrics.density).toInt()
+
+        // Ancho del container: igual que antes (340dp) pero limitado al ancho de pantalla con margen
+        val containerWidthDp = minOf(340, screenWidthDp - 64)
+        val containerPaddingDp = 12
+        // Ancho real disponible para el grid dentro del container
+        val gridAvailableWidthDp = containerWidthDp - containerPaddingDp * 2
+        val cellMarginDp = 5
+        // Celda cuadrada: (ancho disponible - márgenes de 4 columnas) / 4 columnas
+        val cellSizeDp = (gridAvailableWidthDp - cellMarginDp * 2 * 4) / 4
+        // Altura del ScrollView: 55% del alto de pantalla (igual que Flutter: maxHeight = screenHeight * 0.55)
+        val scrollViewMaxHeightDp = (screenHeightDp * 0.55).toInt()
+
+        Log.d(TAG, "📐 [UI] screen=${screenWidthDp}x${screenHeightDp}dp, container=${containerWidthDp}dp, cell=${cellSizeDp}dp, scrollMax=${scrollViewMaxHeightDp}dp")
 
         // Root container con fondo semi-transparente
         val root = FrameLayout(this).apply {
@@ -140,14 +208,14 @@ class EmojiDialogActivity : Activity() {
         // Container principal
         val mainContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
+            setPadding(dpToPx(containerPaddingDp), dpToPx(containerPaddingDp), dpToPx(containerPaddingDp), dpToPx(containerPaddingDp))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#F21E1E1E"))
                 cornerRadius = dpToPx(20).toFloat()
                 setStroke(dpToPx(1), Color.parseColor("#80616161"))
             }
             val params = FrameLayout.LayoutParams(
-                dpToPx(340),
+                dpToPx(containerWidthDp),
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.CENTER
@@ -157,44 +225,51 @@ class EmojiDialogActivity : Activity() {
             isClickable = true
         }
 
-        // ScrollView con el grid
+        // ScrollView con el grid — altura máxima responsive
         val scrollView = android.widget.ScrollView(this).apply {
-            val maxHeightDp = (65 * 4) + (10 * 4) + 40
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dpToPx(maxHeightDp)
+                dpToPx(scrollViewMaxHeightDp)
             )
             isVerticalScrollBarEnabled = true
             scrollBarStyle = android.view.View.SCROLLBARS_OUTSIDE_OVERLAY
         }
 
-        // Grid con emojis (sin SOS)
-        val gridLayout = GridLayout(this).apply { columnCount = 4 }
+        // Grid con emojis (sin SOS) — 4 columnas con celdas cuadradas de tamaño calculado
+        val gridLayout = GridLayout(this).apply {
+            columnCount = 4
+            useDefaultMargins = false
+        }
 
         mainEmojis.forEach { (emoji, label, statusId) ->
+            val isBlocked = configuredZoneTypes.contains(statusId)
+
             val container = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dpToPx(4), dpToPx(6), dpToPx(4), dpToPx(6))
                 background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#99424242"))
+                    setColor(if (isBlocked) Color.parseColor("#4D424242") else Color.parseColor("#99424242"))
                     cornerRadius = dpToPx(12).toFloat()
                     setStroke(dpToPx(1), Color.parseColor("#66757575"))
                 }
-                foreground = android.graphics.drawable.RippleDrawable(
-                    android.content.res.ColorStateList.valueOf(Color.parseColor("#1CE4B3")),
-                    null,
-                    GradientDrawable().apply {
-                        setColor(Color.WHITE)
-                        cornerRadius = dpToPx(12).toFloat()
-                    }
-                )
+                if (!isBlocked) {
+                    foreground = android.graphics.drawable.RippleDrawable(
+                        android.content.res.ColorStateList.valueOf(Color.parseColor("#1CE4B3")),
+                        null,
+                        GradientDrawable().apply {
+                            setColor(Color.WHITE)
+                            cornerRadius = dpToPx(12).toFloat()
+                        }
+                    )
+                }
                 layoutParams = GridLayout.LayoutParams().apply {
-                    width = dpToPx(65)
-                    height = dpToPx(65)
-                    setMargins(dpToPx(5), dpToPx(5), dpToPx(5), dpToPx(5))
+                    width = dpToPx(cellSizeDp)
+                    height = dpToPx(cellSizeDp)
+                    setMargins(dpToPx(cellMarginDp), dpToPx(cellMarginDp), dpToPx(cellMarginDp), dpToPx(cellMarginDp))
                 }
                 isClickable = true
+                alpha = if (isBlocked) 0.35f else 1.0f
             }
 
             val emojiView = TextView(this).apply {
@@ -216,12 +291,23 @@ class EmojiDialogActivity : Activity() {
 
             container.addView(emojiView)
             container.addView(labelView)
-            container.setOnClickListener {
-                container.background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#1CE4B3"))
-                    cornerRadius = dpToPx(12).toFloat()
+
+            if (isBlocked) {
+                container.setOnClickListener {
+                    android.app.AlertDialog.Builder(this@EmojiDialogActivity)
+                        .setTitle("Acción no permitida")
+                        .setMessage("No puedes seleccionar zonas manualmente. El estado de zonas se actualiza automáticamente por geofencing.")
+                        .setPositiveButton("Entendido") { dialog, _ -> dialog.dismiss() }
+                        .show()
                 }
-                container.postDelayed({ updateUserStatus(emoji, statusId) }, 150)
+            } else {
+                container.setOnClickListener {
+                    container.background = GradientDrawable().apply {
+                        setColor(Color.parseColor("#1CE4B3"))
+                        cornerRadius = dpToPx(12).toFloat()
+                    }
+                    container.postDelayed({ updateUserStatus(emoji, statusId) }, 150)
+                }
             }
 
             gridLayout.addView(container)
