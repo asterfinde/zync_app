@@ -397,6 +397,9 @@ Ver [`TEST_PLAN.md`](TEST_PLAN.md) — contiene las tablas de casos por fase, es
 
 Estoy trabajando la metodología Trunk-Based Software Development (TBSD), para tener ramas de corta duración que se integran rápidamente al "tronco" principal y único
 
+- **Rama obligatoria antes de cualquier commit:** Verificar que no se está en `main`. Si no hay rama activa para la tarea, crear una antes de cualquier operación git. Nunca commitear directamente en `main`.
+  - Nomenclatura: `feat/`, `fix/`, `docs/`, `test/`, `refactor/` según el tipo de cambio.
+  - Ejemplo: `git checkout -b fix/login-banner-email`
 - **Antes de commitear:** La IA debe listar TODOS los archivos modificados y explicar por qué se tocó cada uno.
 - **Si aparece un archivo inesperado:** No commitear. Investigar primero.
 - **Formato de mensaje:** `tipo: descripción breve`
@@ -407,8 +410,8 @@ Estoy trabajando la metodología Trunk-Based Software Development (TBSD), para t
   - `docs:` documentación
   - `test:` agregar o modificar tests
 - **Idioma de commits:** Inglés
-- **Un commit por tarea.** De ahora en adelante es mejor no mezclar features o fixes en un solo commit. 
-- **Luego del commit** Hacer el PR correspondiente, luego borrar las ramas trabajadas (local/remota) y hacer un Pull en el repo remoto para obtener la versión última de la app.
+- **Un commit por tarea.** No mezclar features o fixes en un solo commit.
+- **Luego del commit:** Hacer el PR correspondiente, luego borrar las ramas trabajadas (local/remota) y hacer un Pull en el repo remoto para obtener la versión última de la app.
 
 ---
 
@@ -496,7 +499,7 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 | Archivos y carpetas de desarrollo dentro de `lib/`: `main_test.dart`, `main_minimal_test.dart`, `dev_auth_simple/`, `dev_auth_test/`, `dev_test/`, `dev_utils/` | **Alta** | `dev_utils/` contiene `clean_auth.dart` y `clean_firestore.dart` — riesgo de ejecución accidental en producción. Eliminar o mover fuera de `lib/` antes del build de release. Revisar previo al lanzamiento del MVP. |
 | API Key de Anthropic (Claude) — ubicación desconocida | **Alta** | Búsqueda en el código no encontró la key en ningún archivo Dart, assets ni config Android. Dos escenarios: (1) las features de IA aún no están implementadas — la key no existe todavía; (2) está en un lugar no inspeccionado. **Antes del lanzamiento:** confirmar dónde vive. Si termina en el cliente (hardcodeada, assets o build vars empaquetadas en el APK), es extraíble por ingeniería inversa. La solución correcta es invocarla exclusivamente desde una Cloud Function con acceso restringido. Ver sección 15 — Seguridad. |
 | Edición de emojis personalizados — no existe `updateCustomEmoji()` | Baja | El workaround actual es borrar + crear. Implementación estimada: ~50 líneas en 3 archivos (`EmojiManagementService` + `CreateEmojiDialog` en modo edición + botón ✏️ en `EmojiManagementPage`). Sin dependencias nuevas ni riesgo de regresión. Post-MVP. |
-
+| Cómo se manejará el tema de las validaciones de los correos al momento de que un Ysuario se registra en la app  | Media | |
 ---
 
 ## 13. Sistema de Memoria Persistente
