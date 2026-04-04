@@ -12,6 +12,7 @@ class SilentFunctionalityCoordinator {
   static bool _isInitialized = false;
   static BuildContext? _context;
   static bool _isManualLogoutInProgress = false; // Point 1.1: Bandera para evitar reactivación
+  static bool _userHasCircle = false; // True solo cuando activateAfterLogin confirmó círculo activo
 
   /// Inicializa SOLO los servicios base (sin BuildContext)
   /// Se debe llamar en main() ANTES de runApp()
@@ -94,6 +95,7 @@ class SilentFunctionalityCoordinator {
       }
 
       print('[SilentCoordinator] ✅ Usuario pertenece al círculo: ${userCircle.name}');
+      _userHasCircle = true;
 
       final hasPermission = await NotificationService.requestPermissions();
 
@@ -256,6 +258,7 @@ class SilentFunctionalityCoordinator {
 
     // Point 1.1: Marcar que hay un logout manual en progreso (Dart)
     _isManualLogoutInProgress = true;
+    _userHasCircle = false;
 
     // Point 1.1: Marcar también en el lado NATIVO (Android)
     try {
@@ -370,6 +373,26 @@ class SilentFunctionalityCoordinator {
     } else {
       await NotificationService.cancelQuickActionNotification();
       await QuickActionsService.setEnabled(false);
+    }
+  }
+
+  /// Verifica el estado de permisos al volver al frente o al llegar a HomePage.
+  /// - Sin permiso: muestra SnackBar con botón "Habilitar" (T4.6, T4.9)
+  /// - Con permiso: garantiza que la notificación persistente esté activa (T4.11)
+  /// Solo actúa si el usuario tiene círculo activo.
+  static Future<void> onAppResumed(BuildContext context) async {
+    if (_isManualLogoutInProgress) return;
+    if (!_userHasCircle) return;
+    if (!context.mounted) return;
+
+    final hasPermission = await NotificationService.hasPermission();
+
+    if (!context.mounted) return;
+
+    if (!hasPermission) {
+      _showNotificationsDisabledInfo(context);
+    } else {
+      await NotificationService.showQuickActionNotification();
     }
   }
 

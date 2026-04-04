@@ -111,6 +111,12 @@
 | 4.3 | Con cierre de sesión | Ícono desaparece de la barra superior  | 👁 |✅ | El usuario desaparece hasta que no se vuelva a loguear/ registrar _¿es correcto esto, o contradice la filosofía de ZYNC?_|
 | 4.4 | Modal NotificationStatusSelector muestra 16 botones de estado | Grid visible con los 16 estados del sistema | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Modal renderizado en aislamiento. |
 | 4.5 | Selección de estado desde modal → Firestore actualizado | `statusType` actualizado en `circles/{id}/memberStatus` | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
+| 4.6 | Usuario deniega permiso de notificaciones al ingresar | App funciona normalmente. No hay ícono en barra. SnackBar naranja explica la situación con botón "Habilitar" | 👁 | | GAP actual: no hay feedback al usuario. `_showNotificationsDisabledInfo()` existe en `silent_functionality_coordinator.dart` pero no está conectado al flujo de denegación |
+| 4.7 | Intento de swipe sobre la notificación persistente | La notificación no se puede descartar con swipe | 👁 | | `setOngoing=true` en `KeepAliveService.kt` debería cubrirlo — verificar en dispositivo físico |
+| 4.8 | "Borrar todo" en la barra de notificaciones | La notificación de ZYNC permanece intacta | 👁 | | Las notificaciones `ongoing` están excluidas del borrado masivo de Android — verificar en dispositivo físico |
+| 4.9 | Usuario desactiva notificaciones desde Ajustes del sistema (post-login) | Ícono desaparece. Al volver a la app, SnackBar informativo aparece | 👁 | | GAP actual: no se detecta. Requiere chequeo en `onResume` vía `WidgetsBindingObserver` |
+| 4.10 | Usuario "cierra" la app desde Recientes | Ícono permanece en barra — modo silent sigue activo | 👁 | | Comportamiento intencional: `onTaskRemoved()` + `START_STICKY` en `KeepAliveService.kt`. El único cierre real es el logout |
+| 4.11 | Re-habilitar notificaciones tras denegación o revocación | Usuario toca "Habilitar" en SnackBar → va a Ajustes del sistema → activa → vuelve a app → ícono aparece | 👁 | | Infraestructura ya existe (`_checkAndNotifyPermissionStatus`, `openNotificationSettings`). Falta conectar al flujo de denegación |
 
 ---
 
@@ -123,7 +129,7 @@
 | 3 | Agregar un emoji personalizado | Emoji creado y visible en Firestore (`circles/{id}/customEmojis`) | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Emoji creado directamente en Firestore (EmojiPicker nativo no testeable en integración). |
 | 4 | Eliminar un emoji personalizado | Emoji eliminado de Firestore y desaparece del tab Estados | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Fix: documento debe incluir `usageCount: 0` — Firestore excluye docs sin ese campo del `orderBy`. |
 | 5 | Emoji personalizado aparece en el tab Estados de Settings | Tab Estados muestra el emoji recién creado con su label | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Mismo fix que T5.4 (`usageCount: 0`). |
-
+| 6 | Si el usuario cierra su sesión adrede, el Círculo, debería mostrar el emoji/estado que está off-line y que lo ha hecho manualmente (falta un emoji/estado?) | Se deja rastro en el Círculo de que el usuario ha cerrado su sesión | 👁 |  |
 ---
 
 ## Fase 6 — Funcionamiento UI/UX
@@ -131,9 +137,9 @@
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
 | 6.1 | Al girar el celular el modal de Emojis/Estados no cabe en la pantalla y ocurre un 'overflow' de la misma | Mantener la distribución de los elementos | 👁 | | |
-| 6.2 | Hay una demora en tener el foco el textbox donde se ingresa el nombre para crear un Círculo nuevo  | El foco debe de aparecer por default sobre el textbox de inmediato | 👁 | | |
-
-
+| 6.2 | En la pantalla que crea un C+irculo nuevo, hay una demora en tener el foco el textbox donde se ingresa el nombre del mismo  | El foco debe de aparecer por default sobre el textbox de inmediato | 👁 | | |
+| 6.3 | Cunado se cambia opción de Login a Registrar el foco no aparece en el primer textbox de cada una de ellas, sino que hay que colocarlo a mano  |Esto debiera ser automático | 👁 | | |
+| 6.4 | Las ventanas modales de los emojis/estados tienen diferente "look and feel". La ventana modal desde la barra debeería parecerse lo más posible a la fuente de la verdad (ventana modal lanzada desde la pantalla del Círculo)  | Estas ventanas debieran ser casi idénticas, no solo en contenido sino además en la apariencia | 👁 | | |
 ---
 ## Tests Manuales 
 
@@ -154,6 +160,12 @@
 | 13 | T4.2 | 4 | App minimizada sin cerrar sesión — modo silent activo | Verificar que el ícono persiste y el servicio sigue vivo. |
 | 14 | T4.3 | 4 | Cerrar sesión — ícono desaparece de barra superior | Comportamiento a confirmar. |
 | 15 | T5.2 | 5 | Quick Actions reflejadas en shortcuts nativos del SO | Inspección visual: mantener pulsado el ícono de la app en el launcher. |
+| 16 | T4.6 | 4 | Permiso de notificaciones denegado — feedback visible | Precondición: desinstalar app para resetear permisos. Pasos: instalar → login → denegar permisos → verificar que aparece SnackBar naranja con botón "Habilitar". GAP: aún no implementado. |
+| 17 | T4.7 | 4 | Swipe sobre notificación persistente — no se descarta | Precondición: app con ícono visible. Pasos: abrir barra de notificaciones → intentar deslizar la notificación de ZYNC → verificar que permanece. |
+| 18 | T4.8 | 4 | "Borrar todo" — notificación ZYNC permanece | Precondición: app con ícono visible + otras notificaciones presentes. Pasos: abrir barra → tocar "Borrar todo" → verificar que la notificación de ZYNC permanece. |
+| 19 | T4.9 | 4 | Desactivar notificaciones desde Ajustes del sistema | Precondición: app con ícono visible. Pasos: Ajustes → Apps → ZYNC → Notificaciones → OFF → volver a app → verificar SnackBar informativo. GAP: aún no implementado. |
+| 20 | T4.10 | 4 | Cerrar app desde Recientes — ícono persiste | Precondición: app con ícono visible. Pasos: abrir Recientes → deslizar ZYNC → esperar 3-5 seg → verificar que el ícono sigue en la barra superior. |
+| 21 | T4.11 | 4 | Re-habilitar notificaciones desde SnackBar | Precondición: T4.6 o T4.9 ejecutado (sin ícono). Pasos: tocar "Habilitar" en SnackBar → activar en Ajustes → volver a app → verificar ícono aparece. GAP: aún no implementado. |
 
 ---
 
