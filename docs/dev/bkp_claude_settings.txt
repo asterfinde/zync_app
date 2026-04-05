@@ -6,12 +6,25 @@ El archivo .claude/settings.json no existía en el proyecto.
 Claude Code operaba con el modo de permisos por defecto de la extensión VS Code,
 lo que generaba un prompt de aprobación Yes/No por cada invocación de herramienta.
 
+NOTA: El primer intento usó `allowedTools` — clave inválida en Claude Code.
+La clave correcta es `permissions.allow`.
+
 CONFIGURACIÓN APLICADA:
-Se creó .claude/settings.json con allowedTools para eliminar los prompts
-en operaciones estándar de desarrollo (lectura, edición, búsqueda, comandos de shell).
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Write",
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  }
+}
 
 HERRAMIENTAS AUTO-APROBADAS:
-- Bash    → comandos de shell (git, flutter, adb, etc.)
+- Bash    → todos los comandos de shell (git, flutter, adb, etc.)
 - Edit    → edición de archivos existentes
 - Write   → creación de archivos nuevos
 - Read    → lectura de archivos
