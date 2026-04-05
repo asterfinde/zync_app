@@ -303,11 +303,7 @@ class EmojiDialogActivity : Activity() {
 
             if (isBlocked) {
                 container.setOnClickListener {
-                    android.app.AlertDialog.Builder(this@EmojiDialogActivity)
-                        .setTitle("Acción no permitida")
-                        .setMessage("No puedes seleccionar zonas manualmente. El estado de zonas se actualiza automáticamente por geofencing.")
-                        .setPositiveButton("Entendido") { dialog, _ -> dialog.dismiss() }
-                        .show()
+                    showZoneNotAllowedDialog()
                 }
             } else {
                 container.setOnClickListener {
@@ -410,6 +406,42 @@ class EmojiDialogActivity : Activity() {
         }
 
         return button
+    }
+
+    /**
+     * Aviso de zona bloqueada — estilo unificado con el modal Flutter:
+     * fondo negro, borde verde menta sutil, botón "Entendido" en verde menta.
+     */
+    private fun showZoneNotAllowedDialog() {
+        val accentColor = Color.parseColor("#1CE4B3")
+        val backgroundColor = Color.parseColor("#FF000000") // negro sólido
+
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("Acción no permitida")
+            .setMessage("No puedes seleccionar zonas manualmente. El estado de zonas se actualiza automáticamente por geofencing.")
+            .setPositiveButton("Entendido") { d, _ -> d.dismiss() }
+            .create()
+
+        dialog.setOnShowListener {
+            // Fondo negro con esquinas redondeadas
+            dialog.window?.setBackgroundDrawable(
+                GradientDrawable().apply {
+                    setColor(backgroundColor)
+                    cornerRadius = dpToPx(16).toFloat()
+                    setStroke(dpToPx(1), Color.argb(102, 28, 228, 179)) // #661CE4B3
+                }
+            )
+            // Título blanco
+            val titleView = dialog.findViewById<TextView>(android.R.id.title)
+            titleView?.setTextColor(Color.WHITE)
+            // Mensaje blanco con 80% de opacidad
+            val messageView = dialog.findViewById<TextView>(android.R.id.message)
+            messageView?.setTextColor(Color.argb(204, 255, 255, 255)) // #CCFFFFFF
+            // Botón en verde menta
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.setTextColor(accentColor)
+        }
+
+        dialog.show()
     }
 
     private fun updateUserStatus(emoji: String, status: String) {
