@@ -240,6 +240,62 @@ class StatusService {
     }
   }
 
+  /// Marca al usuario como desconectado en su círculo (cierre de sesión deliberado).
+  /// Fire-and-forget: no lanza excepción para no bloquear el flujo de logout.
+  static Future<void> setOfflineStatus() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final circleId = userDoc.data()?['circleId'] as String?;
+      if (circleId == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('circles')
+          .doc(circleId)
+          .update({
+        'memberStatus.${user.uid}.loggedOut': true,
+        'memberStatus.${user.uid}.timestamp': FieldValue.serverTimestamp(),
+      });
+      log('[StatusService] 💤 Estado offline registrado — logout deliberado');
+    } catch (e) {
+      log('[StatusService] ⚠️ setOfflineStatus falló (no bloqueante): $e');
+    }
+  }
+
+  /// Limpia el estado offline al iniciar sesión nuevamente.
+  /// Resetea a statusType 'fine' para que el usuario aparezca activo en su círculo.
+  /// Fire-and-forget: no lanza excepción.
+  static Future<void> clearOfflineStatus() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final circleId = userDoc.data()?['circleId'] as String?;
+      if (circleId == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('circles')
+          .doc(circleId)
+          .update({
+        'memberStatus.${user.uid}.loggedOut': FieldValue.delete(),
+        'memberStatus.${user.uid}.statusType': 'fine',
+        'memberStatus.${user.uid}.timestamp': FieldValue.serverTimestamp(),
+      });
+      log('[StatusService] 🟢 Estado offline limpiado — usuario activo nuevamente');
+    } catch (e) {
+      log('[StatusService] ⚠️ clearOfflineStatus falló (no bloqueante): $e');
+    }
+  }
+
   static Future<bool> _isSpecificZoneTypeConfigured(String circleId, String zoneType) async {
     try {
       final snapshot = await FirebaseFirestore.instance

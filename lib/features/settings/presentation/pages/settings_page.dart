@@ -8,6 +8,7 @@ import '../../../../features/auth/presentation/pages/auth_final_page.dart';
 import '../../../../core/widgets/quick_actions_config_widget.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
 import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout
+import '../../../../core/services/status_service.dart'; // T5.6: Estado offline en logout
 import 'emoji_management_page.dart'; // Gestión de estados/emojis
 import '../../../geofencing/presentation/pages/zones_page.dart'; // Gestión de zonas geográficas
 import '../../../../services/circle_service.dart'; // Para obtener Circle object
@@ -581,6 +582,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                 // FIX: Limpiar SessionCache INMEDIATAMENTE para evitar parpadeo
                 print('🔴 [LOGOUT] Limpiando SessionCache...');
                 await SessionCacheService.clearSession();
+
+                // Registrar desconexión deliberada en el círculo (T5.6)
+                print('🔴 [LOGOUT] Registrando estado offline en círculo...');
+                await StatusService.setOfflineStatus();
 
                 print('🔴 [LOGOUT] Paso 2/3: Cerrando sesión de Firebase...');
 
