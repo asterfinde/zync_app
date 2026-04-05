@@ -132,13 +132,16 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.grey.shade300.withOpacity(0.92),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       barrierDismissible: true,
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.black,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: const Color(0xFF1CE4B3).withValues(alpha: 0.4), width: 1),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -147,18 +150,21 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
               children: [
                 const Text(
                   'Acción no permitida',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 12),
                 const Text(
                   'No puedes seleccionar zonas manualmente. El estado de zonas se actualiza automáticamente por geofencing.',
-                  style: TextStyle(fontSize: 14, color: Colors.black),
+                  style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF)),
                 ),
                 const SizedBox(height: 18),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF1CE4B3),
+                    ),
                     child: const Text(
                       'Entendido',
                       style: TextStyle(fontWeight: FontWeight.bold),
