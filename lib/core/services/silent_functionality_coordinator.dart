@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Point 21: Para MethodChannel
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../widgets/notification_status_selector.dart'; // CAMBIADO: Usar modal de notificaciones
@@ -27,6 +28,13 @@ class SilentFunctionalityCoordinator {
     }
 
     try {
+      // Reset del mutex cross-platform: garantiza que zync_modal_open=0 al arrancar.
+      // Sin este reset, si la app fue cerrada mientras StatusSelectorOverlay estaba
+      // abierto, el flag queda en 1 y EmojiDialogActivity se cierra inmediatamente
+      // en cada arranque posterior, rompiendo el modo silencioso.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('zync_modal_open', 0);
+
       // 1. Inicializar servicios existentes (sin romper nada)
       print('[SilentCoordinator] 🔧 Inicializando servicios base...');
 
