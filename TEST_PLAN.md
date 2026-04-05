@@ -136,10 +136,10 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| 6.1 | Al girar el celular el modal de Emojis/Estados no cabe en la pantalla y ocurre un 'overflow' de la misma | Mantener la distribución de los elementos | 👁 | | |
-| 6.2 | En la pantalla que crea un C+irculo nuevo, hay una demora en tener el foco el textbox donde se ingresa el nombre del mismo  | El foco debe de aparecer por default sobre el textbox de inmediato | 👁 | | |
-| 6.3 | Cuando se cambia opción de Login a Registrar el foco no aparece en el primer textbox de cada una de ellas, sino que hay que colocarlo a mano  |Esto debiera ser automático | 👁 | | |
-| 6.4 | Las ventanas modales de los emojis/estados tienen diferente "look and feel". La ventana modal desde la barra debeería parecerse lo más posible a la fuente de la verdad (ventana modal lanzada desde la pantalla del Círculo)  | Estas ventanas debieran ser casi idénticas, no solo en contenido sino además en la apariencia | 👁 | | |
+| 6.1 | Al girar el celular el modal de Emojis/Estados no cabe en la pantalla y ocurre un 'overflow' de la misma | Mantener la distribución de los elementos | 👁 | 🟡 | Fix implementado (PR #67). Pendiente verificación en dispositivo físico en landscape y tablet. |
+| 6.2 | En la pantalla que crea un Círculo nuevo, hay una demora en tener el foco el textbox donde se ingresa el nombre del mismo  | El foco debe de aparecer por default sobre el textbox de inmediato | 👁 | 🟡 | Fix implementado (PR #66): `autofocus: true` en `create_circle_view.dart`. Pendiente verificación en dispositivo físico. |
+| 6.3 | Cuando se cambia opción de Login a Registrar el foco no aparece en el primer textbox de cada una de ellas, sino que hay que colocarlo a mano  |Esto debiera ser automático | 👁 | 🟡 | Fix implementado (PR #66): `FocusNode` + `addPostFrameCallback` en `auth_final_page.dart`. Pendiente verificación en dispositivo físico. |
+| 6.4 | Las ventanas de aviso que aparecen desde los modales de los emojis/estados, al tocarse un emoji no preconfigurado, tienen diferente "look and feel". La ventana de aviso del modal desde la barra debería parecerse lo más posible a la fuente de la verdad (ventana modal lanzada desde la pantalla del Círculo)  | Estas ventanas debieran ser casi idénticas, no solo en contenido sino además en la apariencia | 👁 | 🟡 | Fix implementado (PR #65): fondo negro + botón verde menta (`#1CE4B3`) en ambos modales. Pendiente verificación en dispositivo físico con zona geográfica configurada. |
 ---
 ## Tests Manuales 
 
