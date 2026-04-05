@@ -98,6 +98,7 @@
 | 30.1 | Dentro de zona, usuario cambia estado manualmente a no-zona | Muestra: emoji · nickname · estado · tiempo · ✋ Manual | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
 | 30.2 | Fuera de zona, usuario cambia estado manualmente | Muestra: emoji · nickname · estado · tiempo · ❓ Ubicación desconocida (sin ✋ Manual — `manualOverride=false` cuando `zoneId=null`) | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Corregido 2026-03-30: ✋ no aplica desde AUTO_DRIVING porque `wasInZone=false`. Confirmado por máquina de estados (Prueba B3). |
 | 30.3 | Con zonas geográficas configuradas — selector de estado muestra botones 🏠🏫🏢🏥 visualmente inhabilitados | Botones de zona aparecen con opacidad reducida (atenuados). Si se tocan igualmente, aparece modal "Acción no permitida" y el estado no cambia. | 👁 | ✅ | Verificado manualmente 2026-03-30. Ver procedimiento en tabla de pruebas manuales. No automatizable: `StatusSelectorOverlay` carga Firebase via fire-and-forget en initState, sin streams activos el event loop del test binding no procesa las platform channel callbacks. |
+| 30.4 | Se tiene que mantener apretando por 1s el botón de SOS del modal de emojis/estados | Luego de ese tiempo se cambia el estado a SOS y se cierra el modal correspondiente: verificar que esto ocurra en las 2 ventanas modales: la del Círculo y la de la Barra de Notificaciones | 👁 |  | Fix PR #71 (Bug B/C): el modal cierra inmediatamente al soltar el botón SOS; el update de GPS/Firestore corre en background. |
 
 ---
 
@@ -117,6 +118,7 @@
 | 4.9 | Usuario desactiva notificaciones desde Ajustes del sistema (post-login) | Ícono desaparece. Al volver a la app, SnackBar informativo aparece | 👁 | | GAP actual: no se detecta. Requiere chequeo en `onResume` vía `WidgetsBindingObserver` |
 | 4.10 | Usuario "cierra" la app desde Recientes | Ícono permanece en barra — modo silent sigue activo | 👁 | | Comportamiento intencional: `onTaskRemoved()` + `START_STICKY` en `KeepAliveService.kt`. El único cierre real es el logout |
 | 4.11 | Re-habilitar notificaciones tras denegación o revocación | Usuario toca "Habilitar" en SnackBar → va a Ajustes del sistema → activa → vuelve a app → ícono aparece | 👁 | | Infraestructura ya existe (`_checkAndNotifyPermissionStatus`, `openNotificationSettings`). Falta conectar al flujo de denegación |
+| 4.12 | Modal nativo rechazado por mutex — pantalla del Círculo no recarga ni muestra emoji de zona | Con zona geográfica configurada: abrir modal del Círculo → desde la barra de notificaciones intentar abrir el segundo modal (debe ser rechazado por mutex) → al volver, la pantalla del Círculo NO recarga ni muestra el emoji de zona (📍 Casa) | 👁 | | Fix PR #71 (Bug A): `onPause()` en `MainActivity` omite `KeepAliveService.start()` cuando `zync_modal_open=1`, cortando el ciclo pause/resume que re-emitía el estado de zona guardado. |
 
 ---
 
@@ -124,22 +126,23 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| 1 | Cambiar las 4 Quick Actions configuradas por el usuario | Las nuevas acciones quedan guardadas en preferencias y se reflejan en los shortcuts | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
-| 2 | Verificar que los cambios de Quick Actions se reflejan en los shortcuts nativos | Los shortcuts del SO muestran los nuevos estados | 👁 | | Requiere inspección visual en el dispositivo. |
-| 3 | Agregar un emoji personalizado | Emoji creado y visible en Firestore (`circles/{id}/customEmojis`) | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Emoji creado directamente en Firestore (EmojiPicker nativo no testeable en integración). |
-| 4 | Eliminar un emoji personalizado | Emoji eliminado de Firestore y desaparece del tab Estados | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Fix: documento debe incluir `usageCount: 0` — Firestore excluye docs sin ese campo del `orderBy`. |
-| 5 | Emoji personalizado aparece en el tab Estados de Settings | Tab Estados muestra el emoji recién creado con su label | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Mismo fix que T5.4 (`usageCount: 0`). |
-| 6 | Si el usuario cierra su sesión adrede, el Círculo, debería mostrar el emoji/estado que está off-line y que lo ha hecho manualmente (falta un emoji/estado?) | Se deja rastro en el Círculo de que el usuario ha cerrado su sesión | 👁 |  |
+| 5.1 | Cambiar las 4 Quick Actions configuradas por el usuario | Las nuevas acciones quedan guardadas en preferencias y se reflejan en los shortcuts | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
+| 5.2 | Verificar que los cambios de Quick Actions se reflejan en los shortcuts nativos | Los shortcuts del SO muestran los nuevos estados | 👁 | | Requiere inspección visual en el dispositivo. |
+| 5.3 | Agregar un emoji personalizado | Emoji creado y visible en Firestore (`circles/{id}/customEmojis`) | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Emoji creado directamente en Firestore (EmojiPicker nativo no testeable en integración). |
+| 5.4 | Eliminar un emoji personalizado | Emoji eliminado de Firestore y desaparece del tab Estados | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Fix: documento debe incluir `usageCount: 0` — Firestore excluye docs sin ese campo del `orderBy`. |
+| 5.5 | Emoji personalizado aparece en el tab Estados de Settings | Tab Estados muestra el emoji recién creado con su label | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Mismo fix que T5.4 (`usageCount: 0`). |
+| 5.6 | Si el usuario cierra su sesión adrede, el Círculo, debería mostrar el emoji/estado que está off-line y que lo ha hecho manualmente (falta un emoji/estado?) | Se deja rastro en el Círculo de que el usuario ha cerrado su sesión | 👁 |  |
 ---
 
 ## Fase 6 — Funcionamiento UI/UX
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| 6.1 | Al girar el celular el modal de Emojis/Estados no cabe en la pantalla y ocurre un 'overflow' de la misma | Mantener la distribución de los elementos | 👁 | 🟡 | Fix implementado (PR #67). Pendiente verificación en dispositivo físico en landscape y tablet. |
-| 6.2 | En la pantalla que crea un Círculo nuevo, hay una demora en tener el foco el textbox donde se ingresa el nombre del mismo  | El foco debe de aparecer por default sobre el textbox de inmediato | 👁 | 🟡 | Fix implementado (PR #66): `autofocus: true` en `create_circle_view.dart`. Pendiente verificación en dispositivo físico. |
-| 6.3 | Cuando se cambia opción de Login a Registrar el foco no aparece en el primer textbox de cada una de ellas, sino que hay que colocarlo a mano  |Esto debiera ser automático | 👁 | 🟡 | Fix implementado (PR #66): `FocusNode` + `addPostFrameCallback` en `auth_final_page.dart`. Pendiente verificación en dispositivo físico. |
+| 6.1 | Al girar el celular el modal de Emojis/Estados no cabe en la pantalla y ocurre un 'overflow' de la misma | Mantener la distribución de los elementos | 👁 | ✅ | Fix implementado (PR #67). Pendiente verificación en dispositivo físico en landscape y tablet. |
+| 6.2 | En la pantalla que crea un Círculo nuevo, hay una demora en tener el foco el textbox donde se ingresa el nombre del mismo  | El foco debe de aparecer por default sobre el textbox de inmediato | 👁 | ✅ | Fix implementado (PR #66): `autofocus: true` en `create_circle_view.dart`. Pendiente verificación en dispositivo físico. |
+| 6.3 | Cuando se cambia opción de Login a Registrar el foco no aparece en el primer textbox de cada una de ellas, sino que hay que colocarlo a mano  |Esto debiera ser automático | 👁 | ✅ | Fix implementado (PR #66): `FocusNode` + `addPostFrameCallback` en `auth_final_page.dart`. Pendiente verificación en dispositivo físico. |
 | 6.4 | Las ventanas de aviso que aparecen desde los modales de los emojis/estados, al tocarse un emoji no preconfigurado, tienen diferente "look and feel". La ventana de aviso del modal desde la barra debería parecerse lo más posible a la fuente de la verdad (ventana modal lanzada desde la pantalla del Círculo)  | Estas ventanas debieran ser casi idénticas, no solo en contenido sino además en la apariencia | 👁 | 🟡 | Fix implementado (PR #65): fondo negro + botón verde menta (`#1CE4B3`) en ambos modales. Pendiente verificación en dispositivo físico con zona geográfica configurada. |
+| 6.5 | La segunda tarjeta llamada "Unirse a un Círculo" que aprece debajo de la tarjeta "Crear un Círculo", luego de que el usuario se Registra demora unos segundos en aparecer | Ambas tarjetas deberían aaparecer casi simultáneamente | 👁 | 🟡 |  |
 ---
 ## Tests Manuales 
 
@@ -166,6 +169,8 @@
 | 19 | T4.9 | 4 | Desactivar notificaciones desde Ajustes del sistema | Precondición: app con ícono visible. Pasos: Ajustes → Apps → ZYNC → Notificaciones → OFF → volver a app → verificar SnackBar informativo. GAP: aún no implementado. |
 | 20 | T4.10 | 4 | Cerrar app desde Recientes — ícono persiste | Precondición: app con ícono visible. Pasos: abrir Recientes → deslizar ZYNC → esperar 3-5 seg → verificar que el ícono sigue en la barra superior. |
 | 21 | T4.11 | 4 | Re-habilitar notificaciones desde SnackBar | Precondición: T4.6 o T4.9 ejecutado (sin ícono). Pasos: tocar "Habilitar" en SnackBar → activar en Ajustes → volver a app → verificar ícono aparece. GAP: aún no implementado. |
+| 22 | T3.30.4 | 3 | SOS: mantener 1s → estado cambia y modal cierra al instante | Precondición: estar dentro de un círculo. Pasos (A) Modal del Círculo: tocar propio avatar → mantener presionado SOS 1s completo → verificar que el modal se cierra inmediatamente y el estado en el círculo cambia a SOS. Pasos (B) Modal de la Barra de Notificaciones: tocar la notificación persistente → mantener presionado SOS 1s → verificar cierre inmediato y cambio de estado. |
+| 23 | T4.12 | 4 | Modal nativo rechazado por mutex — sin recarga de pantalla del Círculo | Precondición: zona geográfica configurada (para tener emoji de zona en estado). Pasos: (1) Abrir modal del Círculo (tocar propio avatar) → sin cerrarlo, bajar la barra de notificaciones y tocar la notificación ZYNC para intentar abrir el segundo modal → el segundo modal debe ser rechazado (no se abre). (2) Cerrar el primer modal → verificar que la pantalla del Círculo NO recargó y NO muestra el emoji de zona (ej: 📍 Casa) como si hubiera habido una actualización. |
 
 ---
 
