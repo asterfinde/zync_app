@@ -169,7 +169,9 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   Future<void> _triggerSos() async {
     final sos = StatusType.fallbackPredefined.firstWhere((s) => s.id == 'sos');
     _cancelSosHold();
-    await _handleStatusSelection(sos);
+    // Cerrar modal inmediatamente — el update de GPS/Firestore corre en background
+    unawaited(_closeModal());
+    StatusService.updateUserStatus(sos);
   }
 
   Widget _buildSosButton() {
