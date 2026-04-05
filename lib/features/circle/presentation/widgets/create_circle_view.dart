@@ -138,6 +138,7 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
             TextFormField(
               key: const Key('field_circle_name'),
               controller: _createController,
+              autofocus: true,
               onChanged: (_) => _validateForm(),
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
