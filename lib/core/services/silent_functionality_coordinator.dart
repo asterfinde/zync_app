@@ -6,6 +6,7 @@ import '../../widgets/notification_status_selector.dart'; // CAMBIADO: Usar moda
 import '../../core/models/user_status.dart';
 import '../../services/circle_service.dart';
 import 'status_modal_service.dart';
+import 'status_service.dart'; // T5.6: Estado offline en login/logout
 
 /// Coordinador de funcionalidad silenciosa - Integra sin romper lo existente
 class SilentFunctionalityCoordinator {
@@ -96,6 +97,9 @@ class SilentFunctionalityCoordinator {
 
       print('[SilentCoordinator] ✅ Usuario pertenece al círculo: ${userCircle.name}');
       _userHasCircle = true;
+
+      // T5.6: Limpiar estado offline al reconectarse
+      await StatusService.clearOfflineStatus();
 
       final hasPermission = await NotificationService.requestPermissions();
 

@@ -417,6 +417,27 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       };
     }
 
+    // T5.6: Logout deliberado — máxima prioridad, retorno temprano
+    final loggedOut = statusData['loggedOut'] as bool? ?? false;
+    if (loggedOut) {
+      final timestamp = statusData['timestamp'];
+      DateTime? loggedOutAt;
+      if (timestamp is Timestamp) loggedOutAt = timestamp.toDate();
+      return {
+        'emoji': '💤',
+        'status': 'offline',
+        'coordinates': null,
+        'hasGPS': false,
+        'lastUpdate': loggedOutAt,
+        'autoUpdated': false,
+        'zoneName': null,
+        'displayText': 'Desconectado',
+        'showManualBadge': false,
+        'locationInfo': null,
+        'isOffline': true,
+      };
+    }
+
     final rawStatusType = statusData['statusType'] as String?;
     final statusType = _migrateOldStatus(rawStatusType);
     final autoUpdated = statusData['autoUpdated'] as bool? ?? false;
@@ -525,6 +546,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       'displayText': displayText, // 🆕 Texto a mostrar (zona o estado)
       'showManualBadge': showManualBadge, // 🆕 Mostrar badge ✋ Manual
       'locationInfo': locationInfo, // 🆕 Info de ubicación desconocida/última zona
+      'isOffline': false, // T5.6: No desconectado (cambia a true solo via loggedOut)
     };
 
     print('[InCircleView] 🎯 RETORNANDO: emoji=$emoji, displayText=$displayText, autoUpdated=$autoUpdated');
@@ -541,6 +563,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         oldData['displayText'] != newData['displayText'] || // 🆕 Detecta cambio de texto
         oldData['showManualBadge'] != newData['showManualBadge'] || // 🆕 Detecta cambio de badge
         oldData['locationInfo'] != newData['locationInfo'] || // 🆕 Detecta cambio de ubicación
+        oldData['isOffline'] != newData['isOffline'] || // T5.6: Detecta transición online ↔ offline
         oldData['lastUpdate']?.millisecondsSinceEpoch != newData['lastUpdate']?.millisecondsSinceEpoch ||
         oldData['coordinates']?.toString() != newData['coordinates']?.toString(); // Comparación simple para coordenadas
   }
@@ -1154,6 +1177,7 @@ class _MemberListItem extends StatelessWidget {
     final displayText = memberData['displayText'] as String?; // 🆕 Texto del estado o zona
     final showManualBadge = memberData['showManualBadge'] as bool? ?? false; // 🆕
     final locationInfo = memberData['locationInfo'] as String?; // 🆕
+    final isOffline = memberData['isOffline'] as bool? ?? false; // T5.6
     final isSOS = status == 'sos';
 
     print(
@@ -1183,10 +1207,12 @@ class _MemberListItem extends StatelessWidget {
                 children: [
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 150),
-                    child: Text(emoji,
-                        key: ValueKey(emoji),
-                        style:
-                            const TextStyle(fontSize: 32)), // 🆕 Cambio: ValueKey(emoji) detecta cambios de customEmoji
+                    child: Opacity(
+                      opacity: isOffline ? 0.4 : 1.0,
+                      child: Text(emoji,
+                          key: ValueKey(emoji),
+                          style: const TextStyle(fontSize: 32)), // 🆕 Cambio: ValueKey(emoji) detecta cambios de customEmoji
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1197,7 +1223,10 @@ class _MemberListItem extends StatelessWidget {
                           children: [
                             Flexible(
                                 child: Text(nickname,
-                                    style: _AppTextStyles.memberNickname, overflow: TextOverflow.ellipsis)),
+                                    style: isOffline
+                                        ? _AppTextStyles.memberNickname.copyWith(color: _AppColors.textSecondary)
+                                        : _AppTextStyles.memberNickname,
+                                    overflow: TextOverflow.ellipsis)),
                             if (isCurrentUser) ...[
                               const SizedBox(width: 8),
                               Container(
@@ -1258,6 +1287,22 @@ class _MemberListItem extends StatelessWidget {
                             key: const Key('text_location_info'),
                             locationInfo,
                             style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                        ],
+                        // T5.6: Badge de desconexión deliberada
+                        if (isOffline) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            key: const Key('badge_offline'),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              '💤 Desconectado',
+                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
                           ),
                         ],
                         if (isFirst && status != 'loading') // No mostrar "Creador" si está cargando
