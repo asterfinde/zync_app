@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/models/user_status.dart';
 import '../core/services/status_service.dart';
 
@@ -47,6 +48,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   @override
   void initState() {
     super.initState();
+    _setModalOpenFlag(true);
     _setupAnimations();
     _loadStatusGrid(); // Cargar grid de forma asíncrona
     // CRÍTICO: NO iniciar animación hasta que el grid esté cargado
@@ -204,9 +206,15 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   @override
   void dispose() {
+    _setModalOpenFlag(false);
     _sosTimer?.cancel();
     _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _setModalOpenFlag(bool isOpen) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('zync_modal_open', isOpen ? 1 : 0);
   }
 
   void _startSosHold() {
