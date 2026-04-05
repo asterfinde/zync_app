@@ -74,13 +74,23 @@ class EmojiDialogActivity : Activity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "⚡ [NATIVE] Abriendo dialog nativo de emojis...")
 
-        // Mutex: si el modal Flutter ya está abierto, no mostrar el nativo encima
+        // Mutex: si el modal Flutter ya está abierto, no mostrar el nativo encima.
+        // Staleness check: si el flag lleva más de 30s en estado 1, el proceso fue
+        // matado con el modal abierto y SharedPreferences quedó con flag=1 en disco.
+        // En ese caso se considera stale y se resetea para no bloquear el modal nativo.
         val sharedPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val isFlutterModalOpen = sharedPrefs.getInt("flutter.zync_modal_open", 0) == 1
         if (isFlutterModalOpen) {
-            Log.d(TAG, "⚠️ [NATIVE] Modal Flutter ya está abierto — cerrando activity nativa")
-            finish()
-            return
+            val flagTs = sharedPrefs.getLong("flutter.zync_modal_open_ts", 0L)
+            val ageMs = System.currentTimeMillis() - flagTs
+            if (ageMs > 30_000L) {
+                Log.d(TAG, "⚠️ [NATIVE] Flag zync_modal_open stale (${ageMs}ms) — reseteando y abriendo modal")
+                sharedPrefs.edit().putInt("flutter.zync_modal_open", 0).apply()
+            } else {
+                Log.d(TAG, "⚠️ [NATIVE] Modal Flutter ya está abierto (age=${ageMs}ms) — cerrando activity nativa")
+                finish()
+                return
+            }
         }
 
         emojis = loadEmojisFromCache()
