@@ -1,0 +1,10 @@
+{
+  "allowedTools": [
+    "Bash",
+    "Edit",
+    "Write",
+    "Read",
+    "Glob",
+    "Grep"
+  ]
+}
