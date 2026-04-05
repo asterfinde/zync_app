@@ -74,6 +74,15 @@ class EmojiDialogActivity : Activity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "⚡ [NATIVE] Abriendo dialog nativo de emojis...")
 
+        // Mutex: si el modal Flutter ya está abierto, no mostrar el nativo encima
+        val sharedPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val isFlutterModalOpen = sharedPrefs.getInt("flutter.zync_modal_open", 0) == 1
+        if (isFlutterModalOpen) {
+            Log.d(TAG, "⚠️ [NATIVE] Modal Flutter ya está abierto — cerrando activity nativa")
+            finish()
+            return
+        }
+
         emojis = loadEmojisFromCache()
         configuredZoneTypes = loadConfiguredZoneTypes()
         setupActivityUI()
@@ -409,36 +418,77 @@ class EmojiDialogActivity : Activity() {
     }
 
     /**
-     * Aviso de zona bloqueada — estilo unificado con el modal Flutter:
-     * fondo negro, borde verde menta sutil, botón "Entendido" en verde menta.
+     * Aviso de zona bloqueada — layout programático idéntico al Dialog Flutter:
+     * fondo negro sólido, borde menta 40% opacidad, título blanco bold, mensaje
+     * blanco 80% opacidad, botón "Entendido" alineado a la derecha en menta.
      */
     private fun showZoneNotAllowedDialog() {
-        val accentColor = Color.parseColor("#1CE4B3")
-        val backgroundColor = Color.parseColor("#FF000000") // negro sólido
+        val dialog = android.app.Dialog(this)
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
 
-        val dialog = android.app.AlertDialog.Builder(this)
-            .setTitle("Acción no permitida")
-            .setMessage("No puedes seleccionar zonas manualmente. El estado de zonas se actualiza automáticamente por geofencing.")
-            .setPositiveButton("Entendido") { d, _ -> d.dismiss() }
-            .create()
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(20), dpToPx(20), dpToPx(20), dpToPx(16))
+            background = GradientDrawable().apply {
+                setColor(Color.BLACK)
+                cornerRadius = dpToPx(16).toFloat()
+                setStroke(dpToPx(1), Color.argb(102, 28, 228, 179)) // #661CE4B3
+            }
+        }
 
-        dialog.setOnShowListener {
-            // Fondo negro con esquinas redondeadas
-            dialog.window?.setBackgroundDrawable(
-                GradientDrawable().apply {
-                    setColor(backgroundColor)
-                    cornerRadius = dpToPx(16).toFloat()
-                    setStroke(dpToPx(1), Color.argb(102, 28, 228, 179)) // #661CE4B3
-                }
+        val titleView = TextView(this).apply {
+            text = "Acción no permitida"
+            textSize = 18f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
-            // Título blanco
-            val titleView = dialog.findViewById<TextView>(android.R.id.title)
-            titleView?.setTextColor(Color.WHITE)
-            // Mensaje blanco con 80% de opacidad
-            val messageView = dialog.findViewById<TextView>(android.R.id.message)
-            messageView?.setTextColor(Color.argb(204, 255, 255, 255)) // #CCFFFFFF
-            // Botón en verde menta
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.setTextColor(accentColor)
+        }
+
+        val messageView = TextView(this).apply {
+            text = "No puedes seleccionar zonas manualmente. El estado de zonas se actualiza automáticamente por geofencing."
+            textSize = 14f
+            setTextColor(Color.argb(204, 255, 255, 255)) // #CCFFFFFF
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dpToPx(12) }
+        }
+
+        val buttonContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dpToPx(18) }
+        }
+
+        val buttonView = TextView(this).apply {
+            text = "Entendido"
+            textSize = 14f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(Color.parseColor("#1CE4B3"))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { dialog.dismiss() }
+        }
+
+        buttonContainer.addView(buttonView)
+        container.addView(titleView)
+        container.addView(messageView)
+        container.addView(buttonContainer)
+
+        dialog.setContentView(container)
+        dialog.window?.apply {
+            setBackgroundDrawable(GradientDrawable().apply { setColor(Color.TRANSPARENT) })
+            setLayout(
+                (resources.displayMetrics.widthPixels * 0.85).toInt(),
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT
+            )
         }
 
         dialog.show()
