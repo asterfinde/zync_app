@@ -215,6 +215,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   Future<void> _setModalOpenFlag(bool isOpen) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('zync_modal_open', isOpen ? 1 : 0);
+    if (isOpen) {
+      // Timestamp para que EmojiDialogActivity pueda detectar flags stale
+      // (proceso matado con modal abierto → flag queda en 1 en disco)
+      await prefs.setInt('zync_modal_open_ts', DateTime.now().millisecondsSinceEpoch);
+    }
   }
 
   void _startSosHold() {
