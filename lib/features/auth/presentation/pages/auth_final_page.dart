@@ -19,6 +19,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _nicknameFocusNode = FocusNode();
   bool _isConfirmPasswordObscured = true;
   bool _isLogin = true;
   bool _isPasswordObscured = true;
@@ -32,6 +34,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
     super.initState();
     _updateTime();
     _startTimeUpdater();
+  }
+
+  @override
+  void dispose() {
+    _emailFocusNode.dispose();
+    _nicknameFocusNode.dispose();
+    super.dispose();
   }
 
   void _startTimeUpdater() {
@@ -557,6 +566,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                       TextField(
                         key: const Key('field_nickname'),
                         controller: _nicknameController,
+                        focusNode: _nicknameFocusNode,
                         onChanged: (_) => _updateFormValid(),
                         style: TextStyle(color: primaryTextColor),
                         decoration: InputDecoration(
@@ -586,6 +596,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                 TextField(
                   key: const Key('field_email'),
                   controller: _emailController,
+                  focusNode: _emailFocusNode,
                   onChanged: (_) => _updateFormValid(),
                   style: TextStyle(color: primaryTextColor),
                   decoration: InputDecoration(
@@ -758,6 +769,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                             onPressed: () {
                               setState(() {
                                 _isLogin = !_isLogin;
+                              });
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (!_isLogin) {
+                                  _nicknameFocusNode.requestFocus();
+                                } else {
+                                  _emailFocusNode.requestFocus();
+                                }
                               });
                             },
                             style: TextButton.styleFrom(
