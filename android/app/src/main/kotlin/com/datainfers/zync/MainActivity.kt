@@ -145,7 +145,18 @@ class MainActivity: FlutterActivity() {
             Log.d(TAG, "⚠️ [NATIVO] No hay usuario autenticado - NO iniciando KeepAliveService")
             return
         }
-        
+
+        // Bug A FIX: No iniciar KeepAliveService si hay un modal Flutter abierto.
+        // EmojiDialogActivity.finish() dispara onPause()/onResume() en MainActivity,
+        // lo que causaría un ciclo que reactiva la Firestore stream y muestra el emoji
+        // de zona guardado (📍) aunque el mutex rechazó la apertura del modal.
+        val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val isModalOpen = flutterPrefs.getInt("flutter.zync_modal_open", 0)
+        if (isModalOpen == 1) {
+            Log.d(TAG, "⚠️ [NATIVO] Modal Flutter abierto (zync_modal_open=1) — NO iniciando KeepAliveService")
+            return
+        }
+
         // 🚀 FASE 1: Iniciar keep-alive NATIVO (no esperar a Flutter)
         if (!isKeepAliveRunning) {
             Log.d(TAG, "🟢 [NATIVO] Iniciando keep-alive service desde onPause() para usuario: $currentUserId")
