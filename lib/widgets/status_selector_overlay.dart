@@ -402,13 +402,22 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
     // PM1 FIX: Calcular tamaños responsive para uniformidad entre pantallas
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
+    final safeArea = MediaQuery.of(context).padding;
 
-    // Usar porcentajes para tamaño responsive
-    final modalMargin = screenWidth * 0.08; // 8% del ancho de pantalla
-    final maxGridHeight = screenHeight * 0.55; // 55% de la altura de pantalla
+    // Margen horizontal basado en ancho, margen vertical basado en alto
+    // (evita márgenes verticales gigantes en landscape donde el ancho es grande)
+    final hMargin = screenWidth * 0.08;
+    final vMargin = screenHeight * 0.06;
+
+    // Espacio reservado fuera del grid: padding container (24) + SOS button + margen SOS (~78)
+    const double reservedForNonGrid = 24.0 + 78.0;
+    final availableModalHeight =
+        screenHeight - 2 * vMargin - safeArea.top - safeArea.bottom;
+    final maxGridHeight =
+        (availableModalHeight - reservedForNonGrid).clamp(100.0, screenHeight * 0.55);
 
     print(
-        '[StatusSelectorOverlay] 📐 Screen: ${screenWidth}x$screenHeight, margin: $modalMargin, maxHeight: $maxGridHeight');
+        '[StatusSelectorOverlay] 📐 Screen: ${screenWidth}x$screenHeight, hMargin: $hMargin, vMargin: $vMargin, maxGridHeight: $maxGridHeight');
 
     return AnimatedBuilder(
       animation: _animationController,
@@ -423,8 +432,9 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                 child: Transform.scale(
                   scale: _scaleAnimation.value,
                   child: Container(
-                    // PM1 FIX: Margen responsive en lugar de fijo
-                    margin: EdgeInsets.all(modalMargin),
+                    // PM1 FIX: Margen responsive — h y v separados + maxWidth para tablets
+                    margin: EdgeInsets.symmetric(horizontal: hMargin, vertical: vMargin),
+                    constraints: const BoxConstraints(maxWidth: 380),
                     padding: const EdgeInsets.all(12), // PM5 FIX: Reducido de 20 a 12 para emojis más grandes
                     decoration: BoxDecoration(
                       color: Colors.grey.shade900.withOpacity(0.95), // Fondo oscuro transparente

@@ -191,8 +191,9 @@ class EmojiDialogActivity : Activity() {
         val cellMarginDp = 5
         // Celda cuadrada: (ancho disponible - márgenes de 4 columnas) / 4 columnas
         val cellSizeDp = (gridAvailableWidthDp - cellMarginDp * 2 * 4) / 4
-        // Altura del ScrollView: 55% del alto de pantalla (igual que Flutter: maxHeight = screenHeight * 0.55)
-        val scrollViewMaxHeightDp = (screenHeightDp * 0.55).toInt()
+        // Altura del ScrollView: disponible = pantalla − márgenes container (64) − padding (24) − SOS+margen (78)
+        // Evita overflow en landscape donde screenHeightDp es pequeño
+        val scrollViewMaxHeightDp = (screenHeightDp - 166).coerceAtLeast(80)
 
         Log.d(TAG, "📐 [UI] screen=${screenWidthDp}x${screenHeightDp}dp, container=${containerWidthDp}dp, cell=${cellSizeDp}dp, scrollMax=${scrollViewMaxHeightDp}dp")
 
