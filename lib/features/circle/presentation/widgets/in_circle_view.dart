@@ -857,6 +857,66 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     }
   }
 
+  /// Muestra dialog de confirmación antes de activar Modo Silencio.
+  /// Fondo negro, borde menta, letras blancas — coherente con el resto del diseño.
+  Future<void> _confirmAndActivateSilentMode(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.75),
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: const Color(0xFF1CE4B3).withValues(alpha: 0.4), width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Activar Modo Silencio',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'La app se minimizará y quedará activa en segundo plano. '
+                  'Podrás cambiar tu estado desde la notificación persistente.',
+                  style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF)),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: TextButton.styleFrom(foregroundColor: Color(0xFF1CE4B3)),
+                      child: const Text('Activar', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true && context.mounted) {
+      SilentFunctionalityCoordinator.activateSilentMode(context);
+    }
+  }
+
   /// Construye el botón del footer
   Widget _buildFooterButton(BuildContext context) {
     return SafeArea(
@@ -871,9 +931,10 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                 key: const Key('btn_silent_mode'),
                 onPressed: _isUpdatingStatus
                     ? null
-                    : () => SilentFunctionalityCoordinator.activateSilentMode(context),
+                    : () => _confirmAndActivateSilentMode(context),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _AppColors.accent,
+                  backgroundColor: Colors.black,
                   side: const BorderSide(color: _AppColors.accent),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

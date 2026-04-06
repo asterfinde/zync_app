@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Point 21: Para MethodChannel
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../widgets/notification_status_selector.dart'; // CAMBIADO: Usar modal de notificaciones
@@ -29,13 +28,6 @@ class SilentFunctionalityCoordinator {
     }
 
     try {
-      // Reset del mutex cross-platform: garantiza que zync_modal_open=0 al arrancar.
-      // Sin este reset, si la app fue cerrada mientras StatusSelectorOverlay estaba
-      // abierto, el flag queda en 1 y EmojiDialogActivity se cierra inmediatamente
-      // en cada arranque posterior, rompiendo el modo silencioso.
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('zync_modal_open', 0);
-
       // 1. Inicializar servicios existentes (sin romper nada)
       print('[SilentCoordinator] 🔧 Inicializando servicios base...');
 
@@ -122,17 +114,12 @@ class SilentFunctionalityCoordinator {
       // T5.6: Limpiar estado offline al reconectarse
       await StatusService.clearOfflineStatus();
 
-      final hasPermission = await NotificationService.requestPermissions();
+      // 🌙 SILENT MODE: No solicitar permisos aquí. Los permisos se piden al momento
+      // en que el usuario toca el botón "Modo Silencio" (activateSilentMode).
+      // Esto evita que el dialog de permisos aparezca sin acción explícita del usuario.
 
-      if (hasPermission) {
-        print('[SilentCoordinator] ✅ Permisos de notificación otorgados');
-        print('[SilentCoordinator] 🌙 Modo Silencio disponible — se activa con botón explícito');
-        // 🌙 SILENT MODE: No mostrar notificación automáticamente.
-        // La notificación solo aparece cuando el usuario toca "Modo Silencio".
-      } else {
-        print('[SilentCoordinator] ⚠️ Permisos de notificación denegados');
-        print('[SilentCoordinator] 💡 Point 2: El modal se mostrará después de navegar a HomePage');
-      }
+
+      print('[SilentCoordinator] 🌙 Modo Silencio disponible — se activa con botón explícito');
     } catch (e) {
       print('[SilentCoordinator] ❌ Error en activateAfterLogin: $e');
     }
@@ -418,7 +405,11 @@ class SilentFunctionalityCoordinator {
     if (!_userHasCircle) return;
     if (!context.mounted) return;
 
-    final hasPermission = await NotificationService.hasPermission();
+    // Fix 2b: Solicitar permisos en el momento que el usuario toca el botón.
+    // Si ya los tiene → continúa. Si no → Android muestra el dialog nativo.
+    // Si los deniega → muestra info. Esto garantiza que notificación y KeepAlive
+    // solo arrancan cuando el usuario actúa intencionalmente.
+    final hasPermission = await NotificationService.requestPermissions();
     if (!context.mounted) return;
 
     if (!hasPermission) {
@@ -439,10 +430,20 @@ class SilentFunctionalityCoordinator {
     }
   }
 
-  /// Desactiva el Modo Silencio: cancela la notificación y limpia el estado.
+  /// Desactiva el Modo Silencio: cancela la notificación, limpia el estado
+  /// y detiene KeepAlive en el lado nativo.
   /// Se llama automáticamente cuando el usuario reabre la app.
   static Future<void> deactivateSilentMode() async {
     _isSilentModeActive = false;
+    // Fix 2c: Detener KeepAlive vía Kotlin antes de cancelar la notificación.
+    // Sin esto, el foreground service sigue corriendo aunque la notificación desaparezca.
+    try {
+      const keepAliveChannel = MethodChannel('zync/keep_alive');
+      await keepAliveChannel.invokeMethod('stop');
+      print('[SilentCoordinator] 🔴 KeepAlive detenido al desactivar Modo Silencio');
+    } catch (e) {
+      print('[SilentCoordinator] ⚠️ Error deteniendo KeepAlive en deactivateSilentMode: $e');
+    }
     await NotificationService.cancelQuickActionNotification();
     print('[SilentCoordinator] 🌙 Modo Silencio desactivado');
   }
