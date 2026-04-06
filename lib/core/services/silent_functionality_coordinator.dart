@@ -417,14 +417,13 @@ class SilentFunctionalityCoordinator {
       return;
     }
 
-    _isSilentModeActive = true;
-    await NotificationService.showQuickActionNotification();
-
     try {
+      _isSilentModeActive = true;
+      await NotificationService.showQuickActionNotification();
       const keepAliveChannel = MethodChannel('zync/keep_alive');
       await keepAliveChannel.invokeMethod('activateSilentMode');
     } catch (e) {
-      print('[SilentCoordinator] ❌ Error activando Modo Silencio nativo: $e');
+      print('[SilentCoordinator] ❌ Error activando Modo Silencio: $e');
       _isSilentModeActive = false;
       await NotificationService.cancelQuickActionNotification();
     }
