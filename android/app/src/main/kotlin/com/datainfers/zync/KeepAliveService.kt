@@ -93,7 +93,7 @@ class KeepAliveService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Zync en segundo plano",
-                NotificationManager.IMPORTANCE_LOW // BAJA importancia = silencioso
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Mantiene Zync listo para usarse"
                 setShowBadge(false)
@@ -123,7 +123,7 @@ class KeepAliveService : Service() {
             .setContentText("Toca para cambiar tu estado") // Point 21: Texto claro
             .setSmallIcon(android.R.drawable.ic_dialog_info) // Usar icono genérico por ahora
             .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_LOW) // Prioridad baja = no molesta
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setOngoing(true) // No se puede deslizar para cerrar
             .setShowWhen(false)
             .build()

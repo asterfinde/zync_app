@@ -38,8 +38,9 @@ class GeofencingService {
       _currentCircleId = circleId;
       _isMonitoring = true;
 
-      // Verificar ubicación actual inmediatamente
-      await checkCurrentLocation();
+      // Verificar ubicación actual en background — no bloquea el arranque de la UI
+      // ni dispara modales de zona durante initState (fix: modal automático al reabrir)
+      Future.microtask(() => checkCurrentLocation());
 
       // Configurar monitoreo continuo
       _positionSubscription = Geolocator.getPositionStream(
