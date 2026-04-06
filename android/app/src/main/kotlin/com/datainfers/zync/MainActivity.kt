@@ -140,19 +140,9 @@ class MainActivity: FlutterActivity() {
             return
         }
         
-        // Point 2 FIX: Solo iniciar keep-alive si hay un usuario autenticado
-        if (currentUserId == null) {
-            Log.d(TAG, "⚠️ [NATIVO] No hay usuario autenticado - NO iniciando KeepAliveService")
-            return
-        }
+        // 🌙 SILENT MODE: KeepAlive solo arranca vía botón explícito "Modo Silencio"
+        // (no en cada minimización — ver handler 'activateSilentMode' en keep_alive channel)
 
-        // 🚀 FASE 1: Iniciar keep-alive NATIVO (no esperar a Flutter)
-        if (!isKeepAliveRunning) {
-            Log.d(TAG, "🟢 [NATIVO] Iniciando keep-alive service desde onPause() para usuario: $currentUserId")
-            KeepAliveService.start(this)
-            isKeepAliveRunning = true
-        }
-        
         // 🚀 FASE 1: Guardar estado NATIVO inmediatamente
         currentUserId?.let { userId ->
             Log.d(TAG, "💾 [NATIVO] Guardando estado: $userId")
@@ -215,14 +205,9 @@ class MainActivity: FlutterActivity() {
             Log.w(TAG, "⚠️ [BROADCAST] Error desregistrando receiver: ${e.message}")
         }
         
-        // Point 21 FASE 1: SIEMPRE mantener keep-alive activo
-        // El logout manual se manejará desde Flutter (Settings)
-        // NOTA: En Android 12+ esto puede fallar silenciosamente, y está bien
-        if (!isKeepAliveRunning) {
-            Log.d(TAG, "⚠️ [NATIVO] Keep-alive no estaba corriendo - intentando iniciar desde onDestroy()")
-            KeepAliveService.start(this)
-            // NO marcar isKeepAliveRunning = true porque puede haber fallado
-        }
+        // 🌙 SILENT MODE: KeepAlive NO se reactiva en onDestroy()
+        // Si estaba corriendo (Silent Mode activo), se limpia en onResume()
+        Log.d(TAG, "🔴 [NATIVO] onDestroy — isKeepAliveRunning=$isKeepAliveRunning")
     }
     
     // 🚀 FASE 1.5: Interceptar back gesture para MINIMIZAR en vez de CERRAR
@@ -419,6 +404,14 @@ class MainActivity: FlutterActivity() {
                     Log.d(TAG, "🔴 Flutter solicita detener keep-alive service (LOGOUT MANUAL)")
                     KeepAliveService.stop(this)
                     isKeepAliveRunning = false
+                    result.success(true)
+                }
+                "activateSilentMode" -> {
+                    Log.d(TAG, "🌙 [SILENT] Flutter solicita activar Modo Silencio")
+                    KeepAliveService.start(this)
+                    isKeepAliveRunning = true
+                    // Minimizar la app al background (igual que onBackPressed)
+                    moveTaskToBack(true)
                     result.success(true)
                 }
                 "setManualLogoutFlag" -> {

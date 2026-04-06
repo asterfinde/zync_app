@@ -14,6 +14,7 @@ import '../../../../core/widgets/emoji_modal.dart';
 import '../../../../core/services/gps_service.dart';
 import '../../../../core/services/status_service.dart';
 import '../../../../core/services/emoji_service.dart';
+import '../../../../core/services/silent_functionality_coordinator.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../../core/models/user_status.dart';
 import '../../../geofencing/services/geofencing_service.dart'; // Servicio de geofencing
@@ -861,36 +862,68 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton(
-          key: const Key('btn_change_status'),
-          onPressed: _isUpdatingStatus ? null : () => _quickStatusUpdate(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _AppColors.accent,
-            foregroundColor: _AppColors.background,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_isUpdatingStatus)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
+        child: Row(
+          children: [
+            // Botón secundario: Modo Silencio
+            Expanded(
+              flex: 3,
+              child: OutlinedButton.icon(
+                key: const Key('btn_silent_mode'),
+                onPressed: _isUpdatingStatus
+                    ? null
+                    : () => SilentFunctionalityCoordinator.activateSilentMode(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _AppColors.accent,
+                  side: const BorderSide(color: _AppColors.accent),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
                   ),
-                )
-              else
-                const Icon(Icons.check_circle),
-              const SizedBox(width: 8),
-              Text(_isUpdatingStatus ? 'Actualizando...' : 'OK'),
-            ],
-          ),
+                ),
+                icon: const Icon(Icons.bedtime_outlined, size: 18),
+                label: const Text(
+                  'Modo Silencio',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Botón primario: OK / Actualizar estado
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                key: const Key('btn_change_status'),
+                onPressed: _isUpdatingStatus ? null : () => _quickStatusUpdate(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _AppColors.accent,
+                  foregroundColor: _AppColors.background,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isUpdatingStatus)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
+                        ),
+                      )
+                    else
+                      const Icon(Icons.check_circle),
+                    const SizedBox(width: 8),
+                    Text(_isUpdatingStatus ? '...' : 'OK'),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

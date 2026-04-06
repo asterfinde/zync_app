@@ -15,6 +15,7 @@ class SilentFunctionalityCoordinator {
   static BuildContext? _context;
   static bool _isManualLogoutInProgress = false; // Point 1.1: Bandera para evitar reactivación
   static bool _userHasCircle = false; // True solo cuando activateAfterLogin confirmó círculo activo
+  static bool _isSilentModeActive = false; // True cuando el usuario activó explícitamente Modo Silencio
 
   /// Inicializa SOLO los servicios base (sin BuildContext)
   /// Se debe llamar en main() ANTES de runApp()
@@ -113,9 +114,9 @@ class SilentFunctionalityCoordinator {
 
       if (hasPermission) {
         print('[SilentCoordinator] ✅ Permisos de notificación otorgados');
-        print('[SilentCoordinator] Mostrando notificación persistente...');
-        await NotificationService.showQuickActionNotification();
-        print('[SilentCoordinator] ✅ Funcionalidad silenciosa ACTIVADA');
+        print('[SilentCoordinator] 🌙 Modo Silencio disponible — se activa con botón explícito');
+        // 🌙 SILENT MODE: No mostrar notificación automáticamente.
+        // La notificación solo aparece cuando el usuario toca "Modo Silencio".
 
         // Point 1.1: Resetear bandera de logout manual (usuario hizo login exitoso)
         _isManualLogoutInProgress = false;
@@ -194,13 +195,13 @@ class SilentFunctionalityCoordinator {
       final hasPermission = await NotificationService.hasPermission();
 
       if (hasPermission) {
-        print('[SilentCoordinator] ✅ Usuario habilitó notificaciones - mostrando notificación');
-        await NotificationService.showQuickActionNotification();
-
+        print('[SilentCoordinator] ✅ Usuario habilitó notificaciones');
+        // 🌙 SILENT MODE: No mostrar notificación automáticamente.
+        // El usuario debe tocar "Modo Silencio" para activarla.
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Notificaciones habilitadas - Cambio rápido disponible'),
+              content: Text('✅ Notificaciones habilitadas — usa "Modo Silencio" para activarlas'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
@@ -397,15 +398,55 @@ class SilentFunctionalityCoordinator {
     if (!_userHasCircle) return;
     if (!context.mounted) return;
 
-    final hasPermission = await NotificationService.hasPermission();
+    // 🌙 SILENT MODE: Si el usuario vuelve a la app con Silent Mode activo, desactivarlo.
+    if (_isSilentModeActive) {
+      await deactivateSilentMode();
+      return;
+    }
 
+    // Verificar permisos para mostrar aviso si están denegados (sin auto-activar notificación).
+    final hasPermission = await NotificationService.hasPermission();
+    if (!context.mounted) return;
+    if (!hasPermission) {
+      _showNotificationsDisabledInfo(context);
+    }
+  }
+
+  /// Activa el Modo Silencio de forma explícita (botón en la UI).
+  /// Muestra la notificación persistente, inicia KeepAlive y minimiza la app.
+  /// Solo funciona si el usuario pertenece a un círculo y tiene permisos.
+  static Future<void> activateSilentMode(BuildContext context) async {
+    if (_isManualLogoutInProgress) return;
+    if (!_userHasCircle) return;
+    if (!context.mounted) return;
+
+    final hasPermission = await NotificationService.hasPermission();
     if (!context.mounted) return;
 
     if (!hasPermission) {
       _showNotificationsDisabledInfo(context);
-    } else {
-      await NotificationService.showQuickActionNotification();
+      return;
     }
+
+    _isSilentModeActive = true;
+    await NotificationService.showQuickActionNotification();
+
+    try {
+      const keepAliveChannel = MethodChannel('zync/keep_alive');
+      await keepAliveChannel.invokeMethod('activateSilentMode');
+    } catch (e) {
+      print('[SilentCoordinator] ❌ Error activando Modo Silencio nativo: $e');
+      _isSilentModeActive = false;
+      await NotificationService.cancelQuickActionNotification();
+    }
+  }
+
+  /// Desactiva el Modo Silencio: cancela la notificación y limpia el estado.
+  /// Se llama automáticamente cuando el usuario reabre la app.
+  static Future<void> deactivateSilentMode() async {
+    _isSilentModeActive = false;
+    await NotificationService.cancelQuickActionNotification();
+    print('[SilentCoordinator] 🌙 Modo Silencio desactivado');
   }
 
   /// Limpia recursos cuando la app se cierra
