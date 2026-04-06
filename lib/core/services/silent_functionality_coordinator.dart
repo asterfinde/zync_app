@@ -77,10 +77,22 @@ class SilentFunctionalityCoordinator {
     print('=== ACTIVATE AFTER LOGIN CALLED ===');
     print('[SilentCoordinator] 🔓 MÉTODO activateAfterLogin() EJECUTÁNDOSE');
 
-    // Point 1.1: NO activar si hay un logout manual en progreso
-    if (_isManualLogoutInProgress) {
-      print('[SilentCoordinator] ⚠️ Logout manual en progreso - BLOQUEANDO activación');
-      return;
+    // Fix: Un login exitoso siempre supera un logout previo en la misma sesión de proceso.
+    // El flag _isManualLogoutInProgress se resetea AQUÍ (antes de cualquier guard) para
+    // garantizar que clearOfflineStatus() corra siempre, independientemente de si el
+    // usuario hizo logout manual antes de re-autenticarse.
+    // Motivo del bug: el guard "if (_isManualLogoutInProgress) return" impedía que el flag
+    // se reseteara a sí mismo, dejando loggedOut:true atascado en Firestore entre sesiones.
+    _isManualLogoutInProgress = false;
+    print('[SilentCoordinator] 🔓 Bandera Dart de logout manual RESETEADA');
+
+    // Resetear también en el lado NATIVO (controla onPause en MainActivity)
+    try {
+      const keepAliveChannel = MethodChannel('zync/keep_alive');
+      await keepAliveChannel.invokeMethod('setManualLogoutFlag', {'inProgress': false});
+      print('[SilentCoordinator] 🔓 Bandera nativa de logout RESETEADA');
+    } catch (e) {
+      print('[SilentCoordinator] ⚠️ Error reseteando bandera nativa: $e');
     }
 
     _context = context;
@@ -117,26 +129,12 @@ class SilentFunctionalityCoordinator {
         print('[SilentCoordinator] 🌙 Modo Silencio disponible — se activa con botón explícito');
         // 🌙 SILENT MODE: No mostrar notificación automáticamente.
         // La notificación solo aparece cuando el usuario toca "Modo Silencio".
-
-        // Point 1.1: Resetear bandera de logout manual (usuario hizo login exitoso)
-        _isManualLogoutInProgress = false;
-        print('[SilentCoordinator] 🔓 Bandera Dart de logout manual RESETEADA');
-
-        // Point 1.1: Resetear también en el lado NATIVO
-        try {
-          const keepAliveChannel = MethodChannel('zync/keep_alive');
-          await keepAliveChannel.invokeMethod('setManualLogoutFlag', {'inProgress': false});
-          print('[SilentCoordinator] 🔓 Bandera nativa de logout RESETEADA');
-        } catch (e) {
-          print('[SilentCoordinator] ⚠️ Error reseteando bandera nativa: $e');
-        }
       } else {
         print('[SilentCoordinator] ⚠️ Permisos de notificación denegados');
         print('[SilentCoordinator] 💡 Point 2: El modal se mostrará después de navegar a HomePage');
-        // Point 2: NO mostrar modal aquí - se mostrará en auth_final_page después de navegar
       }
     } catch (e) {
-      print('[SilentCoordinator] ❌ Error solicitando permisos: $e');
+      print('[SilentCoordinator] ❌ Error en activateAfterLogin: $e');
     }
 
     print('');
