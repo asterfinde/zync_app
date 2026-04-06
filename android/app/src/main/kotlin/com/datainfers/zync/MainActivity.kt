@@ -526,7 +526,10 @@ class MainActivity: FlutterActivity() {
         when (requestCode) {
             NOTIFICATION_PERMISSION_REQUEST_CODE -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    showPersistentNotification()
+                    // 🌙 SILENT MODE: Permiso otorgado — la notificación y KeepAlive
+                    // se activan SOLO desde el botón "Modo Silencio" en Flutter,
+                    // no automáticamente aquí.
+                    Log.d(TAG, "✅ Permisos de notificación otorgados — esperando activación explícita del usuario")
                 } else {
                     Log.w(TAG, "Permisos de notificación denegados")
                 }
