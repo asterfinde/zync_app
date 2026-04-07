@@ -189,9 +189,7 @@ class MainActivity: FlutterActivity() {
             Log.w(TAG, "⚠️ [BROADCAST] Error desregistrando receiver: ${e.message}")
         }
         
-        // 🌙 SILENT MODE: KeepAlive NO se reactiva en onDestroy()
-        // Si estaba corriendo (Silent Mode activo), se limpia en onResume()
-        Log.d(TAG, "🔴 [NATIVO] onDestroy — isKeepAliveRunning=$isKeepAliveRunning")
+        Log.d(TAG, "🔴 [NATIVO] onDestroy — isSilentModeActive=$isSilentModeActive")
     }
     
     // 🚀 FASE 1.5: Interceptar back gesture para MINIMIZAR en vez de CERRAR
