@@ -1,210 +1,117 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Point 21: Para MethodChannel
+import 'package:flutter/services.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
-import '../../widgets/notification_status_selector.dart'; // CAMBIADO: Usar modal de notificaciones
-import '../../core/models/user_status.dart';
 import '../../services/circle_service.dart';
 import 'status_modal_service.dart';
-import 'status_service.dart'; // T5.6: Estado offline en login/logout
+import 'status_service.dart';
 
-/// Coordinador de funcionalidad silenciosa - Integra sin romper lo existente
+/// Coordinador de Modo Silencio — interfaz mínima entre Flutter y Kotlin.
+///
+/// Flutter es responsable de:
+///   - Verificar que el usuario pertenece a un círculo (_userHasCircle)
+///   - Pedir permiso de notificaciones antes de activar
+///   - Llamar activate() / deactivate() en el canal nativo
+///
+/// Kotlin (MainActivity + KeepAliveService) es responsable de:
+///   - Estado isSilentModeActive
+///   - Notificación persistente (via startForeground)
+///   - moveTaskToBack() al activar
+///   - Detener todo en onResume() cuando el usuario reabre la app
 class SilentFunctionalityCoordinator {
+  static const _channel = MethodChannel('zync/keep_alive');
+
   static bool _isInitialized = false;
-  static BuildContext? _context;
-  static bool _isManualLogoutInProgress = false; // Point 1.1: Bandera para evitar reactivación
-  static bool _userHasCircle = false; // True solo cuando activateAfterLogin confirmó círculo activo
-  static bool _isSilentModeActive = false; // True cuando el usuario activó explícitamente Modo Silencio
+  static bool _isManualLogoutInProgress = false;
+  static bool _userHasCircle = false;
 
-  /// Inicializa SOLO los servicios base (sin BuildContext)
-  /// Se debe llamar en main() ANTES de runApp()
+  // ---------------------------------------------------------------------------
+  // Inicialización
+  // ---------------------------------------------------------------------------
+
+  /// Inicializa los servicios base. Llamar en main() antes de runApp().
   static Future<void> initializeServices() async {
-    print('');
-    print('=== SILENT COORDINATOR INITIALIZE SERVICES CALLED ===');
-    print('[SilentCoordinator] 🚀 INICIO initializeServices() - _isInitialized: $_isInitialized');
-    if (_isInitialized) {
-      print('[SilentCoordinator] ⚠️ Ya está inicializado, saliendo...');
-      return;
-    }
-
+    if (_isInitialized) return;
     try {
-      // 1. Inicializar servicios existentes (sin romper nada)
-      print('[SilentCoordinator] 🔧 Inicializando servicios base...');
-
       await NotificationService.initialize();
       await QuickActionsService.initialize();
-
-      // Point 15: Inicializar servicio del modal transparente
       await StatusModalService.initialize();
-
-      // 2. Configurar el handler para la notificación persistente
-      NotificationService.setQuickActionTapHandler(_handleQuickActionTap);
-
-      // 3. NO mostrar notificación aún - esperar login
-      // await NotificationService.showQuickActionNotification();
-
       _isInitialized = true;
-      print('[SilentCoordinator] ✅ Servicios base inicializados exitosamente');
     } catch (e) {
-      print('[SilentCoordinator] ❌ Error inicializando servicios: $e');
+      debugPrint('[SilentCoordinator] ❌ Error en initializeServices: $e');
       rethrow;
     }
   }
 
-  /// Inicializa toda la funcionalidad silenciosa con BuildContext
-  /// DEPRECADO: Usar initializeServices() en main() + setContext() después
-  static Future<void> initialize(BuildContext context) async {
-    print('[SilentCoordinator] ⚠️ initialize() con BuildContext es deprecado');
-    _context = context;
+  // ---------------------------------------------------------------------------
+  // Ciclo de vida de sesión
+  // ---------------------------------------------------------------------------
 
-    if (!_isInitialized) {
-      await initializeServices();
+  /// Llamar después del login exitoso. Verifica círculo y habilita el botón.
+  static Future<void> activateAfterLogin(BuildContext context) async {
+    // Un login siempre cancela cualquier logout previo en el mismo proceso.
+    _isManualLogoutInProgress = false;
+
+    if (!_isInitialized) return;
+
+    try {
+      final userCircle = await CircleService().getUserCircle();
+      if (userCircle == null) {
+        _userHasCircle = false;
+        return;
+      }
+      _userHasCircle = true;
+      await StatusService.clearOfflineStatus();
+    } catch (e) {
+      debugPrint('[SilentCoordinator] ❌ Error en activateAfterLogin: $e');
     }
   }
 
-  /// Activa la funcionalidad silenciosa DESPUÉS del login exitoso
-  /// SOLO si el usuario pertenece a un círculo
-  static Future<void> activateAfterLogin(BuildContext context) async {
-    print('');
-    print('=== ACTIVATE AFTER LOGIN CALLED ===');
-    print('[SilentCoordinator] 🔓 MÉTODO activateAfterLogin() EJECUTÁNDOSE');
+  /// Llamar desde el logout manual (Settings → Cerrar sesión / Eliminar cuenta).
+  static Future<void> deactivateAfterLogout() async {
+    if (_isManualLogoutInProgress) return; // guard duplicados
+    _isManualLogoutInProgress = true;
+    _userHasCircle = false;
 
-    // Fix: Un login exitoso siempre supera un logout previo en la misma sesión de proceso.
-    // El flag _isManualLogoutInProgress se resetea AQUÍ (antes de cualquier guard) para
-    // garantizar que clearOfflineStatus() corra siempre, independientemente de si el
-    // usuario hizo logout manual antes de re-autenticarse.
-    // Motivo del bug: el guard "if (_isManualLogoutInProgress) return" impedía que el flag
-    // se reseteara a sí mismo, dejando loggedOut:true atascado en Firestore entre sesiones.
-    _isManualLogoutInProgress = false;
-    print('[SilentCoordinator] 🔓 Bandera Dart de logout manual RESETEADA');
-
-    // Resetear también en el lado NATIVO (controla onPause en MainActivity)
     try {
-      const keepAliveChannel = MethodChannel('zync/keep_alive');
-      await keepAliveChannel.invokeMethod('setManualLogoutFlag', {'inProgress': false});
-      print('[SilentCoordinator] 🔓 Bandera nativa de logout RESETEADA');
+      await _channel.invokeMethod('deactivate');
     } catch (e) {
-      print('[SilentCoordinator] ⚠️ Error reseteando bandera nativa: $e');
+      debugPrint('[SilentCoordinator] ⚠️ Error al desactivar en logout: $e');
     }
+  }
 
-    _context = context;
+  // ---------------------------------------------------------------------------
+  // Modo Silencio — activación explícita por botón en InCircleView
+  // ---------------------------------------------------------------------------
 
-    if (!_isInitialized) {
-      print('[SilentCoordinator] ❌ ERROR: Servicios NO inicializados');
-      print('[SilentCoordinator] ❌ Debes llamar initializeServices() en main() antes de runApp()');
+  /// Activa el Modo Silencio. Requiere permiso de notificaciones y círculo activo.
+  /// Kotlin maneja el resto: notificación, KeepAlive y moveTaskToBack.
+  static Future<void> activateSilentMode(BuildContext context) async {
+    if (_isManualLogoutInProgress) return;
+    if (!_userHasCircle) return;
+    if (!context.mounted) return;
+
+    final hasPermission = await NotificationService.requestPermissions();
+    if (!context.mounted) return;
+
+    if (!hasPermission) {
+      _showNotificationsDisabledInfo(context);
       return;
     }
 
     try {
-      // VERIFICAR SI EL USUARIO PERTENECE A UN CÍRCULO
-      print('[SilentCoordinator] 🔍 Verificando pertenencia a círculo...');
-      final circleService = CircleService();
-      final userCircle = await circleService.getUserCircle();
-
-      if (userCircle == null) {
-        print('[SilentCoordinator] ⚠️ Usuario NO pertenece a un círculo');
-        print('[SilentCoordinator] ⚠️ NO se solicitarán permisos de notificación');
-        print('[SilentCoordinator] 💡 Las notificaciones se activarán cuando se una a un círculo');
-        return;
-      }
-
-      print('[SilentCoordinator] ✅ Usuario pertenece al círculo: ${userCircle.name}');
-      _userHasCircle = true;
-
-      // T5.6: Limpiar estado offline al reconectarse
-      await StatusService.clearOfflineStatus();
-
-      // 🌙 SILENT MODE: No solicitar permisos aquí. Los permisos se piden al momento
-      // en que el usuario toca el botón "Modo Silencio" (activateSilentMode).
-      // Esto evita que el dialog de permisos aparezca sin acción explícita del usuario.
-
-
-      print('[SilentCoordinator] 🌙 Modo Silencio disponible — se activa con botón explícito');
+      await _channel.invokeMethod('activate');
     } catch (e) {
-      print('[SilentCoordinator] ❌ Error en activateAfterLogin: $e');
-    }
-
-    print('');
-  }
-
-  /// Point 21 FASE 5: Muestra diálogo cuando las notificaciones están bloqueadas
-  // TODO: Implementar cuando se active la validación de permisos
-  /* static void _showNotificationPermissionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Usuario debe tomar acción
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.notifications_off, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Notificaciones Bloqueadas'),
-          ],
-        ),
-        content: const Text(
-          'Para usar la función de cambio rápido de estado, '
-          'necesitas habilitar las notificaciones.\n\n'
-          '¿Quieres abrir la configuración ahora?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              print('[SilentCoordinator] 🚫 Usuario omitió habilitar notificaciones');
-              _showNotificationsDisabledInfo(context);
-            },
-            child: const Text('Ahora No'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              print('[SilentCoordinator] 🔧 Abriendo Settings de Android...');
-              await NotificationService.openNotificationSettings();
-              
-              // FASE 5 UX: Esperar un momento y verificar si habilitó notificaciones
-              await Future.delayed(const Duration(seconds: 2));
-              await _checkAndNotifyPermissionStatus(context);
-            },
-            child: const Text('Abrir Configuración'),
-          ),
-        ],
-      ),
-    );
-  }
-  */
-  /// FASE 5 UX: Verifica el estado de permisos después de que el usuario vuelve de Settings
-  static Future<void> _checkAndNotifyPermissionStatus(BuildContext context) async {
-    if (!context.mounted) return;
-
-    try {
-      final hasPermission = await NotificationService.hasPermission();
-
-      if (hasPermission) {
-        print('[SilentCoordinator] ✅ Usuario habilitó notificaciones');
-        // 🌙 SILENT MODE: No mostrar notificación automáticamente.
-        // El usuario debe tocar "Modo Silencio" para activarla.
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Notificaciones habilitadas — usa "Modo Silencio" para activarlas'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else {
-        print('[SilentCoordinator] ⚠️ Usuario NO habilitó notificaciones');
-        _showNotificationsDisabledInfo(context);
-      }
-    } catch (e) {
-      print('[SilentCoordinator] ❌ Error verificando permisos: $e');
+      debugPrint('[SilentCoordinator] ❌ Error activando Modo Silencio: $e');
     }
   }
 
-  /// FASE 5 UX: Muestra mensaje informativo cuando notificaciones están deshabilitadas
+  // ---------------------------------------------------------------------------
+  // UX — permisos denegados
+  // ---------------------------------------------------------------------------
+
   static void _showNotificationsDisabledInfo(BuildContext context) {
     if (!context.mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Row(
@@ -213,8 +120,8 @@ class SilentFunctionalityCoordinator {
             SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Cambio rápido no disponible sin notificaciones.\n'
-                'Puedes habilitarlas en Settings → Notificaciones.',
+                'Modo Silencio requiere notificaciones.\n'
+                'Puedes habilitarlas en Ajustes → Notificaciones.',
                 style: TextStyle(fontSize: 13),
               ),
             ),
@@ -228,229 +135,9 @@ class SilentFunctionalityCoordinator {
           textColor: Colors.white,
           onPressed: () async {
             await NotificationService.openNotificationSettings();
-            await Future.delayed(const Duration(seconds: 2));
-            if (context.mounted) {
-              await _checkAndNotifyPermissionStatus(context);
-            }
           },
         ),
       ),
     );
-  }
-
-  /// Desactiva la funcionalidad silenciosa DESPUÉS del logout
-  /// ⚠️ IMPORTANTE (Point 1.1): Este método SOLO debe llamarse desde LOGOUT MANUAL en Settings
-  /// NO debe llamarse automáticamente desde AuthWrapper ni otros lugares
-  static Future<void> deactivateAfterLogout() async {
-    print('');
-    print('=== DEACTIVATE AFTER LOGOUT CALLED ===');
-    print('[SilentCoordinator] 🔒 MÉTODO deactivateAfterLogout() EJECUTÁNDOSE');
-
-    // Guard: si ya hay un logout en progreso, ignorar llamada duplicada.
-    // Evita que auth_provider u otros listeners disparen una segunda limpieza
-    // mientras deleteAccount() ya está ejecutando la primera.
-    if (_isManualLogoutInProgress) {
-      print('[SilentCoordinator] ⚠️ Logout ya en progreso — llamada duplicada ignorada');
-      return;
-    }
-
-    // Point 1.1: Marcar que hay un logout manual en progreso (Dart)
-    _isManualLogoutInProgress = true;
-    _userHasCircle = false;
-
-    // Point 1.1: Marcar también en el lado NATIVO (Android)
-    try {
-      const keepAliveChannel = MethodChannel('zync/keep_alive');
-      await keepAliveChannel.invokeMethod('setManualLogoutFlag', {'inProgress': true});
-      print('[SilentCoordinator] 🔒 Bandera nativa de logout activada');
-    } catch (e) {
-      print('[SilentCoordinator] ⚠️ Error activando bandera nativa: $e');
-    }
-
-    try {
-      // Point 1.1: Limpieza exhaustiva - ORDEN CRÍTICO
-      print('[SilentCoordinator] 🔒 Usuario deslogueado - Iniciando limpieza...');
-
-      // PASO 1: Detener KeepAliveService PRIMERO (esto auto-cancela su notificación en onDestroy)
-      print('[SilentCoordinator] PASO 1/3: Deteniendo KeepAliveService...');
-      try {
-        const keepAliveChannel = MethodChannel('zync/keep_alive');
-        await keepAliveChannel.invokeMethod('stop');
-        print('[SilentCoordinator] ✅ KeepAliveService.stop() llamado');
-      } catch (e) {
-        print('[SilentCoordinator] ❌ Error deteniendo KeepAliveService: $e');
-      }
-
-      // PASO 2: Esperar más tiempo para que onDestroy() se ejecute completamente
-      print('[SilentCoordinator] PASO 2/3: Esperando 1.5 segundos para que onDestroy complete...');
-      await Future.delayed(const Duration(milliseconds: 1500));
-
-      // PASO 3: Cancelar TODAS las notificaciones restantes (limpieza final)
-      print('[SilentCoordinator] PASO 3/3: Cancelación final de notificaciones restantes...');
-      await NotificationService.cancelAllNotificationsAggressive();
-
-      print('[SilentCoordinator] ✅ Proceso de limpieza completado');
-      print('[SilentCoordinator] ✅ KeepAliveService destruido + Notificaciones canceladas');
-
-      // Point 1.1: Mantener la bandera activa para evitar reactivación por AuthWrapper
-      // Se reseteará solo cuando el usuario haga login nuevamente
-      print('[SilentCoordinator] 🔒 Bandera de logout manual ACTIVA - bloqueará reactivaciones');
-    } catch (e) {
-      print('[SilentCoordinator] ❌ Error en proceso de limpieza: $e');
-      // Resetear bandera si hubo error para permitir reintentos
-      _isManualLogoutInProgress = false;
-    }
-  }
-
-  /// Point 21 FASE 5: Abrir modal SIN abrir la app completa
-  /// Usa StatusModalActivity nativa para comportamiento transparente
-  static void _handleQuickActionTap() async {
-    print('[SilentCoordinator] 🎯 Tap en notificación detectado - FASE 5');
-
-    if (!_isInitialized) {
-      print('[SilentCoordinator] ❌ No inicializado');
-      return;
-    }
-
-    try {
-      print('[SilentCoordinator] 🚀 Abriendo StatusModalActivity (modal transparente)...');
-
-      // FASE 5: Abrir activity nativa transparente en lugar de usar Navigator
-      // Esto evita abrir la app completa
-      await StatusModalService.openModal();
-
-      print('[SilentCoordinator] ✅ StatusModalActivity iniciada');
-    } catch (e) {
-      print('[SilentCoordinator] ❌ Error abriendo modal transparente: $e');
-      print('[SilentCoordinator] 🚨 Fallback: Intentando abrir con Navigator...');
-
-      // Fallback: usar el método anterior si falla
-      if (_context != null && _context!.mounted) {
-        Navigator.of(_context!)
-            .push(
-          PageRouteBuilder(
-            opaque: false,
-            pageBuilder: (context, animation, secondaryAnimation) {
-              return NotificationStatusSelector(
-                // CAMBIADO: Usar modal de notificaciones
-                onClose: () {
-                  print('[SilentCoordinator] Modal cerrado por usuario');
-                },
-              );
-            },
-          ),
-        )
-            .catchError((error) {
-          print('[SilentCoordinator] ❌ Error en fallback: $error');
-          return null;
-        });
-      }
-    }
-  }
-
-  /// Actualiza el contexto desde fuera del coordinador
-  static void updateContext(BuildContext context) {
-    _context = context;
-  }
-
-  /// Actualiza la notificación persistente cuando cambia el status
-  static Future<void> updatePersistentNotification(StatusType? currentStatus) async {
-    try {
-      // Actualizar la notificación con el nuevo estado
-      await NotificationService.showQuickActionNotification();
-    } catch (e) {
-      print('[SilentCoordinator] Error actualizando notificación: $e');
-    }
-  }
-
-  /// Habilita/deshabilita la funcionalidad silenciosa
-  static Future<void> setEnabled(bool enabled) async {
-    if (enabled) {
-      await NotificationService.showQuickActionNotification();
-      await QuickActionsService.setEnabled(true);
-    } else {
-      await NotificationService.cancelQuickActionNotification();
-      await QuickActionsService.setEnabled(false);
-    }
-  }
-
-  /// Verifica el estado de permisos al volver al frente o al llegar a HomePage.
-  /// - Sin permiso: muestra SnackBar con botón "Habilitar" (T4.6, T4.9)
-  /// - Con permiso: garantiza que la notificación persistente esté activa (T4.11)
-  /// Solo actúa si el usuario tiene círculo activo.
-  static Future<void> onAppResumed(BuildContext context) async {
-    if (_isManualLogoutInProgress) return;
-    if (!_userHasCircle) return;
-    if (!context.mounted) return;
-
-    // 🌙 SILENT MODE: Si el usuario vuelve a la app con Silent Mode activo, desactivarlo.
-    if (_isSilentModeActive) {
-      await deactivateSilentMode();
-      return;
-    }
-
-    // Verificar permisos para mostrar aviso si están denegados (sin auto-activar notificación).
-    final hasPermission = await NotificationService.hasPermission();
-    if (!context.mounted) return;
-    if (!hasPermission) {
-      _showNotificationsDisabledInfo(context);
-    }
-  }
-
-  /// Activa el Modo Silencio de forma explícita (botón en la UI).
-  /// Muestra la notificación persistente, inicia KeepAlive y minimiza la app.
-  /// Solo funciona si el usuario pertenece a un círculo y tiene permisos.
-  static Future<void> activateSilentMode(BuildContext context) async {
-    if (_isManualLogoutInProgress) return;
-    if (!_userHasCircle) return;
-    if (!context.mounted) return;
-
-    // Fix 2b: Solicitar permisos en el momento que el usuario toca el botón.
-    // Si ya los tiene → continúa. Si no → Android muestra el dialog nativo.
-    // Si los deniega → muestra info. Esto garantiza que notificación y KeepAlive
-    // solo arrancan cuando el usuario actúa intencionalmente.
-    final hasPermission = await NotificationService.requestPermissions();
-    if (!context.mounted) return;
-
-    if (!hasPermission) {
-      _showNotificationsDisabledInfo(context);
-      return;
-    }
-
-    try {
-      _isSilentModeActive = true;
-      await NotificationService.showQuickActionNotification();
-      const keepAliveChannel = MethodChannel('zync/keep_alive');
-      await keepAliveChannel.invokeMethod('activateSilentMode');
-    } catch (e) {
-      print('[SilentCoordinator] ❌ Error activando Modo Silencio: $e');
-      _isSilentModeActive = false;
-      await NotificationService.cancelQuickActionNotification();
-    }
-  }
-
-  /// Desactiva el Modo Silencio: cancela la notificación, limpia el estado
-  /// y detiene KeepAlive en el lado nativo.
-  /// Se llama automáticamente cuando el usuario reabre la app.
-  static Future<void> deactivateSilentMode() async {
-    _isSilentModeActive = false;
-    // Fix 2c: Detener KeepAlive vía Kotlin antes de cancelar la notificación.
-    // Sin esto, el foreground service sigue corriendo aunque la notificación desaparezca.
-    try {
-      const keepAliveChannel = MethodChannel('zync/keep_alive');
-      await keepAliveChannel.invokeMethod('stop');
-      print('[SilentCoordinator] 🔴 KeepAlive detenido al desactivar Modo Silencio');
-    } catch (e) {
-      print('[SilentCoordinator] ⚠️ Error deteniendo KeepAlive en deactivateSilentMode: $e');
-    }
-    await NotificationService.cancelQuickActionNotification();
-    print('[SilentCoordinator] 🌙 Modo Silencio desactivado');
-  }
-
-  /// Limpia recursos cuando la app se cierra
-  static Future<void> dispose() async {
-    await NotificationService.cancelQuickActionNotification();
-    _isInitialized = false;
-    _context = null;
   }
 }
