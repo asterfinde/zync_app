@@ -70,6 +70,13 @@ class SilentFunctionalityCoordinator {
     }
   }
 
+  /// Sincroniza el estado del círculo desde App Resume.
+  /// Si el usuario tiene círculo activo, también cancela cualquier flag de logout residual.
+  static void syncCircleState({required bool hasCircle}) {
+    _userHasCircle = hasCircle;
+    if (hasCircle) _isManualLogoutInProgress = false;
+  }
+
   /// Llamar desde el logout manual (Settings → Cerrar sesión / Eliminar cuenta).
   static Future<void> deactivateAfterLogout() async {
     if (_isManualLogoutInProgress) return; // guard duplicados
