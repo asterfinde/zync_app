@@ -145,14 +145,23 @@ class MainActivity: FlutterActivity() {
         super.onResume()
         Log.d(TAG, "onResume() - App al frente")
 
-        // 🌙 SILENT MODE: Si estaba activo, desactivarlo ahora que el usuario abrió la app.
-        // Kotlin es dueño de este estado — no necesita pasar por Dart.
+        // 🌙 SILENT MODE: Si estaba activo, desactivarlo solo si el usuario abrió la app
+        // intencionalmente. Si el resume viene de EmojiDialogActivity (modal de notificación),
+        // el flag modal_was_open=true lo indica — en ese caso NO desactivar.
         if (isSilentModeActive) {
-            Log.d(TAG, "🌙 [SILENT] App al frente con Silent Mode activo — desactivando")
-            KeepAliveService.stop(this)
-            NotificationManagerCompat.from(this).cancelAll()
-            isSilentModeActive = false
-            Log.d(TAG, "✅ [SILENT] Modo Silencio desactivado desde onResume()")
+            val silentPrefs = getSharedPreferences("zync_silent_mode", MODE_PRIVATE)
+            val returningFromModal = silentPrefs.getBoolean("modal_was_open", false)
+            silentPrefs.edit().putBoolean("modal_was_open", false).apply()
+
+            if (returningFromModal) {
+                Log.d(TAG, "🌙 [SILENT] Resume desde modal — Modo Silencio se mantiene activo")
+            } else {
+                Log.d(TAG, "🌙 [SILENT] App al frente con Silent Mode activo — desactivando")
+                KeepAliveService.stop(this)
+                NotificationManagerCompat.from(this).cancelAll()
+                isSilentModeActive = false
+                Log.d(TAG, "✅ [SILENT] Modo Silencio desactivado desde onResume()")
+            }
         }
 
         // Procesar estado pendiente del cache (selección desde EmojiDialogActivity)
@@ -381,6 +390,13 @@ class MainActivity: FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEEP_ALIVE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "activate" -> {
+                    // Idempotencia: si ya está activo, solo minimizar sin reiniciar el servicio.
+                    if (isSilentModeActive) {
+                        Log.d(TAG, "🌙 [SILENT] Ya activo — ignorando activación redundante")
+                        moveTaskToBack(true)
+                        result.success(true)
+                        return@setMethodCallHandler
+                    }
                     Log.d(TAG, "🌙 [SILENT] Activando Modo Silencio")
                     // Exención de batería: se solicita una sola vez, sin bloquear la activación.
                     // El diálogo del sistema aparece mientras la app ya se está minimizando.
