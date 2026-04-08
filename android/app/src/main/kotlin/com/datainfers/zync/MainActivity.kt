@@ -31,14 +31,11 @@ class MainActivity: FlutterActivity() {
     private val NOTIFICATION_PERMISSION_REQUEST_CODE = 100
     private val TAG = "MainActivity"
     
-    // Keep-alive state
-    private var isKeepAliveRunning = false
-    
+    // Silent Mode — única fuente de verdad del estado. Kotlin es el dueño.
+    private var isSilentModeActive = false
+
     // Current user (sincronizado con Flutter)
     private var currentUserId: String? = null
-    
-    // Point 1.1: Bandera para evitar reiniciar servicios durante logout manual
-    private var isManualLogoutInProgress = false
 
     // Point 4: Engine cacheado para modal instantáneo
     companion object {
@@ -133,17 +130,8 @@ class MainActivity: FlutterActivity() {
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "onPause() - App minimizada/pausada")
-        
-        // Point 1.1: NO reiniciar keep-alive si hay logout manual en progreso
-        if (isManualLogoutInProgress) {
-            Log.d(TAG, "⚠️ [LOGOUT] Logout manual en progreso - NO reiniciando KeepAliveService")
-            return
-        }
-        
-        // 🌙 SILENT MODE: KeepAlive solo arranca vía botón explícito "Modo Silencio"
-        // (no en cada minimización — ver handler 'activateSilentMode' en keep_alive channel)
 
-        // 🚀 FASE 1: Guardar estado NATIVO inmediatamente
+        // Guardar estado NATIVO inmediatamente
         currentUserId?.let { userId ->
             Log.d(TAG, "💾 [NATIVO] Guardando estado: $userId")
             NativeStateManager.saveUserState(this, userId)
@@ -152,34 +140,30 @@ class MainActivity: FlutterActivity() {
     
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "onResume() - App maximizada/resumida")
-        
-        // 🔥 CRÍTICO: Procesar estado pendiente del cache (ej. desde QuickAction)
+        Log.d(TAG, "onResume() - App al frente")
+
+        // 🌙 SILENT MODE: Si estaba activo, desactivarlo ahora que el usuario abrió la app.
+        // Kotlin es dueño de este estado — no necesita pasar por Dart.
+        if (isSilentModeActive) {
+            Log.d(TAG, "🌙 [SILENT] App al frente con Silent Mode activo — desactivando")
+            KeepAliveService.stop(this)
+            NotificationManagerCompat.from(this).cancelAll()
+            isSilentModeActive = false
+            Log.d(TAG, "✅ [SILENT] Modo Silencio desactivado desde onResume()")
+        }
+
+        // Procesar estado pendiente del cache (selección desde EmojiDialogActivity)
         val prefs = getSharedPreferences("pending_status", MODE_PRIVATE)
         val pendingStatus = prefs.getString("statusType", null)
-        
+
         if (pendingStatus != null) {
-            Log.d(TAG, "💾 [RESUME] Estado pendiente encontrado: $pendingStatus - enviando a Flutter")
-            
-            // Enviar a Flutter para actualizar Firebase
+            Log.d(TAG, "💾 [RESUME] Estado pendiente: $pendingStatus — enviando a Flutter")
             flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
                 val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
-                channel.invokeMethod("updateStatus", mapOf(
-                    "statusType" to pendingStatus
-                ))
-                Log.d(TAG, "✅ [RESUME] Estado $pendingStatus enviado a Flutter")
-                
-                // Limpiar cache después de enviar
+                channel.invokeMethod("updateStatus", mapOf("statusType" to pendingStatus))
                 prefs.edit().clear().apply()
-                Log.d(TAG, "✅ [RESUME] Cache limpiado")
+                Log.d(TAG, "✅ [RESUME] Estado enviado y cache limpiado")
             } ?: Log.e(TAG, "❌ [RESUME] FlutterEngine no disponible")
-        }
-        
-        // 🚀 FASE 1: Detener keep-alive al resumir
-        if (isKeepAliveRunning) {
-            Log.d(TAG, "🔴 [NATIVO] Deteniendo keep-alive service desde onResume()")
-            KeepAliveService.stop(this)
-            isKeepAliveRunning = false
         }
     }
     
@@ -205,9 +189,7 @@ class MainActivity: FlutterActivity() {
             Log.w(TAG, "⚠️ [BROADCAST] Error desregistrando receiver: ${e.message}")
         }
         
-        // 🌙 SILENT MODE: KeepAlive NO se reactiva en onDestroy()
-        // Si estaba corriendo (Silent Mode activo), se limpia en onResume()
-        Log.d(TAG, "🔴 [NATIVO] onDestroy — isKeepAliveRunning=$isKeepAliveRunning")
+        Log.d(TAG, "🔴 [NATIVO] onDestroy — isSilentModeActive=$isSilentModeActive")
     }
     
     // 🚀 FASE 1.5: Interceptar back gesture para MINIMIZAR en vez de CERRAR
@@ -391,33 +373,22 @@ class MainActivity: FlutterActivity() {
 
 
         
-        // Canal para keep-alive service (mantener por compatibilidad)
+        // Canal Silent Mode — Flutter solo dice "activate" o "deactivate".
+        // Kotlin es dueño del estado, las notificaciones y el ciclo de vida.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEEP_ALIVE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "start" -> {
-                    Log.d(TAG, "🟢 Flutter solicita iniciar keep-alive service")
+                "activate" -> {
+                    Log.d(TAG, "🌙 [SILENT] Activando Modo Silencio")
                     KeepAliveService.start(this)
-                    isKeepAliveRunning = true
-                    result.success(true)
-                }
-                "stop" -> {
-                    Log.d(TAG, "🔴 Flutter solicita detener keep-alive service (LOGOUT MANUAL)")
-                    KeepAliveService.stop(this)
-                    isKeepAliveRunning = false
-                    result.success(true)
-                }
-                "activateSilentMode" -> {
-                    Log.d(TAG, "🌙 [SILENT] Flutter solicita activar Modo Silencio")
-                    KeepAliveService.start(this)
-                    isKeepAliveRunning = true
-                    // Minimizar la app al background (igual que onBackPressed)
+                    isSilentModeActive = true
                     moveTaskToBack(true)
                     result.success(true)
                 }
-                "setManualLogoutFlag" -> {
-                    val inProgress = call.argument<Boolean>("inProgress") ?: false
-                    isManualLogoutInProgress = inProgress
-                    Log.d(TAG, "🔒 [LOGOUT] Bandera de logout manual = $inProgress")
+                "deactivate" -> {
+                    Log.d(TAG, "🌙 [SILENT] Desactivando Modo Silencio (logout)")
+                    KeepAliveService.stop(this)
+                    NotificationManagerCompat.from(this).cancelAll()
+                    isSilentModeActive = false
                     result.success(true)
                 }
                 else -> result.notImplemented()
