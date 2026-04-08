@@ -226,10 +226,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
       if (userCircle == null) {
         print('[App Resume] ⚠️ Usuario NO pertenece a círculo - NO mostrar notificaciones');
+        SilentFunctionalityCoordinator.syncCircleState(hasCircle: false);
         return;
       }
 
       print('[App Resume] ✅ Usuario pertenece al círculo: ${userCircle.name}');
+      SilentFunctionalityCoordinator.syncCircleState(hasCircle: true);
 
       // Nota: la notificación persistente es gestionada exclusivamente por
       // KeepAliveService (Kotlin) al activar el Modo Silencio. No se crea aquí.
