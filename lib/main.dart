@@ -16,7 +16,6 @@ import 'package:zync_app/core/utils/performance_tracker.dart'; // PERFORMANCE TR
 import 'package:zync_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
 import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
 import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
-import 'package:zync_app/notifications/notification_service.dart'; // Point 2: Notification Service
 import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
 import 'package:zync_app/core/services/emoji_service.dart'; // Para cargar emojis desde Firebase
 import 'package:zync_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
@@ -232,15 +231,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
       print('[App Resume] ✅ Usuario pertenece al círculo: ${userCircle.name}');
 
-      final hasPermission = await NotificationService.hasPermission();
-
-      if (hasPermission) {
-        print('[App Resume] ✅ Permisos CONCEDIDOS - Activando notificación persistente...');
-        await NotificationService.showQuickActionNotification();
-        print('[App Resume] ✅ Notificación persistente activada');
-      } else {
-        print('[App Resume] ⚠️ Permisos DENEGADOS - notificación no disponible');
-      }
+      // Nota: la notificación persistente es gestionada exclusivamente por
+      // KeepAliveService (Kotlin) al activar el Modo Silencio. No se crea aquí.
     } catch (e) {
       print('[App Resume] ❌ Error verificando permisos: $e');
     }

@@ -99,6 +99,37 @@ class SilentFunctionalityCoordinator {
       return;
     }
 
+    // Verificar exención de optimización de batería (necesaria en Samsung OEM para
+    // que "Borrar todo" no descarte la notificación del foreground service).
+    final isExempt =
+        await _channel.invokeMethod<bool>('checkBatteryOptimization') ?? false;
+    if (!context.mounted) return;
+
+    if (!isExempt) {
+      await _channel.invokeMethod('requestBatteryOptimization');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.battery_saver, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Acepta la solicitud y toca el botón nuevamente para activar el Modo Silencio.',
+                  style: TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.blueGrey,
+          duration: Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return; // El usuario acepta en el diálogo del sistema y vuelve a tocar
+    }
+
     try {
       await _channel.invokeMethod('activate');
     } catch (e) {

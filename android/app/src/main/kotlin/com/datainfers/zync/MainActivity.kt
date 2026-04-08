@@ -7,10 +7,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -389,6 +392,20 @@ class MainActivity: FlutterActivity() {
                     KeepAliveService.stop(this)
                     NotificationManagerCompat.from(this).cancelAll()
                     isSilentModeActive = false
+                    result.success(true)
+                }
+                "checkBatteryOptimization" -> {
+                    val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                    val isIgnoring = pm.isIgnoringBatteryOptimizations(packageName)
+                    Log.d(TAG, "🔋 [SILENT] Battery optimization ignorada: $isIgnoring")
+                    result.success(isIgnoring)
+                }
+                "requestBatteryOptimization" -> {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                    Log.d(TAG, "🔋 [SILENT] Solicitando exención de optimización de batería")
                     result.success(true)
                 }
                 else -> result.notImplemented()
