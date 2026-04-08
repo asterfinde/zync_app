@@ -16,10 +16,10 @@ class KeepAliveService : Service() {
     
     companion object {
         private const val TAG = "KeepAliveService"
-        // Usar el mismo canal e ID que la notificación persistente de MainActivity
-        // para que SOLO exista una notificación visible
-        private const val CHANNEL_ID = "emoji_channel"
-        private const val NOTIFICATION_ID = 12345
+        // Canal propio del Modo Silencio — IMPORTANCE_HIGH evita que Samsung lo descarte
+        // con "Borrar todo". Canal nuevo (_v2) para forzar recreación con la nueva importance.
+        private const val CHANNEL_ID = "zync_silent_mode_v2"
+        private const val NOTIFICATION_ID = 12346
         
         fun start(context: Context) {
             Log.d(TAG, "🟢 Iniciando servicio keep-alive")
@@ -92,11 +92,13 @@ class KeepAliveService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Zync en segundo plano",
-                NotificationManager.IMPORTANCE_DEFAULT
+                "Modo Silencio",
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Mantiene Zync listo para usarse"
+                description = "Activo mientras el Modo Silencio está encendido"
                 setShowBadge(false)
+                enableVibration(false)
+                setSound(null, null)
             }
             
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -123,7 +125,7 @@ class KeepAliveService : Service() {
             .setContentText("Toca para cambiar tu estado") // Point 21: Texto claro
             .setSmallIcon(android.R.drawable.ic_dialog_info) // Usar icono genérico por ahora
             .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true) // No se puede deslizar para cerrar
             .setShowWhen(false)
             .build()
