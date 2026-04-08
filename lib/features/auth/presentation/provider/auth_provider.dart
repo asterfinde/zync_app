@@ -15,6 +15,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService; // 🔥 SIMPLIFICADO: Un solo servicio
   StreamSubscription? _authSubscription;
 
+  bool _getUserRetryInProgress = false;
+
   AuthNotifier({
     required firebase.FirebaseAuth firebaseAuth,
     required AuthService authService,
@@ -56,13 +58,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
           }
         } catch (e) {
           log("[AuthNotifier] [STREAM] getCurrentUser FAILURE: $e");
-          state = AuthError("No pudimos cargar tus datos. Intenta de nuevo.");
-          Future.delayed(const Duration(seconds: 2), () {
-            if (!mounted) return;
-            if (state is AuthError) {
-              state = Unauthenticated();
-            }
-          });
+          if (_getUserRetryInProgress) {
+            // Ya se reintentó — red no disponible, ceder el paso al login
+            log("[AuthNotifier] [STREAM] Reintento fallido. Yendo a Unauthenticated.");
+            _getUserRetryInProgress = false;
+            state = AuthError("No pudimos cargar tus datos. Verifica tu conexión.");
+            Future.delayed(const Duration(seconds: 2), () {
+              if (!mounted) return;
+              if (state is AuthError) state = Unauthenticated();
+            });
+          } else {
+            // Primer fallo — puede ser error de red transitorio en cold start
+            _getUserRetryInProgress = true;
+            log("[AuthNotifier] [STREAM] Reintentando en 5s (posible cold-start)...");
+            state = AuthLoading();
+            Future.delayed(const Duration(seconds: 5), () {
+              if (!mounted) return;
+              if (state is AuthLoading) _onAuthStateChanged(firebaseUser);
+            });
+          }
         }
       } else {
         // Si el stream emite null tras la inicialización, avanzar a Unauthenticated
