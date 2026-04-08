@@ -52,18 +52,21 @@ class SilentFunctionalityCoordinator {
     // Un login siempre cancela cualquier logout previo en el mismo proceso.
     _isManualLogoutInProgress = false;
 
+    debugPrint('[SilentCoordinator][DBG] activateAfterLogin — initialized=$_isInitialized');
     if (!_isInitialized) return;
 
     try {
       final userCircle = await CircleService().getUserCircle();
+      debugPrint('[SilentCoordinator][DBG] getUserCircle → ${userCircle != null ? "circle=${userCircle.name}" : "NULL (sin círculo)"}');
       if (userCircle == null) {
         _userHasCircle = false;
         return;
       }
       _userHasCircle = true;
       await StatusService.clearOfflineStatus();
+      debugPrint('[SilentCoordinator][DBG] clearOfflineStatus → OK');
     } catch (e) {
-      debugPrint('[SilentCoordinator] ❌ Error en activateAfterLogin: $e');
+      debugPrint('[SilentCoordinator][DBG] activateAfterLogin EXCEPCIÓN: $e');
     }
   }
 
@@ -87,11 +90,13 @@ class SilentFunctionalityCoordinator {
   /// Activa el Modo Silencio. Requiere permiso de notificaciones y círculo activo.
   /// Kotlin maneja el resto: notificación, KeepAlive y moveTaskToBack.
   static Future<void> activateSilentMode(BuildContext context) async {
+    debugPrint('[SilentCoordinator][DBG] activateSilentMode → logout=$_isManualLogoutInProgress, circle=$_userHasCircle, mounted=${context.mounted}');
     if (_isManualLogoutInProgress) return;
     if (!_userHasCircle) return;
     if (!context.mounted) return;
 
     final hasPermission = await NotificationService.requestPermissions();
+    debugPrint('[SilentCoordinator][DBG] requestPermissions → $hasPermission');
     if (!context.mounted) return;
 
     if (!hasPermission) {
@@ -100,9 +105,11 @@ class SilentFunctionalityCoordinator {
     }
 
     try {
+      debugPrint('[SilentCoordinator][DBG] invokeMethod activate →');
       await _channel.invokeMethod('activate');
+      debugPrint('[SilentCoordinator][DBG] activate → OK');
     } catch (e) {
-      debugPrint('[SilentCoordinator] ❌ Error activando Modo Silencio: $e');
+      debugPrint('[SilentCoordinator][DBG] activate EXCEPCIÓN: $e');
     }
   }
 
