@@ -382,6 +382,16 @@ class MainActivity: FlutterActivity() {
             when (call.method) {
                 "activate" -> {
                     Log.d(TAG, "🌙 [SILENT] Activando Modo Silencio")
+                    // Exención de batería: se solicita una sola vez, sin bloquear la activación.
+                    // El diálogo del sistema aparece mientras la app ya se está minimizando.
+                    val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                    if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                        Log.d(TAG, "🔋 [SILENT] Primera vez — solicitando exención de batería")
+                        val batteryIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = Uri.parse("package:$packageName")
+                        }
+                        startActivity(batteryIntent)
+                    }
                     KeepAliveService.start(this)
                     isSilentModeActive = true
                     moveTaskToBack(true)
