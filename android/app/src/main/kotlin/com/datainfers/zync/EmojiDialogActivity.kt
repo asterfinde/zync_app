@@ -81,6 +81,13 @@ class EmojiDialogActivity : Activity() {
         emojis = loadEmojisFromCache()
         configuredZoneTypes = loadConfiguredZoneTypes()
         setupActivityUI()
+
+        // Notificar a MainActivity que el resume siguiente viene del modal,
+        // no de una apertura intencional del usuario. Esto evita que onResume()
+        // desactive el Modo Silencio al volver de esta pantalla.
+        getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+            .edit().putBoolean("modal_was_open", true).apply()
+        Log.d(TAG, "🔔 [SILENT] Flag modal_was_open=true guardado")
     }
 
     override fun onDestroy() {
