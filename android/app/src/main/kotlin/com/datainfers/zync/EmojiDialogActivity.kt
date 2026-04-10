@@ -503,7 +503,7 @@ class EmojiDialogActivity : Activity() {
 
         val intent = Intent("com.datainfers.zync.UPDATE_STATUS").apply {
             putExtra("emoji", emoji)
-            putExtra("status", status)
+            putExtra("statusType", status)
             setPackage(packageName)
         }
         sendBroadcast(intent)
