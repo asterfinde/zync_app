@@ -1283,10 +1283,7 @@ class _MemberListItem extends StatelessWidget {
         onTap: (status == 'loading') // No permitir taps mientras carga
             ? null
             : () {
-                if (isCurrentUser && isSOS && hasGPS && coordinates != null) {
-                  HapticFeedback.lightImpact();
-                  onOpenMaps(context, coordinates, nickname);
-                } else if (isCurrentUser && onTap != null) {
+                if (isCurrentUser && onTap != null) {
                   HapticFeedback.mediumImpact();
                   onTap!();
                 } else if (hasGPS && coordinates != null) {
