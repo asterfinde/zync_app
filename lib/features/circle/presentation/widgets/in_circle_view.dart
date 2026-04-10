@@ -1283,7 +1283,10 @@ class _MemberListItem extends StatelessWidget {
         onTap: (status == 'loading') // No permitir taps mientras carga
             ? null
             : () {
-                if (isCurrentUser && onTap != null) {
+                if (isCurrentUser && isSOS && hasGPS && coordinates != null) {
+                  HapticFeedback.lightImpact();
+                  onOpenMaps(context, coordinates, nickname);
+                } else if (isCurrentUser && onTap != null) {
                   HapticFeedback.mediumImpact();
                   onTap!();
                 } else if (hasGPS && coordinates != null) {
@@ -1416,20 +1419,26 @@ class _MemberListItem extends StatelessWidget {
               // Mostrar sección SOS solo si el status NO es 'loading'
               if (hasGPS && coordinates != null && status != 'loading') ...[
                 const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on, size: 20, color: _AppColors.sosRed),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Ubicación SOS compartida',
-                          style: TextStyle(fontSize: 13, color: _AppColors.textPrimary, fontWeight: FontWeight.w500),
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    onOpenMaps(context, coordinates, nickname);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 20, color: _AppColors.sosRed),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Ubicación SOS compartida',
+                            style: TextStyle(fontSize: 13, color: _AppColors.textPrimary, fontWeight: FontWeight.w500),
+                          ),
                         ),
-                      ),
-                      Icon(Icons.arrow_forward_ios, size: 14, color: Colors.red[300]), // Mantener o usar sosRed
-                    ],
+                        Icon(Icons.arrow_forward_ios, size: 14, color: Colors.red[300]),
+                      ],
+                    ),
                   ),
                 ),
               ],
