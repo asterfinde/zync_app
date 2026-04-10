@@ -99,10 +99,12 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
     }
 
     // Buscar el estado por ID
-    final statusType = allEmojis.firstWhere(
-      (e) => e.id == statusTypeName,
-      orElse: () => allEmojis.first, // Default al primero si no encuentra
-    );
+    final matches = allEmojis.where((e) => e.id == statusTypeName);
+    if (matches.isEmpty) {
+      debugPrint('❌ [NATIVE→FLUTTER] ID "$statusTypeName" no encontrado en lista de emojis — abortando');
+      return;
+    }
+    final statusType = matches.first;
 
     // Actualizar en Firebase usando StatusService
     final result = await StatusService.updateUserStatus(statusType);
