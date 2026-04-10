@@ -92,6 +92,9 @@ class EmojiDialogActivity : Activity() {
 
     override fun onDestroy() {
         sosHoldRunnable?.let { sosHandler.removeCallbacks(it) }
+        val modalWasOpen = getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+            .getBoolean("modal_was_open", false)
+        Log.d(TAG, "🔍 [DIAG-G1.3] onDestroy — modal_was_open=$modalWasOpen (debe ser true para que MainActivity no desactive Silent Mode)")
         super.onDestroy()
     }
 
