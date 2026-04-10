@@ -88,6 +88,14 @@
             android:name=".ShowQuickStatusReceiver"
             android:exported="true"/>
 
+        <receiver
+            android:name=".NotificationTapReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.datainfers.zync.NOTIFICATION_TAP"/>
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="com.google.firebase.provider.FirebaseInitProvider"
             android:authorities="${applicationId}.firebaseinitprovider"

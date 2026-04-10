@@ -108,12 +108,14 @@ class KeepAliveService : Service() {
     }
     
     private fun createNotification(): Notification {
-        // ✅ Abrir EmojiDialogActivity (nativo INSTANTÁNEO con cache Firebase)
-        val intent = Intent(this, EmojiDialogActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        // Tap en notificación → NotificationTapReceiver escribe modal_was_open=true
+        // ANTES de lanzar EmojiDialogActivity, evitando que onResume() desactive
+        // el Modo Silencio (G1.B5).
+        val intent = Intent(this, NotificationTapReceiver::class.java).apply {
+            action = "com.datainfers.zync.NOTIFICATION_TAP"
         }
-        
-        val pendingIntent = PendingIntent.getActivity(
+
+        val pendingIntent = PendingIntent.getBroadcast(
             this,
             0,
             intent,
