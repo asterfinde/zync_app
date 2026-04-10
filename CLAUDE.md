@@ -38,6 +38,8 @@
 - Si encuentra un bug o inconsistencia no relacionada con la tarea, REPORTARLO sin corregirlo.
 - Confirmar el alcance exacto de cada cambio antes de ejecutarlo.
 - Al cierre de sesión, proponer entradas para las secciones 11 y 12 si corresponde, y esperar aprobación.
+- **Antes de proponer cualquier cambio en lógica de navegación, tap handlers o flujos de usuario:** listar explícitamente TODOS los flujos que pasan por el mismo código — no solo el flujo roto — y confirmar que ninguno regresiona. Si algún flujo existente se ve afectado, reportarlo ANTES de pedir VoBo, no después de implementar.
+- **Para bugs de lifecycle nativo Android:** leer los logs diagnósticos antes de proponer cualquier fix. Los logs son la única fuente de la verdad — está bien confiar en el instinto, pero dado que tenemos bugs persistentes, no se pueden asumir comportamientos no comprobados en los logs.
 
 ### Modo autónomo vs. modo con autorización
 
