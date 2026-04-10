@@ -148,14 +148,18 @@ class MainActivity: FlutterActivity() {
         // 🌙 SILENT MODE: Si estaba activo, desactivarlo solo si el usuario abrió la app
         // intencionalmente. Si el resume viene de EmojiDialogActivity (modal de notificación),
         // el flag modal_was_open=true lo indica — en ese caso NO desactivar.
+        val silentPrefs = getSharedPreferences("zync_silent_mode", MODE_PRIVATE)
+        val modalWasOpen = silentPrefs.getBoolean("modal_was_open", false)
+        Log.d(TAG, "🔍 [DIAG-G1.3] onResume — isSilentModeActive=$isSilentModeActive | modal_was_open=$modalWasOpen")
+
         if (isSilentModeActive) {
-            val silentPrefs = getSharedPreferences("zync_silent_mode", MODE_PRIVATE)
-            val returningFromModal = silentPrefs.getBoolean("modal_was_open", false)
+            val returningFromModal = modalWasOpen
             silentPrefs.edit().putBoolean("modal_was_open", false).apply()
 
             if (returningFromModal) {
                 Log.d(TAG, "🌙 [SILENT] Resume desde modal — Modo Silencio se mantiene activo")
             } else {
+                Log.w(TAG, "⚠️ [DIAG-G1.3] onResume con isSilentModeActive=true y modal_was_open=false — DESACTIVANDO (posible edge case)")
                 Log.d(TAG, "🌙 [SILENT] App al frente con Silent Mode activo — desactivando")
                 KeepAliveService.stop(this)
                 NotificationManagerCompat.from(this).cancelAll()
@@ -402,7 +406,7 @@ class MainActivity: FlutterActivity() {
                     // El diálogo del sistema aparece mientras la app ya se está minimizando.
                     val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
                     if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                        Log.d(TAG, "🔋 [SILENT] Primera vez — solicitando exención de batería")
+                        Log.w(TAG, "⚠️ [DIAG-G1.3] startActivity(batteryIntent) — onResume() se disparará al volver. modal_was_open NO se establece aquí → posible desactivación espuria")
                         val batteryIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:$packageName")
                         }
@@ -410,6 +414,7 @@ class MainActivity: FlutterActivity() {
                     }
                     KeepAliveService.start(this)
                     isSilentModeActive = true
+                    Log.d(TAG, "🔍 [DIAG-G1.3] isSilentModeActive establecido en true — moveTaskToBack a continuación")
                     moveTaskToBack(true)
                     result.success(true)
                 }
@@ -484,6 +489,7 @@ class MainActivity: FlutterActivity() {
                 }
                 "openNotificationSettings" -> {
                     Log.d(TAG, "[FASE 5] 🔧 Abriendo Settings de notificaciones...")
+                    Log.w(TAG, "⚠️ [DIAG-G1.3] startActivity(notificationSettings) — onResume() se disparará al volver. isSilentModeActive=$isSilentModeActive | modal_was_open NO se establece aquí")
                     try {
                         val intent = Intent().apply {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
