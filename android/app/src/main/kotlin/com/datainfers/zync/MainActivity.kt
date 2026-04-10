@@ -101,6 +101,11 @@ class MainActivity: FlutterActivity() {
         
         // Verificar si hay estado guardado
         currentUserId = NativeStateManager.getUserId(this)
+
+        // G2.C1: Restaurar isSilentModeActive desde SharedPrefs (sobrevive al swipe/kill del proceso)
+        val silentPrefs = getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+        isSilentModeActive = silentPrefs.getBoolean("is_silent_mode_active", false)
+        Log.d(TAG, "🌙 [SILENT] onCreate — isSilentModeActive restaurado: $isSilentModeActive")
         
         // �📊 PERFORMANCE: Detectar si es recreación o primer launch
         val wasRunning = savedInstanceState?.getBoolean("was_running", false) ?: false
@@ -164,6 +169,8 @@ class MainActivity: FlutterActivity() {
                 KeepAliveService.stop(this)
                 NotificationManagerCompat.from(this).cancelAll()
                 isSilentModeActive = false
+                // G2.C1: Limpiar flag persistido
+                silentPrefs.edit().putBoolean("is_silent_mode_active", false).apply()
                 Log.d(TAG, "✅ [SILENT] Modo Silencio desactivado desde onResume()")
             }
         }
@@ -414,6 +421,9 @@ class MainActivity: FlutterActivity() {
                     }
                     KeepAliveService.start(this)
                     isSilentModeActive = true
+                    // G2.C1: Persistir para sobrevivir swipe/kill del proceso
+                    getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+                        .edit().putBoolean("is_silent_mode_active", true).apply()
                     Log.d(TAG, "🔍 [DIAG-G1.3] isSilentModeActive establecido en true — moveTaskToBack a continuación")
                     moveTaskToBack(true)
                     result.success(true)
@@ -423,6 +433,9 @@ class MainActivity: FlutterActivity() {
                     KeepAliveService.stop(this)
                     NotificationManagerCompat.from(this).cancelAll()
                     isSilentModeActive = false
+                    // G2.C1: Limpiar flag persistido
+                    getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+                        .edit().putBoolean("is_silent_mode_active", false).apply()
                     result.success(true)
                 }
                 "checkBatteryOptimization" -> {
