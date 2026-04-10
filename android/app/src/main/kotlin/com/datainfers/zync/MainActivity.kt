@@ -181,12 +181,12 @@ class MainActivity: FlutterActivity() {
 
         if (pendingStatus != null) {
             Log.d(TAG, "💾 [RESUME] Estado pendiente: $pendingStatus — enviando a Flutter")
-            prefs.edit().clear().apply()
             flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
                 val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
                 channel.invokeMethod("updateStatus", mapOf("statusType" to pendingStatus))
+                prefs.edit().clear().apply()
                 Log.d(TAG, "✅ [RESUME] Estado enviado y cache limpiado")
-            } ?: Log.e(TAG, "❌ [RESUME] FlutterEngine no disponible — cache limpiado para evitar estado stale")
+            } ?: Log.d(TAG, "⏳ [RESUME] FlutterEngine no disponible — estado pendiente preservado para [HYBRID]")
         }
     }
     
