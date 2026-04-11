@@ -151,27 +151,46 @@ class MainActivity: FlutterActivity() {
         Log.d(TAG, "onResume() - App al frente")
 
         // ========================================================================
-        // [BUG FIX] Desactivación espuria del ícono de Modo Silencio
-        // Fecha: 2026-04-11
-        // Issues: Bug #1 (SOS desde notificación + maximizar) y Bug #2 (modal Flutter + minimizar/maximizar)
+        // [CORRECCIÓN] Modo Silencio permanece activo mientras app esté abierta/minimizada
+        // Fecha: 2026-04-11 (segunda iteración)
         // 
-        // PROBLEMA ORIGINAL:
-        // - Bug #1: Usuario toca notificación → selecciona SOS → modal cierra → maximiza app manualmente
-        //   → modal_was_open ya estaba en false → código desactiva Modo Silencio incorrectamente
-        // - Bug #2: Usuario maximiza app → abre modal Flutter (showEmojiStatusBottomSheet) → selecciona emoji
-        //   → minimiza/maximiza después → modal_was_open nunca se estableció → desactiva Modo Silencio
-        // - Causa raíz: modal_was_open se limpia inmediatamente después de verificarlo (línea 162 antigua)
-        //   y no cubre interacciones con modales de Flutter
+        // COMPORTAMIENTO CORRECTO PARA APP ABIERTA/MINIMIZADA (proceso vivo):
+        // - Una vez activado "Modo Silencio", el ícono PERMANECE SIEMPRE
+        // - NO importa cuánto tiempo pase
+        // - NO importa cuántas veces se minimice/maximice
+        // - NO importa si se abre desde launcher o recientes
+        // - NO importa si se interactúa con modales (nativos o Flutter)
+        // - ÚNICA excepción: Logout (cierre de sesión) → desactiva correctamente
         // 
-        // SOLUCIÓN IMPLEMENTADA:
-        // - Usar timestamp de última interacción con modal (last_modal_close_time)
-        // - Ventana de gracia de 3 segundos: si onResume() ocurre dentro de 3s del cierre del modal,
-        //   se considera "volver del modal" y NO se desactiva
-        // - Detectar apertura intencional: solo desactivar si han pasado >3s desde última interacción
-        // - EmojiDialogActivity ahora persiste timestamp en onDestroy()
-        // ========================================================================
-        
-        // CÓDIGO ORIGINAL COMENTADO (mantener como referencia):
+        // CÓDIGO ANTERIOR COMENTADO (PR #94 - ventana de gracia de 3s):
+        // val silentPrefs = getSharedPreferences("zync_silent_mode", MODE_PRIVATE)
+        // val lastModalCloseTime = silentPrefs.getLong("last_modal_close_time", 0L)
+        // val currentTime = System.currentTimeMillis()
+        // val timeSinceModalClose = currentTime - lastModalCloseTime
+        // 
+        // Log.d(TAG, "🔍 [SILENT-FIX] onResume — isSilentModeActive=$isSilentModeActive | timeSinceModalClose=${timeSinceModalClose}ms")
+        //
+        // if (isSilentModeActive) {
+        //     val GRACE_PERIOD_MS = 3000L
+        //     val isReturningFromModal = timeSinceModalClose < GRACE_PERIOD_MS && lastModalCloseTime > 0
+        //     
+        //     if (isReturningFromModal) {
+        //         Log.d(TAG, "🌙 [SILENT-FIX] Resume dentro de ventana de gracia (${timeSinceModalClose}ms) — Modo Silencio se mantiene activo")
+        //     } else {
+        //         // ❌ PROBLEMA: Desactivaba Modo Silencio al abrir app desde launcher o después de >3s
+        //         Log.d(TAG, "🌙 [SILENT-FIX] Apertura intencional detectada (${timeSinceModalClose}ms desde modal) — desactivando Modo Silencio")
+        //         KeepAliveService.stop(this)
+        //         NotificationManagerCompat.from(this).cancelAll()
+        //         isSilentModeActive = false
+        //         silentPrefs.edit()
+        //             .putBoolean("is_silent_mode_active", false)
+        //             .putLong("last_modal_close_time", 0L)
+        //             .apply()
+        //         Log.d(TAG, "✅ [SILENT-FIX] Modo Silencio desactivado desde onResume()")
+        //     }
+        // }
+        //
+        // CÓDIGO ORIGINAL (pre-PR #94 - flag modal_was_open):
         // val silentPrefs = getSharedPreferences("zync_silent_mode", MODE_PRIVATE)
         // val modalWasOpen = silentPrefs.getBoolean("modal_was_open", false)
         // Log.d(TAG, "🔍 [DIAG-G1.3] onResume — isSilentModeActive=$isSilentModeActive | modal_was_open=$modalWasOpen")
@@ -188,43 +207,19 @@ class MainActivity: FlutterActivity() {
         //         KeepAliveService.stop(this)
         //         NotificationManagerCompat.from(this).cancelAll()
         //         isSilentModeActive = false
-        //         // G2.C1: Limpiar flag persistido
         //         silentPrefs.edit().putBoolean("is_silent_mode_active", false).apply()
         //         Log.d(TAG, "✅ [SILENT] Modo Silencio desactivado desde onResume()")
         //     }
         // }
         // ========================================================================
-        // FIN CÓDIGO ORIGINAL
+        // FIN CÓDIGO ANTERIOR
         // ========================================================================
 
-        // 🌙 NUEVO CÓDIGO: Detección robusta de intención de apertura
-        val silentPrefs = getSharedPreferences("zync_silent_mode", MODE_PRIVATE)
-        val lastModalCloseTime = silentPrefs.getLong("last_modal_close_time", 0L)
-        val currentTime = System.currentTimeMillis()
-        val timeSinceModalClose = currentTime - lastModalCloseTime
-        
-        Log.d(TAG, "🔍 [SILENT-FIX] onResume — isSilentModeActive=$isSilentModeActive | timeSinceModalClose=${timeSinceModalClose}ms")
-
+        // 🌙 NUEVO CÓDIGO: Modo Silencio permanece activo siempre (app abierta/minimizada)
         if (isSilentModeActive) {
-            // Ventana de gracia: 3 segundos desde el cierre del modal
-            val GRACE_PERIOD_MS = 3000L
-            val isReturningFromModal = timeSinceModalClose < GRACE_PERIOD_MS && lastModalCloseTime > 0
-            
-            if (isReturningFromModal) {
-                Log.d(TAG, "🌙 [SILENT-FIX] Resume dentro de ventana de gracia (${timeSinceModalClose}ms) — Modo Silencio se mantiene activo")
-            } else {
-                // Usuario abrió la app intencionalmente (launcher, recientes, etc.)
-                Log.d(TAG, "🌙 [SILENT-FIX] Apertura intencional detectada (${timeSinceModalClose}ms desde modal) — desactivando Modo Silencio")
-                KeepAliveService.stop(this)
-                NotificationManagerCompat.from(this).cancelAll()
-                isSilentModeActive = false
-                // G2.C1: Limpiar flag persistido
-                silentPrefs.edit()
-                    .putBoolean("is_silent_mode_active", false)
-                    .putLong("last_modal_close_time", 0L) // Limpiar timestamp
-                    .apply()
-                Log.d(TAG, "✅ [SILENT-FIX] Modo Silencio desactivado desde onResume()")
-            }
+            // Para app abierta/minimizada: NUNCA desactivar en onResume()
+            // Solo desactivar con logout explícito (manejado en deactivate() del canal KEEP_ALIVE_CHANNEL)
+            Log.d(TAG, "🌙 [SILENT] onResume con Modo Silencio activo — manteniéndolo activo (app abierta/minimizada)")
         }
 
         // Procesar estado pendiente del cache (selección desde EmojiDialogActivity)
