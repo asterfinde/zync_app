@@ -82,19 +82,50 @@ class EmojiDialogActivity : Activity() {
         configuredZoneTypes = loadConfiguredZoneTypes()
         setupActivityUI()
 
-        // Notificar a MainActivity que el resume siguiente viene del modal,
-        // no de una apertura intencional del usuario. Esto evita que onResume()
-        // desactive el Modo Silencio al volver de esta pantalla.
+        // ========================================================================
+        // [BUG FIX] Persistencia de timestamp de apertura del modal
+        // Fecha: 2026-04-11
+        // Relacionado con: Bug #1 y Bug #2 en MainActivity.kt
+        // 
+        // CÓDIGO ORIGINAL COMENTADO:
+        // getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+        //     .edit().putBoolean("modal_was_open", true).apply()
+        // Log.d(TAG, "🔔 [SILENT] Flag modal_was_open=true guardado")
+        // 
+        // NUEVO CÓDIGO:
+        // Ya no usamos flag booleano modal_was_open porque se limpiaba demasiado pronto.
+        // Ahora persistimos timestamp de apertura para cálculo de ventana de gracia.
+        // ========================================================================
+        val openTime = System.currentTimeMillis()
         getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
-            .edit().putBoolean("modal_was_open", true).apply()
-        Log.d(TAG, "🔔 [SILENT] Flag modal_was_open=true guardado")
+            .edit().putLong("last_modal_open_time", openTime).apply()
+        Log.d(TAG, "🔔 [SILENT-FIX] Modal abierto — timestamp guardado: $openTime")
     }
 
     override fun onDestroy() {
         sosHoldRunnable?.let { sosHandler.removeCallbacks(it) }
-        val modalWasOpen = getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
-            .getBoolean("modal_was_open", false)
-        Log.d(TAG, "🔍 [DIAG-G1.3] onDestroy — modal_was_open=$modalWasOpen (debe ser true para que MainActivity no desactive Silent Mode)")
+        
+        // ========================================================================
+        // [BUG FIX] Persistencia de timestamp de cierre del modal
+        // Fecha: 2026-04-11
+        // Relacionado con: Bug #1 y Bug #2 en MainActivity.kt
+        // 
+        // PROBLEMA ORIGINAL:
+        // - modal_was_open se verificaba y limpiaba inmediatamente en MainActivity.onResume()
+        // - Si el usuario maximizaba la app después, el flag ya estaba en false
+        // - MainActivity interpretaba esto como "apertura intencional" → desactivaba Modo Silencio
+        // 
+        // SOLUCIÓN:
+        // - Persistir timestamp exacto del cierre del modal (onDestroy)
+        // - MainActivity.onResume() calcula tiempo transcurrido desde el cierre
+        // - Ventana de gracia de 3 segundos: si onResume() ocurre <3s después del cierre,
+        //   se considera "volver del modal" y NO se desactiva el Modo Silencio
+        // ========================================================================
+        val closeTime = System.currentTimeMillis()
+        getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+            .edit().putLong("last_modal_close_time", closeTime).apply()
+        Log.d(TAG, "🔍 [SILENT-FIX] onDestroy — timestamp de cierre guardado: $closeTime")
+        
         super.onDestroy()
     }
 
