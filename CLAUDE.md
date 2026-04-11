@@ -447,10 +447,84 @@ Las siguientes decisiones son EXCLUSIVAS del desarrollador:
 4. Se verifica que funciona antes de seguir.
 
 ### Al Cierre
-1. La IA lista los cambios realizados en la sesión.
-2. Si hay decisiones técnicas relevantes, la IA propone la entrada para la sección 11 y espera aprobación.
-3. Si se detectaron problemas no resueltos, la IA propone la entrada para la sección 12 y espera aprobación.
-4. Commit con mensaje descriptivo.
+
+**OBLIGATORIO:** La IA debe presentar el siguiente formato al cerrar cada sesión:
+
+#### 1. Resumen Ejecutivo de Cambios/Fixes
+
+```markdown
+## 📊 RESUMEN EJECUTIVO
+
+### Tareas Realizadas
+- [Lista de tareas completadas con checkmarks ✅]
+
+### Archivos Modificados
+- `ruta/archivo1.ext` (líneas X-Y): [descripción breve del cambio]
+- `ruta/archivo2.ext` (líneas A-B): [descripción breve del cambio]
+
+### Estadísticas de Cambios
+| Métrica | Valor |
+|---------|-------|
+| Archivos modificados | N |
+| Líneas agregadas | +X |
+| Líneas eliminadas | -Y |
+| Impacto neto | ±Z |
+| Código comentado | N líneas |
+| Documentación agregada | N líneas |
+
+### Formato de Comentarios en Código
+
+**Código anterior comentado incluye**:
+- Fecha del cambio (YYYY-MM-DD)
+- Descripción del bug/problema
+- Explicación de la solución implementada
+- Referencias a issues/PRs relacionados
+
+**Ejemplo**:
+```kotlin
+// ========================================================================
+// [CORRECCIÓN] Descripción breve del fix
+// Fecha: 2026-04-11
+// 
+// PROBLEMA ORIGINAL:
+// - Descripción detallada del bug
+// - Casos afectados
+// 
+// SOLUCIÓN IMPLEMENTADA:
+// - Explicación de la nueva lógica
+// - Razón del cambio
+// ========================================================================
+```
+```
+
+#### 2. Confirmación Final de Estado
+
+```markdown
+## ✅ CONFIRMACIÓN FINAL
+
+### Estado del Repositorio
+- ✅ Branch `[nombre]` limpio/actualizado
+- ✅ PR #[número] mergeado exitosamente (si aplica)
+- ✅ Último commit: `[hash]` ([descripción])
+- ✅ Sin cambios pendientes de commit / [N archivos pendientes]
+
+### Memoria Guardada
+- ✅ Memoria creada: `MEMORY[id]`
+- ✅ Ubicación: `C:\Users\dante\.claude\projects\c--Users-dante-projects-zync-app\memory\`
+- ✅ Tags: [lista de tags separados por comas]
+- ✅ Incluye: [resumen de contenido guardado]
+
+### Próximos Pasos
+- [Lista de tareas pendientes o siguiente fase]
+```
+
+#### 3. Proceso de Cierre Estándar
+
+1. Presentar **Resumen Ejecutivo** con formato completo
+2. Presentar **Confirmación Final** con estado del repo y memoria
+3. Si hay decisiones técnicas relevantes, proponer entrada para sección 11 y esperar aprobación
+4. Si se detectaron problemas no resueltos, proponer entrada para sección 12 y esperar aprobación
+5. Confirmar que el desarrollador puede abrir nueva sesión
 
 ### Gestión de contexto
 
