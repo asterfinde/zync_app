@@ -148,33 +148,99 @@
 | 6.4 | Las ventanas de aviso que aparecen desde los modales de los emojis/estados, al tocarse un emoji no preconfigurado, tienen diferente "look and feel". La ventana de aviso del modal desde la barra debería parecerse lo más posible a la fuente de la verdad (ventana modal lanzada desde la pantalla del Círculo)  | Estas ventanas debieran ser casi idénticas, no solo en contenido sino además en la apariencia | 👁 | 🟡 | Fix implementado (PR #65): fondo negro + botón verde menta (`#1CE4B3`) en ambos modales. Pendiente verificación en dispositivo físico con zona geográfica configurada. |
 | 6.5 | La segunda tarjeta llamada "Unirse a un Círculo" que aprece debajo de la tarjeta "Crear un Círculo", luego de que el usuario se Registra demora unos segundos en aparecer | Ambas tarjetas deberían aaparecer casi simultáneamente | 👁 | ✅ |  |
 ---
-## Tests Manuales 
+
+## Grupo 1 — App en Primer Plano (Abierta / Minimizada)
+
+> Tests reportados en sesión 2026-04-09. Escenario: usuario con Modo Silencio activo interactuando con ambos modales (Barra de Notificaciones y Pantalla del Círculo).
+> Estado de resolución: bugs 1.2/1.3/1.5/1.6/1.7 en análisis. Causa raíz identificada — fix pendiente de VoBo.
+
+### A: SIN "MODO SILENCIO"
+
+| ID | Escenario | Pasos | Resultado Obtenido |  Estado | 
+|:---|:---|:---|:---|:---|
+| **G1.A1** | Tap en emoji "Reunión" en Modal del Círculo | Sin Modo Silencio activo: (A) tocar emoji para abrir modal de estados → (B) seleccionar "Reunión" | El emoji/estado que aparece en pantalla del Círculo es el mismo que apareció en el modal usado desde la pantalla Círculo | ✅ |
+| **G1.A2** | Tap en emoji "Universidad" en Modal del Círculo | Sin Modo Silencio activo: (A) tocar emoji para abrir modal de estados → (B) seleccionar "Universidad" | El emoji/estado que aparece en pantalla del Círculo es el mismo que apareció en el modal usado desde la pamtalla Círculo | ✅ |
+| **G1.A3** | Tap en emoji "Bien" en Modal del Círculo | Sin Modo Silencio activo: (A) tocar emoji para abrir modal de estados → (B) seleccionar "Bien" | El emoji/estado que aparece en pantalla del Círculo es el mismo que apareció en el modal usado desde la pamtalla Círculo | ✅ |
+| **G1.A4** | Tap en emoji "SOS" en Modal del Círculo | Sin Modo Silencio activo: (A) tocar emoji para abrir modal de estados → (B) seleccionar "SOS" | El emoji/estado que aparece en pantalla del Círculo es el mismo que apareció en el modal usado desde la pamtalla Círculo. Aparece el aviso de permiso para uso del GPS. Una vez seteado el emoji SOS se puede: cambiar a otro dándole tap sobre el mismo ó ver la posición del usuario en el Google Maps | ✅ |
+| **G1.A5** | Tap en cualquiera de los 16 emojis/estados | Sin Modo Silencio activo: tocar cualquier de los emojis/estados mostrados desde el modal del  Círculo. | Aparece el mismo emoji/estado correspondiente en la pantalla del Círculo | ✅ |
 
 
-| No. | ID | Fase | Caso de prueba | Notas |
-|:---:|:--:|:----:|:---|:---|
-| 1 | T1.5 | 1 | Login fallido — correo no encontrado | Firebase email-enumeration-protection devuelve `invalid-credential`. No automatizable sin cambiar config Firebase. |
-| 2 | T1.10 | 1 | Eliminación de cuenta — usuario es **miembro común** del círculo | Requiere Brecha 2 implementada. Solo ese usuario removido; círculo y demás miembros intactos. |
-| 3 | T1.11 | 1 | Eliminación de cuenta — sesión no reciente (requires-recent-login) | Flujo: login → cerrar app SIN cerrar sesión → esperar 5-10 min → reabrir → Eliminar Cuenta. |
-| 4 | T2.10 | 2 | Solicitud de ingreso — flujo completo manual | Estado inicial cubierto por test automatizado. Verificar manualmente: PendingRequestView visible, datos correctos en Firestore, UX del solicitante. |
-| 5 | T2.11 | 2 | Creador aprueba solicitud | A ve botón "Aceptar" en InCircleView. B pasa automáticamente a InCircleView. |
-| 6 | T2.12 | 2 | Solicitud expira (48h) — lazy expiration | Solicitud desaparece de InCircleView del creador. Solicitante ve NoCircleView y puede reenviar. |
-| 7 | T2.13 | 2 | Solicitante reenvía código tras expiración | B reingresa mismo código → nueva solicitud `pending` creada con nuevo `requestedAt`. |
-| 10 | T3.20.1 | 3 | Con zonas activas — usuario entra a una zona | Requiere GPS activo y zona configurada en el círculo. |
-| 11 | T3.20.2 | 3 | Con zonas activas — usuario sale de una zona | Verificar cambio automático a "En camino". |
-| 11b | T3.30.3 | 3 | Con zonas geográficas configuradas — botones 🏠🏫🏢🏥 inhabilitados en el selector | Precondición: círculo con al menos una zona geográfica configurada. Pasos: (1) tocar propio avatar → selector abre → verificar que 🏠🏫🏢🏥 aparecen atenuados (opacidad reducida). (2) Tocar cualquiera de esos botones → modal "Acción no permitida" aparece → tocar "Entendido" → estado no cambió. |
-| 12 | T4.1 | 4 | Botón "Modo Silencio" visible en pantalla del Círculo | Inspección visual: botón fondo negro, borde menta, letras blancas, encima del botón "Ok". Pendiente de implementación. |
-| 13 | T4.2 | 4 | Tap "Modo Silencio" → modal de confirmación aparece | Precondición: permiso de notificaciones concedido. Verificar apariencia: fondo negro, borde menta, botones Confirmar / Cancelar. |
-| 14 | T4.3 | 4 | Confirmar Modo Silencio → app pasa al background sin dialogs | Verificar que no hay ningún dialog adicional de Android ni de la app. El ícono "i" aparece en la barra de notificaciones inmediatamente. |
-| 15 | T4.11 | 4 | Reabrir app desde launcher — Modo Silencio se desactiva | Precondición: Modo Silencio activo (ícono visible). Pasos: abrir app desde launcher → verificar que el ícono desaparece de la barra y la interacción vuelve a la pantalla del Círculo. |
-| 16 | T4.12 | 4 | Permiso de notificaciones denegado — no se muestra confirmación | Precondición: desinstalar app para resetear permisos. Pasos: instalar → login → tap "Modo Silencio" → denegar permiso de Android → verificar que aparece SnackBar naranja con "Habilitar" y el modal de confirmación NO aparece. |
-| 17 | T4.7 | 4 | Swipe sobre notificación persistente — no se descarta | Precondición: Modo Silencio activo. Pasos: abrir barra de notificaciones → intentar deslizar la notificación de ZYNC → verificar que permanece. |
-| 18 | T4.8 | 4 | "Borrar todo" — notificación ZYNC permanece | Precondición: Modo Silencio activo + otras notificaciones presentes. Pasos: abrir barra → tocar "Borrar todo" → verificar que la notificación de ZYNC permanece. |
-| 19 | T4.9 | 4 | Cerrar sesión con Modo Silencio activo — ícono desaparece | Precondición: Modo Silencio activo. Pasos: reabrir app → ir a Settings → Cerrar sesión → verificar que el ícono desaparece de la barra. |
-| 20 | T4.10 | 4 | Cerrar app desde Recientes con Modo Silencio activo — ícono persiste | Precondición: Modo Silencio activo. Pasos: abrir Recientes → deslizar ZYNC → esperar 3-5 seg → verificar que el ícono sigue en la barra superior. |
-| 21 | T4.6 | 4 | Íconos de zona opacos en modal de barra | Precondición: Modo Silencio activo + zona geográfica configurada. Pasos: tocar notificación → verificar que 🏠🏫🏢🏥 aparecen atenuados. Tocar uno → verificar aviso "Acción no permitida". |
-| 22 | T3.30.4 | 3 | SOS: mantener 1s → estado cambia y modal cierra al instante | Precondición: estar dentro de un círculo. Pasos (A) Modal del Círculo: tocar propio avatar → mantener presionado SOS 1s completo → verificar que el modal se cierra inmediatamente y el estado en el círculo cambia a SOS. Pasos (B) Modal de la Barra (con Modo Silencio activo): tocar la notificación persistente → mantener presionado SOS 1s → verificar cierre inmediato y cambio de estado. |
-| 23 | T5.2 | 5 | Quick Actions reflejadas en shortcuts nativos del SO | Inspección visual: mantener pulsado el ícono de la app en el launcher. |
+---
+
+### B: CON "MODO SILENCIO" & App Cerrada
+
+| ID | Escenario | Pasos | Resultado Obtenido | Resultado Esperado | Estado |
+|:---|:---|:---|:---|:---|:---:|
+| **G1.B1** | Primer Tap en "Modo Silencio" | Tap en botón "Modo Silencio" en pantalla del Círculo | Aparecen los avisos de: Permitir las Notificaciones y Optimizar uso de la batería (este último no se cierra a pesar de haberle dado "Permitir", por qué). La app se minimiza. Ícono "i" aparece en Barra de Notificaciones en ~8 segundos | App se minimiza e ícono "i" aparece en la Barra de Notificaciones. No se cierra la sesión del usuario | ✅ |
+| **G1.B2** | Tap en emoji "Reunión" desde modal de la Barra de Notificaciones (BN) | Con Modo Silencio activo y app minimizada: (A) tocar notificación, abrir modal → (B) seleccionar "Reunión" | El emoji/estado que aparece en pantalla del Círculo coincide con "Reunión" | El emoji/estado coincide y se mantiene | ✅ |
+| **G1.B4** | Segundo Tap en "Modo Silencio" | Con Modo Silencio activo y app minimizada → reabrir app → tap en botón "Modo Silencio" nuevamente | App se minimiza. Ícono "i" sigue en Barra de Notificaciones en ~8 segundos | App se minimiza e ícono aparece una vez (sin reiniciar el servicio si ya estaba activo) | ✅ |
+| **G1.B5** | Actualizar un emoji/estado desde la BN  | Con Modo Silencio activo y app minimizada → actualizar el emoji/estado desde Barra de Notificaciones | El ícono "i" desaparece de la BN | El ícono "i" NO debe desaparecer mientras el Modo Silencio está activo | ❌ CRÍTICO |
+
+---
+
+## Grupo 2 — App Cerrada con Swipe
+
+Es necesario que para que estas opciones funcionen, primero se deberá activar el "Modo Silencio" dentro de la app si luego se procede a cerrarla. La sesión deberá quedar activa (preservar datos y emoji/estado) los cuales deberán reflejarse al abrirse la app nuevamente. El estado toma el valor del último estado del usuario desde Firebase. Si es un usuario nuevo el estado/emoji "default" es "Bien"
+
+### C: CON "MODO SILENCIO" 
+
+| ID | Escenario | Pasos | Resultado Obtenido | Resultado Esperado | Estado |
+|:---|:---|:---|:---|:---|:---:|
+| **G2.C1** | Mantener la sesión activa al cerrar la app | (A) Darle tap al botón "Modo Silencio" → (B) Swipe para cerrar la app | La app se cierra y aparece luego la BN | La sesión del usuario se preserva en el dispositivo incluyendo sus datos y su emoji/estado | ❌ CRÍTICO |
+
+---
+
+## PRIMER TRAMO — Modo Silencio (App Abierta/Minimizada)
+
+> **Estado**: ✅ COMPLETADO (PR #95 - 2026-04-11)
+> 
+> **Regla fundamental**: Mientras la app esté abierta/minimizada (proceso vivo), el ícono "i" de Modo Silencio **PERMANECE SIEMPRE** hasta logout.
+> 
+> **NO importa**: cuánto tiempo pase, cuántas veces se minimice/maximice, si se interactúa con modales (nativos o Flutter).
+> 
+> **ÚNICA excepción**: Logout (cierre de sesión) → desactiva correctamente.
+
+### Casos Normales - Proceso Vivo
+
+| # | Caso de Prueba | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---:|:---:|
+| **PT.1** | Activar Modo Silencio → minimizar | Ícono "i" aparece en Barra de Notificaciones | ✅ Alta | ✅ VALIDADO |
+| **PT.2** | Toca notificación → selecciona emoji | Ícono "i" permanece visible | ✅ Alta | ✅ VALIDADO |
+| **PT.3** | Minimiza/maximiza rápido (<3s) | Ícono "i" permanece visible | ✅ Alta | ✅ VALIDADO |
+| **PT.4** | Minimiza/maximiza lento (>3s) | Ícono "i" permanece visible | ✅ Alta | ✅ VALIDADO |
+| **PT.5** | Maximiza → modal Flutter → emoji | Ícono "i" permanece visible | ✅ Alta | ✅ VALIDADO |
+| **PT.6** | Logout | Ícono "i" desaparece correctamente | ✅ Alta | ✅ VALIDADO |
+
+### Casos Edge - Proceso Vivo
+
+| # | Escenario Edge | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---:|:---:|
+| **PT.E1** | Notificación → SOS (hold 1s) → maximizar | Ícono "i" **PERMANECE** visible | ✅ Alta | ✅ VALIDADO |
+| **PT.E2** | Modal Flutter → emoji → minimizar/maximizar | Ícono "i" **PERMANECE** visible | ✅ Alta | ✅ VALIDADO |
+| **PT.E7** | Activar → minimizar → maximizar → activar nuevamente | Ícono "i" **PERMANECE** (sin duplicar) | ✅ Alta | ✅ VALIDADO |
+
+### Implementación
+
+**Archivos modificados**:
+- `MainActivity.kt` (líneas 149-238): Eliminada lógica de desactivación en `onResume()` para proceso vivo
+- `EmojiDialogActivity.kt` (líneas 85-127): Eliminado código de timestamps (ya no necesario)
+
+**PRs relacionados**:
+- PR #94: Timestamp-based detection (parcialmente revertido)
+- PR #95: Corrección final - ícono permanece siempre (app abierta/minimizada)
+
+**Logs de diagnóstico** (deben aparecer):
+```
+🌙 [SILENT] onResume con Modo Silencio activo — manteniéndolo activo
+🔔 [SILENT] Modal abierto — Modo Silencio permanece activo
+🔍 [SILENT] onDestroy — Modo Silencio permanece activo
+```
+
+**Logs incorrectos** (NO deben aparecer):
+```
+❌ Modo Silencio desactivado desde onResume()
+❌ [SILENT-FIX] Apertura intencional detectada — desactivando
+```
 
 ---
 
