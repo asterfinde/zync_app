@@ -1,5 +1,4 @@
 import 'dart:async'; // Necesario para StreamSubscription
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -990,37 +989,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                 ),
               ],
             ),
-            // =================================================================
-            // [POC DEBUG] Botón temporal — rama feat/silent-app-closed-0
-            // ELIMINAR antes de merge a producción
-            // Propósito: validar que finishAndRemoveTask() no mata el proceso
-            // =================================================================
-            if (kDebugMode)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      const channel = MethodChannel('zync/debug_poc');
-                      await channel.invokeMethod('finishAndRemoveTask');
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.orange,
-                      side: const BorderSide(color: Colors.orange),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    icon: const Icon(Icons.bug_report, size: 16),
-                    label: const Text(
-                      '[POC] finishAndRemoveTask',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-              ),
-            // =================================================================
-            // FIN [POC DEBUG]
-            // =================================================================
           ],
         ),
       ),
