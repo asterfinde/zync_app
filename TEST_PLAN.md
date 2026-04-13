@@ -246,7 +246,7 @@ Es necesario que para que estas opciones funcionen, primero se deberá activar e
 
 ## SEGUNDO TRAMO — Modo Silencio (App Cerrada)
 
-> **Estado**: 🔲 PENDIENTE DE IMPLEMENTACIÓN
+> **Estado**: 🟡 EN PROGRESO — Punto 0 ✅ validado (2026-04-13)
 >
 > **Contexto:** Este tramo implementa las nuevas reglas fundamentales que cambian el comportamiento de `moveTaskToBack` (minimiza) a `finishAndRemoveTask` (cierra de recientes).
 >
@@ -273,11 +273,11 @@ Es necesario que para que estas opciones funcionen, primero se deberá activar e
 
 | # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
 |:---:|:---|:---|:---|:---:|:---:|
-| **ST.0.1** | Activity se destruye al llamar `finishAndRemoveTask()` | Activar Modo Silencio con botón debug → confirmar en dialog → observar lista de recientes | App **no aparece** en recientes | Alta | |
-| **ST.0.2** | Proceso sobrevive tras destruir Activity | Inmediatamente después de ST.0.1: `adb shell ps \| grep zync` | Proceso `com.datainfers.zync` **sigue listado** | Alta | |
-| **ST.0.3** | `KeepAliveService` sigue corriendo | Después de ST.0.1: `adb shell dumpsys activity services \| grep zync` | `KeepAliveService` aparece como servicio activo | Alta | |
-| **ST.0.4** | Notificación "i" permanece visible | Observar BN después de ST.0.1 | Ícono "i" sigue visible, sin parpadeo | Alta | |
-| **ST.0.5** | `EmojiDialogActivity` abre desde BN sin MainActivity | Después de ST.0.1 → tocar ícono "i" | Modal nativo abre correctamente | Alta | |
+| **ST.0.1** | Activity se destruye al llamar `finishAndRemoveTask()` | Activar Modo Silencio con botón debug → confirmar en dialog → observar lista de recientes | App **no aparece** en recientes | Alta | ✅ |
+| **ST.0.2** | Proceso sobrevive tras destruir Activity | Inmediatamente después de ST.0.1: `adb shell ps \| grep zync` | Proceso `com.datainfers.zync` **sigue listado** | Alta | ✅ |
+| **ST.0.3** | `KeepAliveService` sigue corriendo | Después de ST.0.1: `adb shell dumpsys activity services \| grep zync` | `KeepAliveService` aparece como servicio activo | Alta | ✅ |
+| **ST.0.4** | Notificación "i" permanece visible | Observar BN después de ST.0.1 | Ícono "i" sigue visible, sin parpadeo | Alta | ✅ |
+| **ST.0.5** | `EmojiDialogActivity` abre desde BN sin MainActivity | Después de ST.0.1 → tocar ícono "i" | Modal nativo abre correctamente | Alta | ✅ |
 
 > **Plan B si ST.0.2 o ST.0.3 fallan:**
 > - **Opción B1 — Proceso separado:** Mover `KeepAliveService` a `android:process=":keepalive"` en el Manifest para aislarlo completamente del proceso de la Activity. Implica complejidad adicional en la comunicación entre procesos.
