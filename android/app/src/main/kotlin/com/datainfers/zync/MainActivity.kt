@@ -502,7 +502,31 @@ class MainActivity: FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
-        
+
+        // =====================================================================
+        // [POC DEBUG] Canal temporal — rama feat/silent-app-closed-0
+        // ELIMINAR antes de merge a producción
+        // Propósito: validar que finishAndRemoveTask() no mata el proceso
+        // =====================================================================
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zync/debug_poc").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "finishAndRemoveTask" -> {
+                    Log.d(TAG, "🧪 [POC] Iniciando KeepAliveService + finishAndRemoveTask()")
+                    KeepAliveService.start(this)
+                    isSilentModeActive = true
+                    getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+                        .edit().putBoolean("is_silent_mode_active", true).apply()
+                    result.success(true)
+                    finishAndRemoveTask()
+                    Log.d(TAG, "🧪 [POC] finishAndRemoveTask() llamado")
+                }
+                else -> result.notImplemented()
+            }
+        }
+        // =====================================================================
+        // FIN [POC DEBUG]
+        // =====================================================================
+
         // Point 21 FASE 5: Canal para notificaciones (apunta a StatusModalActivity)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {

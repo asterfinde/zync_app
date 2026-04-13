@@ -1,4 +1,5 @@
 import 'dart:async'; // Necesario para StreamSubscription
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -922,68 +923,104 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Botón secundario: Modo Silencio
-            Expanded(
-              flex: 3,
-              child: OutlinedButton.icon(
-                key: const Key('btn_silent_mode'),
-                onPressed: _isUpdatingStatus
-                    ? null
-                    : () => _confirmAndActivateSilentMode(context),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _AppColors.accent,
-                  backgroundColor: Colors.black,
-                  side: const BorderSide(color: _AppColors.accent),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
+            Row(
+              children: [
+                // Botón secundario: Modo Silencio
+                Expanded(
+                  flex: 3,
+                  child: OutlinedButton.icon(
+                    key: const Key('btn_silent_mode'),
+                    onPressed: _isUpdatingStatus
+                        ? null
+                        : () => _confirmAndActivateSilentMode(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _AppColors.accent,
+                      backgroundColor: Colors.black,
+                      side: const BorderSide(color: _AppColors.accent),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                    ),
+                    icon: const Icon(Icons.bedtime_outlined, size: 18),
+                    label: const Text(
+                      'Modo Silencio',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-                icon: const Icon(Icons.bedtime_outlined, size: 18),
-                label: const Text(
-                  'Modo Silencio',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Botón primario: OK / Actualizar estado
-            Expanded(
-              flex: 2,
-              child: ElevatedButton(
-                key: const Key('btn_change_status'),
-                onPressed: _isUpdatingStatus ? null : () => _quickStatusUpdate(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _AppColors.accent,
-                  foregroundColor: _AppColors.background,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
+                const SizedBox(width: 12),
+                // Botón primario: OK / Actualizar estado
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    key: const Key('btn_change_status'),
+                    onPressed: _isUpdatingStatus ? null : () => _quickStatusUpdate(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _AppColors.accent,
+                      foregroundColor: _AppColors.background,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_isUpdatingStatus)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
+                            ),
+                          )
+                        else
+                          const Icon(Icons.check_circle),
+                        const SizedBox(width: 8),
+                        Text(_isUpdatingStatus ? '...' : 'OK'),
+                      ],
+                    ),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_isUpdatingStatus)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
-                        ),
-                      )
-                    else
-                      const Icon(Icons.check_circle),
-                    const SizedBox(width: 8),
-                    Text(_isUpdatingStatus ? '...' : 'OK'),
-                  ],
+              ],
+            ),
+            // =================================================================
+            // [POC DEBUG] Botón temporal — rama feat/silent-app-closed-0
+            // ELIMINAR antes de merge a producción
+            // Propósito: validar que finishAndRemoveTask() no mata el proceso
+            // =================================================================
+            if (kDebugMode)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      const channel = MethodChannel('zync/debug_poc');
+                      await channel.invokeMethod('finishAndRemoveTask');
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange,
+                      side: const BorderSide(color: Colors.orange),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    icon: const Icon(Icons.bug_report, size: 16),
+                    label: const Text(
+                      '[POC] finishAndRemoveTask',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            // =================================================================
+            // FIN [POC DEBUG]
+            // =================================================================
           ],
         ),
       ),
