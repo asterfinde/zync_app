@@ -448,19 +448,18 @@ class MainActivity: FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEEP_ALIVE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "activate" -> {
-                    // Idempotencia: si ya está activo, solo minimizar sin reiniciar el servicio.
+                    // Idempotencia: si ya está activo, cerrar app sin reiniciar el servicio.
                     if (isSilentModeActive) {
-                        Log.d(TAG, "🌙 [SILENT] Ya activo — ignorando activación redundante")
-                        moveTaskToBack(true)
+                        Log.d(TAG, "🌙 [SILENT] Ya activo — cerrando app (Regla 2, idempotencia)")
                         result.success(true)
+                        finishAndRemoveTask()
                         return@setMethodCallHandler
                     }
                     Log.d(TAG, "🌙 [SILENT] Activando Modo Silencio")
                     // Exención de batería: se solicita una sola vez, sin bloquear la activación.
-                    // El diálogo del sistema aparece mientras la app ya se está minimizando.
+                    // El diálogo del sistema aparece mientras la app ya se está cerrando.
                     val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
                     if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                        Log.w(TAG, "⚠️ [DIAG-G1.3] startActivity(batteryIntent) — onResume() se disparará al volver. modal_was_open NO se establece aquí → posible desactivación espuria")
                         val batteryIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:$packageName")
                         }
@@ -471,9 +470,9 @@ class MainActivity: FlutterActivity() {
                     // G2.C1: Persistir para sobrevivir swipe/kill del proceso
                     getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
                         .edit().putBoolean("is_silent_mode_active", true).apply()
-                    Log.d(TAG, "🔍 [DIAG-G1.3] isSilentModeActive establecido en true — moveTaskToBack a continuación")
-                    moveTaskToBack(true)
+                    Log.d(TAG, "🌙 [SILENT] isSilentModeActive=true — cerrando app (Regla 2)")
                     result.success(true)
+                    finishAndRemoveTask()
                 }
                 "deactivate" -> {
                     Log.d(TAG, "🌙 [SILENT] Desactivando Modo Silencio (logout)")
@@ -502,30 +501,6 @@ class MainActivity: FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
-
-        // =====================================================================
-        // [POC DEBUG] Canal temporal — rama feat/silent-app-closed-0
-        // ELIMINAR antes de merge a producción
-        // Propósito: validar que finishAndRemoveTask() no mata el proceso
-        // =====================================================================
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zync/debug_poc").setMethodCallHandler { call, result ->
-            when (call.method) {
-                "finishAndRemoveTask" -> {
-                    Log.d(TAG, "🧪 [POC] Iniciando KeepAliveService + finishAndRemoveTask()")
-                    KeepAliveService.start(this)
-                    isSilentModeActive = true
-                    getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
-                        .edit().putBoolean("is_silent_mode_active", true).apply()
-                    result.success(true)
-                    finishAndRemoveTask()
-                    Log.d(TAG, "🧪 [POC] finishAndRemoveTask() llamado")
-                }
-                else -> result.notImplemented()
-            }
-        }
-        // =====================================================================
-        // FIN [POC DEBUG]
-        // =====================================================================
 
         // Point 21 FASE 5: Canal para notificaciones (apunta a StatusModalActivity)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
