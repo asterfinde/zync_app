@@ -244,6 +244,139 @@ Es necesario que para que estas opciones funcionen, primero se deberá activar e
 
 ---
 
+## SEGUNDO TRAMO — Modo Silencio (App Cerrada)
+
+> **Estado**: 🔲 PENDIENTE DE IMPLEMENTACIÓN
+>
+> **Contexto:** Este tramo implementa las nuevas reglas fundamentales que cambian el comportamiento de `moveTaskToBack` (minimiza) a `finishAndRemoveTask` (cierra de recientes).
+>
+> **Reglas que se validan:**
+> - **Regla 1:** app start → si ícono "i" visible → desactivar/cerrar ícono
+> - **Regla 2:** tap "Modo Silencio" → app desaparece de recientes → ícono "i" aparece
+> - **Regla 3:** Logout → ícono "i" desaparece *(ya funciona — prueba de regresión)*
+
+---
+
+### 0: Prueba de Concepto — Validación previa a implementación
+
+> **⚠️ EJECUTAR ANTES DE CUALQUIER CAMBIO EN PRODUCCIÓN**
+>
+> **Propósito:** Confirmar que `finishAndRemoveTask()` destruye la Activity pero **no mata el proceso**. Si este punto falla, toda la estrategia del SEGUNDO TRAMO se invalida y se debe evaluar un Plan B antes de continuar.
+>
+> **Rama:** `test/silent-finishremove-poc` (temporal — se descarta después)
+>
+> **Cambio temporal:** Agregar un botón debug en `in_circle_view.dart` que llame `finishAndRemoveTask()` directamente a través del canal nativo, sin modificar la lógica real de Modo Silencio.
+>
+> **Criterio de decisión:**
+> - Si todos los casos pasan ✅ → proceder con los Cambios 1–5
+> - Si ST.0.2 o ST.0.3 fallan ❌ → **detener implementación** y evaluar Plan B (ver notas al pie)
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **ST.0.1** | Activity se destruye al llamar `finishAndRemoveTask()` | Activar Modo Silencio con botón debug → confirmar en dialog → observar lista de recientes | App **no aparece** en recientes | Alta | |
+| **ST.0.2** | Proceso sobrevive tras destruir Activity | Inmediatamente después de ST.0.1: `adb shell ps \| grep zync` | Proceso `com.datainfers.zync` **sigue listado** | Alta | |
+| **ST.0.3** | `KeepAliveService` sigue corriendo | Después de ST.0.1: `adb shell dumpsys activity services \| grep zync` | `KeepAliveService` aparece como servicio activo | Alta | |
+| **ST.0.4** | Notificación "i" permanece visible | Observar BN después de ST.0.1 | Ícono "i" sigue visible, sin parpadeo | Alta | |
+| **ST.0.5** | `EmojiDialogActivity` abre desde BN sin MainActivity | Después de ST.0.1 → tocar ícono "i" | Modal nativo abre correctamente | Alta | |
+
+> **Plan B si ST.0.2 o ST.0.3 fallan:**
+> - **Opción B1 — Proceso separado:** Mover `KeepAliveService` a `android:process=":keepalive"` en el Manifest para aislarlo completamente del proceso de la Activity. Implica complejidad adicional en la comunicación entre procesos.
+> - **Opción B2 — Excluir de recientes sin cerrar:** Usar `ActivityManager.AppTask.setExcludeFromRecents(true)` de forma dinámica al activar Modo Silencio, combinado con `moveTaskToBack(true)`. El proceso permanece vivo y la app desaparece de recientes sin que Android destruya nada.
+> - **Opción B3 — Abandonar Regla 2:** Volver a `moveTaskToBack(true)` y redefinir el comportamiento esperado. Solo válido si no hay alternativa técnica viable.
+
+---
+
+### A: Activación — App se cierra (no minimiza)
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **ST.A1** | Tap "Modo Silencio" → app desaparece de recientes | Desde pantalla del Círculo → confirmar en dialog → observar app en recientes | La app **no aparece** en la lista de apps recientes | Alta | |
+| **ST.A2** | Tap "Modo Silencio" → ícono "i" aparece en BN | Mismos pasos de ST.A1 | Ícono "i" aparece en Barra de Notificaciones dentro de ~3s | Alta | |
+| **ST.A3** | Proceso sigue vivo tras cierre | Ejecutar `adb shell ps \| grep zync` inmediatamente después de ST.A1 | Proceso `com.datainfers.zync` **sigue vivo** en la lista | Alta | |
+| **ST.A4** | Notificación persiste tras cierre | Observar BN después de ST.A1 durante 30s | Ícono "i" permanece visible, no parpadea ni desaparece | Alta | |
+| **ST.A5** | Segundo tap (idempotencia) → también cierra | Con Modo Silencio activo → reabrir app → tap "Modo Silencio" nuevamente | App desaparece de recientes (igual que ST.A1). Ícono "i" permanece sin duplicarse | Media | |
+| **ST.A6** | Notificación no parpadea durante cierre | Observar BN en el momento exacto del cierre | La notificación no desaparece momentáneamente ni se reinicia | Media | |
+
+---
+
+### B: Interacción desde Notificación — sin regresiones
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **ST.B1** | Tap notificación → abre EmojiDialogActivity | Con app cerrada (ST.A1 completado) → tocar ícono "i" en BN | Modal nativo abre correctamente. No relanza MainActivity | Alta | |
+| **ST.B2** | Seleccionar emoji desde BN → Firestore actualizado | Desde ST.B1 → seleccionar cualquier emoji | Estado actualizado en Firebase. Pantalla del Círculo refleja cambio al reabrir | Alta | |
+| **ST.B3** | Cerrar EmojiDialogActivity → ícono "i" permanece | Desde ST.B1 → cerrar el modal sin seleccionar | Ícono "i" sigue visible en BN. App sigue cerrada (no en recientes) | Alta | |
+| **ST.B4** | Seleccionar emoji → ícono "i" permanece | Completar ST.B2 | Ícono "i" sigue visible después de seleccionar el emoji | Alta | |
+
+---
+
+### C: Reabrir app — Regla 1
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **ST.C1** | Abrir app desde launcher → ícono "i" desaparece | Con Modo Silencio activo y app cerrada → tocar ícono de ZYNC en launcher | Ícono "i" desaparece de BN | Alta | |
+| **ST.C2** | Abrir app desde launcher → aterriza en Círculo | Mismos pasos de ST.C1 | App muestra directamente la pantalla del Círculo. **No pasa por Login** | Alta | |
+| **ST.C3** | Sesión y datos preservados al reabrir | Mismos pasos de ST.C1 → verificar nombre de usuario, emoji actual y miembros del círculo | Todos los datos coinciden con el estado previo al cierre | Alta | |
+| **ST.C4** | Emoji actualizado desde BN se refleja al reabrir | Completar ST.B2 → luego abrir app desde launcher | El emoji seleccionado desde BN es el que aparece en la pantalla del Círculo | Alta | |
+| **ST.C5** | Abrir app sin Modo Silencio activo → sin cambios | Sin activar Modo Silencio → abrir app normalmente | Comportamiento idéntico al anterior. Sin efectos secundarios | Alta | |
+
+---
+
+### D: Regresiones — flujos existentes que no deben romperse
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **ST.D1** | Logout → ícono "i" desaparece | Con Modo Silencio activo → Ajustes → Cerrar Sesión | Ícono "i" desaparece. Redirige a Login | Alta | |
+| **ST.D2** | Seleccionar emoji desde pantalla del Círculo (sin Modo Silencio) | Sin activar Modo Silencio → tocar emoji en pantalla → seleccionar estado | Estado actualizado en Firebase. Sin efectos secundarios en BN | Alta | |
+| **ST.D3** | Activar SOS desde pantalla del Círculo (sin Modo Silencio) | Sin activar Modo Silencio → hold 1s en SOS | Flujo SOS completo sin regresiones | Alta | |
+| **ST.D4** | PT.1–PT.6 del PRIMER TRAMO siguen pasando | Ejecutar los 6 casos del PRIMER TRAMO | Todos ✅. El ícono permanece activo durante el proceso vivo | Alta | |
+| **ST.D5** | Swipe manual de recientes con Modo Silencio activo (edge case) | Con Modo Silencio activo y app visible en recientes (si aplica) → swipe para cerrar | Ícono "i" permanece activo. El swipe no desactiva el Modo Silencio | Media | |
+
+---
+
+### E: Edge cases
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **ST.E1** | Permisos de batería pendientes durante activación | Primer uso: tap Modo Silencio → dialog de optimización de batería aparece → aceptar | App se cierra correctamente después del dialog. Ícono "i" aparece | Media | |
+| **ST.E2** | Reabrir app múltiples veces con Modo Silencio inactivo | Abrir → cerrar → abrir → cerrar (3 ciclos) sin activar Modo Silencio | Sin efectos secundarios. Nunca aparece ícono "i" involuntariamente | Media | |
+| **ST.E3** | Ciclo completo doble | Activar → seleccionar emoji desde BN → reabrir → volver a activar → repetir | Comportamiento consistente en ambos ciclos | Media | |
+
+---
+
+### F: Persistencia de la Notificación (Cambio 6)
+
+> **Contexto:** En Android 13+ y dispositivos Samsung, el usuario puede descartar notificaciones de foreground services aunque tengan `setOngoing(true)`. El Cambio 6 agrega un chequeo periódico dentro de `KeepAliveService` que re-llama `startForeground()` cada N segundos para restaurar la notificación automáticamente si fue descartada.
+>
+> **Implementación:** Handler periódico en `KeepAliveService.onStartCommand()` con intervalo de ~5s. Se cancela en `onDestroy()`.
+>
+> **Prerequisito:** Cambios 1–5 completados y validados.
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **ST.F1** | Swipe sobre ícono "i" → no se descarta | Con Modo Silencio activo → intentar deslizar la notificación hacia la derecha/izquierda | Notificación permanece visible (`setOngoing(true)`) | Alta | |
+| **ST.F2** | "Borrar todo" → notificación reaparece | Con Modo Silencio activo → abrir BN → presionar "Borrar todo" / "Clear all" → esperar ≤10s | Ícono "i" reaparece automáticamente sin intervención del usuario | Alta | |
+| **ST.F3** | "Borrar todo" en Samsung → notificación reaparece | Mismo flujo de ST.F2 en dispositivo Samsung | Ícono "i" reaparece. `KeepAliveService` sigue activo durante todo el proceso | Alta | |
+| **ST.F4** | Proceso sigue vivo después de "Borrar todo" | Después de ST.F2: `adb shell ps \| grep zync` | Proceso `com.datainfers.zync` sigue listado. El servicio no fue destruido | Alta | |
+| **ST.F5** | Notificación reaparece sin abrir app | Después de ST.F2 → NO abrir la app → solo esperar | Ícono "i" vuelve solo, sin que el usuario interactúe con la app | Alta | |
+| **ST.F6** | Chequeo periódico no afecta rendimiento | Con Modo Silencio activo durante 5 minutos | Sin consumo anormal de batería. Sin ANR ni crashes en logcat | Media | |
+| **ST.F7** | Al desactivar (logout) el chequeo se detiene | Modo Silencio activo → Ajustes → Cerrar Sesión | Notificación desaparece y no reaparece. Handler cancelado correctamente | Alta | |
+
+---
+
+### Tests existentes con resultado esperado actualizado
+
+Los siguientes tests del plan anterior describen comportamiento que cambia con las nuevas reglas:
+
+| Test | Resultado esperado anterior | Resultado esperado nuevo |
+|:---:|:---|:---|
+| G1.B1 | "App se minimiza" | App **desaparece de recientes** |
+| G1.B4 | "App se minimiza" | App **desaparece de recientes** |
+| 4.3 | `moveTaskToBack(true)` — app pasa al background | `finishAndRemoveTask()` — app cerrada de recientes |
+| 4.11 | Pendiente de implementación | Cubierto por ST.C1 |
+
+---
+
 ## Ejecución 
 
 **Uno por uno**
