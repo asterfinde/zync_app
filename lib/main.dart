@@ -113,6 +113,19 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
       print('✅ [NATIVE→FLUTTER] Estado actualizado en Firebase: ${statusType.description}');
     } else {
       print('❌ [NATIVE→FLUTTER] Error actualizando estado: ${result.errorMessage}');
+      if (result.errorMessage == 'zone_manual_selection_not_allowed') {
+        // Falla C fix: la zona está configurada para geofencing — el usuario seleccionó
+        // un estado de zona desde el modal nativo sin que el bloqueo visual estuviera activo
+        // (cache de zonas vacío en EmojiDialogActivity). Mostrar feedback vía SnackBar global.
+        rootScaffoldMessengerKey.currentState?.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Esa zona se actualiza automáticamente por geofencing y no puede seleccionarse manualmente.',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     }
   } catch (e) {
     print('❌ [NATIVE→FLUTTER] Error procesando estado: $e');
