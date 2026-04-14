@@ -106,8 +106,31 @@ class MainActivity: FlutterActivity() {
         val silentPrefs = getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
         isSilentModeActive = silentPrefs.getBoolean("is_silent_mode_active", false)
         Log.d(TAG, "🌙 [SILENT] onCreate — isSilentModeActive restaurado: $isSilentModeActive")
-        
-        // �📊 PERFORMANCE: Detectar si es recreación o primer launch
+
+        // ========================================================================
+        // [CORRECCIÓN] Regla 1 — app start con Modo Silencio activo → desactivar ícono "i"
+        // Fecha: 2026-04-14
+        //
+        // PROBLEMA ORIGINAL:
+        // - Al reabrir la app mientras Modo Silencio estaba activo, el ícono "i"
+        //   permanecía visible en la barra de notificaciones aunque el usuario ya
+        //   estaba interactuando activamente con la app.
+        //
+        // SOLUCIÓN IMPLEMENTADA:
+        // - En onCreate(): si isSilentModeActive == true → detener KeepAliveService,
+        //   cancelar todas las notificaciones y limpiar el flag persistido.
+        // - Implementa el nodo ③ del flujo: "Existe ícono i → Desaparece → Pantalla Círculo"
+        // ========================================================================
+        if (isSilentModeActive) {
+            Log.d(TAG, "🌙 [SILENT] onCreate — Modo Silencio activo detectado → desactivando (Regla 1)")
+            KeepAliveService.stop(this)
+            NotificationManagerCompat.from(this).cancelAll()
+            isSilentModeActive = false
+            silentPrefs.edit().putBoolean("is_silent_mode_active", false).apply()
+            Log.d(TAG, "✅ [SILENT] onCreate — ícono 'i' eliminado, isSilentModeActive=false")
+        }
+
+        //�📊 PERFORMANCE: Detectar si es recreación o primer launch
         val wasRunning = savedInstanceState?.getBoolean("was_running", false) ?: false
         if (wasRunning) {
             Log.d(TAG, "onCreate() - Restaurando estado (Android destruyó la actividad)")
