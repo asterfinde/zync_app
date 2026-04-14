@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../services/circle_service.dart';
+import '../models/user_status.dart';
 import 'status_modal_service.dart';
 import 'status_service.dart';
 
@@ -63,8 +64,7 @@ class SilentFunctionalityCoordinator {
         return;
       }
       _userHasCircle = true;
-      await StatusService.clearOfflineStatus();
-      debugPrint('[SilentCoordinator][DBG] clearOfflineStatus → OK');
+      // El último estado se preserva en Firestore — no se resetea a 'fine'.
     } catch (e) {
       debugPrint('[SilentCoordinator][DBG] activateAfterLogin EXCEPCIÓN: $e');
     }
@@ -99,7 +99,22 @@ class SilentFunctionalityCoordinator {
   static Future<void> activateSilentMode(BuildContext context) async {
     debugPrint('[SilentCoordinator][DBG] activateSilentMode → logout=$_isManualLogoutInProgress, circle=$_userHasCircle, mounted=${context.mounted}');
     if (_isManualLogoutInProgress) return;
-    if (!_userHasCircle) return;
+    if (!context.mounted) return;
+
+    // Bug 2 fix: _userHasCircle puede ser false en cold start por race condition
+    // (activateAfterLogin aún no terminó). Re-verificar desde Firebase antes de cancelar.
+    if (!_userHasCircle) {
+      try {
+        final userCircle = await CircleService().getUserCircle();
+        debugPrint('[SilentCoordinator][DBG] activateSilentMode — re-check circle → ${userCircle != null ? userCircle.name : "NULL"}');
+        if (userCircle == null) return;
+        _userHasCircle = true;
+      } catch (e) {
+        debugPrint('[SilentCoordinator][DBG] activateSilentMode — error re-checking circle: $e');
+        return;
+      }
+    }
+
     if (!context.mounted) return;
 
     final hasPermission = await NotificationService.requestPermissions();
@@ -110,6 +125,15 @@ class SilentFunctionalityCoordinator {
       _showNotificationsDisabledInfo(context);
       return;
     }
+
+    // Escribir 'do_not_disturb' en Firestore antes de que el isolate Dart muera.
+    // Esto reemplaza el concepto "Desconectado": los miembros del círculo ven
+    // 🔕 No molestar mientras el Modo Silencio está activo.
+    final doNotDisturb = StatusType.fallbackPredefined.firstWhere((s) => s.id == 'do_not_disturb');
+    await StatusService.updateUserStatus(doNotDisturb);
+    debugPrint('[SilentCoordinator][DBG] do_not_disturb escrito en Firestore');
+
+    if (!context.mounted) return;
 
     try {
       debugPrint('[SilentCoordinator][DBG] invokeMethod activate →');
