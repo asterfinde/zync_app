@@ -240,60 +240,32 @@ class StatusService {
     }
   }
 
-  /// Marca al usuario como desconectado en su círculo (cierre de sesión deliberado).
-  /// Fire-and-forget: no lanza excepción para no bloquear el flujo de logout.
+  // ========================================================================
+  // [ELIMINADO] setOfflineStatus / clearOfflineStatus — concepto "Desconectado"
+  // Fecha: 2026-04-14
+  //
+  // PROBLEMA ORIGINAL:
+  // - Con finishAndRemoveTask() el isolate Dart muere en AppLifecycleState.detached.
+  //   Flutter escribía "loggedOut: true" en Firestore, mostrando "💤 Desconectado"
+  //   a los miembros del círculo aunque el usuario solo activó Modo Silencio.
+  //
+  // SOLUCIÓN IMPLEMENTADA:
+  // - Eliminar el concepto "Desconectado" por completo.
+  // - Al activar Modo Silencio → se escribe 'do_not_disturb' en Firestore (ver
+  //   SilentFunctionalityCoordinator.activateSilentMode).
+  // - Al reabrir la app → el último estado persiste en Firestore sin reset a 'fine'.
+  // - Estos métodos se conservan como no-ops para evitar errores de compilación
+  //   durante la transición; eliminar en post-MVP.
+  // ========================================================================
+
+  /// @deprecated — No-op. Reemplazado por escritura de 'do_not_disturb' en activateSilentMode.
   static Future<void> setOfflineStatus() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId == null) return;
-
-      await FirebaseFirestore.instance
-          .collection('circles')
-          .doc(circleId)
-          .update({
-        'memberStatus.${user.uid}.loggedOut': true,
-        'memberStatus.${user.uid}.timestamp': FieldValue.serverTimestamp(),
-      });
-      log('[StatusService] 💤 Estado offline registrado — logout deliberado');
-    } catch (e) {
-      log('[StatusService] ⚠️ setOfflineStatus falló (no bloqueante): $e');
-    }
+    log('[StatusService] ⚠️ setOfflineStatus() llamado — no-op (deprecado)');
   }
 
-  /// Limpia el estado offline al iniciar sesión nuevamente.
-  /// Resetea a statusType 'fine' para que el usuario aparezca activo en su círculo.
-  /// Fire-and-forget: no lanza excepción.
+  /// @deprecated — No-op. El último estado se preserva en Firestore; no resetear a fine.
   static Future<void> clearOfflineStatus() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId == null) return;
-
-      await FirebaseFirestore.instance
-          .collection('circles')
-          .doc(circleId)
-          .update({
-        'memberStatus.${user.uid}.loggedOut': FieldValue.delete(),
-        'memberStatus.${user.uid}.statusType': 'fine',
-        'memberStatus.${user.uid}.timestamp': FieldValue.serverTimestamp(),
-      });
-      log('[StatusService] 🟢 Estado offline limpiado — usuario activo nuevamente');
-    } catch (e) {
-      log('[StatusService] ⚠️ clearOfflineStatus falló (no bloqueante): $e');
-    }
+    log('[StatusService] ⚠️ clearOfflineStatus() llamado — no-op (deprecado)');
   }
 
   static Future<bool> _isSpecificZoneTypeConfigured(String circleId, String zoneType) async {
