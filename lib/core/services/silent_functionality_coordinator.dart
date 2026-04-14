@@ -17,7 +17,7 @@ import 'status_service.dart';
 ///   - Estado isSilentModeActive
 ///   - Notificación persistente (via startForeground)
 ///   - moveTaskToBack() al activar
-///   - Detener todo en onResume() cuando el usuario reabre la app
+///   - Detener todo en onCreate() cuando el usuario reabre la app (Regla 1)
 class SilentFunctionalityCoordinator {
   static const _channel = MethodChannel('zync/keep_alive');
 
