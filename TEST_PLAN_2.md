@@ -176,8 +176,6 @@
 
 ---
 
----
-
 # SECCIÓN 2 — NUEVOS
 
 > Tests pendientes de primera validación en dispositivo físico.
@@ -191,12 +189,12 @@
 
 | ID | Caso de prueba | Pasos | Resultado esperado | Estado |
 |:--:|:--------------|:------|:-------------------|:------:|
-| N1.01 | Ícono "i" desaparece al abrir desde launcher | (A) Activar Modo Silencio → (B) Tocar ícono ZYNC en launcher | Ícono "i" desaparece de BN en ≤2s | |
-| N1.02 | App aterriza en Pantalla Círculo — no en Login | Mismos pasos de N1.01 | Pantalla Círculo directa. Login no aparece | |
-| N1.03 | Sesión y datos preservados al reabrir | Mismos pasos de N1.01 → verificar nombre de usuario, emoji actual, miembros | Todos los datos coinciden con el estado previo al cierre | |
-| N1.04 | Emoji actualizado desde BN se refleja al reabrir | (A) Seleccionar emoji desde BN → (B) Abrir app desde launcher | El emoji seleccionado en BN es el que aparece en Pantalla Círculo | |
-| N1.05 | Abrir app sin Modo Silencio activo → sin efectos | Cerrar app normalmente → reabrir desde launcher | No aparece ícono "i". Comportamiento normal sin efectos secundarios | |
-
+| N1.01 | Ícono "i" desaparece al abrir desde launcher | (A) Activar Modo Silencio → (B) Tocar ícono ZYNC en launcher | Ícono "i" desaparece de BN en ≤2s | ⚠️ tarda ≥8s |
+| N1.02 | App aterriza en Pantalla Círculo — no en Login≥8s CRÍTICO!! | Mismos pasos de N1.01 | Pantalla Círculo directa. Login no aparece | ✅ |
+| N1.03 | Sesión y datos preservados al reabrir | Mismos pasos de N1.01 → verificar nombre de usuario, emoji actual, miembros | Todos los datos coinciden con el estado previo al cierre | ❌ Justo antes de cerrarse la app, esta adopta el emoji "NO Molestar", cuando debería mostrar el que elegió el usuario antes del cierre o el estado que tenía por geofencing |
+| N1.04 | Emoji actualizado desde BN se refleja al reabrir | (A) Seleccionar emoji desde BN → (B) Abrir app desde launcher | El emoji seleccionado en BN es el que aparece en Pantalla Círculo |✅ |
+| N1.05 | Abrir app sin Modo Silencio activo → sin efectos | Cerrar app normalmente → reabrir desde launcher | No aparece ícono "i". Comportamiento normal sin efectos secundarios | ✅ |
+| N1.06 | La BN es persistente, sea que se cierre manualmente con el botón "Borrar" del dispositivo o se haga un swipe sobre el mensaje de aviso de la BN | Cerrar la BN con el botón "Borrar"/swipe desde Android |  Persiste exitosamente el ícono "i", sin efectos secundarios | ✅ |
 ---
 
 ## N2 — Último estado preservado al reabrir (PR #101)

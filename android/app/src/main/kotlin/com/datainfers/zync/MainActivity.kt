@@ -126,7 +126,27 @@ class MainActivity: FlutterActivity() {
             KeepAliveService.stop(this)
             NotificationManagerCompat.from(this).cancelAll()
             isSilentModeActive = false
-            silentPrefs.edit().putBoolean("is_silent_mode_active", false).apply()
+
+            // Leer estado previo ANTES de limpiar las prefs
+            val preSilentStatus = silentPrefs.getString("pre_silent_status_type", null)
+
+            // Limpiar todas las flags de Modo Silencio en un solo commit
+            silentPrefs.edit()
+                .putBoolean("is_silent_mode_active", false)
+                .remove("pre_silent_status_type")
+                .apply()
+
+            // Si hay estado previo guardado, encolarlo en pending_status para que
+            // Flutter lo restaure en Firestore al arrancar (vía canal pending_status)
+            if (!preSilentStatus.isNullOrEmpty()) {
+                getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+                    .edit()
+                    .putString("statusType", preSilentStatus)
+                    .putLong("timestamp", System.currentTimeMillis())
+                    .apply()
+                Log.d(TAG, "📌 [SILENT] onCreate — Estado previo encolado para restaurar: $preSilentStatus")
+            }
+
             Log.d(TAG, "✅ [SILENT] onCreate — ícono 'i' eliminado, isSilentModeActive=false")
         }
 
@@ -490,9 +510,20 @@ class MainActivity: FlutterActivity() {
                     }
                     KeepAliveService.start(this)
                     isSilentModeActive = true
-                    // G2.C1: Persistir para sobrevivir swipe/kill del proceso
-                    getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
-                        .edit().putBoolean("is_silent_mode_active", true).apply()
+
+                    // N1.03 — Opción A: Guardar estado previo al Modo Silencio para
+                    // restaurarlo en Firestore cuando el usuario reabre la app (Regla 1).
+                    // Flutter pasa el statusType actual antes de escribir do_not_disturb.
+                    val preSilentStatusType = call.argument<String>("preSilentStatusType")
+                    val silentPrefsEditor = getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
+                        .edit()
+                        .putBoolean("is_silent_mode_active", true)
+                    if (!preSilentStatusType.isNullOrEmpty() && preSilentStatusType != "do_not_disturb") {
+                        silentPrefsEditor.putString("pre_silent_status_type", preSilentStatusType)
+                        Log.d(TAG, "📌 [SILENT] Estado previo guardado: $preSilentStatusType")
+                    }
+                    silentPrefsEditor.apply()
+
                     Log.d(TAG, "🌙 [SILENT] isSilentModeActive=true — cerrando app (Regla 2)")
                     result.success(true)
                     finishAndRemoveTask()
