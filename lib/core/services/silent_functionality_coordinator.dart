@@ -128,18 +128,26 @@ class SilentFunctionalityCoordinator {
       return;
     }
 
-    // N1.03 — Opción A: Leer el statusType actual antes de sobreescribir con do_not_disturb.
-    // Se pasa a Kotlin para que lo persista y lo restaure en Firestore al reabrir la app.
+    // N1.03 — Opción A: Leer statusType actual de circles/{circleId}/memberStatus/{uid}.
+    // users/{uid} NO tiene campo statusType — el status vive en el doc del círculo.
+    // Se pasa a Kotlin para persistir y restaurar en Firestore al reabrir la app.
+    // Zonas controladas ('home','school','work','university') → fallback a 'fine';
+    // el geofencing las corrige solo.
+    const zoneControlledIds = {'home', 'school', 'work', 'university'};
     String? preSilentStatusType;
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        preSilentStatusType = userDoc.data()?['statusType'] as String?;
-        debugPrint('[SilentCoordinator][DBG] Estado previo leído: $preSilentStatusType');
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final circleId = userDoc.data()?['circleId'] as String?;
+        if (circleId != null) {
+          final circleDoc = await FirebaseFirestore.instance.collection('circles').doc(circleId).get();
+          final memberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
+          final myStatus = memberStatus?[user.uid] as Map<String, dynamic>?;
+          final rawId = myStatus?['statusType'] as String?;
+          preSilentStatusType = (zoneControlledIds.contains(rawId)) ? 'fine' : rawId;
+          debugPrint('[SilentCoordinator][DBG] Estado previo: $rawId → guardando: $preSilentStatusType');
+        }
       }
     } catch (e) {
       debugPrint('[SilentCoordinator][DBG] Error leyendo estado previo: $e');
