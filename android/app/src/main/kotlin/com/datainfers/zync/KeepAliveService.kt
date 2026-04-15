@@ -34,6 +34,12 @@ class KeepAliveService : Service() {
     private val keepAliveHandler = Handler(Looper.getMainLooper())
     private val keepAliveRunnable = object : Runnable {
         override fun run() {
+            // N1.01 fix: abortar si stop() ya fue llamado para evitar que el ícono
+            // reaparezca en la ventana entre stopService() y onDestroy().
+            if (isBeingStopped) {
+                Log.d(TAG, "🛑 [KEEP-ALIVE] Handler abortado — isBeingStopped=true")
+                return
+            }
             try {
                 val notification = createNotification()
                 startForeground(NOTIFICATION_ID, notification)
@@ -55,8 +61,25 @@ class KeepAliveService : Service() {
         // 5 s es suficientemente frecuente para resistir OEM agresivos (Samsung, Xiaomi)
         // sin impacto perceptible en batería (la notificación ya existe; solo se reafirma).
         private const val KEEP_ALIVE_INTERVAL_MS = 5_000L
-        
+
+        // ========================================================================
+        // [CORRECCIÓN] N1.01 — Flag para evitar reaparición del ícono tras stop()
+        // Fecha: 2026-04-15
+        //
+        // PROBLEMA ORIGINAL:
+        // - stopService() es asíncrono: onDestroy() puede tardar ~5-8s en ejecutarse.
+        // - En ese intervalo, el handler periódico disparaba startForeground() y el ícono
+        //   "i" reaparecía brevemente en la BN (≥8s desde el cancelAll en Regla 1).
+        //
+        // SOLUCIÓN IMPLEMENTADA:
+        // - isBeingStopped se pone en true en stop(), antes de stopService().
+        // - keepAliveRunnable comprueba el flag al inicio y aborta si está en true.
+        // - Se resetea a false en start() y en onCreate() (cubre START_STICKY restart).
+        // ========================================================================
+        @Volatile var isBeingStopped = false
+
         fun start(context: Context) {
+            isBeingStopped = false  // Resetear al iniciar (cubre reactivación)
             Log.d(TAG, "🟢 Iniciando servicio keep-alive")
             try {
                 val intent = Intent(context, KeepAliveService::class.java)
@@ -74,9 +97,10 @@ class KeepAliveService : Service() {
                 Log.e(TAG, "❌ Error iniciando servicio: ${e.message}", e)
             }
         }
-        
+
         fun stop(context: Context) {
-            Log.d(TAG, "🔴 Deteniendo servicio keep-alive")
+            isBeingStopped = true   // Señal al handler de no re-afirmar startForeground()
+            Log.d(TAG, "🔴 Deteniendo servicio keep-alive (isBeingStopped=true)")
             val intent = Intent(context, KeepAliveService::class.java)
             context.stopService(intent)
         }
@@ -84,6 +108,7 @@ class KeepAliveService : Service() {
     
     override fun onCreate() {
         super.onCreate()
+        isBeingStopped = false  // Resetear si Android reinicia el servicio (START_STICKY)
         Log.d(TAG, "onCreate() - Servicio creado")
         createNotificationChannel()
     }

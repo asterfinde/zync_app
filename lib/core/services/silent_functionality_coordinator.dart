@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../notifications/notification_service.dart';
@@ -126,6 +128,23 @@ class SilentFunctionalityCoordinator {
       return;
     }
 
+    // N1.03 — Opción A: Leer el statusType actual antes de sobreescribir con do_not_disturb.
+    // Se pasa a Kotlin para que lo persista y lo restaure en Firestore al reabrir la app.
+    String? preSilentStatusType;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        preSilentStatusType = userDoc.data()?['statusType'] as String?;
+        debugPrint('[SilentCoordinator][DBG] Estado previo leído: $preSilentStatusType');
+      }
+    } catch (e) {
+      debugPrint('[SilentCoordinator][DBG] Error leyendo estado previo: $e');
+    }
+
     // Escribir 'do_not_disturb' en Firestore antes de que el isolate Dart muera.
     // Esto reemplaza el concepto "Desconectado": los miembros del círculo ven
     // 🔕 No molestar mientras el Modo Silencio está activo.
@@ -137,7 +156,10 @@ class SilentFunctionalityCoordinator {
 
     try {
       debugPrint('[SilentCoordinator][DBG] invokeMethod activate →');
-      await _channel.invokeMethod('activate');
+      await _channel.invokeMethod('activate', {
+        if (preSilentStatusType != null && preSilentStatusType != 'do_not_disturb')
+          'preSilentStatusType': preSilentStatusType,
+      });
       debugPrint('[SilentCoordinator][DBG] activate → OK');
     } catch (e) {
       debugPrint('[SilentCoordinator][DBG] activate EXCEPCIÓN: $e');
