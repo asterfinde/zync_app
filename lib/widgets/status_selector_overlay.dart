@@ -221,7 +221,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         timer.cancel();
         return;
       }
-      setState(() => _sosHoldProgress += 30 / 1000);
+      setState(() => _sosHoldProgress += 30 / 500);
       if (_sosHoldProgress >= 1.0) {
         timer.cancel();
         _triggerSos();
