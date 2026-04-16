@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/models/user_status.dart';
+import '../core/services/emoji_service.dart';
 import '../core/services/status_service.dart';
 
 /// Modal transparente con grid 3x4 de emojis para selección rápida de estado
@@ -79,41 +80,41 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       final circleId = userDoc.data()?['circleId'] as String?;
       if (circleId == null) throw Exception('Usuario sin círculo');
 
-      // PM5 FIX: Verificar si hay zonas predefinidas configuradas (home, school, work, medical)
-      // Buscar zonas con type en ['home', 'school', 'work', 'medical']
+      // Cargar emojis desde Firebase (predefinidos + custom del círculo)
+      // FIX MN4.01/MN4.02: El grid siempre usaba fallbackPredefined hardcodeado.
+      // Ahora se carga desde Firebase para que IDs y emojis coincidan con in_circle_view.
+      final predefined = await EmojiService.getPredefinedEmojis();
+      final custom = await EmojiService.getCustomEmojis(circleId);
+      final allEmojis = <StatusType?>[...predefined, ...custom];
+
+      print('[StatusSelectorOverlay] ✅ Grid cargado desde Firebase: ${allEmojis.length} emojis');
+
+      // Verificar zonas predefinidas configuradas para dimming de botones
       final zonesSnapshot =
           await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').get();
 
-      // Filtrar zonas que sean de tipo predefinido
       final predefinedZones = zonesSnapshot.docs.where((doc) {
         final type = doc.data()['type'] as String?;
         return type != null && ['home', 'school', 'university', 'work'].contains(type);
       }).toList();
 
-      // Recopilar los tipos de zona efectivamente configurados
       final configuredTypes = predefinedZones
           .map((doc) => doc.data()['type'] as String)
           .toSet();
+
       print(
           '[StatusSelectorOverlay] 📍 Tipos de zona configurados: $configuredTypes (${predefinedZones.length} de ${zonesSnapshot.docs.length} totales)');
-
-      print('[StatusSelectorOverlay] ✅ Grid ya inicializado con ${_statusGrid.length} emojis');
 
       await Future.delayed(const Duration(milliseconds: 50));
 
       if (mounted) {
         setState(() {
+          _statusGrid = allEmojis;
           _configuredZoneTypes = configuredTypes;
           _isLoadingGrid = false;
         });
         print(
             '[StatusSelectorOverlay] 🔧 Estado actualizado: _configuredZoneTypes=$_configuredZoneTypes, grid.length=${_statusGrid.length}');
-
-        if (configuredTypes.isNotEmpty) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) setState(() {});
-          });
-        }
       }
     } catch (e) {
       print('[StatusSelectorOverlay] ❌ ERROR cargando grid: $e');
