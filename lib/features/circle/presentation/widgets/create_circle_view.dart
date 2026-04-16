@@ -24,7 +24,7 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
     // MN6.06: Foco inmediato — postFrameCallback garantiza que el widget está
     // completamente construido antes de pedir foco, evitando el retraso de autofocus.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _focusNode.requestFocus();
+      if (mounted) FocusScope.of(context).requestFocus(_focusNode);
     });
   }
 
