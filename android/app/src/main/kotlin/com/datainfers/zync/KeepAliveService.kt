@@ -194,7 +194,6 @@ class KeepAliveService : Service() {
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Zync")
-            .setContentText("Toca para cambiar tu estado") // Point 21: Texto claro
             .setSmallIcon(android.R.drawable.ic_dialog_info) // Usar icono genérico por ahora
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
