@@ -83,4 +83,10 @@ dependencies {
     
     // WorkManager for background status updates
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Firebase SDK directo para StatusUpdateWorker (write a Firestore sin Flutter)
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.android.gms:play-services-tasks:18.2.0")
 }
