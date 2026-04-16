@@ -269,6 +269,7 @@ class MainActivity: FlutterActivity() {
         val prefs = getSharedPreferences("pending_status", MODE_PRIVATE)
         val pendingStatus = prefs.getString("statusType", null)
 
+        Log.d(TAG, "📋 [DIAG-BN-WRITE] onResume: pendingStatus=${pendingStatus ?: "NONE"} | flutterEngineAvailable=${flutterEngine != null}")
         if (pendingStatus != null) {
             Log.d(TAG, "💾 [RESUME] Estado pendiente: $pendingStatus — enviando a Flutter")
             flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
@@ -276,7 +277,10 @@ class MainActivity: FlutterActivity() {
                 channel.invokeMethod("updateStatus", mapOf("statusType" to pendingStatus))
                 prefs.edit().clear().apply()
                 Log.d(TAG, "✅ [RESUME] Estado enviado y cache limpiado")
+                Log.d(TAG, "📋 [DIAG-BN-WRITE] onResume: pending_status LIMPIADO — worker NO escribirá a Firestore (Flutter lo hará)")
             } ?: Log.d(TAG, "⏳ [RESUME] FlutterEngine no disponible — estado pendiente preservado para [HYBRID]")
+        } else {
+            Log.d(TAG, "📋 [DIAG-BN-WRITE] onResume: sin pending_status — worker escribirá a Firestore si está encolado")
         }
     }
     

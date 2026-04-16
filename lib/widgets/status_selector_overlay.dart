@@ -87,6 +87,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       final allEmojis = <StatusType?>[...predefined, ...custom];
 
       print('[StatusSelectorOverlay] ✅ Grid cargado desde Firebase: ${allEmojis.length} emojis');
+      print('[DIAG-GRID] IDs predefinidos (${predefined.length}): ${predefined.map((e) => e.id).toList()}');
+      print('[DIAG-GRID] IDs custom (${custom.length}): ${custom.map((e) => e.id).toList()}');
+      final hasUniversity = allEmojis.any((e) => e?.id == 'university');
+      final hasMeeting = allEmojis.any((e) => e?.id == 'meeting');
+      print('[DIAG-GRID] university presente: $hasUniversity | meeting presente: $hasMeeting');
 
       // Verificar zonas predefinidas configuradas para dimming de botones
       final zonesSnapshot =
