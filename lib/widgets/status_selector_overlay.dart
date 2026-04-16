@@ -221,7 +221,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         timer.cancel();
         return;
       }
-      setState(() => _sosHoldProgress += 30 / 500);
+      setState(() => _sosHoldProgress += 30 / 1000);
       if (_sosHoldProgress >= 1.0) {
         timer.cancel();
         _triggerSos();
@@ -249,6 +249,12 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   }
 
   Widget _buildSosButton() {
+    // Visual igual al nativo (EmojiDialogActivity):
+    // - Fondo: rojo normal → rojo oscuro al presionar (igual que native #B71C1C)
+    // - S.O.S siempre visible (sin reemplazar por spinner)
+    // - Subtítulo: "Enviando SOS..." inmediato al presionar
+    final bgColor = _sosHolding ? const Color(0xFFB71C1C) : Colors.red;
+
     return GestureDetector(
       onTapDown: (_) => _startSosHold(),
       onTapUp: (_) => _cancelSosHold(),
@@ -258,10 +264,10 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.red,
+          color: bgColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.red,
+            color: bgColor,
             width: 2,
           ),
         ),
@@ -269,28 +275,16 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (_sosHolding)
-              SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  value: _sosHoldProgress,
-                  color: Colors.white,
-                  strokeWidth: 3,
-                  backgroundColor: Colors.red.shade700,
-                ),
-              )
-            else
-              const Text(
-                'S.O.S',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                  decoration: TextDecoration.none,
-                ),
+            const Text(
+              'S.O.S',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+                decoration: TextDecoration.none,
               ),
+            ),
             const SizedBox(height: 4),
             Text(
               _sosHolding ? 'Enviando SOS...' : 'Mantén presionado para enviar',
