@@ -18,7 +18,6 @@ import android.widget.TextView
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import java.util.concurrent.TimeUnit
 
 /**
  * Modal nativo de Android para selección de emojis
@@ -553,7 +552,6 @@ class EmojiDialogActivity : Activity() {
             .build()
 
         val workRequest = OneTimeWorkRequestBuilder<StatusUpdateWorker>()
-            .setInitialDelay(30, TimeUnit.SECONDS)
             .setInputData(workData)
             .addTag("status_update_$timestamp")
             .build()
