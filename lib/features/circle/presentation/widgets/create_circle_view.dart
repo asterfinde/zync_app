@@ -13,6 +13,7 @@ class CreateCircleView extends ConsumerStatefulWidget {
 
 class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
   final _createController = TextEditingController();
+  final _focusNode = FocusNode();
   final _service = CircleService();
   bool _isFormValid = false;
 
@@ -20,6 +21,11 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
   void initState() {
     super.initState();
     _createController.addListener(_validateForm);
+    // MN6.06: Foco inmediato — postFrameCallback garantiza que el widget está
+    // completamente construido antes de pedir foco, evitando el retraso de autofocus.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
   }
 
   void _validateForm() {
@@ -30,6 +36,7 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _createController.dispose();
     super.dispose();
   }
@@ -66,13 +73,6 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
       }
 
       if (mounted) {
-        rootScaffoldMessengerKey.currentState?.showSnackBar(
-          SnackBar(
-            content: Text('¡Círculo "$circleName" creado!'),
-            backgroundColor: const Color(0xFF1CE4B3),
-          ),
-        );
-
         // Limpiar el controller de manera segura
         _createController.clear();
       }
@@ -138,7 +138,7 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
             TextFormField(
               key: const Key('field_circle_name'),
               controller: _createController,
-              autofocus: true,
+              focusNode: _focusNode,
               onChanged: (_) => _validateForm(),
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
