@@ -44,6 +44,7 @@ class KeepAliveService : Service() {
                 val notification = createNotification()
                 startForeground(NOTIFICATION_ID, notification)
                 Log.d(TAG, "🔄 [KEEP-ALIVE] startForeground re-afirmado (handler periódico)")
+                Log.d(TAG, "🔔 [DIAG-NOTIF] handler periódico re-afirmó notificación @ ${System.currentTimeMillis()}")
             } catch (e: Exception) {
                 Log.w(TAG, "⚠️ [KEEP-ALIVE] Error en tick periódico: ${e.message}")
             }
@@ -115,6 +116,7 @@ class KeepAliveService : Service() {
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand() - Iniciando foreground")
+        Log.d(TAG, "🔔 [DIAG-NOTIF] startForeground llamado desde onStartCommand @ ${System.currentTimeMillis()} | isBeingStopped=$isBeingStopped")
 
         val notification = createNotification()
         startForeground(NOTIFICATION_ID, notification)
@@ -133,6 +135,7 @@ class KeepAliveService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         Log.d(TAG, "⚠️ onTaskRemoved() - Usuario cerró app desde recientes")
+        Log.d(TAG, "🔔 [DIAG-NOTIF] onTaskRemoved @ ${System.currentTimeMillis()} | isBeingStopped=$isBeingStopped")
         
         // Point 3.1: Reiniciar el servicio para mantener la notificación activa
         // Esto garantiza que la notificación persista incluso cuando la app está cerrada
@@ -149,6 +152,7 @@ class KeepAliveService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy() - Servicio destruido")
+        Log.d(TAG, "🔔 [DIAG-NOTIF] onDestroy @ ${System.currentTimeMillis()} | isBeingStopped=$isBeingStopped ← notificación debería desaparecer aquí")
 
         // Cambio 6: Cancelar handler periódico para evitar callbacks tras destrucción.
         keepAliveHandler.removeCallbacks(keepAliveRunnable)
