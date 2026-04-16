@@ -39,7 +39,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   // SOS press & hold
   Timer? _sosTimer;
-  double _sosHoldProgress = 0.0;
   bool _sosHolding = false;
 
   // Grid sin SOS (SOS va en botón separado)
@@ -212,32 +211,15 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   void _startSosHold() {
     if (_isUpdating) return;
-    setState(() {
-      _sosHolding = true;
-      _sosHoldProgress = 0.0;
-    });
-    _sosTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() => _sosHoldProgress += 30 / 1000);
-      if (_sosHoldProgress >= 1.0) {
-        timer.cancel();
-        _triggerSos();
-      }
-    });
+    setState(() => _sosHolding = true);
+    // Timer directo a 1000ms — igual a postDelayed(runnable, 1000) del nativo.
+    _sosTimer = Timer(const Duration(milliseconds: 1000), _triggerSos);
   }
 
   void _cancelSosHold() {
     _sosTimer?.cancel();
     _sosTimer = null;
-    if (mounted) {
-      setState(() {
-        _sosHolding = false;
-        _sosHoldProgress = 0.0;
-      });
-    }
+    if (mounted) setState(() => _sosHolding = false);
   }
 
   Future<void> _triggerSos() async {
@@ -255,10 +237,13 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
     // - Subtítulo: "Enviando SOS..." inmediato al presionar
     final bgColor = _sosHolding ? const Color(0xFFB71C1C) : Colors.red;
 
-    return GestureDetector(
-      onTapDown: (_) => _startSosHold(),
-      onTapUp: (_) => _cancelSosHold(),
-      onTapCancel: _cancelSosHold,
+    // Listener en lugar de GestureDetector: onPointerCancel sólo se dispara
+    // por cancelación de hardware (ej: llamada entrante), NO por micro-movimientos
+    // del dedo. GestureDetector.onTapCancel cancelaba el hold al mover > 18px.
+    return Listener(
+      onPointerDown: (_) => _startSosHold(),
+      onPointerUp: (_) => _cancelSosHold(),
+      onPointerCancel: (_) => _cancelSosHold(),
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(top: 8),
