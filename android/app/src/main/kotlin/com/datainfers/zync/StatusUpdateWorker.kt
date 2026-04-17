@@ -36,8 +36,9 @@ class StatusUpdateWorker(
         val prefs = applicationContext.getSharedPreferences("pending_status", Context.MODE_PRIVATE)
         val pendingTimestamp = prefs.getLong("timestamp", 0L)
 
+        Log.d(TAG, "[DIAG-BN] pendingTimestamp=$pendingTimestamp vs enqueue timestamp=$timestamp")
         if (pendingTimestamp != timestamp) {
-            Log.d(TAG, "✅ [WORKER] Estado ya fue procesado por Flutter — cancelando worker")
+            Log.d(TAG, "[DIAG-BN] BAIL-OUT — timestamp mismatch, Flutter ya procesó o prefs fueron limpiados")
             return Result.success()
         }
 
