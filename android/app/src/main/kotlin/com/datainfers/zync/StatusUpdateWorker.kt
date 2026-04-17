@@ -43,13 +43,24 @@ class StatusUpdateWorker(
         }
 
         return try {
-            // Leer userId y circleId desde SQLite Room (sin necesidad de Flutter)
+            // Leer userId y circleId — NativeStateManager primero, SharedPreferences como fallback.
+            // NativeStateManager usa Room (async write) y puede estar vacío si el proceso murió
+            // antes de que el coroutine terminara. SharedPreferences usa commit() (sync) y
+            // siempre tiene los valores del último setUserId exitoso desde Flutter.
             val state = NativeStateManager.getState(applicationContext)
-            val circleId = state?.circleId
-            val userId = state?.userId
+            var circleId = state?.circleId
+            var userId = state?.userId
 
             if (circleId.isNullOrEmpty() || userId.isNullOrEmpty()) {
-                Log.w(TAG, "⚠️ [WORKER] circleId o userId no disponibles en NativeStateManager")
+                Log.w(TAG, "⚠️ [WORKER] NativeStateManager vacío — leyendo fallback SharedPrefs")
+                val fallback = applicationContext.getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+                userId = fallback.getString("userId", null)
+                circleId = fallback.getString("circleId", null)
+                Log.d(TAG, "[WORKER] Fallback — userId=$userId circleId=$circleId")
+            }
+
+            if (circleId.isNullOrEmpty() || userId.isNullOrEmpty()) {
+                Log.w(TAG, "⚠️ [WORKER] circleId o userId no disponibles en ninguna fuente")
                 return Result.failure()
             }
 

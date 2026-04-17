@@ -417,10 +417,20 @@ class MainActivity: FlutterActivity() {
                     val circleId = call.argument<String>("circleId") ?: ""
                     
                     if (userId != null && userId.isNotEmpty()) {
-                        Log.d(TAG, "📤 [FLUTTER→KOTLIN] Sincronizando userId: $userId")
+                        Log.d(TAG, "📤 [FLUTTER→KOTLIN] Sincronizando userId: $userId (circleId=$circleId)")
                         currentUserId = userId
                         NativeStateManager.saveUserState(this, userId, email, circleId)
-                        
+
+                        // Backup sync para Worker: Room escribe async y puede perderse si el
+                        // proceso muere antes de que el coroutine complete. commit() es síncrono
+                        // y garantiza persistencia antes de que este método retorne.
+                        getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("userId", userId)
+                            .putString("circleId", circleId)
+                            .commit()
+                        Log.d(TAG, "💾 [WORKER-STATE] userId/circleId guardados sync en SharedPrefs")
+
                         // Point 4: Pre-calentar engine para modal instantáneo
                         warmUpModalEngine()
                         
