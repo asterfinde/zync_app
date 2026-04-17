@@ -136,13 +136,9 @@ class KeepAliveService : Service() {
         super.onTaskRemoved(rootIntent)
         Log.d(TAG, "⚠️ onTaskRemoved() - Usuario cerró app desde recientes")
         Log.d(TAG, "🔔 [DIAG-NOTIF] onTaskRemoved @ ${System.currentTimeMillis()} | isBeingStopped=$isBeingStopped")
-        
-        // Point 3.1: Reiniciar el servicio para mantener la notificación activa
-        // Esto garantiza que la notificación persista incluso cuando la app está cerrada
-        val restartServiceIntent = Intent(applicationContext, KeepAliveService::class.java)
-        applicationContext.startService(restartServiceIntent)
-        
-        Log.d(TAG, "✅ Servicio programado para reinicio automático")
+        // START_STICKY garantiza reinicio automático si el sistema mata el proceso.
+        // El startService() manual fue eliminado — era redundante y causaba un segundo
+        // onStartCommand con handler duplicado al activar Modo Silencio.
     }
     
     override fun onBind(intent: Intent?): IBinder? {
