@@ -97,31 +97,25 @@ class SilentFunctionalityCoordinator {
   /// Activa el Modo Silencio. Requiere permiso de notificaciones y círculo activo.
   /// Kotlin maneja el resto: notificación, KeepAlive y moveTaskToBack.
   static Future<void> activateSilentMode(BuildContext context) async {
-    final t0 = DateTime.now().millisecondsSinceEpoch;
-    debugPrint('[DIAG-MS1.08] ⏱ activateSilentMode START t=0ms | logout=$_isManualLogoutInProgress, circle=$_userHasCircle');
     if (_isManualLogoutInProgress) return;
     if (!context.mounted) return;
 
     // Bug 2 fix: _userHasCircle puede ser false en cold start por race condition
     // (activateAfterLogin aún no terminó). Re-verificar desde Firebase antes de cancelar.
     if (!_userHasCircle) {
-      debugPrint('[DIAG-MS1.08] ⚠️ _userHasCircle=false → Firebase re-check START t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
       try {
         final userCircle = await CircleService().getUserCircle();
-        debugPrint('[DIAG-MS1.08] ← Firebase re-check END t=${DateTime.now().millisecondsSinceEpoch - t0}ms → ${userCircle != null ? userCircle.name : "NULL"}');
         if (userCircle == null) return;
         _userHasCircle = true;
       } catch (e) {
-        debugPrint('[DIAG-MS1.08] ❌ Firebase re-check ERROR t=${DateTime.now().millisecondsSinceEpoch - t0}ms: $e');
+        debugPrint('[SilentCoordinator] ❌ Firebase re-check ERROR: $e');
         return;
       }
     }
 
     if (!context.mounted) return;
 
-    debugPrint('[DIAG-MS1.08] → requestPermissions START t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
     final hasPermission = await NotificationService.requestPermissions();
-    debugPrint('[DIAG-MS1.08] ← requestPermissions END t=${DateTime.now().millisecondsSinceEpoch - t0}ms → $hasPermission');
     if (!context.mounted) return;
 
     if (!hasPermission) {
@@ -136,20 +130,16 @@ class SilentFunctionalityCoordinator {
     // el geofencing las corrige solo.
     const zoneControlledIds = {'home', 'school', 'work', 'university'};
     String? preSilentStatusType;
-    debugPrint('[DIAG-MS1.08] → preSilentStatus Firestore reads START t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        debugPrint('[DIAG-MS1.08]   userDoc read t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
         final circleId = userDoc.data()?['circleId'] as String?;
         if (circleId != null) {
           final circleDoc = await FirebaseFirestore.instance.collection('circles').doc(circleId).get();
-          debugPrint('[DIAG-MS1.08]   circleDoc read t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
           final memberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
           final myStatus = memberStatus?[user.uid] as Map<String, dynamic>?;
           final rawId = myStatus?['statusType'] as String?;
-          debugPrint('[DIAG-MS1.08]   rawStatusType=$rawId');
           // Solo reemplazar por 'fine' si la zona está activamente configurada para
           // geofencing. Sin zona configurada, el emoji actúa como status manual normal.
           if (rawId != null && zoneControlledIds.contains(rawId)) {
@@ -160,30 +150,25 @@ class SilentFunctionalityCoordinator {
                 .where('type', isEqualTo: rawId)
                 .limit(1)
                 .get();
-            debugPrint('[DIAG-MS1.08]   zones read t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
             preSilentStatusType = zonesSnap.docs.isNotEmpty ? 'fine' : rawId;
           } else {
             preSilentStatusType = rawId;
           }
-          debugPrint('[SilentCoordinator][DBG] Estado previo: $rawId → guardando: $preSilentStatusType');
         }
       }
     } catch (e) {
-      debugPrint('[DIAG-MS1.08] ❌ preSilentStatus ERROR: $e');
+      debugPrint('[SilentCoordinator] ❌ preSilentStatus ERROR: $e');
     }
-    debugPrint('[DIAG-MS1.08] ← preSilentStatus Firestore reads END t=${DateTime.now().millisecondsSinceEpoch - t0}ms → preSilent=$preSilentStatusType');
 
     if (!context.mounted) return;
 
     try {
-      debugPrint('[DIAG-MS1.08] → invokeMethod(activate) START t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
       await _channel.invokeMethod('activate', {
         if (preSilentStatusType != null)
           'preSilentStatusType': preSilentStatusType,
       });
-      debugPrint('[DIAG-MS1.08] ← invokeMethod(activate) END t=${DateTime.now().millisecondsSinceEpoch - t0}ms ← ÍCONO DEBERÍA APARECER AQUÍ');
     } catch (e) {
-      debugPrint('[DIAG-MS1.08] ❌ activate EXCEPCIÓN t=${DateTime.now().millisecondsSinceEpoch - t0}ms: $e');
+      debugPrint('[SilentCoordinator] ❌ activate EXCEPCIÓN: $e');
     }
   }
 

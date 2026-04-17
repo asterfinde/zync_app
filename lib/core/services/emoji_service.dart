@@ -45,7 +45,6 @@ class EmojiService {
       _cachedPredefined = snapshot.docs.map((doc) => StatusType.fromFirestore(doc)).toList();
 
       log('[EmojiService] ✓ ${_cachedPredefined!.length} predefinidos cargados desde Firebase');
-      log('[DIAG-GRID] IDs en /predefinedEmojis: ${_cachedPredefined!.map((e) => e.id).toList()}');
       return _cachedPredefined!;
     } catch (e) {
       log('[EmojiService] ❌ Error cargando desde Firebase: $e');

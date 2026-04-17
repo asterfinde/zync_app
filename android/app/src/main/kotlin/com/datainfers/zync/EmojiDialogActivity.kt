@@ -530,7 +530,6 @@ class EmojiDialogActivity : Activity() {
         Log.d(TAG, "🔥 [HYBRID] Actualizando estado: $emoji ($status)")
 
         val timestamp = System.currentTimeMillis()
-        Log.d(TAG, "📋 [DIAG-BN-WRITE] updateUserStatus: statusType=$status emoji=$emoji timestamp=$timestamp")
 
         val intent = Intent("com.datainfers.zync.UPDATE_STATUS").apply {
             putExtra("emoji", emoji)
@@ -538,7 +537,6 @@ class EmojiDialogActivity : Activity() {
             setPackage(packageName)
         }
         sendBroadcast(intent)
-        Log.d(TAG, "📋 [DIAG-BN-WRITE] broadcast enviado (solo válido si app está viva)")
 
         val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
         prefs.edit()
@@ -546,7 +544,6 @@ class EmojiDialogActivity : Activity() {
             .putString("emoji", emoji)
             .putLong("timestamp", timestamp)
             .apply()
-        Log.d(TAG, "📋 [DIAG-BN-WRITE] pending_status guardado: statusType=$status timestamp=$timestamp")
 
         val workData = Data.Builder()
             .putString("statusType", status)
@@ -560,7 +557,6 @@ class EmojiDialogActivity : Activity() {
             .build()
 
         WorkManager.getInstance(this).enqueue(workRequest)
-        Log.d(TAG, "📋 [DIAG-BN-WRITE] WorkManager.enqueue → worker encolado con tag=status_update_$timestamp")
 
         Log.d(TAG, "✅ [HYBRID] Estado enviado - cerrando dialog")
         finish()
