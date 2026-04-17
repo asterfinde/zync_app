@@ -5,9 +5,7 @@ import 'package:flutter/services.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../services/circle_service.dart';
-import '../models/user_status.dart';
 import 'status_modal_service.dart';
-import 'status_service.dart';
 
 /// Coordinador de Modo Silencio — interfaz mínima entre Flutter y Kotlin.
 ///
@@ -175,20 +173,12 @@ class SilentFunctionalityCoordinator {
     }
     debugPrint('[DIAG-MS1.08] ← preSilentStatus Firestore reads END t=${DateTime.now().millisecondsSinceEpoch - t0}ms → preSilent=$preSilentStatusType');
 
-    // [DIAG-STATUS-CHANGE] Este bloque escribe 'do_not_disturb' en Firestore.
-    // El usuario ve "No Molestar" en el círculo mientras el Modo Silencio está activo.
-    debugPrint('[DIAG-STATUS-CHANGE] ⚠️ ESCRIBIENDO do_not_disturb en Firestore t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
-    debugPrint('[DIAG-STATUS-CHANGE]   statusAnterior=$preSilentStatusType → cambiando a do_not_disturb');
-    final doNotDisturb = StatusType.fallbackPredefined.firstWhere((s) => s.id == 'do_not_disturb');
-    await StatusService.updateUserStatus(doNotDisturb);
-    debugPrint('[DIAG-STATUS-CHANGE] ← do_not_disturb escrito t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
-
     if (!context.mounted) return;
 
     try {
       debugPrint('[DIAG-MS1.08] → invokeMethod(activate) START t=${DateTime.now().millisecondsSinceEpoch - t0}ms');
       await _channel.invokeMethod('activate', {
-        if (preSilentStatusType != null && preSilentStatusType != 'do_not_disturb')
+        if (preSilentStatusType != null)
           'preSilentStatusType': preSilentStatusType,
       });
       debugPrint('[DIAG-MS1.08] ← invokeMethod(activate) END t=${DateTime.now().millisecondsSinceEpoch - t0}ms ← ÍCONO DEBERÍA APARECER AQUÍ');
