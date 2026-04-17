@@ -31,16 +31,13 @@ class StatusUpdateWorker(
         val timestamp = inputData.getLong("timestamp", 0L)
 
         Log.d(TAG, "💼 [WORKER] Iniciando write directo a Firestore: $statusType (ts: $timestamp)")
-        Log.d(TAG, "📋 [DIAG-BN-WRITE] Worker doWork START: statusType=$statusType timestamp=$timestamp")
 
         // Verificar si Flutter ya procesó el estado al reabrir la app
         val prefs = applicationContext.getSharedPreferences("pending_status", Context.MODE_PRIVATE)
         val pendingTimestamp = prefs.getLong("timestamp", 0L)
-        Log.d(TAG, "📋 [DIAG-BN-WRITE] pending_status en SharedPrefs: pendingTimestamp=$pendingTimestamp | workerTimestamp=$timestamp | match=${pendingTimestamp == timestamp}")
 
         if (pendingTimestamp != timestamp) {
             Log.d(TAG, "✅ [WORKER] Estado ya fue procesado por Flutter — cancelando worker")
-            Log.d(TAG, "📋 [DIAG-BN-WRITE] Worker CANCELADO (timestamp mismatch: worker=$timestamp, prefs=$pendingTimestamp)")
             return Result.success()
         }
 
@@ -49,28 +46,22 @@ class StatusUpdateWorker(
             val state = NativeStateManager.getState(applicationContext)
             val circleId = state?.circleId
             val userId = state?.userId
-            Log.d(TAG, "📋 [DIAG-BN-WRITE] NativeStateManager: userId=$userId circleId=$circleId")
 
             if (circleId.isNullOrEmpty() || userId.isNullOrEmpty()) {
                 Log.w(TAG, "⚠️ [WORKER] circleId o userId no disponibles en NativeStateManager")
-                Log.w(TAG, "📋 [DIAG-BN-WRITE] FALLA: NativeStateManager vacío — ¿Flutter nunca sincronizó el estado?")
                 return Result.failure()
             }
 
             // Firebase Auth persiste entre sesiones — no requiere Flutter para autenticar
             val currentUser = FirebaseAuth.getInstance().currentUser
-            Log.d(TAG, "📋 [DIAG-BN-WRITE] FirebaseAuth.currentUser: ${currentUser?.uid ?: "NULL"}")
             if (currentUser == null) {
                 Log.w(TAG, "⚠️ [WORKER] Sin usuario Firebase autenticado")
-                Log.w(TAG, "📋 [DIAG-BN-WRITE] FALLA: FirebaseAuth.currentUser es null — token expiró o nunca se autenticó")
                 return Result.failure()
             }
             if (currentUser.uid != userId) {
                 Log.w(TAG, "⚠️ [WORKER] UID Firebase (${currentUser.uid}) ≠ NativeStateManager ($userId)")
-                Log.w(TAG, "📋 [DIAG-BN-WRITE] FALLA: UID mismatch — Firebase=${currentUser.uid} vs Room=$userId")
                 return Result.failure()
             }
-            Log.d(TAG, "📋 [DIAG-BN-WRITE] Auth OK: uid=${currentUser.uid} coincide con NativeStateManager")
 
             // Write directo a Firestore — mismo esquema que StatusService.updateUserStatus() en Flutter
             val db = FirebaseFirestore.getInstance()
