@@ -182,10 +182,13 @@ class MainActivity: FlutterActivity() {
         super.onPause()
         Log.d(TAG, "onPause() - App minimizada/pausada")
 
-        // Guardar estado NATIVO inmediatamente
+        // Guardar estado NATIVO inmediatamente — preservar circleId/email existentes
+        // onPause no tiene acceso a circleId directamente; leerlo del estado actual
+        // para evitar que el REPLACE del DAO borre el circleId sincronizado por Flutter
         currentUserId?.let { userId ->
-            Log.d(TAG, "💾 [NATIVO] Guardando estado: $userId")
-            NativeStateManager.saveUserState(this, userId)
+            val existing = NativeStateManager.getState(this)
+            Log.d(TAG, "💾 [NATIVO] Guardando estado: $userId (circleId=${existing?.circleId})")
+            NativeStateManager.saveUserState(this, userId, existing?.email ?: "", existing?.circleId ?: "")
         }
     }
     
