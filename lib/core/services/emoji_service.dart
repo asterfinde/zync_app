@@ -44,6 +44,15 @@ class EmojiService {
 
       _cachedPredefined = snapshot.docs.map((doc) => StatusType.fromFirestore(doc)).toList();
 
+      // Guard: si Firestore omite IDs esperados (ej: orderBy excluye docs sin el campo),
+      // inyectarlos desde fallback para que el grid nunca quede incompleto.
+      final fetchedIds = _cachedPredefined!.map((s) => s.id).toSet();
+      final missing = StatusType.fallbackPredefined.where((s) => !fetchedIds.contains(s.id)).toList();
+      if (missing.isNotEmpty) {
+        log('[EmojiService] ⚠️ IDs faltantes en Firestore: ${missing.map((s) => s.id).toList()} — inyectando desde fallback');
+        _cachedPredefined = [...missing, ..._cachedPredefined!]..sort((a, b) => a.order.compareTo(b.order));
+      }
+
       log('[EmojiService] ✓ ${_cachedPredefined!.length} predefinidos cargados desde Firebase');
       return _cachedPredefined!;
     } catch (e) {

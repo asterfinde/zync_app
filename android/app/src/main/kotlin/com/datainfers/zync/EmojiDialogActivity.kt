@@ -291,8 +291,12 @@ class EmojiDialogActivity : Activity() {
             useDefaultMargins = false
         }
 
+        Log.d(TAG, "[DIAG-MN409] configuredZoneTypes = $configuredZoneTypes")
+        Log.d(TAG, "[DIAG-MN409] mainEmojis ids = ${mainEmojis.map { (_, _, id) -> id }}")
+
         mainEmojis.forEach { (emoji, label, statusId) ->
             val isBlocked = configuredZoneTypes.contains(statusId)
+            if (isBlocked) Log.d(TAG, "[DIAG-MN409] BLOCKED: $statusId")
 
             val container = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -558,6 +562,7 @@ class EmojiDialogActivity : Activity() {
 
         WorkManager.getInstance(this).enqueue(workRequest)
 
+        Log.d(TAG, "[DIAG-BN] WorkManager enqueued — pending_status guardado con timestamp=$timestamp")
         Log.d(TAG, "✅ [HYBRID] Estado enviado - cerrando dialog")
         finish()
     }

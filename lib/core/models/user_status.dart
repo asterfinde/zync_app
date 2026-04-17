@@ -161,7 +161,7 @@ class StatusType extends Equatable {
     // FILA 3: ACTIVIDAD
     StatusType(
         id: 'medical', emoji: '🏥', label: 'En consulta', shortLabel: 'Consulta', category: 'location', order: 9),
-    StatusType(id: 'meeting', emoji: '👥', label: 'Reunión', shortLabel: 'Reunión', category: 'activity', order: 10),
+    StatusType(id: 'meeting', emoji: '📅', label: 'Reunión', shortLabel: 'Reunión', category: 'activity', order: 10),
     StatusType(
         id: 'studying', emoji: '📚', label: 'Estudiando', shortLabel: 'Estudia', category: 'activity', order: 11),
     StatusType(id: 'eating', emoji: '🍽️', label: 'Comiendo', shortLabel: 'Comiendo', category: 'activity', order: 12),

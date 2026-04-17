@@ -182,10 +182,13 @@ class MainActivity: FlutterActivity() {
         super.onPause()
         Log.d(TAG, "onPause() - App minimizada/pausada")
 
-        // Guardar estado NATIVO inmediatamente
+        // Guardar estado NATIVO inmediatamente — preservar circleId/email existentes
+        // onPause no tiene acceso a circleId directamente; leerlo del estado actual
+        // para evitar que el REPLACE del DAO borre el circleId sincronizado por Flutter
         currentUserId?.let { userId ->
-            Log.d(TAG, "💾 [NATIVO] Guardando estado: $userId")
-            NativeStateManager.saveUserState(this, userId)
+            val existing = NativeStateManager.getState(this)
+            Log.d(TAG, "💾 [NATIVO] Guardando estado: $userId (circleId=${existing?.circleId})")
+            NativeStateManager.saveUserState(this, userId, existing?.email ?: "", existing?.circleId ?: "")
         }
     }
     
@@ -414,10 +417,20 @@ class MainActivity: FlutterActivity() {
                     val circleId = call.argument<String>("circleId") ?: ""
                     
                     if (userId != null && userId.isNotEmpty()) {
-                        Log.d(TAG, "📤 [FLUTTER→KOTLIN] Sincronizando userId: $userId")
+                        Log.d(TAG, "📤 [FLUTTER→KOTLIN] Sincronizando userId: $userId (circleId=$circleId)")
                         currentUserId = userId
                         NativeStateManager.saveUserState(this, userId, email, circleId)
-                        
+
+                        // Backup sync para Worker: Room escribe async y puede perderse si el
+                        // proceso muere antes de que el coroutine complete. commit() es síncrono
+                        // y garantiza persistencia antes de que este método retorne.
+                        getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("userId", userId)
+                            .putString("circleId", circleId)
+                            .commit()
+                        Log.d(TAG, "💾 [WORKER-STATE] userId/circleId guardados sync en SharedPrefs")
+
                         // Point 4: Pre-calentar engine para modal instantáneo
                         warmUpModalEngine()
                         

@@ -86,6 +86,8 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       final custom = await EmojiService.getCustomEmojis(circleId);
       final allEmojis = <StatusType?>[...predefined, ...custom];
 
+      debugPrint('[DIAG-MN409-FLUTTER] predefined=${predefined.length} ids=${predefined.map((e) => e.id).toList()}');
+      debugPrint('[DIAG-MN409-FLUTTER] allEmojis=${allEmojis.length}');
       debugPrint('[StatusSelectorOverlay] ✅ Grid cargado desde Firebase: ${allEmojis.length} emojis');
 
       // Verificar zonas predefinidas configuradas para dimming de botones
