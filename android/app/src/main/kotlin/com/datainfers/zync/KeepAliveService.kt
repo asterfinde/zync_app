@@ -53,9 +53,9 @@ class KeepAliveService : Service() {
 
     companion object {
         private const val TAG = "KeepAliveService"
-        // Canal propio del Modo Silencio — IMPORTANCE_HIGH evita que Samsung lo descarte
-        // con "Borrar todo". Canal nuevo (_v2) para forzar recreación con la nueva importance.
-        private const val CHANNEL_ID = "zync_silent_mode_v2"
+        // Canal _v3: IMPORTANCE_LOW para reducir footprint visual — el ícono "i" sigue
+        // visible pero el card no aparece en el shade ni genera sonido/vibración.
+        private const val CHANNEL_ID = "zync_silent_mode_v3"
         private const val NOTIFICATION_ID = 12346
         // Cambio 6: Intervalo del handler periódico que re-llama startForeground().
         // 5 s es suficientemente frecuente para resistir OEM agresivos (Samsung, Xiaomi)
@@ -159,7 +159,7 @@ class KeepAliveService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Modo Silencio",
-                NotificationManager.IMPORTANCE_HIGH
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Activo mientras el Modo Silencio está encendido"
                 setShowBadge(false)
@@ -189,11 +189,10 @@ class KeepAliveService : Service() {
         )
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Zync")
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Usar icono genérico por ahora
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setOngoing(true) // No se puede deslizar para cerrar
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
             .setShowWhen(false)
             .build()
     }
