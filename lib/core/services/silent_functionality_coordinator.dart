@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../notifications/notification_service.dart';
@@ -123,50 +121,10 @@ class SilentFunctionalityCoordinator {
       return;
     }
 
-    // N1.03 — Opción A: Leer statusType actual de circles/{circleId}/memberStatus/{uid}.
-    // users/{uid} NO tiene campo statusType — el status vive en el doc del círculo.
-    // Se pasa a Kotlin para persistir y restaurar en Firestore al reabrir la app.
-    // Zonas controladas ('home','school','work','university') → fallback a 'fine';
-    // el geofencing las corrige solo.
-    const zoneControlledIds = {'home', 'school', 'work', 'university'};
-    String? preSilentStatusType;
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        final circleId = userDoc.data()?['circleId'] as String?;
-        if (circleId != null) {
-          final circleDoc = await FirebaseFirestore.instance.collection('circles').doc(circleId).get();
-          final memberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
-          final myStatus = memberStatus?[user.uid] as Map<String, dynamic>?;
-          final rawId = myStatus?['statusType'] as String?;
-          // Zona activa configurada → geofencing restaura el emoji al reabrir.
-          // No guardar preSilent; si no hay zona, tratar como status manual.
-          if (rawId != null && zoneControlledIds.contains(rawId)) {
-            final zonesSnap = await FirebaseFirestore.instance
-                .collection('circles')
-                .doc(circleId)
-                .collection('zones')
-                .where('type', isEqualTo: rawId)
-                .limit(1)
-                .get();
-            preSilentStatusType = zonesSnap.docs.isNotEmpty ? null : rawId;
-          } else {
-            preSilentStatusType = rawId;
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('[SilentCoordinator] ❌ preSilentStatus ERROR: $e');
-    }
-
     if (!context.mounted) return;
 
     try {
-      await _channel.invokeMethod('activate', {
-        if (preSilentStatusType != null)
-          'preSilentStatusType': preSilentStatusType,
-      });
+      await _channel.invokeMethod('activate');
     } catch (e) {
       debugPrint('[SilentCoordinator] ❌ activate EXCEPCIÓN: $e');
     }

@@ -59,21 +59,6 @@ void main() async {
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await SilentFunctionalityCoordinator.initializeServices();
     await EmojiCacheService.syncEmojisToNativeCache();
-
-    try {
-      const platform = MethodChannel('com.datainfers.zync/pending_status');
-      final pendingStatus = await platform.invokeMethod('getPendingStatus');
-      if (pendingStatus != null && pendingStatus is Map) {
-        final statusTypeName = pendingStatus['statusType'] as String?;
-        final timestamp = pendingStatus['timestamp'] as int?;
-        if (statusTypeName != null && timestamp != null) {
-          await _updateStatusFromNative(statusTypeName);
-          await platform.invokeMethod('clearPendingStatus');
-        }
-      }
-    } catch (_) {
-      // No hay estado pendiente
-    }
   });
 }
 
