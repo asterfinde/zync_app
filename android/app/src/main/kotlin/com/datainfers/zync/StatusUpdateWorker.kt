@@ -30,15 +30,15 @@ class StatusUpdateWorker(
         val statusType = inputData.getString("statusType") ?: return Result.failure()
         val timestamp = inputData.getLong("timestamp", 0L)
 
-        Log.d(TAG, "💼 [WORKER] Iniciando write directo a Firestore: $statusType (ts: $timestamp)")
+        Log.d(TAG, "[DIAG-W1] doWork START — input ts=$timestamp status=$statusType")
 
         // Verificar si Flutter ya procesó el estado al reabrir la app
         val prefs = applicationContext.getSharedPreferences("pending_status", Context.MODE_PRIVATE)
         val pendingTimestamp = prefs.getLong("timestamp", 0L)
 
-        Log.d(TAG, "[DIAG-BN] pendingTimestamp=$pendingTimestamp vs enqueue timestamp=$timestamp")
+        Log.d(TAG, "[DIAG-W2] pendingTs=$pendingTimestamp == enqueueTs=$timestamp ? ${pendingTimestamp == timestamp}")
         if (pendingTimestamp != timestamp) {
-            Log.d(TAG, "[DIAG-BN] BAIL-OUT — timestamp mismatch, Flutter ya procesó o prefs fueron limpiados")
+            Log.d(TAG, "[DIAG-W2] BAIL-OUT — timestamp mismatch")
             return Result.success()
         }
 
@@ -48,30 +48,34 @@ class StatusUpdateWorker(
             // antes de que el coroutine terminara. SharedPreferences usa commit() (sync) y
             // siempre tiene los valores del último setUserId exitoso desde Flutter.
             val state = NativeStateManager.getState(applicationContext)
-            var circleId = state?.circleId
-            var userId = state?.userId
+            val nativeUserId = state?.userId
+            val nativeCircleId = state?.circleId
+            Log.d(TAG, "[DIAG-W3] NativeState: userId=$nativeUserId circleId=$nativeCircleId")
+
+            var userId = nativeUserId
+            var circleId = nativeCircleId
 
             if (circleId.isNullOrEmpty() || userId.isNullOrEmpty()) {
-                Log.w(TAG, "⚠️ [WORKER] NativeStateManager vacío — leyendo fallback SharedPrefs")
                 val fallback = applicationContext.getSharedPreferences("worker_state", Context.MODE_PRIVATE)
                 userId = fallback.getString("userId", null)
                 circleId = fallback.getString("circleId", null)
-                Log.d(TAG, "[WORKER] Fallback — userId=$userId circleId=$circleId")
+                Log.d(TAG, "[DIAG-W4] Fallback worker_state: userId=$userId circleId='$circleId' (empty=${circleId.isNullOrEmpty()})")
             }
 
             if (circleId.isNullOrEmpty() || userId.isNullOrEmpty()) {
-                Log.w(TAG, "⚠️ [WORKER] circleId o userId no disponibles en ninguna fuente")
+                Log.w(TAG, "[DIAG-W4] FAIL — circleId o userId no disponibles en ninguna fuente")
                 return Result.failure()
             }
 
             // Firebase Auth persiste entre sesiones — no requiere Flutter para autenticar
             val currentUser = FirebaseAuth.getInstance().currentUser
+            Log.d(TAG, "[DIAG-W5] FirebaseAuth.currentUser?.uid=${currentUser?.uid} expected=$userId")
             if (currentUser == null) {
-                Log.w(TAG, "⚠️ [WORKER] Sin usuario Firebase autenticado")
+                Log.w(TAG, "[DIAG-W5] FAIL — Sin usuario Firebase autenticado")
                 return Result.failure()
             }
             if (currentUser.uid != userId) {
-                Log.w(TAG, "⚠️ [WORKER] UID Firebase (${currentUser.uid}) ≠ NativeStateManager ($userId)")
+                Log.w(TAG, "[DIAG-W5] FAIL — UID mismatch: Firebase=${currentUser.uid} NativeState=$userId")
                 return Result.failure()
             }
 
@@ -89,6 +93,7 @@ class StatusUpdateWorker(
                 "zoneId"        to null,
             )
 
+            Log.d(TAG, "[DIAG-W6] Firestore.update STARTING — circle=$circleId userId=$userId statusType=$statusType")
             Tasks.await(
                 db.collection("circles")
                     .document(circleId)
@@ -98,10 +103,10 @@ class StatusUpdateWorker(
             // Limpiar pending_status para que Flutter no lo reprocese al reabrir la app
             prefs.edit().clear().apply()
 
-            Log.d(TAG, "✅ [WORKER] '$statusType' escrito en Firestore. Circle: $circleId, User: $userId")
+            Log.d(TAG, "[DIAG-W6] Firestore.update SUCCESS — '$statusType' escrito. Circle: $circleId")
             Result.success()
         } catch (e: Exception) {
-            Log.e(TAG, "❌ [WORKER] Error escribiendo a Firestore: ${e.message}", e)
+            Log.e(TAG, "[DIAG-W7] EXCEPTION: ${e.javaClass.simpleName}: ${e.message}", e)
             Result.failure()
         }
     }

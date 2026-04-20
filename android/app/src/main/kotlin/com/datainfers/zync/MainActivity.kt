@@ -429,7 +429,7 @@ class MainActivity: FlutterActivity() {
                             .putString("userId", userId)
                             .putString("circleId", circleId)
                             .commit()
-                        Log.d(TAG, "💾 [WORKER-STATE] userId/circleId guardados sync en SharedPrefs")
+                        Log.d(TAG, "[DIAG-WS] setUserId WROTE worker_state: userId=$userId circleId='$circleId' (empty=${circleId.isEmpty()})")
 
                         // Point 4: Pre-calentar engine para modal instantáneo
                         warmUpModalEngine()
