@@ -79,6 +79,10 @@ class EmojiDialogActivity : Activity() {
 
         emojis = loadEmojisFromCache()
         configuredZoneTypes = loadConfiguredZoneTypes()
+
+        val ws = getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+        Log.d(TAG, "[DIAG-WS] BN onCreate worker_state: userId=${ws.getString("userId", null)} circleId='${ws.getString("circleId", null)}'")
+
         setupActivityUI()
 
         // ========================================================================
@@ -547,7 +551,8 @@ class EmojiDialogActivity : Activity() {
             .putString("statusType", status)
             .putString("emoji", emoji)
             .putLong("timestamp", timestamp)
-            .apply()
+            .commit()
+        Log.d(TAG, "[DIAG-BN] pending_status COMMITTED ts=$timestamp status=$status emoji=$emoji")
 
         val workData = Data.Builder()
             .putString("statusType", status)

@@ -21,6 +21,7 @@ import '../../../geofencing/services/geofencing_service.dart'; // Servicio de ge
 // CACHE-FIRST: Importar caches
 import '../../../../core/cache/in_memory_cache.dart';
 import '../../../../core/cache/persistent_cache.dart';
+import '../../../../core/services/native_state_bridge.dart';
 // Asumo que tienes una clase Coordinates en gps_service.dart o similar
 // import '../../../../core/services/gps_service.dart' show Coordinates;
 
@@ -159,6 +160,19 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     // PASO 4: Iniciar monitoreo de geofencing
     _startGeofencingMonitoring();
+
+    // Sincronizar circleId real con Kotlin — garantiza que StatusUpdateWorker
+    // tenga un circleId válido cuando la app esté cerrada (Silent Mode + BN).
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      NativeStateBridge.setUserId(
+        userId: currentUser.uid,
+        email: currentUser.email ?? '',
+        circleId: widget.circle.id,
+      ).catchError((e) {
+        // Esperado en iOS o si el canal no está disponible
+      });
+    }
 
     // PASO 5: Escuchar solicitudes de ingreso (solo si el usuario actual es el creador)
     final currentUid = FirebaseAuth.instance.currentUser?.uid;

@@ -417,19 +417,22 @@ class MainActivity: FlutterActivity() {
                     val circleId = call.argument<String>("circleId") ?: ""
                     
                     if (userId != null && userId.isNotEmpty()) {
-                        Log.d(TAG, "📤 [FLUTTER→KOTLIN] Sincronizando userId: $userId (circleId=$circleId)")
-                        currentUserId = userId
-                        NativeStateManager.saveUserState(this, userId, email, circleId)
+                        // Si circleId llega vacío, preservar el valor existente en worker_state
+                        // para que setUserId desde main.dart (onPause, sin circleId) no borre
+                        // el circleId real sincronizado por InCircleView.
+                        val existingCircleId = getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+                            .getString("circleId", "") ?: ""
+                        val finalCircleId = if (circleId.isNotEmpty()) circleId else existingCircleId
 
-                        // Backup sync para Worker: Room escribe async y puede perderse si el
-                        // proceso muere antes de que el coroutine complete. commit() es síncrono
-                        // y garantiza persistencia antes de que este método retorne.
+                        Log.d(TAG, "[DIAG-WS] setUserId WROTE worker_state: userId=$userId circleId='$finalCircleId' (incoming='$circleId' preserved=${circleId.isEmpty() && finalCircleId.isNotEmpty()})")
+                        currentUserId = userId
+                        NativeStateManager.saveUserState(this, userId, email, finalCircleId)
+
                         getSharedPreferences("worker_state", Context.MODE_PRIVATE)
                             .edit()
                             .putString("userId", userId)
-                            .putString("circleId", circleId)
+                            .putString("circleId", finalCircleId)
                             .commit()
-                        Log.d(TAG, "💾 [WORKER-STATE] userId/circleId guardados sync en SharedPrefs")
 
                         // Point 4: Pre-calentar engine para modal instantáneo
                         warmUpModalEngine()
