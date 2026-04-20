@@ -40,22 +40,25 @@ void main() async {
   // SessionCache debe estar listo antes de que AuthWrapper renderice
   await SessionCacheService.init();
 
+  // Registrar handler antes de runApp para evitar race con onResume nativo.
+  // onResume invoca status_update antes del primer frame; si el handler se
+  // registra dentro de postFrameCallback se pierde esa llamada.
+  const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
+  statusUpdateChannel.setMethodCallHandler((call) async {
+    if (call.method == 'updateStatus') {
+      final statusTypeName = call.arguments['statusType'] as String?;
+      if (statusTypeName != null) {
+        await _updateStatusFromNative(statusTypeName);
+      }
+    }
+  });
+
   runApp(const ProviderScope(child: MyApp()));
 
   // Inicializaciones en background tras el primer frame
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await SilentFunctionalityCoordinator.initializeServices();
     await EmojiCacheService.syncEmojisToNativeCache();
-
-    const statusUpdateChannel = MethodChannel('com.datainfers.zync/status_update');
-    statusUpdateChannel.setMethodCallHandler((call) async {
-      if (call.method == 'updateStatus') {
-        final statusTypeName = call.arguments['statusType'] as String?;
-        if (statusTypeName != null) {
-          await _updateStatusFromNative(statusTypeName);
-        }
-      }
-    });
 
     try {
       const platform = MethodChannel('com.datainfers.zync/pending_status');

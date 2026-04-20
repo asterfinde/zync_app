@@ -529,12 +529,11 @@ class MainActivity: FlutterActivity() {
 
                     // N1.03 — Opción A: Guardar estado previo al Modo Silencio para
                     // restaurarlo en Firestore cuando el usuario reabre la app (Regla 1).
-                    // Flutter pasa el statusType actual antes de escribir do_not_disturb.
                     val preSilentStatusType = call.argument<String>("preSilentStatusType")
                     val silentPrefsEditor = getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
                         .edit()
                         .putBoolean("is_silent_mode_active", true)
-                    if (!preSilentStatusType.isNullOrEmpty() && preSilentStatusType != "do_not_disturb") {
+                    if (!preSilentStatusType.isNullOrEmpty()) {
                         silentPrefsEditor.putString("pre_silent_status_type", preSilentStatusType)
                         Log.d(TAG, "📌 [SILENT] Estado previo guardado: $preSilentStatusType")
                     }

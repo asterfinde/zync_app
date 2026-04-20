@@ -140,8 +140,8 @@ class SilentFunctionalityCoordinator {
           final memberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
           final myStatus = memberStatus?[user.uid] as Map<String, dynamic>?;
           final rawId = myStatus?['statusType'] as String?;
-          // Solo reemplazar por 'fine' si la zona está activamente configurada para
-          // geofencing. Sin zona configurada, el emoji actúa como status manual normal.
+          // Zona activa configurada → geofencing restaura el emoji al reabrir.
+          // No guardar preSilent; si no hay zona, tratar como status manual.
           if (rawId != null && zoneControlledIds.contains(rawId)) {
             final zonesSnap = await FirebaseFirestore.instance
                 .collection('circles')
@@ -150,7 +150,7 @@ class SilentFunctionalityCoordinator {
                 .where('type', isEqualTo: rawId)
                 .limit(1)
                 .get();
-            preSilentStatusType = zonesSnap.docs.isNotEmpty ? 'fine' : rawId;
+            preSilentStatusType = zonesSnap.docs.isNotEmpty ? null : rawId;
           } else {
             preSilentStatusType = rawId;
           }
