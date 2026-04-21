@@ -47,7 +47,7 @@ class EmojiDialogActivity : Activity() {
         Triple("🎓", "Universidad", "university"),
         Triple("🏢", "Trabajo", "work"),
         Triple("🏥", "Consulta", "medical"),
-        Triple("👥", "Reunión", "meeting"),
+        Triple("📅", "Reunión", "meeting"),
         Triple("📚", "Estudia", "studying"),
         Triple("🍽️", "Comiendo", "eating"),
         Triple("💪", "Ejercicio", "exercising"),
