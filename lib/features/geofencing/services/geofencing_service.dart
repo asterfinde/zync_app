@@ -242,10 +242,10 @@ class GeofencingService {
         statusData['zoneId'] = zone.id;
         statusData['autoUpdated'] = true;
       } else {
-        // SALIDA DE ZONA
-        statusData['statusType'] = 'driving';
-        statusData['customEmoji'] = '🚗';
-        statusData['zoneName'] = 'En camino';
+        // SALIDA DE ZONA → "Bien" (neutral, sin implicar dirección desconocida)
+        statusData['statusType'] = 'fine';
+        statusData['customEmoji'] = null;
+        statusData['zoneName'] = null;
         statusData['zoneId'] = null;
         statusData['autoUpdated'] = true;
 
