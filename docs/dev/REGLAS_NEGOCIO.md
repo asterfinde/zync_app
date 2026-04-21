@@ -159,7 +159,7 @@ El timestamp es la "huella" de cualquier cambio visible en el estado del Círcul
 ## 5. Reglas de Geofencing
 
 - **Entrada a Zona:** estado principal → emoji/nombre de la Zona. Timestamp actualizado. ✋ Manual desactivado.
-- **Salida de Zona:** estado principal → "En camino". Timestamp actualizado. ✋ Manual desactivado.
+- **Salida de Zona:** estado principal → 🙂 "Bien" (`fine`). Timestamp actualizado. ✋ Manual desactivado.
 - **GPS siempre gana:** cualquier evento de Geofencing (entrada/salida) sobrescribe cualquier estado manual sin excepción.
 - **Zonas solapadas:** si múltiples Zonas coinciden, gana la de menor radio. En empate: la creada primero. *(Implementado PR #54)*
 
@@ -274,10 +274,10 @@ Los estados cuyo `id` coincide con el tipo de zona configurada aparecen **dimmed
 
 | Zona configurada | Estado bloqueado | Comportamiento automático |
 |-----------------|-----------------|--------------------------|
-| `home` → 🏠 | `home` bloqueado | Entrada: `fine` 🙂 · Salida: `driving` 🚗 |
-| `school` → 🏫 | `school` bloqueado | Entrada: `studying` 📚 · Salida: `driving` 🚗 |
-| `university` → 🎓 | `university` bloqueado | Entrada: `studying` 📚 · Salida: `driving` 🚗 |
-| `work` → 💼 | `work` bloqueado | Entrada: `busy` 🔴 · Salida: `driving` 🚗 |
+| `home` → 🏠 | `home` bloqueado | Entrada: `fine` 🙂 · Salida: `fine` 🙂 |
+| `school` → 🏫 | `school` bloqueado | Entrada: `studying` 📚 · Salida: `fine` 🙂 |
+| `university` → 🎓 | `university` bloqueado | Entrada: `studying` 📚 · Salida: `fine` 🙂 |
+| `work` → 💼 | `work` bloqueado | Entrada: `busy` 🔴 · Salida: `fine` 🙂 |
 
 > Zonas `custom` (📍) no bloquean ningún estado. En entrada asignan `fine` con emoji `📍`.
 
