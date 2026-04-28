@@ -1,8 +1,8 @@
 # TEST_PLAN_2.md — Plan de Pruebas ZYNC (v2)
 
 > Fuente de la verdad activa desde 2026-04-14.
-> Reemplaza `TEST_PLAN.md` como documento de referencia para pruebas en dispositivo.
-> `TEST_PLAN.md` se conserva únicamente como registro histórico.
+> Reorganizado 2026-04-16: dos grandes grupos — Modo Normal y Modo Silencioso.
+> `TEST_PLAN.md` conservado solo como registro histórico.
 
 ---
 
@@ -12,6 +12,7 @@
 |:-------:|-------------|
 | 👁 | Solo manual |
 | ✅ | Validado en dispositivo |
+| 🕔 | Pendiente de prueba |
 | ❌ | Falla — bloqueante |
 | ⚠️ | Comportamiento inesperado / observación |
 
@@ -43,244 +44,238 @@
 
 ---
 
+# SECCIÓN 1 — MODO NORMAL
+
+> App en primer plano. Usuario toca pantalla Flutter.
+> Sin BN. Sin proceso en background.
+>
+> Los emojis seleccionados del modal correspondiente son los que se graban durectamente en Firebase. **No hay emojis temporales!**
 ---
 
-# SECCIÓN 1 — REGRESIÓN
+## MN1 — Auth y Cuenta
 
-> Tests ya validados en dispositivo físico.
-> Si falla cualquiera de estos casos, es una **regresión bloqueante** que debe resolverse antes de continuar.
-
----
-
-## R1 — Auth y Cuenta
-
-| ID | Caso de prueba | Resultado esperado | Estado |
-|:--:|:--------------|:-------------------|:------:|
-| R1.01 | Registro exitoso — nickname + email + contraseña coinciden | Usuario creado en Firebase Auth y Firestore | ✅ |
-| R1.02 | Registro fallido — contraseñas no coinciden | Botón "Crear Cuenta" deshabilitado | ✅ |
-| R1.03 | Registro fallido — email ya registrado | Mensaje "Este correo ya tiene una cuenta registrada. Inicia sesión." | ✅ |
-| R1.04 | Login exitoso — credenciales válidas | Acceso a pantalla del Círculo | ✅ |
-| R1.05 | Login fallido — correo no encontrado | Mensaje "Correo o contraseña incorrectos…" | ✅ |
-| R1.06 | Login fallido — contraseña incorrecta | Mensaje "La contraseña es incorrecta…" | ✅ |
-| R1.07 | Recuperación de contraseña — correo válido registrado | Email de recuperación enviado | ✅ |
-| R1.08 | Cierre de sesión | Redirige a pantalla de login | ✅ |
-| R1.09 | Eliminación de cuenta — usuario sin círculo | Cuenta eliminada. Redirige al login | ✅ |
-| R1.10 | Eliminación de cuenta — usuario es miembro común | Solo ese usuario removido. Círculo y demás miembros intactos | ✅ |
-| R1.11 | Eliminación de cuenta — sesión no reciente | App solicita contraseña, re-autentica y elimina. Contraseña incorrecta: SnackBar rojo, cuenta intacta | ✅ |
-| R1.12 | Eliminación de cuenta — usuario es creador del círculo | Círculo eliminado de Firestore. Todos los ex-miembros ven "Aún no estás en un círculo" | ✅ |
-
----
-
-## R2 — Círculos
-
-| ID | Caso de prueba | Resultado esperado | Estado |
-|:--:|:--------------|:-------------------|:------:|
-| R2.01 | Creación de un círculo | Círculo creado en Firestore, código de invitación generado | ✅ |
-| R2.02 | Código de invitación generado y visible | Código único visible para compartir | ✅ |
-| R2.03 | Estado/emoji inicial al unirse a un círculo | Muestra "🙂 Todo bien" como estado por defecto | ✅ |
-| R2.04 | Cambiar de estado/emoji | Estado actualizado en Firestore y visible para los miembros | ✅ |
-| R2.05 | La UI no ofrece "Salir del Círculo" sin eliminar cuenta | No existe opción de salir sin eliminar cuenta en Settings ni en ninguna pantalla | ✅ |
-| R2.06 | Solicitud de ingreso — solicitante queda en estado pendiente | B ingresa código y ve pantalla de espera | ✅ |
-| R2.07 | Creador aprueba solicitud | B pasa automáticamente a InCircleView | ✅ |
-| R2.08 | Solicitud expira (48h sin respuesta) | Solicitud desaparece; solicitante ve NoCircleView y puede reintentar | ✅ |
-| R2.09 | Solicitante puede reenviar código tras expiración | Nueva solicitud creada sobre la anterior | ✅ |
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MN1.01 | Registro válido | Llenar nickname + email + pass → Crear cuenta | Usuario creado en Firebase Auth y Firestore | ✅ |
+| MN1.02 | Registro bloqueado — passes no coinciden | Llenar form, passes distintos | Botón "Crear Cuenta" deshabilitado | ✅ |
+| MN1.03 | Registro bloqueado — email duplicado | Registrar email ya existente | "Este correo ya tiene cuenta. Inicia sesión." | ✅ |
+| MN1.04 | Login válido | Credenciales correctas | Pantalla Círculo visible | ✅ |
+| MN1.05 | Login bloqueado — email no existe | Email no registrado | "Correo o contraseña incorrectos…" | ✅ |
+| MN1.06 | Login bloqueado — pass incorrecto | Pass equivocado | "La contraseña es incorrecta…" | ✅ |
+| MN1.07 | Recuperación de pass | Email válido → solicitar reset | Email de recuperación enviado | ✅ |
+| MN1.08 | Logout | Ajustes → Cerrar sesión | Redirige a Login | ✅ |
+| MN1.09 | Eliminar cuenta — sin círculo | Ajustes → Eliminar cuenta | Cuenta eliminada. Login visible | ✅ |
+| MN1.10 | Eliminar cuenta — miembro común | Ajustes → Eliminar cuenta | Solo ese usuario removido. Círculo intacto | ✅ |
+| MN1.11 | Eliminar cuenta — sesión no reciente | Intentar eliminar → app pide pass | Pass correcto: elimina. Pass incorrecto: SnackBar rojo, cuenta intacta | ✅ |
+| MN1.12 | Eliminar cuenta — creador del círculo | Ajustes → Eliminar cuenta | Círculo eliminado. Miembros ven "Sin círculo" | ✅ |
 
 ---
 
-## R3 — Emojis y Estados
+## MN2 — Círculos
 
-| ID | Caso de prueba | Resultado esperado | Estado |
-|:--:|:--------------|:-------------------|:------:|
-| R3.01 | Estado default al unirse a un círculo | Emoji "🙂 Todo bien" asignado automáticamente | ✅ |
-| R3.02 | Cambio de estado desde modal del Círculo | Actualización visible para todos los miembros sin demora | ✅ |
-| R3.03 | Sin zonas — formato de estado en pantalla Círculo | Muestra: emoji · nickname · estado · timestamp relativo ("Justo ahora", "Hace X min") | ✅ |
-| R3.04 | Con zonas activas — usuario entra a una zona | Estado actualizado automáticamente con emoji de la zona | ✅ |
-| R3.05 | Con zonas activas — usuario sale de una zona | Estado cambia a "🚗 En camino" automáticamente | ✅ |
-| R3.06 | Dentro de zona, cambio manual a estado no-zona | Muestra badge ✋ Manual junto al estado | ✅ |
-| R3.07 | Fuera de zona, cambio manual de estado | No muestra ✋ Manual — muestra ❓ Ubicación desconocida | ✅ |
-| R3.08 | Botones de zona inhabilitados en modal del Círculo | Botones 🏠🏫🏢🏥 atenuados. Si se tocan: modal "Acción no permitida". Estado no cambia | ✅ |
-
----
-
-## R4 — Modo Silencio — Proceso Vivo (PRIMER TRAMO)
-
-> Regla fundamental: mientras el proceso esté vivo, el ícono "i" **permanece siempre** hasta logout.
-
-| ID | Caso de prueba | Resultado esperado | Estado |
-|:--:|:--------------|:-------------------|:------:|
-| R4.01 | Activar Modo Silencio → minimizar | Ícono "i" aparece en Barra de Notificaciones | ✅ |
-| R4.02 | Tap notificación → seleccionar emoji → volver | Ícono "i" permanece visible | ✅ |
-| R4.03 | Minimizar/maximizar rápido (<3s) | Ícono "i" permanece visible | ✅ |
-| R4.04 | Minimizar/maximizar lento (>3s) | Ícono "i" permanece visible | ✅ |
-| R4.05 | Maximizar → modal Flutter → seleccionar emoji | Ícono "i" permanece visible | ✅ |
-| R4.06 | Logout con Modo Silencio activo | Ícono "i" desaparece correctamente | ✅ |
-| R4.07 | Notificación → SOS (hold 1s) → maximizar | Ícono "i" permanece visible | ✅ |
-| R4.08 | Modal Flutter → emoji → minimizar/maximizar | Ícono "i" permanece visible | ✅ |
-| R4.09 | Activar → minimizar → maximizar → activar nuevamente | Ícono "i" permanece (sin duplicar) | ✅ |
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MN2.01 | Crear círculo | Tap "Crear Círculo" → nombre → confirmar | Círculo en Firestore, código de invitación generado | ✅ |
+| MN2.02 | Código de invitación visible | Ver pantalla del círculo | Código único visible y copiable | ✅ |
+| MN2.03 | Estado inicial al unirse | Unirse a círculo → ver pantalla | Muestra 🙂 "Todo bien" | ✅ |
+| MN2.04 | Cambiar estado | Abrir modal → seleccionar emoji | Estado actualizado en Firestore. Visible para miembros | ✅ |
+| MN2.05 | Sin opción "Salir del Círculo" | Revisar Settings y todas las pantallas | No existe opción de salir sin eliminar cuenta | ✅ |
+| MN2.06 | Solicitud pendiente | B ingresa código de A | B ve pantalla de espera | ✅ |
+| MN2.07 | Creador aprueba solicitud | A aprueba solicitud de B | B pasa automáticamente a InCircleView | ✅ |
+| MN2.08 | Solicitud expira 48h | Esperar 48h sin respuesta | Solicitud desaparece. B puede reintentar | ✅ |
+| MN2.09 | Reenviar código tras expiración | B envía código nuevamente | Nueva solicitud creada | ✅ |
 
 ---
 
-## R5 — Modo Silencio — Activación y App Cerrada (SEGUNDO TRAMO)
+## MN3 — Estados y Emojis
 
-| ID | Caso de prueba | Resultado esperado | Estado |
-|:--:|:--------------|:-------------------|:------:|
-| R5.01 | `finishAndRemoveTask()` destruye Activity | App no aparece en lista de recientes | ✅ |
-| R5.02 | Proceso sobrevive tras destruir Activity | `adb shell ps \| grep zync` → proceso sigue listado | ✅ |
-| R5.03 | `KeepAliveService` sigue corriendo | `adb shell dumpsys activity services \| grep zync` → servicio activo | ✅ |
-| R5.04 | Notificación "i" permanece tras cierre | Ícono "i" visible sin parpadeo después del cierre | ✅ |
-| R5.05 | `EmojiDialogActivity` abre desde BN sin `MainActivity` | Modal nativo abre correctamente | ✅ |
-| R5.06 | Tap "Modo Silencio" → app desaparece de recientes | App no aparece en la lista de apps recientes | ✅ |
-| R5.07 | Tap "Modo Silencio" → ícono "i" aparece en BN | Ícono "i" aparece dentro de ~3s | ✅ |
-| R5.08 | Proceso sigue vivo tras cierre | `adb shell ps \| grep zync` → proceso listado | ✅ |
-| R5.09 | Notificación persiste tras cierre durante 30s | Ícono "i" no parpadea ni desaparece | ✅ |
-| R5.10 | Segundo tap (idempotencia) → también cierra | App desaparece de recientes. Ícono "i" permanece sin duplicarse | ✅ |
-| R5.11 | Notificación no parpadea durante el cierre | No desaparece momentáneamente ni se reinicia en el momento del tap | ✅ |
-| R5.12 | Logout → ícono "i" desaparece | Ícono "i" desaparece. Redirige a Login | ✅ |
-| R5.13 | Seleccionar emoji desde modal Círculo (sin Modo Silencio) | Estado actualizado. Sin efectos en BN | ✅ |
-| R5.14 | SOS desde pantalla del Círculo (sin Modo Silencio) | Flujo SOS completo sin regresiones | ✅ |
-| R5.15 | PT.1–PT.6 del PRIMER TRAMO siguen pasando | Todos ✅. Ícono permanece durante proceso vivo | ✅ |
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MN3.01 | Estado default al unirse | Unirse a círculo | Emoji 🙂 "Todo bien" asignado | ✅ |
+| MN3.02 | Cambio visible a miembros | Cambiar emoji → verificar en otro dispositivo | Actualización visible sin demora | ✅ |
+| MN3.03 | Formato sin zonas | Ver pantalla Círculo, sin zonas configuradas | emoji · nickname · estado · timestamp relativo | ✅ |
+| MN3.04 | Zona activa — entrar | Entrar a zona geográfica configurada | Estado actualizado con emoji de zona | ✅ |
+| MN3.05 | Zona activa — salir | Salir de zona geográfica | Estado cambia a 🙂 "Bien" | 🕔 |
+| MN3.06 | Override manual dentro de zona | Dentro de zona → seleccionar emoji distinto | Badge ✋ "Manual" junto al estado | ✅ |
+| MN3.07 | Cambio manual fuera de zona | Fuera de zona → seleccionar emoji | Badge ❓ "Ubicación desconocida" | ✅ |
+| MN3.08 | Botones zona inhabilitados en modal | Crear Zona → Modal Círculo con zona activa → tap botón zona | Botones 🏠🏫🏢🏥 atenuados. Tap: "Acción no permitida". Estado sin cambio | ✅ |
+| MN3.09 | Emoji preservado tras logout + re-login | Setear emoji → logout → login | Emoji = valor previo al logout | ✅ |
 
 ---
 
-## R6 — App Open — Flujos base
+## MN4 — Modal del Círculo (sin Modo Silencio)
 
-| ID | Caso de prueba | Resultado esperado | Estado |
-|:--:|:--------------|:-------------------|:------:|
-| R6.01 | Primera apertura — sin cuenta | Pantalla de registro visible. Sin crash | ✅ |
-| R6.02 | Registro exitoso → redirige a NoCircleView | Tarjetas "Crear Círculo" y "Unirse a un Círculo" visibles | ✅ |
-| R6.03 | App abre sin sesión activa → pantalla de Login | Login visible. Pantalla Círculo no aparece | ✅ |
-| R6.04 | Login exitoso → aterriza en Pantalla Círculo | Círculo visible con el último emoji del usuario | ✅ |
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MN4.01 | Tap "Reunión" | Abrir modal → tap Reunión | Estado "Reunión" en Pantalla Círculo | ✅ |
+| MN4.02 | Tap "Universidad" | Abrir modal → tap Universidad | Estado "Universidad" en Pantalla Círculo | ✅  |
+| MN4.03 | Tap "Bien" | Abrir modal → tap Bien | Estado 🙂 "Bien" en Pantalla Círculo | ✅ |
+| MN4.04 | Los 16 emojis | Probar cada emoji del modal | Emoji correspondiente en Pantalla Círculo | ✅ |
+| MN4.05 | SOS se abre en < 1s | Abrir modal → mantener SOS < 1s | El funcionamiento del botón "SOS" debe de ser igual al del modal de la BN, abriéndose en < 1s | ✅  |
+| MN4.06 | Emoji desde modal → sin efectos en BN | Seleccionar emoji en modal Círculo | Estado actualizado. Sin ícóno "i" en BN | ✅ |
+| MN4.07 | SOS desde modal → sin efectos en BN | Hold SOS 1s en modal Círculo | Flujo SOS completo. Sin efectos en BN | ✅ |
+| MN4.08 | Ciclos abrir/cerrar → sin ícóno "i" involuntario | Abrir app → cerrar → abrir (3 ciclos, sin Modo Silencio) | Sin ícóno "i" en BN. Sin regresiones |✅ |
+| MN4.09 | Aparecen los 17 emojis/estados en modal del Círculo | Abrir app → pantalla Círculo → abrir modal  | Se muestran correctamente los 17 emojis/estados |✅ |
 
----
 
-## R7 — Interacción modal del Círculo (sin Modo Silencio)
+## MN5 — Apertura y Sesión
 
-| ID | Caso de prueba | Resultado esperado | Estado |
-|:--:|:--------------|:-------------------|:------:|
-| R7.01 | Tap "Reunión" en modal del Círculo | Emoji/estado "Reunión" aparece en pantalla del Círculo | ✅ |
-| R7.02 | Tap "Universidad" en modal del Círculo | Emoji/estado "Universidad" aparece en pantalla del Círculo | ✅ |
-| R7.03 | Tap "Bien" en modal del Círculo | Emoji/estado "🙂 Bien" aparece en pantalla del Círculo | ✅ |
-| R7.04 | Tap "SOS" en modal del Círculo | Estado SOS se setea. Permiso GPS solicitado. Opción de ver posición en Maps | ✅ |
-| R7.05 | Cualquiera de los 16 emojis desde modal del Círculo | Emoji correspondiente aparece en la pantalla del Círculo | ✅ |
-
----
-
-## R8 — UI/UX
-
-| ID | Caso de prueba | Resultado esperado | Estado |
-|:--:|:--------------|:-------------------|:------:|
-| R8.01 | Girar pantalla con modal abierto — no hay overflow | Distribución de elementos se mantiene en landscape | ✅ |
-| R8.02 | Pantalla "Crear Círculo" — foco automático en textbox | Foco aparece de inmediato en el campo de nombre, sin tocar pantalla | ✅ |
-| R8.03 | Cambiar de Login a Registro — foco en primer campo | Foco se posiciona automáticamente al cambiar de modo | ✅ |
-| R8.04 | Tarjeta "Unirse a un Círculo" aparece casi simultáneamente con "Crear Círculo" | Ambas tarjetas visibles sin demora perceptible | ✅ |
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MN5.01 | Primera apertura sin cuenta | Instalar app → abrir | Pantalla registro visible. Sin crash | ✅ |
+| MN5.02 | Registro → NoCircleView | Registro exitoso | Tarjetas "Crear" y "Unirse" visibles | ✅ |
+| MN5.03 | Apertura sin sesión activa | Abrir app sin estar logueado | Login visible. Pantalla Círculo no aparece | ✅ |
+| MN5.04 | Login → Pantalla Círculo | Login exitoso | Pantalla Círculo con último emoji del usuario | ✅ |
+| MN5.05 | Cerrar sin logout → reabrir → sesión activa | Forzar cierre → reabrir | Pantalla Círculo directa. Login no aparece |✅ |
+| MN5.06 | Emoji preservado tras cierre sin logout | Setear emoji ≠ "Bien" → cerrar sin logout → reabrir | Emoji = valor seteado. No muestra 🙂 "Todo bien" |✅ |
 
 ---
 
-# SECCIÓN 2 — NUEVOS
+## MN6 — UI/UX
 
-> Tests pendientes de primera validación en dispositivo físico.
-> Todos corresponden a cambios implementados en PRs #99–#103.
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MN6.01 | Rotar con modal abierto | Abrir modal → rotar pantalla | Sin overflow en landscape | ✅ |
+| MN6.02 | Foco automático en "Crear Círculo" | Tap "Crear Círculo" | Campo de nombre con foco de entrada | ✅ |
+| MN6.03 | Foco al alternar login ↔ registro | Cambiar entre modos | Foco en primer campo al cambiar | ✅ |
+| MN6.04 | Tarjetas NoCircleView sin demora | Llegar a NoCircleView | "Crear" y "Unirse" aparecen simultáneamente | ✅ |
+| MN6.05 | Look & feel: modal BN ≈ modal Círculo | El modal de aviso para NO poder seleccioanr una zona preconfigurada debe de ser igual | Mismo fondo negro, borde menta, botón "Entendido" en menta |✅  |
+| MN6.06 | Foco inmediato para el nombre del Círculo | Login/Registro → Crear Círculo → Ingresar nombre del Círculo | El foco tarda uno segundos en posicionarse sobre el textbox que recibirá el nombre del Círculo, cuando esto debiera ser inmediato | ✅ |
+| MN6.07 | Eliminar SnackBar de éxito luego de la creación del Círculo | Login/Registro → Crear Círculo → Ingresar nombre del Círculo | No es necesario mostrar el SnackBar correspondiente puesto que la pantalla de arribo es la del Círculo creado, incluyendo su nombre | ✅ |
+---
+
+## MN7 — Permisos de Notificación
+
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MN7.01 | Permisos denegados → SnackBar naranja | Denegar permisos → tap "Modo Silencio" | SnackBar naranja con botón "Habilitar" → Ajustes del sistema |🕔 |
+| MN7.02 | Re-habilitar → activar Modo Silencio | Tap "Habilitar" → Ajustes → activar → volver → tap "Modo Silencio" | Flujo normal de activación |🕔 |
+| MN7.03 | Desactivar notifs con Modo Silencio activo | Ajustes sistema → desactivar notifs ZYNC | Ícono desaparece. SnackBar informativo al volver. Modo Silencio inactivo |🕔 |
 
 ---
 
-## N1 — Reabrir app con Modo Silencio activo (PR #100)
-
-> **Cambio:** `onCreate()` en `MainActivity` detecta `isSilentModeActive == true` y desactiva el servicio + notificación + flag antes de que la UI cargue.
-
-| ID | Caso de prueba | Pasos | Resultado esperado | Estado |
-|:--:|:--------------|:------|:-------------------|:------:|
-| N1.01 | Ícono "i" desaparece al abrir desde launcher | (A) Activar Modo Silencio → (B) Tocar ícono ZYNC en launcher | Ícono "i" desaparece de BN en ≤2s | ⚠️ tarda ≥8s |
-| N1.02 | App aterriza en Pantalla Círculo — no en Login≥8s CRÍTICO!! | Mismos pasos de N1.01 | Pantalla Círculo directa. Login no aparece | ✅ |
-| N1.03 | Sesión y datos preservados al reabrir | Mismos pasos de N1.01 → verificar nombre de usuario, emoji actual, miembros | Todos los datos coinciden con el estado previo al cierre | ❌ Justo antes de cerrarse la app, esta adopta el emoji "NO Molestar", cuando debería mostrar el que elegió el usuario antes del cierre o el estado que tenía por geofencing |
-| N1.04 | Emoji actualizado desde BN se refleja al reabrir | (A) Seleccionar emoji desde BN → (B) Abrir app desde launcher | El emoji seleccionado en BN es el que aparece en Pantalla Círculo |✅ |
-| N1.05 | Abrir app sin Modo Silencio activo → sin efectos | Cerrar app normalmente → reabrir desde launcher | No aparece ícono "i". Comportamiento normal sin efectos secundarios | ✅ |
-| N1.06 | La BN es persistente, sea que se cierre manualmente con el botón "Borrar" del dispositivo o se haga un swipe sobre el mensaje de aviso de la BN | Cerrar la BN con el botón "Borrar"/swipe desde Android |  Persiste exitosamente el ícono "i", sin efectos secundarios | ✅ |
 ---
 
-## N2 — Último estado preservado al reabrir (PR #101)
+# SECCIÓN 2 — MODO SILENCIOSO
 
-> **Cambio:** `clearOfflineStatus()` eliminado. El `statusType` en Firestore ya no se resetea a `fine`. El último estado persiste.
-
-| ID | Caso de prueba | Pasos | Resultado esperado | Estado |
-|:--:|:--------------|:------|:-------------------|:------:|
-| N2.01 | Sesión activa → aterriza directo en Círculo sin Login | (A) Estar logueado → (B) Forzar cierre de app sin logout → (C) Reabrir | Pantalla Círculo directa. Login no aparece | |
-| N2.02 | Emoji ≠ "Bien" se preserva al reabrir (cerrar sin logout) | (A) Setear "Reunión" → (B) Cerrar app sin logout → (C) Reabrir | Emoji = "Reunión". No muestra 🙂 "Todo bien" | |
-| N2.03 | Emoji se preserva tras logout + re-login | (A) Setear emoji → (B) Logout → (C) Login → ver Círculo | Emoji = valor anterior al logout | |
-| N2.04 | Emoji se preserva al desactivar Modo Silencio (abrir app) | (A) Setear "Reunión" → (B) Activar Modo Silencio → (C) Abrir app | Emoji = "Reunión". No muestra 🙂 "Todo bien" | |
-| N2.05 | Emoji se preserva: cerrar app sin logout → reabrir | (A) Setear emoji → (B) Cerrar sin logout → (C) Reabrir | Emoji = valor anterior | |
+> App cerrada o en background. Proceso vivo. Ícono "i" en BN.
+> Usuario interactúa vía notificación. Sin pantallas Flutter visibles (salvo MS2).
 
 ---
 
-## N3 — `do_not_disturb` al activar Modo Silencio (PR #101)
+## MS1 — Activación: app cierra, ícóno aparece
 
-> **Cambio:** Al activar Modo Silencio, `SilentFunctionalityCoordinator` escribe `do_not_disturb` en Firestore antes de llamar al nativo. Los miembros del círculo ven "🔕 No molestar" mientras el Modo Silencio está activo.
+> Tap "Modo Silencio" → `finishAndRemoveTask()` → proceso sigue vivo → ícóno "i" aparece en BN.
 
-| ID | Caso de prueba | Pasos | Resultado esperado | Estado |
-|:--:|:--------------|:------|:-------------------|:------:|
-| N3.01 | Activar Modo Silencio → miembros ven 🔕 No molestar | (A) Activar Modo Silencio → (B) Verificar pantalla de otro miembro del círculo | Emoji = 🔕 y estado = "No molestar" para el usuario que activó | |
-| N3.02 | Badge "💤 Desconectado" ya no aparece para ningún miembro | (A) Cualquier acción que antes mostraba "Desconectado" | Ningún miembro del círculo muestra el badge "💤 Desconectado" | |
-| N3.03 | Al reabrir app (desactivar Modo Silencio) → estado actualizable | (A) Modo Silencio activo → (B) Reabrir app → (C) Seleccionar nuevo emoji | Estado cambia correctamente desde "🔕 No molestar" al nuevo emoji | |
-
----
-
-## N4 — Race condition cold start — primer tap funciona (PR #101)
-
-> **Cambio:** `activateSilentMode()` re-verifica el círculo desde Firebase si `_userHasCircle == false` al momento del tap, en lugar de cancelar silenciosamente.
-
-| ID | Caso de prueba | Pasos | Resultado esperado | Estado |
-|:--:|:--------------|:------|:-------------------|:------:|
-| N4.01 | Cold start + tap inmediato en "Modo Silencio" | (A) Forzar cierre de app → (B) Reabrir → (C) Tocar "Modo Silencio" inmediatamente sin esperar | App se cierra. Ícono "i" aparece. El primer tap funciona | |
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MS1.01 | App desaparece de recientes | Tap "Modo Silencio" | App no en lista de recientes | ✅ |
+| MS1.02 | Ícono "i" aparece en BN | Tap "Modo Silencio" → esperar | Ícono "i" en BN en ≤3s | ✅ |
+| MS1.03 | Proceso sigue vivo | Después de MS1.01: `adb shell ps \| grep zync` | Proceso `com.datainfers.zync` listado | ✅ |
+| MS1.04 | KeepAliveService activo | Después de MS1.01: `adb shell dumpsys activity services \| grep zync` | Servicio activo | ✅ |
+| MS1.05 | Ícono no parpadea al cierre | Observar BN durante tap "Modo Silencio" | Ícono no desaparece momentáneamente ni se reinicia | ✅ |
+| MS1.06 | Segundo tap idempotente | Activar → reabrir app → tap "Modo Silencio" de nuevo | App cierra. Ícono "i" permanece sin duplicarse | ✅ |
+| MS1.07 | Notificación persiste 30s | Después de MS1.01 → esperar 30s | Ícono "i" no parpadea ni desaparece | ✅ |
+| MS1.08 | Primer tap funciona en cold start | Forzar cierre → reabrir → tap "Modo Silencio" inmediato sin esperar | App cierra. Ícono "i" aparece. Sin falso negativo | ⚠️ funciona pero demora es mayor o igual a 8s, optimizar|
+| MS1.09 | Permisos de batería en primera activación | Primera vez → tap "Modo Silencio" → dialog batería → aceptar | App cierra correctamente. Ícono "i" aparece | ⚠️ funciona pero el aviso de batería permanece a pesar de haberle dado "Aceptar" Probable comportamiento del SO Android en Samsung. Si no se muestra este aviso, afecta en algo?|
 
 ---
 
-## N5 — Persistencia de notificación — Handler periódico (PR #102)
+## MS2 — Proceso vivo: minimizar y maximizar
 
-> **Cambio:** `KeepAliveService` re-llama `startForeground()` cada 5s. Resistencia a OEM (Samsung "Borrar todo", Xiaomi, Huawei).
+> Modo Silencio activo. App en primer plano (maximizada).
+> Regla fundamental: ícóno "i" **permanece siempre** hasta logout.
 
-| ID | Caso de prueba | Pasos | Resultado esperado | Estado |
-|:--:|:--------------|:------|:-------------------|:------:|
-| N5.01 | Swipe sobre ícono "i" — no se descarta | Con Modo Silencio activo → deslizar notificación | Notificación permanece visible | |
-| N5.02 | "Borrar todo" → notificación reaparece | Con Modo Silencio activo → abrir BN → "Borrar todo" → esperar ≤10s | Ícono "i" reaparece automáticamente | |
-| N5.03 | "Borrar todo" en Samsung → notificación reaparece | Mismo flujo de N5.02 en Samsung | Ícono "i" reaparece. `KeepAliveService` sigue activo | |
-| N5.04 | Proceso sigue vivo después de "Borrar todo" | Después de N5.02: `adb shell ps \| grep zync` | Proceso `com.datainfers.zync` sigue listado | |
-| N5.05 | Notificación reaparece sin abrir app | Después de N5.02 → NO abrir app → solo esperar | Ícono "i" vuelve solo | |
-| N5.06 | Logcat muestra ticks periódicos | Con Modo Silencio activo → observar logcat 15s | Aparece `🔄 [KEEP-ALIVE] startForeground re-afirmado` cada ~5s | |
-| N5.07 | Logout → handler se cancela | Modo Silencio activo → Ajustes → Cerrar Sesión | Notificación desaparece y no reaparece. Sin ticks en logcat | |
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MS2.01 | Activar → minimizar | Activar Modo Silencio → minimizar | Ícono "i" en BN | ✅ |
+| MS2.02 | Tap BN → emoji → volver | Activar → minimizar → tap "i" → seleccionar emoji → volver | Ícono "i" permanece | ✅ |
+| MS2.03 | Minimizar/maximizar rápido (<3s) | Min → max en <3s | Ícono "i" permanece | ✅ |
+| MS2.04 | Minimizar/maximizar lento (>3s) | Min → max en >3s | Ícono "i" permanece | ✅ |
+| MS2.05 | Maximizar → modal Flutter → emoji | App visible + Modo Silencio activo → abrir modal → seleccionar emoji | Ícono "i" permanece | ✅ |
+| MS2.06 | Modal Flutter → emoji → min/max | Seleccionar emoji en modal → minimizar → maximizar | Ícono "i" permanece | ✅ |
+| MS2.07 | BN → SOS hold 1s → maximizar | Tap "i" → hold SOS 1s → maximizar app | Ícono "i" permanece | ✅ |
+| MS2.08 | Ciclo activar → min → max → activar de nuevo | Activar → minimizar → maximizar → activar (x2) | Ícono "i" sin duplicar. Comportamiento consistente | ✅ |
+| MS2.09 | No mostrar aviso: "Toca para cambiar tu estado"  | Activar Modo Silencio → minimizar | El Ícono "i" ya aparece en BN, lo cual hace redundante mostrar el aviso mencionado, salvo cuando el usuario desliza la Barra de Notificaciones para ver todos los avisos. El aviso genera ruido en la UI | ✅ |
+| MS2.10 | No guardar estado "No Molestar" justo antes del cierre de la app en MS | Activar Modo Silencio → minimizar | Este comportamiento esta errado- La fuente de la verdad aquí es: prevalece el estado/emoji que seleccionó el usuario o lo que el geofencing determino si que hubiese alguna Zona preconfigurada. NO HAY ESTADOS TEMPORALES!| ✅ |
+| MS2.11 | Se necesita que aparezca el mensaje "Toca para cambiar tu estado"  | Activar Modo Silencio → minimizar → mostrar mensaje al deslizar BN  | El Ícono "i" ya aparece en BN, lo cual hace redundante mostrar el aviso mencionado, salvo cuando el usuario desliza la Barra de Notificaciones para ver todos los avisos. El aviso genera ruido en la UI | ✅ |
+| MS2.12 | Se necesita que aparezca el mensaje "Toca para cambiar tu estado" en MS  | Activar Modo Silencio → minimizar → mostrar mensaje SOLAMENTE al deslizar BN  | Solo se necesita que aparezca el mensaje al deslizar BN, no que se muestre el aviso tal y como se especificó en MS02.9 | 🕔 |
+---
+
+## MS3 — Interacción desde BN con app cerrada
+
+> App no visible. No en recientes. Solo proceso + notificación activos.
+
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MS3.01 | Tap "i" → abre modal nativo | App cerrada → tap ícóno "i" | Modal nativo abre. `MainActivity` no se relanza | ✅ |
+| MS3.02 | Cerrar modal sin seleccionar → ícóno permanece | Desde MS3.01 → cerrar modal | Ícono "i" visible. App sigue cerrada | ✅|
+| MS3.03 | Seleccionar emoji → Firestore actualizado | Desde MS3.01 → tap cualquier emoji | Estado en Firestore actualizado | ✅ |
+| MS3.04 | Seleccionar emoji → ícóno permanece | Completar MS3.03 | Ícono "i" visible después de seleccionar | ✅ |
+| MS3.05 | SOS hold 1s desde modal BN | App cerrada → modal BN → mantener SOS 1s | Estado SOS seteado. Modal cierra. Ícono "i" permanece |✅ |
+| MS3.06 | Ciclo completo x2 | Activar → emoji desde BN → reabrir → activar (x2) | Comportamiento consistente en ambos ciclos | ✅ |
 
 ---
 
-## N6 — Interacción desde BN con app cerrada (PRs #99–#100)
+## MS4 — Persistencia de notificación
 
-| ID | Caso de prueba | Pasos | Resultado esperado | Estado |
-|:--:|:--------------|:------|:-------------------|:------:|
-| N6.01 | Tap notificación → abre modal nativo | Con app cerrada → tocar ícono "i" en BN | Modal nativo abre correctamente. No relanza `MainActivity` | |
-| N6.02 | Seleccionar emoji desde BN → Firestore actualizado | Desde N6.01 → seleccionar cualquier emoji | Estado actualizado en Firebase. Pantalla Círculo refleja el cambio al reabrir | |
-| N6.03 | Cerrar modal sin seleccionar → ícono "i" permanece | Desde N6.01 → cerrar modal sin seleccionar | Ícono "i" sigue visible. App sigue cerrada (no en recientes) | |
-| N6.04 | Seleccionar emoji → ícono "i" permanece | Completar N6.02 | Ícono "i" sigue visible después de seleccionar el emoji | |
-| N6.05 | SOS hold 1s desde modal BN | Con Modo Silencio activo → abrir modal BN → mantener SOS 1s | Estado SOS seteado. Modal cierra. Ícono "i" permanece | |
-| N6.06 | SOS hold 1s desde modal Círculo (sin Modo Silencio) | Sin Modo Silencio → abrir modal Círculo → hold SOS 1s | Estado SOS seteado. Modal cierra correctamente | |
-| N6.07 | Ciclo completo: activar → emoji desde BN → reabrir → activar | Repetir ciclo 2 veces | Comportamiento consistente en ambos ciclos. Sin efectos secundarios | |
-| N6.08 | Múltiples ciclos abrir/cerrar sin Modo Silencio | Abrir → cerrar → abrir → cerrar (3 ciclos) sin activar Modo Silencio | Sin aparición involuntaria de ícono "i". Sin regresiones | |
+> KeepAliveService re-llama `startForeground()` cada 5s. Resistencia a OEM (Samsung, Xiaomi, Huawei).
 
----
-
-## N7 — Zona bloqueada desde modal nativo con cache vacío (PR #103)
-
-> **Cambio:** `_updateStatusFromNative()` muestra un SnackBar cuando `StatusService` retorna `zone_manual_selection_not_allowed`. Cubre el caso donde `configuredZoneTypes` está vacío en `EmojiDialogActivity`.
-
-| ID | Caso de prueba | Pasos | Resultado esperado | Estado |
-|:--:|:--------------|:------|:-------------------|:------:|
-| N7.01 | Zona bloqueada con cache poblado → dialog en modal | Con zona geográfica configurada y cache actualizado → abrir modal BN → tocar emoji de zona | Dialog "Acción no permitida" aparece dentro del modal nativo | |
-| N7.02 | Zona bloqueada → SnackBar en app | Escenario de cache vacío → seleccionar emoji de zona desde modal BN → abrir app | SnackBar "Esa zona se actualiza automáticamente por geofencing…" visible al reabrir | |
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MS4.01 | Swipe sobre ícóno "i" — no descarta | Con Modo Silencio activo → deslizar notificación | Notificación permanece visible | ✅ |
+| MS4.02 | "Borrar todo" → ícóno reaparece | Con Modo Silencio activo → BN → "Borrar todo" → esperar ≤10s | Ícono "i" reaparece automáticamente | ✅ |
+| MS4.03 | Proceso sobrevive a "Borrar todo" | Después de MS4.02: `adb shell ps \| grep zync` | Proceso `com.datainfers.zync` listado | ✅ |
+| MS4.04 | Notificación reaparece sin abrir app | Después de MS4.02 → NO abrir app → solo esperar | Ícono "i" vuelve solo |✅ |
+| MS4.05 | Logcat muestra ticks periódicos | Con Modo Silencio activo → observar logcat 15s | `🔄 [KEEP-ALIVE] startForeground re-afirmado` cada ~5s | ✅|
 
 ---
 
-## N8 — Pendientes menores
+## MS5 — Reabrir app: desactivar Modo Silencio
 
-| ID | Caso de prueba | Pasos | Resultado esperado | Estado |
-|:--:|:--------------|:------|:-------------------|:------:|
-| N8.01 | Permiso de notificaciones denegado → SnackBar naranja | Tap "Modo Silencio" con permiso denegado | SnackBar con botón "Habilitar" que lleva a Ajustes del sistema | |
-| N8.02 | Re-habilitar notificaciones desde Ajustes → activar Modo Silencio | Tap "Habilitar" en SnackBar → Ajustes → activar → volver → tap "Modo Silencio" | Flujo normal de activación | |
-| N8.03 | Usuario desactiva notificaciones del sistema con Modo Silencio activo | Ajustes del sistema → desactivar notificaciones de ZYNC | Ícono desaparece. Al volver a app: SnackBar informativo. Modo Silencio inactivo | |
-| N8.04 | Look & feel ventanas de aviso — modal BN ≈ modal Círculo | Activar zona en ambos modales → comparar visualmente | Mismo fondo negro, borde menta, botón "Entendido" en menta | |
-| N8.05 | Permisos de batería pendientes durante primera activación | Primer uso → tap "Modo Silencio" → dialog batería → aceptar | App se cierra correctamente después del dialog. Ícono "i" aparece | |
+> Tap ícóno ZYNC en launcher con Modo Silencio activo → app abre, servicio termina limpiamente.
+
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MS5.01 | Ícono "i" desaparece al abrir | Modo Silencio activo → tap ícóno ZYNC en launcher | Ícono "i" desaparece en ≤4s | ✅  |
+| MS5.02 | App aterriza en Pantalla Círculo — no en Login | Mismos pasos de MS5.01 | Pantalla Círculo directa. Login no aparece | ✅ |
+| MS5.03 | Emoji del usuario preservado al reabrir | Setear emoji → activar Modo Silencio → abrir app | Emoji = valor seteado antes del cierre. Sin 🔕 "No molestar" residual | ✅ |
+| MS5.04 | Emoji desde BN preservado al reabrir | Seleccionar emoji desde BN → abrir app desde launcher | Pantalla Círculo muestra emoji seleccionado en BN | ✅ |
+| MS5.05 | Sin Modo Silencio → apertura normal | Cerrar app normalmente → reabrir | Sin ícóno "i". Comportamiento sin efectos secundarios | ✅ |
+| MS5.06 | BN no descartable (swipe / "Borrar") | Con Modo Silencio activo → swipe o "Borrar" sobre notificación | Notificación persiste sin efectos secundarios | ✅ |
+| MS5.07 | Emoji preservado: setear → activar → reabrir | Setear "Reunión" → activar Modo Silencio → abrir app | Emoji = "Reunión". No muestra 🙂 "Todo bien" | ✅|
+| MS5.08 | Estado actualizable tras reabrir | Modo Silencio activo → abrir app → seleccionar nuevo emoji | Estado cambia correctamente desde 🔕 "No molestar" |✅ |
+
+---
+
+## MS6 — Estado visible a miembros del círculo
+
+> **Requiere dos teléfonos** en el mismo círculo. Verifica que cualquier cambio de estado/emoji —sin importar el emoji elegido ni desde dónde se hizo el cambio— se refleja en tiempo real para los demás miembros.
+
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MS6.01 | Cambio de estado desde la app → visible en tiempo real para otros miembros | **Teléfono A:** abre la app → selecciona cualquier emoji/estado. **Teléfono B:** observa la pantalla del Círculo sin hacer nada | El Teléfono B muestra el nuevo emoji y nombre del estado del usuario A en menos de 5 segundos, sin necesidad de refrescar | |
+| MS6.02 | Cambio de estado desde el modal BN (app en segundo plano) → visible en tiempo real para otros miembros | **Teléfono A:** cierra la app → desliza la barra de notificaciones → toca el ícono "i" → selecciona cualquier emoji. **Teléfono B:** observa la pantalla del Círculo | El Teléfono B muestra el nuevo emoji del usuario A en menos de 5 segundos | |
+
+---
+
+## MS7 — Zona bloqueada desde el modal de la barra de notificaciones
+
+> **Prerequisito:** tener al menos una Zona configurada en el Círculo (ej: Casa 🏠). Confirmar con quien configuró las zonas cuál está activa.
+
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MS7.01 | Tocar emoji de Zona desde el modal → aparece aviso de bloqueo | 1. Abre la app y verifica que carga tu Círculo normalmente (esto es importante). 2. Activa Modo Silencio → cierra la app. 3. Desliza la barra de notificaciones → toca el ícono "i". 4. En el modal que abre, toca el emoji de la Zona configurada (ej: 🏠 Casa) | Aparece un mensaje dentro del modal que dice "Acción no permitida". El estado NO cambia | ✅ |
+| MS7.02 | Tocar emoji de Zona sin haber abierto la app → aviso al reabrir | 1. Ve a Ajustes del teléfono → Aplicaciones → ZYNC → Almacenamiento → **Limpiar caché** (solo caché, no datos). 2. Sin abrir la app: desliza la barra de notificaciones → toca el ícono "i". 3. En el modal, toca el emoji de la Zona configurada (ej: 🏠 Casa). 4. Abre la app desde el ícono en la pantalla de inicio | Al abrir la app aparece un aviso que dice "Esa zona se actualiza automáticamente…". El estado NO cambió a la Zona | ✅ |
+
+---
+
+## MS8 — Cerrar sesión con Modo Silencio activo
+
+> Verifica que al hacer logout el ícono "i" de la barra de notificaciones desaparece y no vuelve a aparecer solo.
+
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MS8.01 | Cerrar sesión con la app abierta | 1. Activa Modo Silencio (verifica que el ícono "i" aparece en la barra de notificaciones). 2. Abre la app. 3. Ve a Ajustes → Cerrar sesión | El ícono "i" desaparece de la barra de notificaciones. La app muestra la pantalla de Login | ✅ |
+| MS8.02 | Cerrar sesión con la app cerrada | 1. Activa Modo Silencio → cierra la app (el ícono "i" debe seguir visible). 2. Vuelve a abrir la app desde el ícono en pantalla de inicio. 3. Ve a Ajustes → Cerrar sesión | El ícono "i" desaparece de la barra de notificaciones | ✅ |
+| MS8.03 | La notificación no reaparece después del logout | Completa MS8.01 o MS8.02 → espera 30 segundos sin hacer nada → desliza la barra de notificaciones | El ícono "i" **no** vuelve a aparecer. La barra de notificaciones no muestra ninguna notificación de ZYNC | ✅|
