@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:zync_app/core/services/session_cache_service.dart';
-import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
+import 'package:nunakin_app/core/services/session_cache_service.dart';
+import 'package:nunakin_app/features/auth/presentation/pages/auth_final_page.dart';
 
 class PendingRequestView extends StatefulWidget {
   final String pendingCircleId;

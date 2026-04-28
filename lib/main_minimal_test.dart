@@ -6,9 +6,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:zync_app/firebase_options.dart';
-import 'package:zync_app/core/services/session_cache_service.dart';
-import 'package:zync_app/core/services/native_state_bridge.dart';
+import 'package:nunakin_app/firebase_options.dart';
+import 'package:nunakin_app/core/services/session_cache_service.dart';
+import 'package:nunakin_app/core/services/native_state_bridge.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

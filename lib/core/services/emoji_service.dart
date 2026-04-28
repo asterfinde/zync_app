@@ -2,7 +2,7 @@
 // Servicio para gestionar emojis predefinidos y personalizados
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:zync_app/core/models/user_status.dart';
+import 'package:nunakin_app/core/models/user_status.dart';
 import 'dart:developer';
 
 /// Servicio para cargar y gestionar estados/emojis desde Firebase

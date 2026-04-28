@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/foundation.dart';
-import 'package:zync_app/services/circle_service.dart';
+import 'package:nunakin_app/services/circle_service.dart';
 
 enum CircleStatus { initial, loading, loaded, error }
 

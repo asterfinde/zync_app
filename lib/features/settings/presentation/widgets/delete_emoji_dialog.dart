@@ -1,6 +1,6 @@
 // lib/features/settings/presentation/widgets/delete_emoji_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:zync_app/core/models/user_status.dart';
+import 'package:nunakin_app/core/models/user_status.dart';
 import '../../../../core/services/emoji_management_service.dart';
 
 /// Colores de la app
