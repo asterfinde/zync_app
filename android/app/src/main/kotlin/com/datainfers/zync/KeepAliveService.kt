@@ -190,6 +190,8 @@ class KeepAliveService : Service() {
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Modo Silencio activo")
+            .setContentText("Toca para cambiar tu estado")
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
