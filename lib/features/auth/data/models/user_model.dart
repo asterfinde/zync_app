@@ -2,7 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase;
-import 'package:zync_app/features/auth/domain/entities/user.dart';
+import 'package:nunakin_app/features/auth/domain/entities/user.dart';
 
 class UserModel extends User {
   const UserModel({

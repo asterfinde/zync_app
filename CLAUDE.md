@@ -37,9 +37,11 @@
 - Si un cambio solicitado impacta otros archivos, LISTAR los archivos afectados ANTES de modificar.
 - Si encuentra un bug o inconsistencia no relacionada con la tarea, REPORTARLO sin corregirlo.
 - Confirmar el alcance exacto de cada cambio antes de ejecutarlo.
+- **Antes de cualquier `git checkout` o cambio de rama:** listar explícitamente los archivos que podrían verse afectados por el cambio de rama y esperar confirmación del desarrollador — incluso en modo `SOLO`.
 - Al cierre de sesión, proponer entradas para las secciones 11 y 12 si corresponde, y esperar aprobación.
 - **Antes de proponer cualquier cambio en lógica de navegación, tap handlers o flujos de usuario:** listar explícitamente TODOS los flujos que pasan por el mismo código — no solo el flujo roto — y confirmar que ninguno regresiona. Si algún flujo existente se ve afectado, reportarlo ANTES de pedir VoBo, no después de implementar.
 - **Para bugs de lifecycle nativo Android:** leer los logs diagnósticos antes de proponer cualquier fix. Los logs son la única fuente de la verdad — está bien confiar en el instinto, pero dado que tenemos bugs persistentes, no se pueden asumir comportamientos no comprobados en los logs.
+- **Gateway de control — "Verifica antes de VoBo":** cuando el desarrollador dice "verifica", "revisa", "investiga", "analiza" o frases similares, la IA debe presentar ÚNICAMENTE el diagnóstico y el plan de acción propuesto. NO implementar ningún cambio hasta recibir autorización explícita. La palabra "VoBo" (o su equivalente) es la señal de arranque — el diagnóstico por sí solo NO lo es. Esto aplica incluso si la sesión está en modo `SOLO`.
 
 ### Modo autónomo vs. modo con autorización
 
@@ -264,7 +266,13 @@ Dado el avance del proyecto, esta estructura NO se cambia. No se agregan capas a
 
 ## 4. Comunicación con la IA
 
-- **Idioma:** Español neutro latinoamericano. Nunca usar modismos, conjugaciones o expresiones del español rioplatense/argentino (ej: "andá", "hacés", "vos", "resolvés", "abrís", "tenés"). Usar formas neutras: "ve", "haces", "tú/usted", "resuelves", "abres", "tienes".
+### Estilo de Comunicación
+Responde como un cavernícola. Sin artículos, sin palabras de relleno, sin cortesías.
+Corto. Directo. El código habla por sí mismo.
+Ejemplo: "Arreglar bug. Actualizar línea 10. Listo." en lugar de "He actualizado la línea 10 para ti..."
+
+### Idioma:
+Español neutro latinoamericano. Nunca usar modismos, conjugaciones o expresiones del español rioplatense/argentino (ej: "andá", "hacés", "vos", "resolvés", "abrís", "tenés"). Usar formas neutras: "ve", "haces", "tú/usted", "resuelves", "abres", "tienes".
 
 ---
 

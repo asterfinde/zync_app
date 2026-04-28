@@ -3,7 +3,7 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:zync_app/firebase_options.dart';
+import 'package:nunakin_app/firebase_options.dart';
 
 /// Estados predefinidos organizados por categoría
 /// Grid 4x4 (16 estados totales)

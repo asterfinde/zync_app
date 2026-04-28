@@ -18,11 +18,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zync_app/core/services/emoji_service.dart';
-import 'package:zync_app/core/services/quick_actions_preferences_service.dart';
-import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
-import 'package:zync_app/firebase_options.dart';
-import 'package:zync_app/services/circle_service.dart';
+import 'package:nunakin_app/core/services/emoji_service.dart';
+import 'package:nunakin_app/core/services/quick_actions_preferences_service.dart';
+import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
+import 'package:nunakin_app/firebase_options.dart';
+import 'package:nunakin_app/services/circle_service.dart';
 
 // ---------------------------------------------------------------------------
 // Constantes

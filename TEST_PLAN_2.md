@@ -154,7 +154,6 @@
 
 ---
 
----
 
 # SECCIÓN 2 — MODO SILENCIOSO
 
@@ -254,8 +253,9 @@
 
 | ID | Caso | Pasos | Resultado esperado | Estado |
 |:--:|:-----|:------|:-------------------|:------:|
-| MS6.01 | Cambio de estado desde la app → visible en tiempo real para otros miembros | **Teléfono A:** abre la app → selecciona cualquier emoji/estado. **Teléfono B:** observa la pantalla del Círculo sin hacer nada | El Teléfono B muestra el nuevo emoji y nombre del estado del usuario A en menos de 5 segundos, sin necesidad de refrescar | |
-| MS6.02 | Cambio de estado desde el modal BN (app en segundo plano) → visible en tiempo real para otros miembros | **Teléfono A:** cierra la app → desliza la barra de notificaciones → toca el ícono "i" → selecciona cualquier emoji. **Teléfono B:** observa la pantalla del Círculo | El Teléfono B muestra el nuevo emoji del usuario A en menos de 5 segundos | |
+| MS6.01 | Cambio de estado desde la app → visible en tiempo real para otros miembros | **Teléfono A:** abre la app → selecciona cualquier emoji/estado. **Teléfono B:** observa la pantalla del Círculo sin hacer nada | El Teléfono B muestra el nuevo emoji y nombre del estado del usuario A en menos de 5 segundos, sin necesidad de refrescar | 🕔|
+| MS6.02 | Cambio de estado desde el modal BN (app en segundo plano) → visible en tiempo real para otros miembros | **Teléfono A:** cierra la app → desliza la barra de notificaciones → toca el ícono "i" → selecciona cualquier emoji. **Teléfono B:** observa la pantalla del Círculo | El Teléfono B muestra el nuevo emoji del usuario A en menos de 5 segundos | 🕔|
+| MS6.03 | Si se elige un estado/emoji estando la app en MS, la actualización no se lleva a cabo y aparece el estado "Casa" con un emoji que es un alfiler con la cabeza de color rojo  | Modo Silencio activo → modal BN → elegir emoji permitido | El emoji no es el elegido en el modal de la BN, sino "Casa" con el emoji de alfiler rojo  | ❌|
 
 ---
 

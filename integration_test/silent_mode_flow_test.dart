@@ -20,9 +20,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zync_app/firebase_options.dart';
-import 'package:zync_app/services/circle_service.dart';
-import 'package:zync_app/widgets/notification_status_selector.dart';
+import 'package:nunakin_app/firebase_options.dart';
+import 'package:nunakin_app/services/circle_service.dart';
+import 'package:nunakin_app/widgets/notification_status_selector.dart';
 
 // ---------------------------------------------------------------------------
 // Constantes

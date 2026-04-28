@@ -47,6 +47,26 @@
 
 ---
 
+## Mapa de Flujo → Suites de Tests
+
+> El diagrama de flujo Top-Down de pantallas principales es la **fuente de la verdad** para tests y correcciones.
+> Un bug en un nodo raíz se hereda en todos sus derivados.
+> Referencia: `memory/project_flow_source_of_truth.md`
+
+| Nodo | Descripción | Suite | Estado |
+|:---:|:---|:---|:---:|
+| ① | Abrir ZYNC — rama: **Usuario Nuevo** (registro) | T-OPEN §1 | ✅ Cubierto — Fase 1 T01–T03 |
+| ① | Abrir ZYNC — rama: **Nueva Sesión** (login explícito) | T-OPEN §2 | ✅ Cubierto — Fase 1 T04, T08 |
+| ① | Abrir ZYNC — rama: **Sesión Existente** (lee dispositivo + último emoji) | T-OPEN §3 | 🔴 ROTO — `clearOfflineStatus()` resetea a `fine` en lugar de restaurar |
+| ③ | Existe ícono "i" — **SI** (Modo Silencio activo al arrancar) | T-SILENT-RESTART §1 | 🔴 Pendiente — Cambio 3 no implementado |
+| ③ | Existe ícono "i" — **NO** (apertura normal con sesión activa) | T-SILENT-RESTART §2 | ✅ Funciona (cubierto por ST.C5) |
+| ② | Tap Modo Silencioso — **SI** | ST.A (SEGUNDO TRAMO) | ✅ PR #99 |
+| ② | Tap Modo Silencioso — **NO** → interacción Pantalla Círculo | ST.B (SEGUNDO TRAMO) + Fase 3 | 🟡 ST.B1–ST.B4 pendientes |
+| ② | Cerrar Sesión desde Ajustes — **SI** | T-LOGOUT | ✅ Fase 1 T08 + Fase 4 T4.9 + PT.6 |
+| ② | Cerrar Sesión desde Ajustes — **NO** → modal Círculo | Fase 3 (modal) | ✅ G1.A1–G1.A5 |
+
+---
+
 ## Fase 1 — Registro y Login de Usuarios
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
@@ -290,12 +310,12 @@ Es necesario que para que estas opciones funcionen, primero se deberá activar e
 
 | # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
 |:---:|:---|:---|:---|:---:|:---:|
-| **ST.A1** | Tap "Modo Silencio" → app desaparece de recientes | Desde pantalla del Círculo → confirmar en dialog → observar app en recientes | La app **no aparece** en la lista de apps recientes | Alta | |
-| **ST.A2** | Tap "Modo Silencio" → ícono "i" aparece en BN | Mismos pasos de ST.A1 | Ícono "i" aparece en Barra de Notificaciones dentro de ~3s | Alta | |
-| **ST.A3** | Proceso sigue vivo tras cierre | Ejecutar `adb shell ps \| grep zync` inmediatamente después de ST.A1 | Proceso `com.datainfers.zync` **sigue vivo** en la lista | Alta | |
-| **ST.A4** | Notificación persiste tras cierre | Observar BN después de ST.A1 durante 30s | Ícono "i" permanece visible, no parpadea ni desaparece | Alta | |
-| **ST.A5** | Segundo tap (idempotencia) → también cierra | Con Modo Silencio activo → reabrir app → tap "Modo Silencio" nuevamente | App desaparece de recientes (igual que ST.A1). Ícono "i" permanece sin duplicarse | Media | |
-| **ST.A6** | Notificación no parpadea durante cierre | Observar BN en el momento exacto del cierre | La notificación no desaparece momentáneamente ni se reinicia | Media | |
+| **ST.A1** | Tap "Modo Silencio" → app desaparece de recientes | Desde pantalla del Círculo → confirmar en dialog → observar app en recientes | La app **no aparece** en la lista de apps recientes | Alta | ✅ |
+| **ST.A2** | Tap "Modo Silencio" → ícono "i" aparece en BN | Mismos pasos de ST.A1 | Ícono "i" aparece en Barra de Notificaciones dentro de ~3s | Alta | ✅ |
+| **ST.A3** | Proceso sigue vivo tras cierre | Ejecutar `adb shell ps \| grep zync` inmediatamente después de ST.A1 | Proceso `com.datainfers.zync` **sigue vivo** en la lista | Alta | ✅ |
+| **ST.A4** | Notificación persiste tras cierre | Observar BN después de ST.A1 durante 30s | Ícono "i" permanece visible, no parpadea ni desaparece | Alta | ✅ |
+| **ST.A5** | Segundo tap (idempotencia) → también cierra | Con Modo Silencio activo → reabrir app → tap "Modo Silencio" nuevamente | App desaparece de recientes (igual que ST.A1). Ícono "i" permanece sin duplicarse | Media | ✅ |
+| **ST.A6** | Notificación no parpadea durante cierre | Observar BN en el momento exacto del cierre | La notificación no desaparece momentáneamente ni se reinicia | Media | ✅ |
 
 ---
 
@@ -326,11 +346,11 @@ Es necesario que para que estas opciones funcionen, primero se deberá activar e
 
 | # | Caso de Prueba | Pasos | Resultado Esperado | Prioridad | Estado |
 |:---:|:---|:---|:---|:---:|:---:|
-| **ST.D1** | Logout → ícono "i" desaparece | Con Modo Silencio activo → Ajustes → Cerrar Sesión | Ícono "i" desaparece. Redirige a Login | Alta | |
-| **ST.D2** | Seleccionar emoji desde pantalla del Círculo (sin Modo Silencio) | Sin activar Modo Silencio → tocar emoji en pantalla → seleccionar estado | Estado actualizado en Firebase. Sin efectos secundarios en BN | Alta | |
-| **ST.D3** | Activar SOS desde pantalla del Círculo (sin Modo Silencio) | Sin activar Modo Silencio → hold 1s en SOS | Flujo SOS completo sin regresiones | Alta | |
-| **ST.D4** | PT.1–PT.6 del PRIMER TRAMO siguen pasando | Ejecutar los 6 casos del PRIMER TRAMO | Todos ✅. El ícono permanece activo durante el proceso vivo | Alta | |
-| **ST.D5** | Swipe manual de recientes con Modo Silencio activo (edge case) | Con Modo Silencio activo y app visible en recientes (si aplica) → swipe para cerrar | Ícono "i" permanece activo. El swipe no desactiva el Modo Silencio | Media | |
+| **ST.D1** | Logout → ícono "i" desaparece | Con Modo Silencio activo → Ajustes → Cerrar Sesión | Ícono "i" desaparece. Redirige a Login | Alta | ✅ |
+| **ST.D2** | Seleccionar emoji desde pantalla del Círculo (sin Modo Silencio) | Sin activar Modo Silencio → tocar emoji en pantalla → seleccionar estado | Estado actualizado en Firebase. Sin efectos secundarios en BN | Alta | ✅ |
+| **ST.D3** | Activar SOS desde pantalla del Círculo (sin Modo Silencio) | Sin activar Modo Silencio → hold 1s en SOS | Flujo SOS completo sin regresiones | Alta | ✅ |
+| **ST.D4** | PT.1–PT.6 del PRIMER TRAMO siguen pasando | Ejecutar los 6 casos del PRIMER TRAMO | Todos ✅. El ícono permanece activo durante el proceso vivo | Alta | ✅ |
+| **ST.D5** | Swipe manual de recientes con Modo Silencio activo (edge case) | Con Modo Silencio activo y app visible en recientes (si aplica) → swipe para cerrar | Ícono "i" permanece activo. El swipe no desactiva el Modo Silencio | Media | ✅ |
 
 ---
 
@@ -374,6 +394,82 @@ Los siguientes tests del plan anterior describen comportamiento que cambia con l
 | G1.B4 | "App se minimiza" | App **desaparece de recientes** |
 | 4.3 | `moveTaskToBack(true)` — app pasa al background | `finishAndRemoveTask()` — app cerrada de recientes |
 | 4.11 | Pendiente de implementación | Cubierto por ST.C1 |
+
+---
+
+## T-OPEN — App Start (Nodo ①)
+
+> **Fuente de la verdad:** rama "Sesión Existente" del nodo ① debe **leer el último emoji/estado del dispositivo/Firebase**, no resetear.
+>
+> **Bug activo:** `clearOfflineStatus()` en `status_service.dart:290` hardcodea `'statusType': 'fine'`.
+> Esto rompe la rama "Sesión Existente" y, por cascada, cualquier apertura post-Silent-Mode.
+
+### §1 — Usuario Nuevo (primera apertura)
+
+> Cobertura existente: Fase 1 T01–T03 + Fase 2 T01–T04. No se requieren casos adicionales.
+
+| # | Caso de Prueba | Resultado Esperado | Tipo | Estado |
+|:---:|:---|:---|:---:|:---:|
+| **TO.1.1** | App abre sin cuenta → pantalla de registro visible | Pantalla de login/registro. Sin crash | 👁 | ✅ Cubierto Fase 1 T01 |
+| **TO.1.2** | Registro exitoso → redirige a NoCircleView | Aparecen tarjetas "Crear Círculo" y "Unirse a un Círculo" | 👁 | ✅ Cubierto Fase 2 T01 |
+
+---
+
+### §2 — Nueva Sesión (usuario existente, sesión cerrada)
+
+> Cobertura existente: Fase 1 T04 + T08. No se requieren casos adicionales.
+
+| # | Caso de Prueba | Resultado Esperado | Tipo | Estado |
+|:---:|:---|:---|:---:|:---:|
+| **TO.2.1** | App abre sin sesión activa → pantalla de Login | Login visible, no Círculo | 👁 | ✅ Cubierto Fase 1 T04 |
+| **TO.2.2** | Login exitoso → aterriza en Pantalla Círculo | Círculo visible con el último emoji del usuario | 👁 | ✅ Cubierto Fase 1 T08 |
+
+---
+
+### §3 — Sesión Existente (app cerrada sin logout)
+
+> **Comportamiento correcto:** la app restaura el último emoji/estado guardado en Firebase.
+> **NO** resetea a `fine`. El flag `loggedOut` se elimina pero el `statusType` se preserva.
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Tipo | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **TO.3.1** | Sesión activa → aterriza directo en Círculo sin Login | (A) Estar logueado → (B) Forzar cierre de app sin logout → (C) Reabrir | Pantalla Círculo directa. Login no aparece | 👁 | ❌ PENDIENTE |
+| **TO.3.2** | Último emoji se preserva al reabrir | (A) Setear emoji ≠ `fine` (ej: "Reunión") → (B) Cerrar app sin logout → (C) Reabrir | Emoji = "Reunión". **No** muestra 🙂 "Todo bien" | 👁 | 🔴 BUG — resetea a `fine` |
+| **TO.3.3** | Emoji se preserva tras logout + re-login | (A) Setear emoji → (B) Logout → (C) Login → ver Círculo | Emoji = valor anterior al logout | 👁 | 🔴 BUG — resetea a `fine` |
+| **TO.3.4** | Flag `loggedOut` se elimina correctamente | Después de TO.3.3 → verificar doc Firestore `circles/{id}/memberStatus/{uid}` | Campo `loggedOut` ausente. `statusType` = valor previo | 👁 | 🔴 BUG — `statusType` sobreescrito |
+
+**Causa raíz TO.3.2–TO.3.4:** `clearOfflineStatus()` en `status_service.dart:273–297` hace:
+```dart
+'memberStatus.${user.uid}.statusType': 'fine',  // ← hardcodeado, debe eliminarse
+```
+**Fix:** eliminar esa línea. Solo borrar el flag `loggedOut`. El `statusType` existente no se toca.
+
+---
+
+## T-SILENT-RESTART — Arranque con Modo Silencio (Nodo ③)
+
+> **Contexto:** El Nodo ③ se activa siempre que el usuario tiene sesión existente (rama "NO" del Nodo ①).
+> La app verifica si hay un ícono "i" activo en la Barra de Notificaciones.
+
+### §1 — CON Modo Silencio activo al abrir la app
+
+> **Implementación pendiente:** Cambio 3 en `MainActivity.kt:onCreate()`.
+> Si `isSilentModeActive == true` al arrancar → desactivar servicio + notificación + flag.
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Tipo | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **SR.1.1** | Ícono "i" desaparece al abrir app desde launcher | (A) Activar Modo Silencio → (B) Tocar ícono de ZYNC en launcher | Ícono "i" desaparece de BN en ≤2s | 👁 | 🔴 Pendiente — Cubierto por ST.C1 (sin estado aún) |
+| **SR.1.2** | App aterriza en Pantalla Círculo (no en Login) | Mismos pasos de SR.1.1 | Pantalla Círculo directa. Sin pantalla de Login | 👁 | 🔴 Pendiente — Cubierto por ST.C2 |
+| **SR.1.3** | Emoji anterior se preserva al desactivar Silent Mode | (A) Setear emoji "Reunión" → (B) Activar Silent Mode → (C) Abrir app | Emoji = "Reunión". **No** muestra "Todo bien" | 👁 | 🔴 BUG — ligado a TO.3.2 |
+| **SR.1.4** | Datos del círculo preservados (miembros, estados) | Mismos pasos de SR.1.2 → verificar lista de miembros | Todos los miembros y estados visibles, sin recarga desde cero | 👁 | 🔴 Pendiente |
+
+### §2 — SIN Modo Silencio activo al abrir la app (sesión existente)
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Tipo | Estado |
+|:---:|:---|:---|:---|:---:|:---:|
+| **SR.2.1** | App abre normalmente → BN sin cambios | Cerrar app sin Silent Mode → reabrir desde launcher | No aparece ícono "i". BN sin modificaciones | 👁 | ✅ Cubierto por ST.C5 |
+| **SR.2.2** | Emoji anterior se preserva | (A) Setear emoji → (B) Cerrar app sin logout → (C) Reabrir | Emoji = valor anterior | 👁 | 🔴 BUG — ligado a TO.3.2 |
+| **SR.2.3** | Múltiples ciclos abrir/cerrar sin efectos secundarios | (A–C) de SR.2.2 repetido 3 veces | Sin aparición involuntaria de ícono "i". Sin regresiones | 👁 | 🔴 Pendiente — Cubierto por ST.E2 |
 
 ---
 

@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:zync_app/core/models/user_status.dart';
-import 'package:zync_app/core/services/status_service.dart';
-import 'package:zync_app/core/services/emoji_service.dart';
-import 'package:zync_app/core/widgets/status_widget.dart';
-import 'package:zync_app/widgets/status_selector_overlay.dart';
+import 'package:nunakin_app/core/models/user_status.dart';
+import 'package:nunakin_app/core/services/status_service.dart';
+import 'package:nunakin_app/core/services/emoji_service.dart';
+import 'package:nunakin_app/core/widgets/status_widget.dart';
+import 'package:nunakin_app/widgets/status_selector_overlay.dart';
 
 /// Bottom Sheet con grid de emojis para cambiar estado del usuario
 /// REFACTORED: Ahora carga emojis dinámicamente desde Firebase
@@ -311,13 +311,13 @@ void showEmojiStatusBottomSheet(BuildContext context) {
 
 // import 'package:flutter/material.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import 'package:zync_app/features/circle/domain/entities/user_status.dart';
-// import 'package:zync_app/features/circle/domain/usecases/send_user_status.dart';
-// import 'package:zync_app/features/auth/presentation/provider/auth_provider.dart';
-// import 'package:zync_app/features/auth/presentation/provider/auth_state.dart';
-// import 'package:zync_app/features/circle/presentation/provider/circle_provider.dart';
-// import 'package:zync_app/features/circle/presentation/provider/circle_state.dart';
-// import 'package:zync_app/core/di/injection_container.dart' as di;
+// import 'package:nunakin_app/features/circle/domain/entities/user_status.dart';
+// import 'package:nunakin_app/features/circle/domain/usecases/send_user_status.dart';
+// import 'package:nunakin_app/features/auth/presentation/provider/auth_provider.dart';
+// import 'package:nunakin_app/features/auth/presentation/provider/auth_state.dart';
+// import 'package:nunakin_app/features/circle/presentation/provider/circle_provider.dart';
+// import 'package:nunakin_app/features/circle/presentation/provider/circle_state.dart';
+// import 'package:nunakin_app/core/di/injection_container.dart' as di;
 
 // class EmojiModal extends ConsumerStatefulWidget {
 //   const EmojiModal({super.key});
@@ -474,13 +474,13 @@ void showEmojiStatusBottomSheet(BuildContext context) {
 
 // import 'package:flutter/material.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import 'package:zync_app/features/circle/domain/entities/user_status.dart';
-// import 'package:zync_app/features/circle/domain/usecases/send_user_status.dart';
-// import 'package:zync_app/features/auth/presentation/provider/auth_provider.dart';
-// import 'package:zync_app/features/auth/presentation/provider/auth_state.dart';
-// import 'package:zync_app/features/circle/presentation/provider/circle_provider.dart';
-// import 'package:zync_app/features/circle/presentation/provider/circle_state.dart';
-// import 'package:zync_app/core/di/injection_container.dart' as di;
+// import 'package:nunakin_app/features/circle/domain/entities/user_status.dart';
+// import 'package:nunakin_app/features/circle/domain/usecases/send_user_status.dart';
+// import 'package:nunakin_app/features/auth/presentation/provider/auth_provider.dart';
+// import 'package:nunakin_app/features/auth/presentation/provider/auth_state.dart';
+// import 'package:nunakin_app/features/circle/presentation/provider/circle_provider.dart';
+// import 'package:nunakin_app/features/circle/presentation/provider/circle_state.dart';
+// import 'package:nunakin_app/core/di/injection_container.dart' as di;
 
 // class EmojiModal extends ConsumerStatefulWidget {
 //   const EmojiModal({super.key});
