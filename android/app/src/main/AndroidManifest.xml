@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
-        android:label="zync_app"
+        android:label="NunaKin"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

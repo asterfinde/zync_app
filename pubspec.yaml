@@ -1,5 +1,5 @@
-name: zync_app
-description: "A new Flutter project."
+name: nunakin_app
+description: "NunaKin – Voluntary family awareness app. Status sharing and SOS for trusted circles."
 publish_to: 'none'
 
 version: 1.0.0+1
