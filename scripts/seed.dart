@@ -1,16 +1,16 @@
 // test/seed_database_test.dart
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zync_app/core/di/injection_container.dart' as di;
+import 'package:nunakin_app/core/di/injection_container.dart' as di;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:zync_app/core/usecases/usecase.dart';
-import 'package:zync_app/features/auth/domain/usecases/sign_in_or_register.dart';
-import 'package:zync_app/features/auth/domain/usecases/sign_out.dart';
-import 'package:zync_app/features/circle/domain/repositories/circle_repository.dart';
-import 'package:zync_app/features/circle/domain/usecases/create_circle.dart';
-import 'package:zync_app/features/circle/domain/usecases/join_circle.dart';
-import 'package:zync_app/firebase_options.dart';
+import 'package:nunakin_app/core/usecases/usecase.dart';
+import 'package:nunakin_app/features/auth/domain/usecases/sign_in_or_register.dart';
+import 'package:nunakin_app/features/auth/domain/usecases/sign_out.dart';
+import 'package:nunakin_app/features/circle/domain/repositories/circle_repository.dart';
+import 'package:nunakin_app/features/circle/domain/usecases/create_circle.dart';
+import 'package:nunakin_app/features/circle/domain/usecases/join_circle.dart';
+import 'package:nunakin_app/firebase_options.dart';
 
 // --- Configuración ---
 const user1Email = 'usuario1@zync.com';

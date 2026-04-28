@@ -1,10 +1,10 @@
 // Se mantiene por si acaso
-import 'package:zync_app/core/widgets/status_widget.dart';
-import 'package:zync_app/widgets/widget_service.dart';
-import 'package:zync_app/quick_actions/quick_actions_service.dart';
-import 'package:zync_app/notifications/notification_service.dart';
-import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
-import 'package:zync_app/core/services/app_badge_service.dart';
+import 'package:nunakin_app/core/widgets/status_widget.dart';
+import 'package:nunakin_app/widgets/widget_service.dart';
+import 'package:nunakin_app/quick_actions/quick_actions_service.dart';
+import 'package:nunakin_app/notifications/notification_service.dart';
+import 'package:nunakin_app/core/services/silent_functionality_coordinator.dart';
+import 'package:nunakin_app/core/services/app_badge_service.dart';
 
 /// Servicio centralizado de inicialización
 /// Se ejecuta en BACKGROUND para no bloquear el splash screen

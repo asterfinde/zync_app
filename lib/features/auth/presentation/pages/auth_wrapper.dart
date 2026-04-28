@@ -2,15 +2,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
-import 'package:zync_app/features/auth/presentation/pages/auth_final_page.dart';
-import 'package:zync_app/core/services/silent_functionality_coordinator.dart';
-import 'package:zync_app/core/services/status_service.dart';
-import 'package:zync_app/core/services/app_badge_service.dart';
-import 'package:zync_app/core/services/session_cache_service.dart';
-import 'package:zync_app/notifications/notification_service.dart';
+import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
+import 'package:nunakin_app/features/auth/presentation/pages/auth_final_page.dart';
+import 'package:nunakin_app/core/services/silent_functionality_coordinator.dart';
+import 'package:nunakin_app/core/services/status_service.dart';
+import 'package:nunakin_app/core/services/app_badge_service.dart';
+import 'package:nunakin_app/core/services/session_cache_service.dart';
+import 'package:nunakin_app/notifications/notification_service.dart';
 import 'package:app_settings/app_settings.dart';
-import 'package:zync_app/services/circle_service.dart';
+import 'package:nunakin_app/services/circle_service.dart';
 
 /// AuthWrapper: Verifica el estado de autenticación y muestra la pantalla correcta
 ///

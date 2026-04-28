@@ -1,5 +1,5 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:zync_app/core/models/user_status.dart';
+import 'package:nunakin_app/core/models/user_status.dart';
 import 'dart:developer';
 
 /// Servicio para manejo de GPS y ubicación

@@ -4,7 +4,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
+import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});

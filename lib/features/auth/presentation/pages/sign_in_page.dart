@@ -10,7 +10,7 @@ import '../provider/auth_provider.dart';
 import '../provider/auth_state.dart';
 import '../widgets/auth_form.dart';
 
-// import 'package:zync_app/features/circle/presentation/pages/home_page.dart';
+// import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
 
 
 

@@ -5,22 +5,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:zync_app/firebase_options.dart';
-import 'package:zync_app/features/auth/presentation/pages/auth_wrapper.dart';
+import 'package:nunakin_app/firebase_options.dart';
+import 'package:nunakin_app/features/auth/presentation/pages/auth_wrapper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:zync_app/core/models/user_status.dart';
-// import 'package:zync_app/core/di/injection_container.dart' as di; // 🔥 SIMPLIFICADO: Ya no se usa para Auth
-import 'package:zync_app/core/cache/persistent_cache.dart'; // CACHE PERSISTENTE
-import 'package:zync_app/core/utils/performance_tracker.dart'; // PERFORMANCE TRACKING
-import 'package:zync_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
-import 'package:zync_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
-import 'package:zync_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
-import 'package:zync_app/core/services/status_service.dart'; // Para actualizar estado desde native
-import 'package:zync_app/core/services/emoji_service.dart'; // Para cargar emojis desde Firebase
-import 'package:zync_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
+import 'package:nunakin_app/core/models/user_status.dart';
+// import 'package:nunakin_app/core/di/injection_container.dart' as di; // 🔥 SIMPLIFICADO: Ya no se usa para Auth
+import 'package:nunakin_app/core/cache/persistent_cache.dart'; // CACHE PERSISTENTE
+import 'package:nunakin_app/core/utils/performance_tracker.dart'; // PERFORMANCE TRACKING
+import 'package:nunakin_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
+import 'package:nunakin_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
+import 'package:nunakin_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
+import 'package:nunakin_app/core/services/status_service.dart'; // Para actualizar estado desde native
+import 'package:nunakin_app/core/services/emoji_service.dart'; // Para cargar emojis desde Firebase
+import 'package:nunakin_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
 // StatusType class
-import 'package:zync_app/services/circle_service.dart'; // Para verificar membresía en círculo
+import 'package:nunakin_app/services/circle_service.dart'; // Para verificar membresía en círculo
 
 import 'core/global_keys.dart';
 
@@ -274,10 +274,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 // import 'package:flutter/material.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import 'package:google_fonts/google_fonts.dart';
-// import 'package:zync_app/firebase_options.dart';
-// import 'package:zync_app/features/auth/presentation/pages/auth_wrapper.dart';
-// import 'package:zync_app/core/splash/splash_screen.dart';
-// import 'package:zync_app/core/services/initialization_service.dart';
+// import 'package:nunakin_app/firebase_options.dart';
+// import 'package:nunakin_app/features/auth/presentation/pages/auth_wrapper.dart';
+// import 'package:nunakin_app/core/splash/splash_screen.dart';
+// import 'package:nunakin_app/core/services/initialization_service.dart';
 
 // import 'core/global_keys.dart';
 
