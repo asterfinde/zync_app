@@ -15,6 +15,12 @@ class GeofencingService {
   final ZoneService _zoneService = ZoneService();
   final ZoneEventService _eventService = ZoneEventService();
 
+  // Cuando el usuario elige un emoji desde la BN con el proceso muerto, al reabrir
+  // startMonitoring() dispararía checkCurrentLocation() y sobreescribiría ese emoji
+  // con el estado de zona (ENTRY). Este flag hace que ese primer check se omita,
+  // preservando lo que StatusUpdateWorker ya escribió en Firestore.
+  static bool _suppressNextInitialCheck = false;
+
   // Estado del servicio
   bool _isMonitoring = false;
   StreamSubscription<Position>? _positionSubscription;
@@ -39,8 +45,17 @@ class GeofencingService {
       _isMonitoring = true;
 
       // Verificar ubicación actual en background — no bloquea el arranque de la UI
-      // ni dispara modales de zona durante initState (fix: modal automático al reabrir)
-      Future.microtask(() => checkCurrentLocation());
+      // ni dispara modales de zona durante initState (fix: modal automático al reabrir).
+      // Si el flag está activo, omitir el check inicial para no sobreescribir el emoji
+      // elegido en la BN mientras el proceso estaba muerto (fix Bug 1 Silent Mode reopen).
+      Future.microtask(() async {
+        if (_suppressNextInitialCheck) {
+          _suppressNextInitialCheck = false;
+          log('[GeofencingService] ⏭️ Initial check omitido — status pendiente de BN');
+          return;
+        }
+        checkCurrentLocation();
+      });
 
       // Configurar monitoreo continuo
       _positionSubscription = Geolocator.getPositionStream(
@@ -201,6 +216,12 @@ class GeofencingService {
       }
     } // Actualizar estado actual
     _currentZoneId = newZoneId;
+  }
+
+  /// Señala que el próximo checkCurrentLocation() al iniciar debe omitirse.
+  /// Llamar desde main.dart tras aplicar un status elegido en la BN con proceso muerto.
+  static void suppressNextCheckOnReopen() {
+    _suppressNextInitialCheck = true;
   }
 
   /// Obtener zona actual del usuario

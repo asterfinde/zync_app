@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:nunakin_app/firebase_options.dart';
 import 'package:nunakin_app/features/auth/presentation/pages/auth_wrapper.dart';
+import 'package:nunakin_app/features/geofencing/services/geofencing_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
@@ -98,6 +99,9 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
     final result = await StatusService.updateUserStatus(statusType);
 
     if (result.isSuccess) {
+      // Suprimir el próximo checkCurrentLocation() al reabrir la app: evita que
+      // GeofencingService sobreescriba este emoji con el estado de zona (Bug 1).
+      GeofencingService.suppressNextCheckOnReopen();
       print('✅ [NATIVE→FLUTTER] Estado actualizado en Firebase: ${statusType.description}');
     } else {
       print('❌ [NATIVE→FLUTTER] Error actualizando estado: ${result.errorMessage}');
