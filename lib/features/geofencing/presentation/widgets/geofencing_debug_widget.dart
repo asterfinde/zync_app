@@ -175,10 +175,10 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
 
         print('[DebugWidget] ✅ Entrada a zona: ${zone.name} (${zone.type.emoji})');
       } else {
-        // SALIDA DE ZONA
-        statusData['statusType'] = 'driving'; // 🚗 En camino
-        statusData['customEmoji'] = '🚗';
-        statusData['zoneName'] = 'En camino';
+        // SALIDA DE ZONA → 'fine' (REGLAS_NEGOCIO.md §5 — igual que GeofencingService)
+        statusData['statusType'] = 'fine';
+        statusData['customEmoji'] = null;
+        statusData['zoneName'] = null;
         statusData['zoneId'] = null;
 
         // Guardar última zona conocida si existe
@@ -187,7 +187,7 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
           statusData['lastKnownZoneTime'] = FieldValue.serverTimestamp();
         }
 
-        print('[DebugWidget] ✅ Salida de zona: En camino 🚗');
+        print('[DebugWidget] ✅ Salida de zona: Bien 🙂');
       }
 
       await FirebaseFirestore.instance.collection('circles').doc(widget.circleId).update({
@@ -197,7 +197,7 @@ class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isEntry ? '✅ Entrada a ${zone?.name}' : '✅ Salida: En camino'),
+            content: Text(isEntry ? '✅ Entrada a ${zone?.name}' : '✅ Salida: Bien 🙂'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
