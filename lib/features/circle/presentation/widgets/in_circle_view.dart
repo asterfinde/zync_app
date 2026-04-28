@@ -1382,6 +1382,14 @@ class _MemberListItem extends StatelessWidget {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
+                        if (isCurrentUser && status != 'loading') ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            key: const Key('text_tap_hint'),
+                            'Toca para cambiar tu estado',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                        ],
                       ],
                     ),
                   ),
