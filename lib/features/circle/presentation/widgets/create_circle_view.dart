@@ -16,16 +16,44 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
   final _focusNode = FocusNode();
   final _service = CircleService();
   bool _isFormValid = false;
+  bool _focusListenerRegistered = false;
 
   @override
   void initState() {
     super.initState();
     _createController.addListener(_validateForm);
-    // MN6.06: Foco inmediato — postFrameCallback garantiza que el widget está
-    // completamente construido antes de pedir foco, evitando el retraso de autofocus.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) FocusScope.of(context).requestFocus(_focusNode);
-    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_focusListenerRegistered) return;
+    _focusListenerRegistered = true;
+
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation == null) {
+      // Sin animación de ruta (ruta raíz): pedir foco directamente.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) FocusScope.of(context).requestFocus(_focusNode);
+      });
+      return;
+    }
+
+    // Esperar a que la animación de entrada del MaterialPageRoute termine
+    // para que FocusManager no ignore la solicitud mientras la ruta no es "activa".
+    if (animation.status == AnimationStatus.completed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) FocusScope.of(context).requestFocus(_focusNode);
+      });
+    } else {
+      void onRouteAnimationDone(AnimationStatus status) {
+        if (status == AnimationStatus.completed) {
+          animation.removeStatusListener(onRouteAnimationDone);
+          if (mounted) FocusScope.of(context).requestFocus(_focusNode);
+        }
+      }
+      animation.addStatusListener(onRouteAnimationDone);
+    }
   }
 
   void _validateForm() {
