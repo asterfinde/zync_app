@@ -100,10 +100,31 @@ class StatusUpdateWorker(
                     .update("memberStatus.$userId", statusData)
             )
 
+            // ════════════════════════════════════════════════════════════
+            // [FIX] Bugs 2 & 3 — Preservar selección BN al reabrir la app
+            // Fecha: 2026-04-29
+            // PROBLEMA: si el Worker procesa antes de que la app se reabra,
+            //   limpia pending_status y MainActivity.onResume() ya no invoca el
+            //   canal status_update. Como GeofencingService.suppressNextCheckOnReopen()
+            //   solo se llama desde _updateStatusFromNative() en Flutter, el flag
+            //   in-memory queda en false y el initial check de geofencing
+            //   sobreescribe la selección BN al detectar zona vigente.
+            // SOLUCIÓN: persistir un flag en FlutterSharedPreferences que main.dart
+            //   leerá antes de runApp() para suprimir el próximo check inicial.
+            //   Solo se escribe tras éxito real en Firestore — si el worker falla
+            //   o hace bail-out por timestamp mismatch, no se setea (Flutter ya
+            //   habrá procesado vía canal e invocado el suppress in-memory).
+            // ════════════════════════════════════════════════════════════
+            applicationContext
+                .getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("flutter.suppress_next_geofence_check", true)
+                .apply()
+
             // Limpiar pending_status para que Flutter no lo reprocese al reabrir la app
             prefs.edit().clear().apply()
 
-            Log.d(TAG, "[DIAG-W6] Firestore.update SUCCESS — '$statusType' escrito. Circle: $circleId")
+            Log.d(TAG, "[DIAG-W6] Firestore.update SUCCESS — '$statusType' escrito. Circle: $circleId. Flag suppress_next_geofence_check=true")
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "[DIAG-W7] EXCEPTION: ${e.javaClass.simpleName}: ${e.message}", e)

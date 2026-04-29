@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nunakin_app/firebase_options.dart';
 import 'package:nunakin_app/features/auth/presentation/pages/auth_wrapper.dart';
 import 'package:nunakin_app/features/geofencing/services/geofencing_service.dart';
@@ -40,6 +41,27 @@ void main() async {
 
   // SessionCache debe estar listo antes de que AuthWrapper renderice
   await SessionCacheService.init();
+
+  // ════════════════════════════════════════════════════════════
+  // [FIX] Bugs 2 & 3 — Preservar selección BN tras Modo Silencio
+  // Fecha: 2026-04-29
+  // PROBLEMA: cuando StatusUpdateWorker procesa el cambio antes de que la app
+  //   se reabra, limpia pending_status y MainActivity.onResume() no invoca el
+  //   canal status_update, por lo que _updateStatusFromNative() nunca corre y
+  //   GeofencingService.suppressNextCheckOnReopen() no se activa. El check
+  //   inicial de geofencing en InCircleView sobreescribe el emoji elegido en
+  //   la BN al detectar al usuario dentro de una zona vigente.
+  // SOLUCIÓN: el Worker setea flutter.suppress_next_geofence_check=true en
+  //   FlutterSharedPreferences. Aquí (antes de runApp y por tanto antes de
+  //   InCircleView.initState) leemos el flag, suprimimos el próximo check y
+  //   limpiamos el flag.
+  // ════════════════════════════════════════════════════════════
+  final flutterPrefs = await SharedPreferences.getInstance();
+  if (flutterPrefs.getBool('suppress_next_geofence_check') ?? false) {
+    GeofencingService.suppressNextCheckOnReopen();
+    await flutterPrefs.remove('suppress_next_geofence_check');
+    print('🛡️ [main] Flag suppress_next_geofence_check leído — initial check será omitido');
+  }
 
   // Registrar handler antes de runApp para evitar race con onResume nativo.
   // onResume invoca status_update antes del primer frame; si el handler se

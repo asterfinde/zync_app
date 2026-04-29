@@ -1,7 +1,7 @@
 // lib/features/auth/presentation/pages/auth_wrapper.dart
 
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth, FirebaseAuthException, User;
 import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
 import 'package:nunakin_app/features/auth/presentation/pages/auth_final_page.dart';
 import 'package:nunakin_app/core/services/silent_functionality_coordinator.dart';
@@ -105,10 +105,29 @@ class _AuthWrapperState extends State<AuthWrapper> {
             });
           }
         }
+      } on FirebaseAuthException catch (e) {
+        // ════════════════════════════════════════════════════════════
+        // [FIX] Bug 1 — No desautenticar tras Modo Silencio prolongado
+        // Fecha: 2026-04-29
+        // PROBLEMA: el catch genérico cerraba sesión ante CUALQUIER excepción
+        //   en user.reload() — incluyendo errores transitorios (red caída tras
+        //   horas en MS, token caducado momentáneamente). El default de MS es
+        //   permanecer activo; jamás debe disparar logout por sí mismo.
+        // SOLUCIÓN: solo cerrar sesión cuando la cuenta está genuinamente
+        //   inválida (user-not-found, user-disabled). Errores transitorios
+        //   preservan la sesión — Firebase Auth refresca token automáticamente
+        //   en la próxima operación.
+        // ════════════════════════════════════════════════════════════
+        if (e.code == 'user-not-found' || e.code == 'user-disabled') {
+          print('⚠️ [AuthWrapper] Cuenta inválida (${e.code}) — cerrando sesión');
+          await FirebaseAuth.instance.signOut();
+          await SessionCacheService.clearSession();
+        } else {
+          print('ℹ️ [AuthWrapper] Error transitorio verificando cuenta (${e.code}) — manteniendo sesión');
+        }
       } catch (e) {
-        print('⚠️ [AuthWrapper] Token inválido al verificar cuenta: $e — cerrando sesión...');
-        await FirebaseAuth.instance.signOut();
-        await SessionCacheService.clearSession();
+        // Errores no-Firebase (red, timeout, plataforma) → mantener sesión.
+        print('ℹ️ [AuthWrapper] Error no-Firebase verificando cuenta: $e — manteniendo sesión');
       }
     });
   }
