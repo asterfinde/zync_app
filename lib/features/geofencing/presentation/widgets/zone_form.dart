@@ -186,7 +186,10 @@ class _ZoneFormState extends State<ZoneForm> {
     );
   }
 
-  /// Buscar dirección y ubicar en mapa
+  /// Buscar dirección y ubicar en mapa.
+  /// Usa locale es_PE para biasear resultados hacia Perú y, si el geocoding
+  /// devuelve múltiples candidatos, elige el más cercano a la posición GPS
+  /// actual del usuario para evitar resultados de otros países.
   Future<void> _searchAddress() async {
     final address = _addressController.text.trim();
     if (address.isEmpty) return;
@@ -200,8 +203,26 @@ class _ZoneFormState extends State<ZoneForm> {
         throw Exception('No se encontró la dirección');
       }
 
-      final location = locations.first;
-      final newLocation = LatLng(location.latitude, location.longitude);
+      // Si hay múltiples resultados, elegir el más cercano a la posición actual
+      final best = locations.length == 1
+          ? locations.first
+          : locations.reduce((a, b) {
+              final distA = Geolocator.distanceBetween(
+                _selectedLocation.latitude,
+                _selectedLocation.longitude,
+                a.latitude,
+                a.longitude,
+              );
+              final distB = Geolocator.distanceBetween(
+                _selectedLocation.latitude,
+                _selectedLocation.longitude,
+                b.latitude,
+                b.longitude,
+              );
+              return distA <= distB ? a : b;
+            });
+
+      final newLocation = LatLng(best.latitude, best.longitude);
 
       setState(() {
         _selectedLocation = newLocation;
