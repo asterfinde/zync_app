@@ -120,26 +120,6 @@ class _ZoneFormState extends State<ZoneForm> {
         ),
       );
 
-      print('📍 [ZoneForm] Ubicación GPS obtenida: ${position.latitude}, ${position.longitude}');
-      print('📍 [ZoneForm] Precisión: ${position.accuracy}m');
-
-      // Validar que la ubicación sea razonable (Perú está entre -18 y 0 lat, -81 y -68 lng)
-      if (position.latitude < -18 || position.latitude > 0 || position.longitude < -82 || position.longitude > -68) {
-        print('⚠️ [ZoneForm] Ubicación fuera de Perú: ${position.latitude}, ${position.longitude}');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  '⚠️ La ubicación GPS (${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}) parece estar fuera de Perú. Usa el mapa para ajustar manualmente.'),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-        setState(() => _isLoadingLocation = false);
-        return;
-      }
-
       setState(() {
         _selectedLocation = LatLng(position.latitude, position.longitude);
         _isLoadingLocation = false;
