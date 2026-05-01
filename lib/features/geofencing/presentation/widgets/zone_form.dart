@@ -90,27 +90,33 @@ class _ZoneFormState extends State<ZoneForm> {
     return !_existingZones.any((z) => z.type == type);
   }
 
-  /// Obtener ubicación GPS actual del usuario
+  /// Obtener ubicación GPS actual del usuario.
+  /// El GPS es obligatorio para crear/editar zonas — si no está disponible
+  /// se muestra un diálogo bloqueante y se regresa a la pantalla anterior.
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoadingLocation = true);
 
     try {
-      final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        final newPermission = await Geolocator.requestPermission();
-        if (newPermission == LocationPermission.denied || newPermission == LocationPermission.deniedForever) {
-          print('⚠️ [ZoneForm] Permisos de ubicación denegados');
-          setState(() => _isLoadingLocation = false);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('⚠️ Se necesitan permisos de ubicación'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          return;
-        }
+      // Verificar que el servicio de ubicación esté activo a nivel de SO
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showGpsRequiredDialog(
+          'El GPS está desactivado en tu dispositivo.\n\nActívalo para poder crear o editar zonas.',
+        );
+        return;
+      }
+
+      // Verificar/solicitar permisos
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        _showGpsRequiredDialog(
+          'La app necesita permiso de ubicación para crear zonas.\n\nHabilítalo en Configuración para continuar.',
+        );
+        return;
       }
 
       final position = await Geolocator.getCurrentPosition(
@@ -129,18 +135,55 @@ class _ZoneFormState extends State<ZoneForm> {
         CameraUpdate.newLatLngZoom(_selectedLocation, 16),
       );
     } catch (e) {
-      print('❌ [ZoneForm] Error obteniendo ubicación: $e');
-      setState(() => _isLoadingLocation = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ No se pudo obtener ubicación: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      _showGpsRequiredDialog(
+        'No se pudo obtener tu ubicación.\n\nVerifica que el GPS esté activo y vuelve a intentarlo.',
+      );
     }
+  }
+
+  /// Muestra un diálogo bloqueante informando que el GPS es requerido.
+  /// Al cerrarlo regresa a la pantalla anterior.
+  void _showGpsRequiredDialog(String message) {
+    setState(() => _isLoadingLocation = false);
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1E),
+        title: const Row(
+          children: [
+            Icon(Icons.location_off, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('GPS requerido', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Volver',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await Geolocator.openLocationSettings();
+            },
+            child: const Text('Abrir Configuración',
+                style: TextStyle(
+                    color: Color(0xFF1EE9A4),
+                    fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Buscar dirección y ubicar en mapa
