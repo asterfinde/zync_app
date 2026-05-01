@@ -46,14 +46,10 @@ class GeofencingService {
 
       // Verificar ubicación actual en background — no bloquea el arranque de la UI
       // ni dispara modales de zona durante initState (fix: modal automático al reabrir).
-      // Si el flag está activo, omitir el check inicial para no sobreescribir el emoji
-      // elegido en la BN mientras el proceso estaba muerto (fix Bug 1 Silent Mode reopen).
+      // El flag _suppressNextInitialCheck ya no se consume aquí: se consume directamente
+      // en _detectZoneTransition() para cubrir también el stream de Geolocator
+      // (fix AUTH-20260501-001: el stream emitía la primera posición antes del microtask).
       Future.microtask(() async {
-        if (_suppressNextInitialCheck) {
-          _suppressNextInitialCheck = false;
-          log('[GeofencingService] ⏭️ Initial check omitido — status pendiente de BN');
-          return;
-        }
         checkCurrentLocation();
       });
 
@@ -192,6 +188,23 @@ class GeofencingService {
       } catch (e) {
         log('[Geofencing] ❌ Error al actualizar estado en salida: $e');
       }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // [FIX] AUTH-20260501-001 — Suprimir falso ENTER al reabrir
+    // Fecha: 2026-05-01
+    // PROBLEMA: _suppressNextInitialCheck solo cubría el microtask de
+    //   startMonitoring(), pero el stream de Geolocator emitía la primera
+    //   posición independientemente, causando un ENTER espurio cuando
+    //   _currentZoneId == null (nueva instancia tras cada mount).
+    // SOLUCIÓN: consumir el flag aquí, antes del bloque de ENTRADA, para
+    //   cubrir tanto checkCurrentLocation() como el stream.
+    // ════════════════════════════════════════════════════════════
+    if (_suppressNextInitialCheck) {
+      _suppressNextInitialCheck = false;
+      _currentZoneId = newZoneId;
+      log('[GeofencingService] ⏭️ Transición suprimida — status pendiente de BN (newZoneId=$newZoneId)');
+      return;
     }
 
     // ENTRADA a nueva zona

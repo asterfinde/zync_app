@@ -86,7 +86,7 @@ class StatusUpdateWorker(
                 "statusType"    to statusType,
                 "timestamp"     to FieldValue.serverTimestamp(),
                 "autoUpdated"   to false,
-                "manualOverride" to false,
+                "manualOverride" to true,
                 "locationUnknown" to false,
                 "customEmoji"   to null,
                 "zoneName"      to null,
