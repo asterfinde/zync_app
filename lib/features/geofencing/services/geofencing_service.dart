@@ -243,6 +243,24 @@ class GeofencingService {
     if (user == null || _currentCircleId == null) return;
 
     try {
+      // Respetar selección manual del usuario: si manualOverride == true,
+      // el geofencing no debe sobreescribir el estado elegido explícitamente.
+      final circleDoc = await FirebaseFirestore.instance
+          .collection('circles')
+          .doc(_currentCircleId)
+          .get();
+      final currentMemberStatus =
+          circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
+      final currentUserStatus =
+          currentMemberStatus?[user.uid] as Map<String, dynamic>?;
+      final hasManualOverride =
+          currentUserStatus?['manualOverride'] as bool? ?? false;
+
+      if (hasManualOverride) {
+        log('[Geofencing] ⏸️ Actualización automática omitida — usuario tiene selección manual activa');
+        return;
+      }
+
       final Map<String, dynamic> statusData = {
         'timestamp': FieldValue.serverTimestamp(),
       };
