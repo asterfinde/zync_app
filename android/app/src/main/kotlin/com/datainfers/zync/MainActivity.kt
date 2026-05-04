@@ -102,8 +102,12 @@ class MainActivity: FlutterActivity() {
         // Verificar si hay estado guardado
         currentUserId = NativeStateManager.getUserId(this)
 
-        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-        Log.d("DIAG-AUTH-001", "[MainActivity.onCreate] uid=$uid ts=${System.currentTimeMillis()}")
+        if (com.google.firebase.FirebaseApp.getApps(this).isNotEmpty()) {
+            val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+            Log.d("DIAG-AUTH-001", "[MainActivity.onCreate] uid=$uid ts=${System.currentTimeMillis()}")
+        } else {
+            Log.d("DIAG-AUTH-001", "[MainActivity.onCreate] Firebase NOT initialized ts=${System.currentTimeMillis()}")
+        }
 
         // G2.C1: Restaurar isSilentModeActive desde SharedPrefs (sobrevive al swipe/kill del proceso)
         val silentPrefs = getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
