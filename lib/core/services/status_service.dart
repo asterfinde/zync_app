@@ -240,7 +240,7 @@ class StatusService {
       // ════════════════════════════════════════════════════════════
       try {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('flutter.current_status_id', newStatus.id);
+        await prefs.setString('current_status_id', newStatus.id);
         log('[StatusService] 💾 current_status_id guardado: ${newStatus.id}');
       } catch (e) {
         log('[StatusService] ⚠️ Error guardando current_status_id: $e');

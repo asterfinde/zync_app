@@ -763,7 +763,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                         String? activeStatusId;
                                         try {
                                           final prefs = await SharedPreferences.getInstance();
-                                          activeStatusId = prefs.getString('flutter.current_status_id');
+                                          activeStatusId = prefs.getString('current_status_id');
                                         } catch (_) {}
                                         if (context.mounted) {
                                           showEmojiStatusBottomSheet(

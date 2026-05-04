@@ -106,17 +106,28 @@ class StatusUpdateWorker(
                 if (hasFineLocation) {
                     try {
                         val locationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
-                        val locationTask = locationClient.getCurrentLocation(
-                            Priority.PRIORITY_HIGH_ACCURACY,
-                            null
-                        )
-                        val location = Tasks.await(locationTask, 6, TimeUnit.SECONDS)
-                        if (location != null) {
-                            sosLat = location.latitude
-                            sosLng = location.longitude
-                            Log.d(TAG, "[DIAG-SOS] GPS obtenido: lat=$sosLat lng=$sosLng")
+
+                        // Paso 1: getLastLocation (cache — rápido, no requiere fix GPS activo)
+                        val lastLoc = Tasks.await(locationClient.lastLocation, 3, TimeUnit.SECONDS)
+                        if (lastLoc != null) {
+                            sosLat = lastLoc.latitude
+                            sosLng = lastLoc.longitude
+                            Log.d(TAG, "[DIAG-SOS] GPS obtenido via lastLocation: lat=$sosLat lng=$sosLng")
                         } else {
-                            Log.w(TAG, "[DIAG-SOS] GPS null tras await — sin coordenadas")
+                            // Paso 2: getCurrentLocation con CancellationToken válido
+                            Log.d(TAG, "[DIAG-SOS] lastLocation null, escalando a getCurrentLocation")
+                            val cts = com.google.android.gms.tasks.CancellationTokenSource()
+                            val curLoc = Tasks.await(
+                                locationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token),
+                                6, TimeUnit.SECONDS
+                            )
+                            if (curLoc != null) {
+                                sosLat = curLoc.latitude
+                                sosLng = curLoc.longitude
+                                Log.d(TAG, "[DIAG-SOS] GPS obtenido via getCurrentLocation: lat=$sosLat lng=$sosLng")
+                            } else {
+                                Log.w(TAG, "[DIAG-SOS] GPS null en ambos intentos — sin coordenadas")
+                            }
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "[DIAG-SOS] GPS exception: ${e.javaClass.simpleName}: ${e.message}")
@@ -168,6 +179,7 @@ class StatusUpdateWorker(
                 .getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean("flutter.suppress_next_geofence_check", true)
+                .putString("flutter.current_status_id", statusType)
                 .apply()
 
             // Limpiar pending_status para que Flutter no lo reprocese al reabrir la app
