@@ -44,6 +44,8 @@ class KeepAliveService : Service() {
                 val notification = createNotification()
                 startForeground(NOTIFICATION_ID, notification)
                 Log.d(TAG, "🔄 [KEEP-ALIVE] startForeground re-afirmado (handler periódico)")
+                val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                Log.d("DIAG-AUTH-001", "[KeepAlive tick] uid=$uid ts=${System.currentTimeMillis()}")
             } catch (e: Exception) {
                 Log.w(TAG, "⚠️ [KEEP-ALIVE] Error en tick periódico: ${e.message}")
             }
