@@ -63,6 +63,16 @@ class EmojiDialogActivity : Activity() {
     // Tipos de zona configurados (se bloquean en el grid)
     private lateinit var configuredZoneTypes: Set<String>
 
+    // ════════════════════════════════════════════════════════════
+    // [FIX] Indicador visual de estado activo
+    // Fecha: 2026-05-04
+    // PROBLEMA: El modal nativo no mostraba cuál estado estaba activo.
+    // SOLUCIÓN: Leer flutter.current_status_id de SharedPreferences en
+    //           onCreate() y aplicar borde 2px #1CE4B3 + fondo #1CE4B3
+    //           al 12% en la celda coincidente.
+    // ════════════════════════════════════════════════════════════
+    private var activeStatusId: String? = null
+
     // SOS press & hold
     private val sosHandler = Handler(Looper.getMainLooper())
     private var sosHoldRunnable: Runnable? = null
@@ -79,6 +89,11 @@ class EmojiDialogActivity : Activity() {
 
         emojis = loadEmojisFromCache()
         configuredZoneTypes = loadConfiguredZoneTypes()
+
+        // [FIX] Leer estado activo desde SharedPreferences (escrito por StatusService en Flutter)
+        val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        activeStatusId = flutterPrefs.getString("flutter.current_status_id", null)
+        Log.d(TAG, "[ACTIVE-STATUS] activeStatusId=$activeStatusId")
 
         val ws = getSharedPreferences("worker_state", Context.MODE_PRIVATE)
         Log.d(TAG, "[DIAG-WS] BN onCreate worker_state: userId=${ws.getString("userId", null)} circleId='${ws.getString("circleId", null)}'")
@@ -328,16 +343,27 @@ class EmojiDialogActivity : Activity() {
 
         mainEmojis.forEach { (emoji, label, statusId) ->
             val isBlocked = configuredZoneTypes.contains(statusId)
+            val isActive = statusId == activeStatusId
             if (isBlocked) Log.d(TAG, "[DIAG-MN409] BLOCKED: $statusId")
+            if (isActive) Log.d(TAG, "[ACTIVE-STATUS] Resaltando celda activa: $statusId")
 
             val container = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dpToPx(4), dpToPx(6), dpToPx(4), dpToPx(6))
                 background = GradientDrawable().apply {
-                    setColor(if (isBlocked) Color.parseColor("#4D424242") else Color.parseColor("#99424242"))
+                    // [FIX] Decorador visual: fondo #1CE4B3 al 12% + borde 2px #1CE4B3 si activo
+                    setColor(when {
+                        isActive  -> Color.argb(31, 28, 228, 179)  // #1CE4B3 @ ~12%
+                        isBlocked -> Color.parseColor("#4D424242")
+                        else      -> Color.parseColor("#99424242")
+                    })
                     cornerRadius = dpToPx(12).toFloat()
-                    setStroke(dpToPx(1), Color.parseColor("#66757575"))
+                    if (isActive) {
+                        setStroke(dpToPx(2), Color.parseColor("#1CE4B3"))
+                    } else {
+                        setStroke(dpToPx(1), Color.parseColor("#66757575"))
+                    }
                 }
                 if (!isBlocked) {
                     foreground = android.graphics.drawable.RippleDrawable(
@@ -409,15 +435,19 @@ class EmojiDialogActivity : Activity() {
 
     private fun buildSosButton(sosItem: Triple<String, String, String>): LinearLayout {
         val (sosEmoji, _, sosId) = sosItem
+        // [FIX] Decorador visual para SOS cuando es el estado activo
+        val isSosActive = sosId == activeStatusId
 
         val button = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dpToPx(16), dpToPx(14), dpToPx(16), dpToPx(14))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#E53935")) // rojo
+                // Si SOS está activo: fondo #1CE4B3 al 12% + borde 2px #1CE4B3
+                // Si no: fondo rojo normal + borde rojo
+                setColor(if (isSosActive) Color.argb(31, 28, 228, 179) else Color.parseColor("#E53935"))
                 cornerRadius = dpToPx(12).toFloat()
-                setStroke(dpToPx(2), Color.parseColor("#E53935"))
+                setStroke(dpToPx(2), if (isSosActive) Color.parseColor("#1CE4B3") else Color.parseColor("#E53935"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
