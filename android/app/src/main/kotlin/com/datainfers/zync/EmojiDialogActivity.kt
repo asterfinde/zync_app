@@ -131,13 +131,27 @@ class EmojiDialogActivity : Activity() {
 
     /**
      * Carga emojis para el modal.
-     * Estrategia: siempre usa el fallback hardcodeado como base (idéntico al StatusSelectorOverlay
-     * de Flutter) y agrega encima los emojis personalizados del círculo extraídos del cache.
-     * Esto garantiza que los predefinidos siempre coincidan con la fuente de la verdad,
-     * independientemente del estado de Firebase.
+     * Estrategia: lee todos los ítems del cache (predefinidos + custom) sin filtrar por tipo.
+     * Construye la lista final en orden: predefinidos (según predefinedIds) + custom.
+     * Si algún ID predefinido no está en el cache, se inyecta desde hardcodedFallback como
+     * red de seguridad (primera instalación / cache vacío / corrupto).
+     * Esto garantiza que los emojis del modal BN coincidan con los del modal Círculo,
+     * ya que ambos leen de la misma fuente: el cache sincronizado por EmojiCacheService.
+     *
+     * ════════════════════════════════════════════════════════════
+     * [FIX] AUTH-20260504-003 — Sincronización emojis predefinidos
+     * Fecha: 2026-05-04
+     * PROBLEMA: loadEmojisFromCache() filtraba todos los predefinidos del cache con
+     *   !predefinedIds.contains(id), forzando que los predefinidos siempre vinieran del
+     *   hardcodedFallback. Si el cache tenía datos distintos (ej. etiquetas actualizadas),
+     *   el modal BN mostraba datos desincronizados respecto al modal Círculo.
+     * SOLUCIÓN: Parsear todos los ítems del cache sin filtrar; usar hardcodedFallback
+     *   solo para IDs predefinidos ausentes en el cache (red de seguridad).
+     * ════════════════════════════════════════════════════════════
      */
     private fun loadEmojisFromCache(): List<Triple<String, String, String>> {
-        val customEmojis = mutableListOf<Triple<String, String, String>>()
+        // Mapa id → Triple para todos los ítems encontrados en el cache
+        val cacheMap = mutableMapOf<String, Triple<String, String, String>>()
 
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val cachedJson = prefs.getString("flutter.predefined_emojis", null)
@@ -168,14 +182,14 @@ class EmojiDialogActivity : Activity() {
                         if (emojiMatch != null) emoji = emojiMatch.groupValues[1]
                         if (labelMatch != null) shortLabel = labelMatch.groupValues[1]
 
-                        // Solo agregar si no es predefinido (son los custom del círculo)
-                        if (id.isNotEmpty() && emoji.isNotEmpty() && !predefinedIds.contains(id)) {
-                            customEmojis.add(Triple(emoji, shortLabel, id))
+                        // Incluir todos los ítems válidos del cache (predefinidos y custom)
+                        if (id.isNotEmpty() && emoji.isNotEmpty()) {
+                            cacheMap[id] = Triple(emoji, shortLabel, id)
                         }
                     }
                 }
 
-                Log.d(TAG, "✅ [CACHE] ${customEmojis.size} emoji(s) personalizado(s) encontrado(s)")
+                Log.d(TAG, "✅ [CACHE] ${cacheMap.size} emoji(s) encontrado(s) en cache")
             } catch (e: Exception) {
                 Log.e(TAG, "❌ [CACHE] Error parseando: ${e.message}")
             }
@@ -183,8 +197,22 @@ class EmojiDialogActivity : Activity() {
             Log.d(TAG, "⚠️ [CACHE] Sin cache de emojis")
         }
 
-        val result = hardcodedFallback + customEmojis
-        Log.d(TAG, "✅ [EMOJIS] Total: ${result.size} (${hardcodedFallback.size} predefinidos + ${customEmojis.size} custom)")
+        // Fallback indexado por id para búsqueda O(1)
+        val fallbackMap = hardcodedFallback.associateBy { (_, _, id) -> id }
+
+        // 1. Predefinidos: en el orden de predefinedIds
+        //    Fuente preferida: cache. Si falta el id: hardcodedFallback (red de seguridad).
+        val predefinedList = predefinedIds.mapNotNull { id ->
+            cacheMap[id] ?: fallbackMap[id].also {
+                if (it != null) Log.d(TAG, "⚠️ [CACHE] '$id' ausente en cache — usando hardcodedFallback")
+            }
+        }
+
+        // 2. Custom: ítems del cache cuyo id no pertenece a predefinedIds
+        val customList = cacheMap.values.filter { (_, _, id) -> !predefinedIds.contains(id) }
+
+        val result = predefinedList + customList
+        Log.d(TAG, "✅ [EMOJIS] Total: ${result.size} (${predefinedList.size} predefinidos + ${customList.size} custom)")
         return result
     }
 
