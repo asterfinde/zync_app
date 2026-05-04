@@ -1,13 +1,19 @@
 package com.datainfers.zync
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.concurrent.TimeUnit
 
 /**
  * Worker para actualizar estado en Firestore cuando la app está cerrada.
@@ -80,6 +86,46 @@ class StatusUpdateWorker(
             }
 
             // Write directo a Firestore — mismo esquema que StatusService.updateUserStatus() en Flutter
+
+            // ════════════════════════════════════════════════════════════
+            // [FIX AUTH-20260504-002] Capturar GPS para estado SOS desde BN
+            // Fecha: 2026-05-04
+            // PROBLEMA: statusData no incluía 'coordinates' cuando statusType == "sos"
+            //   → InCircleView nunca mostraba el enlace "Ubicación SOS compartida".
+            // SOLUCIÓN: capturar ubicación con FusedLocationProviderClient antes de
+            //   construir statusData. Solo aplica a statusType == "sos". Timeout 6s.
+            //   Si falla o sin permiso, continúa sin coordenadas.
+            // ════════════════════════════════════════════════════════════
+            var sosLat: Double? = null
+            var sosLng: Double? = null
+            if (statusType == "sos") {
+                val hasFineLocation = ContextCompat.checkSelfPermission(
+                    applicationContext,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+                if (hasFineLocation) {
+                    try {
+                        val locationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
+                        val locationTask = locationClient.getCurrentLocation(
+                            Priority.PRIORITY_HIGH_ACCURACY,
+                            null
+                        )
+                        val location = Tasks.await(locationTask, 6, TimeUnit.SECONDS)
+                        if (location != null) {
+                            sosLat = location.latitude
+                            sosLng = location.longitude
+                            Log.d(TAG, "[DIAG-SOS] GPS obtenido: lat=$sosLat lng=$sosLng")
+                        } else {
+                            Log.w(TAG, "[DIAG-SOS] GPS null tras await — sin coordenadas")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "[DIAG-SOS] GPS exception: ${e.javaClass.simpleName}: ${e.message}")
+                    }
+                } else {
+                    Log.w(TAG, "[DIAG-SOS] Sin permiso ACCESS_FINE_LOCATION — sin coordenadas")
+                }
+            }
+
             val db = FirebaseFirestore.getInstance()
             val statusData = hashMapOf<String, Any?>(
                 "userId"        to userId,
@@ -91,6 +137,9 @@ class StatusUpdateWorker(
                 "customEmoji"   to null,
                 "zoneName"      to null,
                 "zoneId"        to null,
+                "coordinates"   to if (statusType == "sos" && sosLat != null && sosLng != null)
+                    hashMapOf("latitude" to sosLat, "longitude" to sosLng)
+                else null,
             )
 
             Log.d(TAG, "[DIAG-W6] Firestore.update STARTING — circle=$circleId userId=$userId statusType=$statusType")

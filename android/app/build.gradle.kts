@@ -89,4 +89,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.android.gms:play-services-tasks:18.2.0")
+
+    // FusedLocationProviderClient para coordenadas GPS en SOS desde BN (AUTH-20260504-002)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }
