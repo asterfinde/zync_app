@@ -293,13 +293,20 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
 }
 
 /// Función helper para mostrar el modal unificado
-void showEmojiStatusBottomSheet(BuildContext context) {
+// ════════════════════════════════════════════════════════════
+// [FIX] Indicador visual de estado activo
+// Fecha: 2026-05-04
+// PROBLEMA: El modal no resaltaba el estado ya seleccionado.
+// SOLUCIÓN: Parámetro activeStatusId opcional propagado a StatusSelectorOverlay.
+// ════════════════════════════════════════════════════════════
+void showEmojiStatusBottomSheet(BuildContext context, {String? activeStatusId}) {
   // Usar el mismo modal que las notificaciones para consistencia
   Navigator.of(context).push(
     PageRouteBuilder(
       opaque: false, // Permite transparencia
       pageBuilder: (context, animation, secondaryAnimation) {
         return StatusSelectorOverlay(
+          activeStatusId: activeStatusId,
           onClose: () {
             print('[EmojiModal] Modal cerrado por usuario');
           },

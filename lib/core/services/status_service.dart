@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
 import 'app_badge_service.dart';
 import 'gps_service.dart';
@@ -229,6 +230,21 @@ class StatusService {
 
       await batch.commit();
       log('[StatusService] ✅ Estado actualizado exitosamente${coordinates != null ? ' con GPS' : ''}');
+
+      // ════════════════════════════════════════════════════════════
+      // [FIX] Persistir ID del estado activo en SharedPreferences
+      // Fecha: 2026-05-04
+      // PROBLEMA: El modal de selección no mostraba cuál estado estaba activo.
+      // SOLUCIÓN: Escribir flutter.current_status_id tras commit exitoso para
+      //           que in_circle_view y EmojiDialogActivity puedan leerlo.
+      // ════════════════════════════════════════════════════════════
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('flutter.current_status_id', newStatus.id);
+        log('[StatusService] 💾 current_status_id guardado: ${newStatus.id}');
+      } catch (e) {
+        log('[StatusService] ⚠️ Error guardando current_status_id: $e');
+      }
 
       // Actualizar notificación persistente con nuevo estado
       await _updatePersistentNotification(newStatus);

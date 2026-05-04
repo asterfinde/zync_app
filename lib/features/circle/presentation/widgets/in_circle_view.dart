@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 // Asegúrate que las rutas de importación sean correctas para tu proyecto
 import '../../../../services/circle_service.dart';
@@ -750,9 +751,27 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                 isCurrentUser: isCurrentUser,
                                 isFirst: index == 0,
                                 memberData: memberData,
+                                // ════════════════════════════════════════════════════════════
+                                // [FIX] Indicador visual de estado activo
+                                // Fecha: 2026-05-04
+                                // PROBLEMA: El modal no resaltaba el estado ya seleccionado.
+                                // SOLUCIÓN: Leer flutter.current_status_id de SharedPreferences
+                                //           y pasarlo a showEmojiStatusBottomSheet.
+                                // ════════════════════════════════════════════════════════════
                                 onTap: isCurrentUser
-                                    ? () => showEmojiStatusBottomSheet(
-                                        context) // Asume que esta función existe y es importada
+                                    ? () async {
+                                        String? activeStatusId;
+                                        try {
+                                          final prefs = await SharedPreferences.getInstance();
+                                          activeStatusId = prefs.getString('flutter.current_status_id');
+                                        } catch (_) {}
+                                        if (context.mounted) {
+                                          showEmojiStatusBottomSheet(
+                                            context,
+                                            activeStatusId: activeStatusId,
+                                          );
+                                        }
+                                      }
                                     : null,
                                 onOpenMaps: _openGoogleMaps,
                                 predefinedEmojis: _predefinedEmojis, // NUEVO: Pasar lista de emojis

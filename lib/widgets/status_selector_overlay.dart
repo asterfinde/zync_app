@@ -11,10 +11,19 @@ import '../core/services/status_service.dart';
 /// Reutiliza el StatusService existente sin romper nada
 class StatusSelectorOverlay extends StatefulWidget {
   final VoidCallback? onClose;
+  // ════════════════════════════════════════════════════════════
+  // [FIX] Indicador visual de estado activo
+  // Fecha: 2026-05-04
+  // PROBLEMA: El modal no mostraba cuál estado estaba activo.
+  // SOLUCIÓN: Parámetro opcional activeStatusId — la celda coincidente
+  //           recibe borde 2px #1CE4B3 + fondo #1CE4B3 al 12%.
+  // ════════════════════════════════════════════════════════════
+  final String? activeStatusId;
 
   const StatusSelectorOverlay({
     super.key,
     this.onClose,
+    this.activeStatusId,
   });
 
   @override
@@ -238,6 +247,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
     // - S.O.S siempre visible (sin reemplazar por spinner)
     // - Subtítulo: "Enviando SOS..." inmediato al presionar
     final bgColor = _sosHolding ? const Color(0xFFB71C1C) : Colors.red;
+    final isSosActive = widget.activeStatusId == 'sos';
 
     // Listener en lugar de GestureDetector: onPointerCancel sólo se dispara
     // por cancelación de hardware (ej: llamada entrante), NO por micro-movimientos
@@ -251,10 +261,12 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: isSosActive && !_sosHolding
+              ? const Color(0xFF1CE4B3).withValues(alpha: 0.12)
+              : bgColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: bgColor,
+            color: isSosActive ? const Color(0xFF1CE4B3) : bgColor,
             width: 2,
           ),
         ),
@@ -512,6 +524,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   /// Construye botón de estado individual
   Widget _buildStatusButton(StatusType status) {
     final isBlockedZone = _configuredZoneTypes.contains(status.id);
+    final isActive = widget.activeStatusId != null && widget.activeStatusId == status.id;
 
     return Material(
       color: Colors.transparent,
@@ -520,13 +533,17 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            color: (_isUpdating || isBlockedZone)
-                ? Colors.grey.shade800.withOpacity(0.3)
-                : Colors.grey.shade800.withOpacity(0.6), // Fondo oscuro transparente
+            color: isActive
+                ? const Color(0xFF1CE4B3).withValues(alpha: 0.12)
+                : (_isUpdating || isBlockedZone)
+                    ? Colors.grey.shade800.withOpacity(0.3)
+                    : Colors.grey.shade800.withOpacity(0.6),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.grey.shade600.withOpacity(0.4), // Borde sutil
-              width: 1,
+              color: isActive
+                  ? const Color(0xFF1CE4B3)
+                  : Colors.grey.shade600.withOpacity(0.4),
+              width: isActive ? 2 : 1,
             ),
           ),
           child: Column(
