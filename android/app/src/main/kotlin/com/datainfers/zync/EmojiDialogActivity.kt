@@ -1,8 +1,10 @@
 package com.datainfers.zync
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -15,6 +17,8 @@ import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -78,6 +82,19 @@ class EmojiDialogActivity : Activity() {
     private var sosHoldRunnable: Runnable? = null
     private var sosButtonView: LinearLayout? = null
     private var sosLabelView: TextView? = null
+
+    // ════════════════════════════════════════════════════════════
+    // [FIX] AUTH-20260504-008 — Verificación de permiso GPS antes de SOS
+    // Fecha: 2026-05-04
+    // PROBLEMA: SOS se encolaba en StatusUpdateWorker sin verificar
+    //           ACCESS_FINE_LOCATION; SosGpsProvider retornaba null
+    //           y el enlace de ubicación no aparecía.
+    // SOLUCIÓN: Verificar permiso antes de despachar; si falta, solicitarlo
+    //           y completar el despacho en onRequestPermissionsResult.
+    // ════════════════════════════════════════════════════════════
+    private val GPS_PERMISSION_REQUEST_CODE = 1001
+    private var pendingSosEmoji: String? = null
+    private var pendingSosId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -492,7 +509,7 @@ class EmojiDialogActivity : Activity() {
                     }
                     sosHoldRunnable = Runnable {
                         Log.d(TAG, "🆘 [SOS] Hold completado - enviando SOS")
-                        updateUserStatus(sosEmoji, sosId)
+                        handleSosWithPermissionCheck(sosEmoji, sosId)
                     }
                     sosHandler.postDelayed(sosHoldRunnable!!, 1000)
                     true
@@ -590,6 +607,34 @@ class EmojiDialogActivity : Activity() {
         }
 
         dialog.show()
+    }
+
+    private fun handleSosWithPermissionCheck(emoji: String, statusId: String) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED) {
+            updateUserStatus(emoji, statusId)
+        } else {
+            pendingSosEmoji = emoji
+            pendingSosId = statusId
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                GPS_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == GPS_PERMISSION_REQUEST_CODE) {
+            val emoji = pendingSosEmoji
+            val statusId = pendingSosId
+            pendingSosEmoji = null
+            pendingSosId = null
+            if (emoji != null && statusId != null) {
+                updateUserStatus(emoji, statusId)
+            }
+        }
     }
 
     private fun updateUserStatus(emoji: String, status: String) {
