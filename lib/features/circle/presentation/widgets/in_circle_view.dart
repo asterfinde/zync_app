@@ -772,7 +772,22 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                           // SOLUCIÓN: Leer manual_status_id, que solo escribe
                                           //           StatusService.updateUserStatus() (Dart).
                                           // ════════════════════════════════════════════════════════════
-                                          activeStatusId = prefs.getString('manual_status_id');
+                                          // ════════════════════════════════════════════════════════════
+                                          // [FIX] En Modo Silencio usar pre_silent_status_id
+                                          // Fecha: 2026-05-05
+                                          // PROBLEMA: Tras ~12h en background, el Worker sobreescribe
+                                          //           manual_status_id. El modal muestra emoji incorrecto.
+                                          // SOLUCIÓN: Si is_silent_mode_active == true, usar
+                                          //           pre_silent_status_id (snapshot guardado antes de
+                                          //           activar el Modo Silencio).
+                                          // ════════════════════════════════════════════════════════════
+                                          final silentPrefs = await SharedPreferences.getInstance();
+                                          final isSilentActive = silentPrefs.getBool('is_silent_mode_active') ?? false;
+                                          if (isSilentActive) {
+                                            activeStatusId = prefs.getString('pre_silent_status_id');
+                                          } else {
+                                            activeStatusId = prefs.getString('manual_status_id');
+                                          }
                                         } catch (_) {}
                                         if (context.mounted) {
                                           showEmojiStatusBottomSheet(
