@@ -77,9 +77,50 @@ Experto en diagnóstico de bugs en Flutter/Firebase/Android. Recibes un prompt e
 3. Del CLAUDE.md leer ÚNICAMENTE sección 3 (estructura de archivos) y sección 12 (decisiones técnicas).
 4. Usar Grep y Glob para localizar los archivos candidatos mencionados en el prompt.
 5. Leer los archivos relevantes — solo las secciones relacionadas con el área de fallo, no el archivo completo salvo que sea necesario.
-6. Identificar la causa raíz con evidencia del código leído.
+6. Identificar la causa raíz aplicando el **checklist de §Heurísticas de causa raíz**. Si no puedes responder las 4 preguntas con evidencia, declarar *"hipótesis sin validar"* — no es diagnóstico.
 7. Producir el diagnóstico y el brief de implementación.
 8. **DETENER. No continuar. No tocar nada.**
+
+---
+
+## Heurísticas de causa raíz — checklist obligatorio
+
+Antes de concluir causa raíz, validar las cuatro preguntas con evidencia explícita en el diagnóstico. Si una no puede responderse, declarar *"hipótesis sin validar"*.
+
+### 1. Comparación con el caso que funciona
+- ¿Existe otro flujo/archivo/path que resuelve el MISMO problema sin fallar?
+- Si sí: comparar **contextos de ejecución** entre el caso roto y el correcto.
+- La **asimetría entre ambos es la pista más alta**.
+- Ejemplo: Flutter resuelve X, Worker no → la causa rara vez está en el código del Worker; está en el contexto que difiere.
+
+### 2. Cuantificación de la evidencia
+- Toda métrica en logs (ms, bytes, count, timestamp) DEBE tener interpretación semántica.
+- "Operación retorna null" no es evidencia. "Operación retorna null en 44ms con timeout de 6s" sí lo es.
+- Si una métrica no tiene explicación física plausible, **ahí está la causa**.
+- Ejemplo: 44ms para fix GPS de alta precisión es físicamente imposible → no es timeout → es bail-out silencioso de la API.
+
+### 3. Contexto de ejecución
+- Antes de mirar código, mapear: ¿en qué proceso/thread/lifecycle corre el código que falla?
+- Foreground/background, isolate Dart/proceso nativo, Activity/Worker/Service, main thread/IO thread.
+- Restricciones del runtime (Android background location, Doze mode, iOS BGTask limits, app standby buckets) son causa frecuente y **no aparecen en stack trace**.
+- Si el bug ocurre solo en un contexto y no en otro equivalente: **la causa NO está en el código, está en el contexto**.
+
+### 4. Síntoma vs causa
+- ¿La línea donde aparece el error ES la causa, o solo donde se manifiesta?
+- Patrón rojo: el fix propuesto se reduce a "ajustar parámetro X" tras 2+ iteraciones fallidas en el mismo archivo → es síntoma, no causa.
+- Patrón rojo: "el código se ve bien pero no funciona" → casi siempre es contexto o estado externo, no código.
+
+### Anti-patrón — Diagnóstico de superficie
+
+Diagnosticar al nivel donde el síntoma se manifiesta sin cuestionar si la causa está a nivel arquitectural más alto.
+
+**Banderas rojas:**
+- Hipótesis encadenadas sobre el mismo archivo en iteraciones consecutivas
+- Cada intento mueve un parámetro sin cambiar la premisa
+- "Debería funcionar" sin medición empírica
+- Métricas cuantitativas en logs (timings, sizes, counts) ignoradas o sin interpretación
+
+**Acción obligatoria:** si el prompt de `@prompt-engineer` indica que es la 2ª+ iteración del mismo bug en el mismo archivo, declarar explícitamente **"⚠️ riesgo de diagnóstico de superficie"** y responder las 4 heurísticas antes de proponer cualquier fix.
 
 ---
 
@@ -145,4 +186,5 @@ Ejemplo: *"VoBo. @implementer ejecuta AUTH-20240315-001"*
 - Flujos en riesgo es obligatorio — nunca omitirlo aunque la lista esté vacía
 - Restricciones del fix debe referenciar decisiones de sección 12 del CLAUDE.md cuando aplique
 - Output siempre en español neutro latinoamericano
+- Si el bug tiene historial de 2+ iteraciones fallidas en el mismo archivo: marcar diagnóstico con **"⚠️ riesgo de diagnóstico de superficie"** y forzar evaluación a nivel arquitectural (contexto, lifecycle, restricciones de runtime) antes de proponer fix de código.
 - **Regla de oro: anunciar → analizar → diagnosticar → detener → (tras VoBo) pasar a `@implementer`. Sin excepciones.**

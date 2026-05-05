@@ -1,19 +1,12 @@
 package com.datainfers.zync
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.util.Log
-import androidx.core.content.ContextCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import java.util.concurrent.TimeUnit
 
 /**
  * Worker para actualizar estado en Firestore cuando la app está cerrada.
@@ -88,52 +81,24 @@ class StatusUpdateWorker(
             // Write directo a Firestore — mismo esquema que StatusService.updateUserStatus() en Flutter
 
             // ════════════════════════════════════════════════════════════
-            // [FIX AUTH-20260504-002] Capturar GPS para estado SOS desde BN
+            // [FIX AUTH-20260504-013] GPS capturado en foreground (Activity)
             // Fecha: 2026-05-04
-            // PROBLEMA: statusData no incluía 'coordinates' cuando statusType == "sos"
-            //   → InCircleView nunca mostraba el enlace "Ubicación SOS compartida".
-            // SOLUCIÓN: capturar ubicación con FusedLocationProviderClient antes de
-            //   construir statusData. Solo aplica a statusType == "sos". Timeout 6s.
-            //   Si falla o sin permiso, continúa sin coordenadas.
+            // PROBLEMA: Worker corre en background; Android 10+ retorna null
+            //   en getCurrentLocation sin ACCESS_BACKGROUND_LOCATION (44ms).
+            // SOLUCIÓN: EmojiDialogActivity captura GPS en foreground y pasa
+            //   lat/lng via inputData. Worker solo lee — sin acceso a Location.
             // ════════════════════════════════════════════════════════════
             var sosLat: Double? = null
             var sosLng: Double? = null
             if (statusType == "sos") {
-                val hasFineLocation = ContextCompat.checkSelfPermission(
-                    applicationContext,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-                if (hasFineLocation) {
-                    try {
-                        val locationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
-
-                        // Paso 1: getLastLocation (cache — rápido, no requiere fix GPS activo)
-                        val lastLoc = Tasks.await(locationClient.lastLocation, 3, TimeUnit.SECONDS)
-                        if (lastLoc != null) {
-                            sosLat = lastLoc.latitude
-                            sosLng = lastLoc.longitude
-                            Log.d(TAG, "[DIAG-SOS] GPS obtenido via lastLocation: lat=$sosLat lng=$sosLng")
-                        } else {
-                            // Paso 2: getCurrentLocation con CancellationToken válido
-                            Log.d(TAG, "[DIAG-SOS] lastLocation null, escalando a getCurrentLocation")
-                            val cts = com.google.android.gms.tasks.CancellationTokenSource()
-                            val curLoc = Tasks.await(
-                                locationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token),
-                                6, TimeUnit.SECONDS
-                            )
-                            if (curLoc != null) {
-                                sosLat = curLoc.latitude
-                                sosLng = curLoc.longitude
-                                Log.d(TAG, "[DIAG-SOS] GPS obtenido via getCurrentLocation: lat=$sosLat lng=$sosLng")
-                            } else {
-                                Log.w(TAG, "[DIAG-SOS] GPS null en ambos intentos — sin coordenadas")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "[DIAG-SOS] GPS exception: ${e.javaClass.simpleName}: ${e.message}")
-                    }
+                val latIn = inputData.getDouble("sosLat", Double.NaN)
+                val lngIn = inputData.getDouble("sosLng", Double.NaN)
+                if (!latIn.isNaN() && !lngIn.isNaN()) {
+                    sosLat = latIn
+                    sosLng = lngIn
+                    Log.d(TAG, "[DIAG-SOS] GPS recibido desde Activity (foreground): lat=$sosLat lng=$sosLng")
                 } else {
-                    Log.w(TAG, "[DIAG-SOS] Sin permiso ACCESS_FINE_LOCATION — sin coordenadas")
+                    Log.w(TAG, "[DIAG-SOS] No coordenadas en inputData — SOS sin GPS")
                 }
             }
 
