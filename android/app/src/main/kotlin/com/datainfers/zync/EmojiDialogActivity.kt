@@ -1,8 +1,10 @@
 package com.datainfers.zync
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -15,9 +17,14 @@ import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 
 /**
  * Modal nativo de Android para selección de emojis
@@ -78,6 +85,19 @@ class EmojiDialogActivity : Activity() {
     private var sosHoldRunnable: Runnable? = null
     private var sosButtonView: LinearLayout? = null
     private var sosLabelView: TextView? = null
+
+    // ════════════════════════════════════════════════════════════
+    // [FIX] AUTH-20260504-008 — Verificación de permiso GPS antes de SOS
+    // Fecha: 2026-05-04
+    // PROBLEMA: SOS se encolaba en StatusUpdateWorker sin verificar
+    //           ACCESS_FINE_LOCATION; SosGpsProvider retornaba null
+    //           y el enlace de ubicación no aparecía.
+    // SOLUCIÓN: Verificar permiso antes de despachar; si falta, solicitarlo
+    //           y completar el despacho en onRequestPermissionsResult.
+    // ════════════════════════════════════════════════════════════
+    private val GPS_PERMISSION_REQUEST_CODE = 1001
+    private var pendingSosEmoji: String? = null
+    private var pendingSosId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -492,7 +512,7 @@ class EmojiDialogActivity : Activity() {
                     }
                     sosHoldRunnable = Runnable {
                         Log.d(TAG, "🆘 [SOS] Hold completado - enviando SOS")
-                        updateUserStatus(sosEmoji, sosId)
+                        handleSosWithPermissionCheck(sosEmoji, sosId)
                     }
                     sosHandler.postDelayed(sosHoldRunnable!!, 1000)
                     true
@@ -592,8 +612,75 @@ class EmojiDialogActivity : Activity() {
         dialog.show()
     }
 
-    private fun updateUserStatus(emoji: String, status: String) {
-        Log.d(TAG, "🔥 [HYBRID] Actualizando estado: $emoji ($status)")
+    private fun handleSosWithPermissionCheck(emoji: String, statusId: String) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED) {
+            captureGpsAndDispatch(emoji, statusId)
+        } else {
+            pendingSosEmoji = emoji
+            pendingSosId = statusId
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                GPS_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == GPS_PERMISSION_REQUEST_CODE) {
+            val emoji = pendingSosEmoji
+            val statusId = pendingSosId
+            pendingSosEmoji = null
+            pendingSosId = null
+            if (emoji != null && statusId != null) {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    captureGpsAndDispatch(emoji, statusId)
+                } else {
+                    updateUserStatus(emoji, statusId, null, null)
+                }
+            }
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // [FIX] AUTH-20260504-013 — GPS capturado en foreground (Activity)
+    // Fecha: 2026-05-04
+    // PROBLEMA: Worker corre en background; Android 10+ bloquea
+    //   getCurrentLocation sin ACCESS_BACKGROUND_LOCATION → null en 44ms.
+    // SOLUCIÓN: capturar GPS aquí (Activity en foreground) antes de encolar
+    //   Worker; pasar lat/lng via inputData. Sin restricción de background.
+    // ════════════════════════════════════════════════════════════
+    private fun captureGpsAndDispatch(emoji: String, statusId: String) {
+        Log.d(TAG, "[DIAG-SOS-FG] Iniciando captura GPS en foreground")
+        val client = LocationServices.getFusedLocationProviderClient(this)
+
+        client.lastLocation.addOnCompleteListener { lastTask ->
+            val lastLoc = if (lastTask.isSuccessful) lastTask.result else null
+            if (lastLoc != null) {
+                Log.d(TAG, "[DIAG-SOS-FG] lastLocation OK lat=${lastLoc.latitude} lng=${lastLoc.longitude}")
+                updateUserStatus(emoji, statusId, lastLoc.latitude, lastLoc.longitude)
+            } else {
+                Log.d(TAG, "[DIAG-SOS-FG] lastLocation null, escalando a getCurrentLocation")
+                val cts = CancellationTokenSource()
+                client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+                    .addOnCompleteListener { curTask ->
+                        val curLoc = if (curTask.isSuccessful) curTask.result else null
+                        if (curLoc != null) {
+                            Log.d(TAG, "[DIAG-SOS-FG] getCurrentLocation OK lat=${curLoc.latitude} lng=${curLoc.longitude}")
+                            updateUserStatus(emoji, statusId, curLoc.latitude, curLoc.longitude)
+                        } else {
+                            Log.w(TAG, "[DIAG-SOS-FG] GPS no disponible — dispatch sin coords")
+                            updateUserStatus(emoji, statusId, null, null)
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun updateUserStatus(emoji: String, status: String, sosLat: Double? = null, sosLng: Double? = null) {
+        Log.d(TAG, "🔥 [HYBRID] Actualizando estado: $emoji ($status)${if (sosLat != null) " lat=$sosLat lng=$sosLng" else " sin GPS"}")
 
         val timestamp = System.currentTimeMillis()
 
@@ -612,11 +699,18 @@ class EmojiDialogActivity : Activity() {
             .commit()
         Log.d(TAG, "[DIAG-BN] pending_status COMMITTED ts=$timestamp status=$status emoji=$emoji")
 
-        val workData = Data.Builder()
+        val workDataBuilder = Data.Builder()
             .putString("statusType", status)
             .putString("emoji", emoji)
             .putLong("timestamp", timestamp)
-            .build()
+
+        if (sosLat != null && sosLng != null) {
+            workDataBuilder.putDouble("sosLat", sosLat)
+            workDataBuilder.putDouble("sosLng", sosLng)
+            Log.d(TAG, "[DIAG-SOS-FG] Coords pasadas al Worker: lat=$sosLat lng=$sosLng")
+        }
+
+        val workData = workDataBuilder.build()
 
         val workRequest = OneTimeWorkRequestBuilder<StatusUpdateWorker>()
             .setInputData(workData)

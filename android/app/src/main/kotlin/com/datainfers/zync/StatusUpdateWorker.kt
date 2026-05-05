@@ -1,14 +1,9 @@
 package com.datainfers.zync
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.util.Log
-import androidx.core.content.ContextCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
@@ -88,41 +83,24 @@ class StatusUpdateWorker(
             // Write directo a Firestore — mismo esquema que StatusService.updateUserStatus() en Flutter
 
             // ════════════════════════════════════════════════════════════
-            // [FIX AUTH-20260504-002] Capturar GPS para estado SOS desde BN
+            // [FIX AUTH-20260504-013] GPS capturado en foreground (Activity)
             // Fecha: 2026-05-04
-            // PROBLEMA: statusData no incluía 'coordinates' cuando statusType == "sos"
-            //   → InCircleView nunca mostraba el enlace "Ubicación SOS compartida".
-            // SOLUCIÓN: capturar ubicación con FusedLocationProviderClient antes de
-            //   construir statusData. Solo aplica a statusType == "sos". Timeout 6s.
-            //   Si falla o sin permiso, continúa sin coordenadas.
+            // PROBLEMA: Worker corre en background; Android 10+ retorna null
+            //   en getCurrentLocation sin ACCESS_BACKGROUND_LOCATION (44ms).
+            // SOLUCIÓN: EmojiDialogActivity captura GPS en foreground y pasa
+            //   lat/lng via inputData. Worker solo lee — sin acceso a Location.
             // ════════════════════════════════════════════════════════════
             var sosLat: Double? = null
             var sosLng: Double? = null
             if (statusType == "sos") {
-                val hasFineLocation = ContextCompat.checkSelfPermission(
-                    applicationContext,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-                if (hasFineLocation) {
-                    try {
-                        val locationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
-                        val locationTask = locationClient.getCurrentLocation(
-                            Priority.PRIORITY_HIGH_ACCURACY,
-                            null
-                        )
-                        val location = Tasks.await(locationTask, 6, TimeUnit.SECONDS)
-                        if (location != null) {
-                            sosLat = location.latitude
-                            sosLng = location.longitude
-                            Log.d(TAG, "[DIAG-SOS] GPS obtenido: lat=$sosLat lng=$sosLng")
-                        } else {
-                            Log.w(TAG, "[DIAG-SOS] GPS null tras await — sin coordenadas")
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "[DIAG-SOS] GPS exception: ${e.javaClass.simpleName}: ${e.message}")
-                    }
+                val latIn = inputData.getDouble("sosLat", Double.NaN)
+                val lngIn = inputData.getDouble("sosLng", Double.NaN)
+                if (!latIn.isNaN() && !lngIn.isNaN()) {
+                    sosLat = latIn
+                    sosLng = lngIn
+                    Log.d(TAG, "[DIAG-SOS] GPS recibido desde Activity (foreground): lat=$sosLat lng=$sosLng")
                 } else {
-                    Log.w(TAG, "[DIAG-SOS] Sin permiso ACCESS_FINE_LOCATION — sin coordenadas")
+                    Log.w(TAG, "[DIAG-SOS] No coordenadas en inputData — SOS sin GPS")
                 }
             }
 
@@ -168,6 +146,7 @@ class StatusUpdateWorker(
                 .getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean("flutter.suppress_next_geofence_check", true)
+                .putString("flutter.current_status_id", statusType)
                 .apply()
 
             // Limpiar pending_status para que Flutter no lo reprocese al reabrir la app
