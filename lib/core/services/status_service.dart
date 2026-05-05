@@ -242,6 +242,17 @@ class StatusService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('current_status_id', newStatus.id);
         log('[StatusService] 💾 current_status_id guardado: ${newStatus.id}');
+        // ════════════════════════════════════════════════════════════
+        // [FIX] Persistir manual_status_id desacoplado del BN Worker
+        // Fecha: 2026-05-05
+        // PROBLEMA: StatusUpdateWorker (Kotlin) sobreescribe flutter.current_status_id
+        //           al procesar BN, borrando el último emoji manual del usuario.
+        //           Al abrir el modal, in_circle_view mostraba el emoji incorrecto.
+        // SOLUCIÓN: Escribir también manual_status_id (solo este método lo escribe).
+        //           in_circle_view leerá manual_status_id para el indicador del modal.
+        // ════════════════════════════════════════════════════════════
+        await prefs.setString('manual_status_id', newStatus.id);
+        log('[StatusService] 💾 manual_status_id guardado: ${newStatus.id}');
       } catch (e) {
         log('[StatusService] ⚠️ Error guardando current_status_id: $e');
       }
