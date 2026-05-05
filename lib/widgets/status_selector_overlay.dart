@@ -342,11 +342,26 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
           await _showZoneSelectionNotAllowedModal();
         } else {
           _showErrorFeedback(result.errorMessage ?? 'Error desconocido');
+          // ════════════════════════════════════════════════════════════
+          // [FIX] Cerrar modal en rama else (error no-zone)
+          // Fecha: 2026-05-05
+          // PROBLEMA: Si updateUserStatus retorna isSuccess=false (red fría
+          //           tras ~12h de background), el modal quedaba abierto.
+          // SOLUCIÓN: Cerrar el modal después del feedback de error.
+          // ════════════════════════════════════════════════════════════
+          await _closeModal();
         }
       }
     } catch (e) {
       print('[StatusSelectorOverlay] ❌ Excepción durante actualización: $e');
       _showErrorFeedback(e.toString());
+      // ════════════════════════════════════════════════════════════
+      // [FIX] Cerrar modal en rama catch (excepción)
+      // Fecha: 2026-05-05
+      // PROBLEMA: Si updateUserStatus lanza excepción, el modal quedaba abierto.
+      // SOLUCIÓN: Cerrar el modal después del feedback de error.
+      // ════════════════════════════════════════════════════════════
+      await _closeModal();
     } finally {
       if (mounted) {
         print('[StatusSelectorOverlay] 🔄 Finalizando actualización, reseteando _isUpdating');
