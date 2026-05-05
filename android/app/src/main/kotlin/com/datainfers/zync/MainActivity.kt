@@ -141,6 +141,14 @@ class MainActivity: FlutterActivity() {
                 .remove("pre_silent_status_type")
                 .apply()
 
+            // [FIX-003] Limpiar también los flags escritos por Flutter SharedPreferences
+            // para que in_circle_view.dart no lea is_silent_mode_active=true al reabrir.
+            applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .edit()
+                .remove("flutter.is_silent_mode_active")
+                .remove("flutter.pre_silent_status_id")
+                .apply()
+
             Log.d(TAG, "✅ [SILENT] onCreate — ícono 'i' eliminado, isSilentModeActive=false")
         }
 
@@ -535,9 +543,15 @@ class MainActivity: FlutterActivity() {
                     KeepAliveService.stop(this)
                     NotificationManagerCompat.from(this).cancelAll()
                     isSilentModeActive = false
-                    // G2.C1: Limpiar flag persistido
+                    // G2.C1: Limpiar flag persistido en Kotlin SharedPreferences
                     getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
                         .edit().putBoolean("is_silent_mode_active", false).apply()
+                    // [FIX-003] Limpiar también los flags escritos por Flutter SharedPreferences
+                    applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                        .edit()
+                        .remove("flutter.is_silent_mode_active")
+                        .remove("flutter.pre_silent_status_id")
+                        .apply()
                     result.success(true)
                 }
                 "checkBatteryOptimization" -> {

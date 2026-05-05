@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../services/circle_service.dart';
@@ -122,6 +123,29 @@ class SilentFunctionalityCoordinator {
     }
 
     if (!context.mounted) return;
+
+    // ════════════════════════════════════════════════════════════
+    // [FIX] Persistir estado pre-silencio antes de activar
+    // Fecha: 2026-05-05
+    // PROBLEMA: Tras ~12h en background, el Worker sobreescribe
+    //           flutter.manual_status_id con otro status. Al abrir
+    //           el modal en Modo Silencio, el testigo muestra emoji incorrecto.
+    // SOLUCIÓN: Guardar manual_status_id → pre_silent_status_id antes de
+    //           invocar 'activate'. in_circle_view lee pre_silent_status_id
+    //           cuando is_silent_mode_active == true.
+    // ════════════════════════════════════════════════════════════
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final manualId = prefs.getString('manual_status_id');
+      if (manualId != null) {
+        await prefs.setString('pre_silent_status_id', manualId);
+        debugPrint('[SilentCoordinator] 💾 pre_silent_status_id guardado: $manualId');
+      }
+      await prefs.setBool('is_silent_mode_active', true);
+      debugPrint('[SilentCoordinator] 💾 is_silent_mode_active=true guardado en Flutter SharedPreferences');
+    } catch (e) {
+      debugPrint('[SilentCoordinator] ⚠️ Error guardando pre_silent_status_id: $e');
+    }
 
     try {
       await _channel.invokeMethod('activate');
