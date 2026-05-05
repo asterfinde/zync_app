@@ -763,7 +763,16 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                         String? activeStatusId;
                                         try {
                                           final prefs = await SharedPreferences.getInstance();
-                                          activeStatusId = prefs.getString('current_status_id');
+                                          // ════════════════════════════════════════════════════════════
+                                          // [FIX] Leer manual_status_id en lugar de current_status_id
+                                          // Fecha: 2026-05-05
+                                          // PROBLEMA: current_status_id es sobreescrito por
+                                          //           StatusUpdateWorker (Kotlin/BN), borrando el último
+                                          //           emoji manual al abrir el modal.
+                                          // SOLUCIÓN: Leer manual_status_id, que solo escribe
+                                          //           StatusService.updateUserStatus() (Dart).
+                                          // ════════════════════════════════════════════════════════════
+                                          activeStatusId = prefs.getString('manual_status_id');
                                         } catch (_) {}
                                         if (context.mounted) {
                                           showEmojiStatusBottomSheet(
