@@ -7,5 +7,17 @@ analyzer:
     - lib/features/circle/presentation/provider_old/**
     - lib/features/circle/**/*_backup.dart
     - lib/core/widgets/*_backup.dart
-    - scripts/seed.dart
+    - scripts/**
     - backups/**
+
+linter:
+  rules:
+    # TODO Sem 6 (hardening): activar junto con la limpieza de print() en lib/.
+    # Surfacean ~300 violaciones pre-existentes — limpiar antes de activar.
+    # - avoid_print
+    #
+    # TODO Sem 2: activar cuando los contextos tengan código real y los imports estén migrados.
+    # Surfacean ~285 violaciones pre-existentes en lib/ — activar junto con
+    # la migración de imports al poblar lib/contexts/ y lib/shared/.
+    # - always_use_package_imports
+    # - directives_ordering
