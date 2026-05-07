@@ -129,7 +129,11 @@ class CircleService {
     // Usar batch para operación atómica
     final batch = _firestore.batch();
     batch.set(circleRef, circleData);
-    batch.update(_firestore.collection('users').doc(user.uid), {'circleId': circleRef.id});
+    batch.set(
+      _firestore.collection('users').doc(user.uid),
+      {'circleId': circleRef.id},
+      SetOptions(merge: true),
+    );
 
     await batch.commit();
     log('[CircleService] ✅ Círculo creado exitosamente: ${circleRef.id}');
