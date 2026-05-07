@@ -90,23 +90,27 @@ lib/
 ```
 contexts/<nombre>/
 ├── domain/               ← reglas puras, sin imports externos
-│   ├── entities/
+│   ├── entities/         ← invariantes como métodos de entidad (canX(), assertValid())
 │   ├── value_objects/
-│   ├── events/
-│   └── invariants/
+│   └── events/
+│   # policies/ se crea solo si emergen reglas reutilizables fuera de las entidades
 ├── application/          ← use cases y puertos
 │   ├── ports/            ← interfaces consumidas por el contexto
-│   └── use_cases/
+│   └── use_cases/        ← guards de negocio con Contract
 ├── infrastructure/       ← adapters concretos (Firestore, native, prefs)
-└── presentation/         ← view models + widgets propios del contexto
+│   # ÚNICA capa autorizada a importar platform/
+└── presentation/
+    ├── widgets/          ← widgets atómicos reutilizables del BC (sin pantallas completas)
+    └── view_models/      ← lógica de presentación pura (sin Flutter widgets)
+    # Pantallas completas que orquestan múltiples BCs → app/screens/ (Sem 5)
 ```
 
 **Regla de imports**:
 
 - `domain/` no importa nada fuera de `shared/`.
 - `application/` importa solo `domain/` y `shared/`.
-- `infrastructure/` implementa interfaces de `application/ports/`.
-- `presentation/` consume `application/use_cases/` y `domain/`.
+- `infrastructure/` implementa interfaces de `application/ports/` y es la **única** capa que puede importar `platform/`.
+- `presentation/widgets/` y `presentation/view_models/` consumen `application/use_cases/` y `domain/`. No importan `platform/` ni `infrastructure/` directamente.
 
 ### 2.3 State machine de Presence (pieza crítica)
 
@@ -170,7 +174,57 @@ class SetUserSession extends NativeCommand<void> {
 
 Lado Kotlin: una `BridgeRouter` única + handlers segregados por tipo de evento/comando. `MainActivity.kt` baja de 996 a ≤300 líneas.
 
-### 2.5 Design by Contract (DbC)
+### 2.5 Comunicación entre Bounded Contexts — DomainEventBus
+
+Los BCs no se importan mutuamente. La comunicación se hace vía un `DomainEventBus` tipado (Dart Streams) registrado como singleton en DI (`platform_module.dart`). Vive en `shared/events/`.
+
+```dart
+// shared/events/domain_event.dart
+sealed class DomainEvent {}
+
+class ZoneEntered extends DomainEvent {
+  final String zoneId;
+  final String userId;
+  const ZoneEntered({required this.zoneId, required this.userId});
+}
+
+class ZoneExited extends DomainEvent {
+  final String zoneId;
+  final String userId;
+  const ZoneExited({required this.zoneId, required this.userId});
+}
+
+class SessionEnded extends DomainEvent {
+  final String userId;
+  const SessionEnded({required this.userId});
+}
+
+class NotificationStatusSelected extends DomainEvent {
+  final String statusId;
+  const NotificationStatusSelected({required this.statusId});
+}
+
+// shared/events/domain_event_bus.dart
+class DomainEventBus {
+  final _controller = StreamController<DomainEvent>.broadcast();
+  Stream<DomainEvent> get events => _controller.stream;
+  void publish(DomainEvent event) => _controller.add(event);
+  void dispose() => _controller.close();
+}
+```
+
+**Flujos activos en Nunakin**:
+
+| Publicador | Evento | Suscriptor | Acción |
+|-----------|--------|------------|--------|
+| `geofencing` | `ZoneEntered` | `presence` | `SetAutomaticStatus` |
+| `geofencing` | `ZoneExited` | `presence` | restaurar estado previo |
+| `identity` | `SessionEnded` | `circle`, `presence`, `geofencing`, `notifications` | cleanup |
+| `notifications` | `NotificationStatusSelected` | `presence` | `SetPresenceFromNotification` |
+
+**Regla**: el bus es singleton en DI — nunca un static global. Reemplaza las llamadas directas entre servicios estáticos que hoy causan el Efecto Cascada.
+
+### 2.6 Design by Contract (DbC)
 
 DbC se aplica solo en puntos de invariante crítico (entrada/salida de use cases, transiciones de state machine). Evaluación en debug, no-op en release.
 
