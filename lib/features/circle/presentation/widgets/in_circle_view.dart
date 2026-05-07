@@ -786,7 +786,10 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                           if (isSilentActive) {
                                             activeStatusId = prefs.getString('pre_silent_status_id');
                                           } else {
-                                            activeStatusId = prefs.getString('manual_status_id');
+                                            // Usar status del stream de Firestore — siempre
+                                            // actualizado, evita stale de manual_status_id
+                                            // tras actualización desde modal SM.
+                                            activeStatusId = status == 'loading' ? null : status;
                                           }
                                         } catch (_) {}
                                         if (context.mounted) {
