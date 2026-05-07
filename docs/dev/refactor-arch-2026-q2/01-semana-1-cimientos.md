@@ -44,23 +44,37 @@ Establecer el esqueleto arquitectónico antes de migrar lógica de negocio:
 ```
 lib/
 ├── contexts/
-│   ├── identity/{domain,application/{ports,use_cases},infrastructure,presentation}/.gitkeep
-│   ├── circle/{domain,application/{ports,use_cases},infrastructure,presentation}/.gitkeep
-│   ├── presence/{domain,application/{ports,use_cases},infrastructure,presentation}/.gitkeep
-│   ├── geofencing/{domain,application/{ports,use_cases},infrastructure,presentation}/.gitkeep
-│   └── notifications/{domain,application/{ports,use_cases},infrastructure,presentation}/.gitkeep
+│   ├── identity/
+│   │   ├── domain/.gitkeep
+│   │   ├── application/{ports,use_cases}/.gitkeep
+│   │   ├── infrastructure/.gitkeep
+│   │   └── presentation/{widgets,view_models}/.gitkeep
+│   ├── circle/         (misma estructura)
+│   ├── presence/       (misma estructura)
+│   ├── geofencing/     (misma estructura)
+│   └── notifications/  (misma estructura)
 ├── platform/
 │   ├── bridge/.gitkeep
 │   └── persistence/.gitkeep
-├── shared/.gitkeep
+├── shared/
+│   ├── .gitkeep
+│   └── events/.gitkeep      ← placeholder para DomainEventBus (Sem 2)
 └── app/.gitkeep
 ```
 
-2. Documentar en `lib/contexts/README.md` las reglas de imports (ver §2 del plan unificado).
+   Nota: `presentation/` se divide en `widgets/` (widgets atómicos del BC) y
+   `view_models/` (lógica de presentación). Las pantallas completas que orquestan
+   múltiples BCs van en `app/screens/` (Sem 5). Ver §2.2 de `00-plan-unificado.md`.
 
-3. Configurar `analysis_options.yaml` con regla custom (lint) que bloquee imports prohibidos:
-   - `domain/` no puede importar nada de `infrastructure/` ni de `presentation/`.
-   - Usar `import_lint` o regla manual en `dart_code_metrics`.
+2. Documentar en `lib/contexts/README.md` las reglas de imports (ver §2 del plan unificado),
+   incluyendo: regla de `platform/` solo desde `infrastructure/`, comunicación inter-BC vía
+   `DomainEventBus`, y split de `presentation/`.
+
+3. Configurar `analysis_options.yaml`:
+   - Extender exclude a `scripts/**` (completo).
+   - Documentar como TODO las reglas `always_use_package_imports`, `directives_ordering`
+     (activar Sem 2) y `avoid_print` (activar Sem 6). No activarlas aún — surfacean
+     ~585 violaciones pre-existentes que se limpian con la migración gradual.
 
 **Entregable:** PR `refactor(scaffold): structure for bounded contexts`.
 
@@ -504,21 +518,27 @@ lib/
 │           ├── geofencing_module.dart        (placeholder)
 │           ├── identity_module.dart          (registra Auth)
 │           ├── notifications_module.dart     (placeholder)
-│           ├── platform_module.dart          (registra KvStore)
+│           ├── platform_module.dart          (registra KvStore + DomainEventBus)
 │           └── presence_module.dart          (placeholder)
 │
 ├── contexts/
-│   ├── README.md                             (reglas de imports)
-│   ├── circle/{domain,application,infrastructure,presentation}/   (vacíos)
-│   ├── geofencing/{...}/                     (vacíos)
-│   ├── identity/{...}/                       (vacíos — auth se mueve en Sem 4)
-│   ├── notifications/{...}/                  (vacíos)
+│   ├── README.md                             (reglas de imports + platform/ rule + event bus)
+│   ├── circle/
+│   │   ├── domain/
+│   │   ├── application/{ports,use_cases}/
+│   │   ├── infrastructure/
+│   │   └── presentation/{widgets,view_models}/   (vacíos)
+│   ├── geofencing/     (misma estructura)
+│   ├── identity/       (misma estructura — auth se mueve en Sem 4)
+│   ├── notifications/  (misma estructura)
 │   └── presence/
 │       ├── domain/value_objects/status_id.dart
-│       └── (resto vacío)
+│       ├── application/{ports,use_cases}/
+│       ├── infrastructure/
+│       └── presentation/{widgets,view_models}/   (vacíos)
 │
 ├── platform/
-│   ├── bridge/                               (vacío)
+│   ├── bridge/                               (vacío — se puebla en Sem 3)
 │   └── persistence/
 │       ├── kv_store.dart
 │       ├── native_keys.dart
@@ -527,6 +547,9 @@ lib/
 │
 ├── shared/
 │   ├── contract.dart
+│   ├── events/                               (placeholder — se puebla en Sem 2)
+│   │   ├── domain_event.dart
+│   │   └── domain_event_bus.dart
 │   ├── failure.dart
 │   ├── result.dart
 │   └── unit.dart
