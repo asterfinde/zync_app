@@ -111,7 +111,7 @@ class MainActivity: FlutterActivity() {
 
         // G2.C1: Restaurar isSilentModeActive desde SharedPrefs (sobrevive al swipe/kill del proceso)
         val silentPrefs = getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
-        isSilentModeActive = silentPrefs.getBoolean("is_silent_mode_active", false)
+        isSilentModeActive = silentPrefs.getBoolean(SharedKeys.IS_SILENT_MODE_ACTIVE, false)
         Log.d(TAG, "🌙 [SILENT] onCreate — isSilentModeActive restaurado: $isSilentModeActive")
 
         // ========================================================================
@@ -137,7 +137,7 @@ class MainActivity: FlutterActivity() {
             // Limpiar flags de Modo Silencio. pre_silent_status_type removido —
             // mecanismo obsoleto desde PR #117 (Silent ya no escribe do_not_disturb).
             silentPrefs.edit()
-                .putBoolean("is_silent_mode_active", false)
+                .putBoolean(SharedKeys.IS_SILENT_MODE_ACTIVE, false)
                 .remove("pre_silent_status_type")
                 .apply()
 
@@ -145,8 +145,8 @@ class MainActivity: FlutterActivity() {
             // para que in_circle_view.dart no lea is_silent_mode_active=true al reabrir.
             applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .edit()
-                .remove("flutter.is_silent_mode_active")
-                .remove("flutter.pre_silent_status_id")
+                .remove(SharedKeys.flutter(SharedKeys.IS_SILENT_MODE_ACTIVE))
+                .remove(SharedKeys.flutter(SharedKeys.PRE_SILENT_STATUS_ID))
                 .apply()
 
             Log.d(TAG, "✅ [SILENT] onCreate — ícono 'i' eliminado, isSilentModeActive=false")
@@ -531,7 +531,7 @@ class MainActivity: FlutterActivity() {
 
                     getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
                         .edit()
-                        .putBoolean("is_silent_mode_active", true)
+                        .putBoolean(SharedKeys.IS_SILENT_MODE_ACTIVE, true)
                         .apply()
 
                     Log.d(TAG, "🌙 [SILENT] isSilentModeActive=true — cerrando app (Regla 2)")
@@ -545,12 +545,12 @@ class MainActivity: FlutterActivity() {
                     isSilentModeActive = false
                     // G2.C1: Limpiar flag persistido en Kotlin SharedPreferences
                     getSharedPreferences("zync_silent_mode", Context.MODE_PRIVATE)
-                        .edit().putBoolean("is_silent_mode_active", false).apply()
+                        .edit().putBoolean(SharedKeys.IS_SILENT_MODE_ACTIVE, false).apply()
                     // [FIX-003] Limpiar también los flags escritos por Flutter SharedPreferences
                     applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                         .edit()
-                        .remove("flutter.is_silent_mode_active")
-                        .remove("flutter.pre_silent_status_id")
+                        .remove(SharedKeys.flutter(SharedKeys.IS_SILENT_MODE_ACTIVE))
+                        .remove(SharedKeys.flutter(SharedKeys.PRE_SILENT_STATUS_ID))
                         .apply()
                     result.success(true)
                 }

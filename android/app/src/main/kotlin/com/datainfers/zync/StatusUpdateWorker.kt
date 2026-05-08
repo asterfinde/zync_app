@@ -145,8 +145,8 @@ class StatusUpdateWorker(
             applicationContext
                 .getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .edit()
-                .putBoolean("flutter.suppress_next_geofence_check", true)
-                .putString("flutter.current_status_id", statusType)
+                .putBoolean(SharedKeys.flutter(SharedKeys.SUPPRESS_NEXT_GEOFENCE_CHECK), true)
+                .putString(SharedKeys.flutter(SharedKeys.CURRENT_STATUS_ID), statusType)
                 .apply()
 
             // Limpiar pending_status para que Flutter no lo reprocese al reabrir la app

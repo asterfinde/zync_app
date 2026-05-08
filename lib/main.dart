@@ -18,6 +18,7 @@ import 'package:nunakin_app/core/utils/performance_tracker.dart'; // PERFORMANCE
 import 'package:nunakin_app/core/services/session_cache_service.dart'; // FASE 2B: Session Cache (fallback)
 import 'package:nunakin_app/core/services/native_state_bridge.dart'; // FASE 3: Native State (primario) (fallback)
 import 'package:nunakin_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
+import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'package:nunakin_app/core/services/status_service.dart'; // Para actualizar estado desde native
 import 'package:nunakin_app/core/services/emoji_service.dart'; // Para cargar emojis desde Firebase
 import 'package:nunakin_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
@@ -59,9 +60,9 @@ void main() async {
   //   limpiamos el flag.
   // ════════════════════════════════════════════════════════════
   final flutterPrefs = await SharedPreferences.getInstance();
-  if (flutterPrefs.getBool('suppress_next_geofence_check') ?? false) {
+  if (flutterPrefs.getBool(NativeSharedKeys.suppressNextGeofenceCheck) ?? false) {
     GeofencingService.suppressNextCheckOnReopen();
-    await flutterPrefs.remove('suppress_next_geofence_check');
+    await flutterPrefs.remove(NativeSharedKeys.suppressNextGeofenceCheck);
     print('🛡️ [main] Flag suppress_next_geofence_check leído — initial check será omitido');
   }
 

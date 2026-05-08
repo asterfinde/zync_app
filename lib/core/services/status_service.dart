@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
+import 'package:nunakin_app/contexts/presence/domain/value_objects/status_id.dart';
+import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'app_badge_service.dart';
 import 'gps_service.dart';
 import 'session_cache_service.dart';
@@ -16,10 +18,10 @@ class StatusService {
 
   static const String _zoneManualSelectionNotAllowedError = 'zone_manual_selection_not_allowed';
   static const Set<String> _blockedZoneStatusIds = {
-    'home',
-    'school',
-    'work',
-    'university',
+    StatusIds.home,
+    StatusIds.school,
+    StatusIds.work,
+    StatusIds.university,
   };
 
   /// Inicializar el listener de cambios de estado para badge
@@ -168,13 +170,13 @@ class StatusService {
       // Si salió de la zona, NO marcar locationUnknown para estados "fine" (Todo bien)
       final manualOverride = (wasInZone && (previousWasAutoUpdated || previousManualOverride));
       final locationUnknown =
-          (previousWasAutoUpdated || previousManualOverride) && !wasInZone && newStatus.id != 'fine';
+          (previousWasAutoUpdated || previousManualOverride) && !wasInZone && newStatus.id != StatusIds.fine;
 
       log('[StatusService] 📍 Usuario estaba en zona: $wasInZone${wasInZone ? ' ($previousZoneName)' : ''}');
 
       // Point 16: Obtener ubicación GPS si es estado SOS
       Coordinates? coordinates;
-      if (newStatus.id == 'sos') {
+      if (newStatus.id == StatusIds.sos) {
         log('[StatusService] 🆘 Estado SOS detectado - obteniendo ubicación GPS...');
         coordinates = await GPSService.getCurrentLocation();
         if (coordinates != null) {
@@ -263,7 +265,7 @@ class StatusService {
       // ════════════════════════════════════════════════════════════
       try {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('current_status_id', newStatus.id);
+        await prefs.setString(NativeSharedKeys.currentStatusId, newStatus.id);
         log('[StatusService] 💾 current_status_id guardado: ${newStatus.id}');
         // ════════════════════════════════════════════════════════════
         // [FIX] Persistir manual_status_id desacoplado del BN Worker
@@ -274,7 +276,7 @@ class StatusService {
         // SOLUCIÓN: Escribir también manual_status_id (solo este método lo escribe).
         //           in_circle_view leerá manual_status_id para el indicador del modal.
         // ════════════════════════════════════════════════════════════
-        await prefs.setString('manual_status_id', newStatus.id);
+        await prefs.setString(NativeSharedKeys.manualStatusId, newStatus.id);
         log('[StatusService] 💾 manual_status_id guardado: ${newStatus.id}');
       } catch (e) {
         log('[StatusService] ⚠️ Error guardando current_status_id: $e');

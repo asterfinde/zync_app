@@ -112,7 +112,7 @@ class EmojiDialogActivity : Activity() {
 
         // [FIX] Leer estado activo desde SharedPreferences (escrito por StatusService en Flutter)
         val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        activeStatusId = flutterPrefs.getString("flutter.current_status_id", null)
+        activeStatusId = flutterPrefs.getString(SharedKeys.flutter(SharedKeys.CURRENT_STATUS_ID), null)
         Log.d(TAG, "[ACTIVE-STATUS] activeStatusId=$activeStatusId")
 
         val ws = getSharedPreferences("worker_state", Context.MODE_PRIVATE)
