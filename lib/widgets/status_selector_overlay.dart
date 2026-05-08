@@ -83,7 +83,9 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Usuario no autenticado');
 
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users').doc(user.uid).get()
+          .timeout(const Duration(seconds: 8));
 
       final circleId = userDoc.data()?['circleId'] as String?;
       if (circleId == null) throw Exception('Usuario sin círculo');
@@ -101,7 +103,8 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
       // Verificar zonas predefinidas configuradas para dimming de botones
       final zonesSnapshot =
-          await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').get();
+          await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').get()
+          .timeout(const Duration(seconds: 8));
 
       final predefinedZones = zonesSnapshot.docs.where((doc) {
         final type = doc.data()['type'] as String?;

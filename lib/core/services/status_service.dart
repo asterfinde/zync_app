@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
 import 'app_badge_service.dart';
 import 'gps_service.dart';
+import 'session_cache_service.dart';
 import 'dart:async';
 import 'dart:developer';
 
@@ -119,11 +120,17 @@ class StatusService {
         throw Exception('Usuario no autenticado');
       }
 
-      // Obtener el circleId del usuario
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-
-      final circleId = userDoc.data()?['circleId'] as String?;
+      // Obtener circleId — preferir SessionCache (memoria, 0ms) para evitar GET
+      // a Firestore en estado frío después de horas en background.
+      final cachedId = SessionCacheService.restoreSessionSync()?['circleId'];
+      String? circleId = (cachedId != null && cachedId.isNotEmpty) ? cachedId : null;
       if (circleId == null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users').doc(user.uid).get()
+            .timeout(const Duration(seconds: 8));
+        circleId = userDoc.data()?['circleId'] as String?;
+      }
+      if (circleId == null || circleId.isEmpty) {
         throw Exception('Usuario no está en ningún círculo');
       }
 
@@ -135,10 +142,17 @@ class StatusService {
         }
       }
 
-      // Leer el estado actual del usuario para verificar si estaba en una zona
-      final circleDoc = await FirebaseFirestore.instance.collection('circles').doc(circleId).get();
-
-      final currentMemberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
+      // Leer el estado actual del usuario para verificar si estaba en una zona.
+      // Timeout de 8s: si la conexión está fría, usar fallback null (wasInZone=false).
+      Map<String, dynamic>? currentMemberStatus;
+      try {
+        final circleDoc = await FirebaseFirestore.instance
+            .collection('circles').doc(circleId).get()
+            .timeout(const Duration(seconds: 8));
+        currentMemberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
+      } on TimeoutException {
+        log('[StatusService] ⚠️ circleDoc.get() timeout — usando fallback wasInZone=false');
+      }
       final currentUserStatus = currentMemberStatus?[user.uid] as Map<String, dynamic>?;
 
       // Verificar si el usuario estaba en una zona (solo si tiene zoneId)
@@ -228,7 +242,16 @@ class StatusService {
 
       batch.set(historyRef, historyData);
 
-      await batch.commit();
+      // ════════════════════════════════════════════════════════════
+      // [FIX] Timeout en batch.commit() — conexión Firestore fría
+      // PROBLEMA: Después de horas en background (Android Doze mode), el
+      //   WebSocket de Firestore se cierra. batch.commit() con
+      //   FieldValue.serverTimestamp() espera confirmación del servidor
+      //   indefinidamente → modal no cierra, botones quedan bloqueados.
+      // SOLUCIÓN: Timeout de 10s. TimeoutException capturada abajo →
+      //   StatusUpdateResult.error() → callers cierran el modal.
+      // ════════════════════════════════════════════════════════════
+      await batch.commit().timeout(const Duration(seconds: 10));
       log('[StatusService] ✅ Estado actualizado exitosamente${coordinates != null ? ' con GPS' : ''}');
 
       // ════════════════════════════════════════════════════════════
