@@ -28,6 +28,12 @@ abstract final class NativeSharedKeys {
   /// NOTA: coexiste con zync_silent_mode.is_silent_mode_active en Kotlin — Sem 3.
   static const isSilentModeActive = 'is_silent_mode_active';
 
+  /// Timestamp (ms epoch) de cuándo se activó Silent Mode.
+  /// Escrito por: EnterSilentMode use case.
+  /// Leído por: SharedPrefsPresenceRepository.
+  /// Eliminado por: ExitSilentMode use case (y MainActivity al desactivar Silent Mode).
+  static const silentEnteredAt = 'silent_entered_at';
+
   // ── Geofence ───────────────────────────────────────────────────────────────
   /// Flag para suprimir el siguiente check de geofence en cold start.
   /// Escrito por: StatusUpdateWorker.kt. Leído/eliminado por: main.dart.

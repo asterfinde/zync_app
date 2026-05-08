@@ -18,6 +18,7 @@ object SharedKeys {
     const val MANUAL_STATUS_ID = "manual_status_id"
     const val PRE_SILENT_STATUS_ID = "pre_silent_status_id"
     const val IS_SILENT_MODE_ACTIVE = "is_silent_mode_active"
+    const val SILENT_ENTERED_AT = "silent_entered_at"
 
     // Geofence
     const val SUPPRESS_NEXT_GEOFENCE_CHECK = "suppress_next_geofence_check"
