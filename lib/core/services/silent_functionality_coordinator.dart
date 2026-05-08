@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../services/circle_service.dart';
@@ -136,12 +137,12 @@ class SilentFunctionalityCoordinator {
     // ════════════════════════════════════════════════════════════
     try {
       final prefs = await SharedPreferences.getInstance();
-      final manualId = prefs.getString('manual_status_id');
+      final manualId = prefs.getString(NativeSharedKeys.manualStatusId);
       if (manualId != null) {
-        await prefs.setString('pre_silent_status_id', manualId);
+        await prefs.setString(NativeSharedKeys.preSilentStatusId, manualId);
         debugPrint('[SilentCoordinator] 💾 pre_silent_status_id guardado: $manualId');
       }
-      await prefs.setBool('is_silent_mode_active', true);
+      await prefs.setBool(NativeSharedKeys.isSilentModeActive, true);
       debugPrint('[SilentCoordinator] 💾 is_silent_mode_active=true guardado en Flutter SharedPreferences');
     } catch (e) {
       debugPrint('[SilentCoordinator] ⚠️ Error guardando pre_silent_status_id: $e');

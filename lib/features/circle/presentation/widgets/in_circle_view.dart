@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'package:url_launcher/url_launcher.dart';
 // Asegúrate que las rutas de importación sean correctas para tu proyecto
 import '../../../../services/circle_service.dart';
@@ -784,7 +785,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                           final silentPrefs = await SharedPreferences.getInstance();
                                           final isSilentActive = silentPrefs.getBool('is_silent_mode_active') ?? false;
                                           if (isSilentActive) {
-                                            activeStatusId = prefs.getString('pre_silent_status_id');
+                                            activeStatusId = prefs.getString(NativeSharedKeys.preSilentStatusId);
                                           } else {
                                             // Usar status del stream de Firestore — siempre
                                             // actualizado, evita stale de manual_status_id
