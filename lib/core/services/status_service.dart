@@ -144,14 +144,16 @@ class StatusService {
         }
       }
 
-      // Leer el estado actual del usuario para verificar si estaba en una zona.
-      // Timeout de 8s: si la conexión está fría, usar fallback null (wasInZone=false).
+      // Leer estado actual desde caché local (InCircleView mantiene .snapshots() activo).
+      // Source.cache evita reconexión WebSocket tras Doze — fallback wasInZone=false si no hay caché.
       Map<String, dynamic>? currentMemberStatus;
       try {
         final circleDoc = await FirebaseFirestore.instance
-            .collection('circles').doc(circleId).get()
-            .timeout(const Duration(seconds: 8));
+            .collection('circles').doc(circleId).get(const GetOptions(source: Source.cache))
+            .timeout(const Duration(seconds: 2));
         currentMemberStatus = circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
+      } on FirebaseException {
+        log('[StatusService] ⚠️ circleDoc no en caché — usando fallback wasInZone=false');
       } on TimeoutException {
         log('[StatusService] ⚠️ circleDoc.get() timeout — usando fallback wasInZone=false');
       }
