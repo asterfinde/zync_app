@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -36,6 +37,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   late Animation<double> _scaleAnimation;
 
   bool _isUpdating = false;
+  Stopwatch? _diagSw;
 
   // Grid dinámico cargado desde Firebase (predefinidos + personalizados)
   // HOTFIX: Inicializar con fallbackPredefined INMEDIATAMENTE para evitar timing issues
@@ -312,6 +314,8 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       return;
     }
 
+    _diagSw = Stopwatch()..start();
+    log('[DIAG-AUTH-001] T0 onTap dispatch — id=${status.id}');
     setState(() => _isUpdating = true);
 
     try {
@@ -323,6 +327,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       // Usar el StatusService existente - ¡Sin romper nada!
       final result = await StatusService.updateUserStatus(status);
 
+      log('[DIAG-AUTH-001] T4 updateUserStatus returned — elapsed=${_diagSw?.elapsedMilliseconds}ms isSuccess=${result.isSuccess}');
       print(
           '[StatusSelectorOverlay] 📦 Resultado de actualización: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
 
@@ -403,6 +408,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       print('[StatusSelectorOverlay] ✅ Animación de cierre completada');
 
       if (mounted) {
+        log('[DIAG-AUTH-001] T6 Navigator.pop — totalElapsed=${_diagSw?.elapsedMilliseconds}ms');
         print('[StatusSelectorOverlay] 🚪 Widget mounted, ejecutando Navigator.pop()...');
         Navigator.of(context).pop();
         print('[StatusSelectorOverlay] ✅ Navigator.pop() ejecutado');
