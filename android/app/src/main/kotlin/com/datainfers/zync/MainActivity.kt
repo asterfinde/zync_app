@@ -651,7 +651,19 @@ class MainActivity: FlutterActivity() {
     }
 
     private fun setupBridgeRouter(flutterEngine: FlutterEngine) {
-        // TODO(sem3-día2): instanciar BridgeRouter y registrar nunakin/bridge
+        val router = BridgeRouter(activity = this)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "nunakin/bridge"
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "activateSilentMode"   -> router.handleSilentMode(call, result)
+                "deactivateSilentMode" -> router.handleSilentMode(call, result)
+                "checkBattery"         -> router.handleSilentMode(call, result)
+                "requestBattery"       -> router.handleSilentMode(call, result)
+                else                   -> result.notImplemented()
+            }
+        }
     }
 
     private fun hasNotificationPermission(): Boolean {

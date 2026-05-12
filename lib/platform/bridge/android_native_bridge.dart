@@ -1,22 +1,42 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:nunakin_app/platform/bridge/native_bridge.dart';
 import 'package:nunakin_app/platform/bridge/native_command.dart';
 import 'package:nunakin_app/platform/bridge/native_event.dart';
 
 /// Implementación Android de [NativeBridge].
 ///
-/// Día 1: stub que compila. Días 2-5: handlers reales migrados desde los
-/// 7 MethodChannels individuales de MainActivity.kt.
+/// Día 1: stub que compila.
+/// Día 2: handlers para `ActivateSilentMode` / `DeactivateSilentMode` vía
+///        canal `nunakin/bridge` (registrado en `MainActivity.setupBridgeRouter`).
+/// Días 3-5: handlers restantes (status, sos, location, session, geofencing, badge).
 class AndroidNativeBridge implements NativeBridge {
+  @visibleForTesting
+  static const channelName = 'nunakin/bridge';
+
+  final MethodChannel _channel;
   final _eventController = StreamController<NativeEvent>.broadcast();
+
+  AndroidNativeBridge({MethodChannel? channel})
+      : _channel = channel ?? const MethodChannel(channelName);
 
   @override
   Stream<NativeEvent> get events => _eventController.stream;
 
   @override
-  Future<T> invoke<T>(NativeCommand<T> cmd) {
-    // TODO(sem3-día2): implementar por tipo de comando via nunakin/bridge
-    throw UnimplementedError('AndroidNativeBridge.invoke: $cmd');
+  Future<T> invoke<T>(NativeCommand<T> cmd) async {
+    switch (cmd) {
+      case ActivateSilentMode():
+        await _channel.invokeMethod<void>('activateSilentMode');
+        return null as T;
+      case DeactivateSilentMode():
+        await _channel.invokeMethod<void>('deactivateSilentMode');
+        return null as T;
+      // TODO(sem3-día3+): GetCurrentLocation, SetUserSession, ClearSession
+      default:
+        throw UnimplementedError('AndroidNativeBridge.invoke: $cmd');
+    }
   }
 
   void dispose() => _eventController.close();
