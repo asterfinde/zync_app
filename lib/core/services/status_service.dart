@@ -9,6 +9,7 @@ import 'gps_service.dart';
 import 'session_cache_service.dart';
 import 'dart:async';
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 
 /// Servicio centralizado para actualizar estados de usuario
 /// Extraído de EmojiStatusBottomSheet para reutilización en widgets
@@ -116,7 +117,7 @@ class StatusService {
     try {
       log('[StatusService] Actualizando estado a: ${newStatus.description} ${newStatus.emoji}');
       final diagSw = Stopwatch()..start();
-      log('[DIAG-AUTH-001] T1 updateUserStatus start');
+      debugPrint('[DIAG-AUTH-001] T1 updateUserStatus start');
 
       // Actualización directa a Firestore sin capas intermedias complejas
       final user = FirebaseAuth.instance.currentUser;
@@ -257,9 +258,9 @@ class StatusService {
       // SOLUCIÓN: Timeout de 10s. TimeoutException capturada abajo →
       //   StatusUpdateResult.error() → callers cierran el modal.
       // ════════════════════════════════════════════════════════════
-      log('[DIAG-AUTH-001] T2 pre-commit — elapsed=${diagSw.elapsedMilliseconds}ms');
+      debugPrint('[DIAG-AUTH-001] T2 pre-commit — elapsed=${diagSw.elapsedMilliseconds}ms');
       await batch.commit().timeout(const Duration(seconds: 10));
-      log('[DIAG-AUTH-001] T3 post-commit — elapsed=${diagSw.elapsedMilliseconds}ms');
+      debugPrint('[DIAG-AUTH-001] T3 post-commit — elapsed=${diagSw.elapsedMilliseconds}ms');
       log('[StatusService] ✅ Estado actualizado exitosamente${coordinates != null ? ' con GPS' : ''}');
 
       // ════════════════════════════════════════════════════════════
@@ -291,7 +292,7 @@ class StatusService {
       // Actualizar notificación persistente con nuevo estado
       await _updatePersistentNotification(newStatus);
 
-      log('[DIAG-AUTH-001] T3b pre-return — elapsed=${diagSw.elapsedMilliseconds}ms');
+      debugPrint('[DIAG-AUTH-001] T3b pre-return — elapsed=${diagSw.elapsedMilliseconds}ms');
       return StatusUpdateResult.success(newStatus, coordinates);
     } catch (e) {
       log('[StatusService] Error actualizando estado: $e');
