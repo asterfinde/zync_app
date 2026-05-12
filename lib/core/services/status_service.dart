@@ -130,10 +130,19 @@ class StatusService {
       final cachedId = SessionCacheService.restoreSessionSync()?['circleId'];
       String? circleId = (cachedId != null && cachedId.isNotEmpty) ? cachedId : null;
       if (circleId == null) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users').doc(user.uid).get()
-            .timeout(const Duration(seconds: 8));
-        circleId = userDoc.data()?['circleId'] as String?;
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users').doc(user.uid)
+              .get(const GetOptions(source: Source.cache))
+              .timeout(const Duration(seconds: 2));
+          circleId = userDoc.data()?['circleId'] as String?;
+        } on FirebaseException {
+          // Documento no en caché (WebSocket frío) — fallback a servidor
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users').doc(user.uid).get()
+              .timeout(const Duration(seconds: 2));
+          circleId = userDoc.data()?['circleId'] as String?;
+        }
       }
       if (circleId == null || circleId.isEmpty) {
         throw Exception('Usuario no está en ningún círculo');
