@@ -29,6 +29,10 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.datainfers.zync"
@@ -50,6 +54,8 @@ android {
             ?: "YOUR_API_KEY_HERE"
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
+
+        buildConfigField("boolean", "USE_LEGACY_BRIDGE", "true")
     }
 
     buildTypes {

@@ -359,7 +359,14 @@ class MainActivity: FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        
+        if (BuildConfig.USE_LEGACY_BRIDGE) {
+            setupLegacyChannels(flutterEngine)
+        } else {
+            setupBridgeRouter(flutterEngine)
+        }
+    }
+
+    private fun setupLegacyChannels(flutterEngine: FlutterEngine) {
         // Point 21 FASE 5: Handler para abrir StatusModalActivity desde Flutter
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/status_modal").setMethodCallHandler { call, result ->
             when (call.method) {
@@ -641,6 +648,10 @@ class MainActivity: FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun setupBridgeRouter(flutterEngine: FlutterEngine) {
+        // TODO(sem3-día2): instanciar BridgeRouter y registrar nunakin/bridge
     }
 
     private fun hasNotificationPermission(): Boolean {
