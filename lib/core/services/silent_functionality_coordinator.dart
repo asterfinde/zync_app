@@ -1,6 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/presence/application/use_cases/enter_silent_mode.dart';
+import 'package:nunakin_app/contexts/presence/application/use_cases/exit_silent_mode.dart';
+import 'package:nunakin_app/platform/bridge/native_bridge.dart';
+import 'package:nunakin_app/platform/bridge/native_command.dart';
 import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
@@ -20,8 +25,6 @@ import 'status_modal_service.dart';
 ///   - moveTaskToBack() al activar
 ///   - Detener todo en onCreate() cuando el usuario reabre la app (Regla 1)
 class SilentFunctionalityCoordinator {
-  static const _channel = MethodChannel('zync/keep_alive');
-
   static bool _isInitialized = false;
   static bool _isManualLogoutInProgress = false;
   static bool _userHasCircle = false;
@@ -83,8 +86,24 @@ class SilentFunctionalityCoordinator {
     _isManualLogoutInProgress = true;
     _userHasCircle = false;
 
+    // Use case de dominio: actualiza el repositorio de presencia.
+    // Nota: el Coordinator también escribe directamente en SharedPrefs (más
+    // abajo, vía el bridge nativo) en el namespace `zync_silent_mode` que el
+    // canal Kotlin consume. El use case escribe en Flutter SharedPreferences
+    // a través de SharedPrefsPresenceRepository. No hay conflicto: son
+    // namespaces y responsabilidades distintas (estado de dominio vs.
+    // estado nativo persistido para sobrevivir al kill del proceso).
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await sl<ExitSilentMode>().call(userId: user.uid);
+      } catch (e) {
+        debugPrint('[SilentCoordinator] ⚠️ ExitSilentMode use case error: $e');
+      }
+    }
+
     try {
-      await _channel.invokeMethod('deactivate');
+      await sl<NativeBridge>().invoke(const DeactivateSilentMode());
     } catch (e) {
       debugPrint('[SilentCoordinator] ⚠️ Error al desactivar en logout: $e');
     }
@@ -148,8 +167,30 @@ class SilentFunctionalityCoordinator {
       debugPrint('[SilentCoordinator] ⚠️ Error guardando pre_silent_status_id: $e');
     }
 
+    // Use case de dominio: actualiza el repositorio de presencia ANTES
+    // de invocar el nativo. Si falla, igual seguimos con la activación
+    // nativa para no romper el flujo del usuario — el estado de dominio
+    // se reconciliará en el próximo ciclo de sincronización.
+    //
+    // Nota sobre doble escritura de SharedPrefs:
+    // EnterSilentMode use case → SharedPrefsPresenceRepository escribe en
+    //   Flutter SharedPreferences (namespace flutter.*).
+    // Coordinator (arriba) escribe directamente `pre_silent_status_id` e
+    //   `is_silent_mode_active` en Flutter SharedPreferences, además del
+    //   bridge nativo que toca `zync_silent_mode` (namespace Kotlin).
+    // Son namespaces distintos: no hay conflicto real. Se mantiene la
+    // escritura directa porque el canal Kotlin la lee al arrancar.
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await sl<EnterSilentMode>().call(userId: user.uid);
+      } catch (e) {
+        debugPrint('[SilentCoordinator] ⚠️ EnterSilentMode use case error: $e');
+      }
+    }
+
     try {
-      await _channel.invokeMethod('activate');
+      await sl<NativeBridge>().invoke(const ActivateSilentMode());
     } catch (e) {
       debugPrint('[SilentCoordinator] ❌ activate EXCEPCIÓN: $e');
     }
