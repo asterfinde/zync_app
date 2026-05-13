@@ -55,7 +55,7 @@ android {
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
 
-        buildConfigField("boolean", "USE_LEGACY_BRIDGE", "true")
+        buildConfigField("boolean", "USE_LEGACY_BRIDGE", "false")
     }
 
     buildTypes {
