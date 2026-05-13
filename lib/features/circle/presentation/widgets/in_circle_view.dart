@@ -112,6 +112,16 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   bool _isLoadingNicknames = true;
   List<StatusType>? _predefinedEmojis;
 
+  // ════════════════════════════════════════════════════════════
+  // [FIX] Último estado conocido desde SharedPreferences (AUTH-20260513-001)
+  // Fecha: 2026-05-13
+  // PROBLEMA: El modal mostraba caption "loading" en cold start antes de que
+  //   llegara el primer snapshot de Firestore.
+  // SOLUCIÓN: Leer manual_status_id → current_status_id → 'fine' al inicio
+  //   y usar ese valor como fallback en lugar del literal 'loading'.
+  // ════════════════════════════════════════════════════════════
+  String? _lastKnownStatusId;
+
   // --- INICIO DE LA MODIFICACIÓN ---
   // StreamSubscription para poder cancelarlo en dispose()
   StreamSubscription<DocumentSnapshot>? _circleListenerSubscription;
@@ -130,6 +140,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   void initState() {
     super.initState();
     _loadPredefinedEmojis();
+    _loadLastKnownStatusId(); // Leer último estado conocido desde SharedPreferences
     _listenToCustomEmojis(); // Escuchar cambios en emojis personalizados
 
     // ==================== CACHE-FIRST PATTERN ====================
@@ -258,6 +269,25 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     _geofencingService.stopMonitoring().catchError((error) {
       print('[InCircleView] ❌ Error deteniendo geofencing: $error');
     });
+  }
+
+  /// Lee el último estado conocido desde SharedPreferences para evitar mostrar
+  /// 'loading' como caption del modal en cold start (AUTH-20260513-001).
+  /// Orden de lectura: manual_status_id → current_status_id → 'fine'.
+  Future<void> _loadLastKnownStatusId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final manualId = prefs.getString(NativeSharedKeys.manualStatusId);
+      final currentId = prefs.getString(NativeSharedKeys.currentStatusId);
+      final resolved = manualId ?? currentId ?? 'fine';
+      if (mounted) {
+        setState(() {
+          _lastKnownStatusId = resolved;
+        });
+      }
+    } catch (e) {
+      // Ignorar — el fallback 'fine' se aplica en los puntos de uso
+    }
   }
 
   /// Carga TODOS los emojis (predefinidos + personalizados) desde Firebase
@@ -732,15 +762,17 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                             // --- INICIO DE LA MODIFICACIÓN ---
                             // Obtener datos del caché. Si aún no ha llegado el primer snapshot,
                             // usa valores por defecto para evitar errores null.
+                            // [FIX AUTH-20260513-001] Usar _lastKnownStatusId como fallback
+                            // en lugar de 'loading' para evitar caption incorrecto en cold start.
                             final memberData = _memberDataCache[memberId] ??
                                 {
                                   'emoji': '⏳', // Emoji de espera inicial
-                                  'status': 'loading',
+                                  'status': _lastKnownStatusId ?? 'fine',
                                   'hasGPS': false,
                                   'coordinates': null,
                                   'lastUpdate': null,
                                 };
-                            final status = memberData['status'] ?? 'loading';
+                            final status = memberData['status'] ?? (_lastKnownStatusId ?? 'fine');
                             // --- FIN DE LA MODIFICACIÓN ---
 
                             return Padding(
@@ -790,7 +822,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                             // Usar status del stream de Firestore — siempre
                                             // actualizado, evita stale de manual_status_id
                                             // tras actualización desde modal SM.
-                                            activeStatusId = status == 'loading' ? null : status;
+                                            // [FIX AUTH-20260513-001] Si status es 'loading',
+                                            // usar _lastKnownStatusId antes de pasar null.
+                                            activeStatusId = status == 'loading'
+                                                ? _lastKnownStatusId
+                                                : status;
                                           }
                                         } catch (_) {}
                                         if (context.mounted) {
