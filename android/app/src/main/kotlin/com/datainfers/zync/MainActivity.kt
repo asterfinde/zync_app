@@ -24,6 +24,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.dart.DartExecutor
+import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
@@ -36,6 +37,10 @@ class MainActivity: FlutterActivity() {
     
     // Silent Mode — única fuente de verdad del estado. Kotlin es el dueño.
     private var isSilentModeActive = false
+
+    // Bridge path — seteados en setupBridgeRouter; null cuando USE_LEGACY_BRIDGE = true.
+    private var bridgeBinaryMessenger: BinaryMessenger? = null
+    private var activeBridgeRouter: BridgeRouter? = null
 
     // Current user (sincronizado con Flutter)
     private var currentUserId: String? = null
@@ -652,15 +657,17 @@ class MainActivity: FlutterActivity() {
 
     private fun setupBridgeRouter(flutterEngine: FlutterEngine) {
         val router = BridgeRouter(activity = this)
-        MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            "nunakin/bridge"
-        ).setMethodCallHandler { call, result ->
+        val messenger = flutterEngine.dartExecutor.binaryMessenger
+        activeBridgeRouter = router
+        bridgeBinaryMessenger = messenger
+        MethodChannel(messenger, "nunakin/bridge").setMethodCallHandler { call, result ->
             when (call.method) {
                 "activateSilentMode"   -> router.handleSilentMode(call, result)
                 "deactivateSilentMode" -> router.handleSilentMode(call, result)
                 "checkBattery"         -> router.handleSilentMode(call, result)
                 "requestBattery"       -> router.handleSilentMode(call, result)
+                "updateStatus"         -> router.handleStatus(call, result)
+                "raiseSOS"             -> router.handleSOS(call, result)
                 else                   -> result.notImplemented()
             }
         }

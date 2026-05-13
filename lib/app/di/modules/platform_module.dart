@@ -9,5 +9,9 @@ import 'package:nunakin_app/shared/events/domain_event_bus.dart';
 Future<void> registerPlatformModule(GetIt sl) async {
   sl.registerLazySingleton<KvStore>(() => SharedPrefsKvStore(sl()));
   sl.registerLazySingleton<DomainEventBus>(DomainEventBus.new);
-  sl.registerLazySingleton<NativeBridge>(AndroidNativeBridge.new);
+  sl.registerLazySingleton<NativeBridge>(() {
+    final bridge = AndroidNativeBridge();
+    bridge.initialize();
+    return bridge;
+  });
 }
