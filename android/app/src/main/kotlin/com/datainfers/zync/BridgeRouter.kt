@@ -43,6 +43,17 @@ class BridgeRouter(private val activity: Activity) {
      */
     var isSilentModeActive: Boolean = false
 
+    /**
+     * Día 5 — Zonas geográficas registradas en memoria.
+     * zoneId → (lat, lng, radiusMeters)
+     *
+     * Almacenamiento in-memory listo para que `GeofencingBroadcastReceiver`
+     * (Sem 4) consulte las zonas activas al recibir transiciones del OS.
+     * Se reinicia cada vez que `BridgeRouter` se instancia (rotación de
+     * pantalla, recreate de Activity).
+     */
+    private val registeredZones = mutableMapOf<String, Triple<Double, Double, Double>>()
+
     /** Día 2 — activateSilentMode / deactivateSilentMode + battery check/request */
     fun handleSilentMode(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
@@ -212,11 +223,57 @@ class BridgeRouter(private val activity: Activity) {
 
     /** Día 5 — registerZone / unregisterZone */
     fun handleGeofencing(call: MethodCall, result: MethodChannel.Result) {
-        result.notImplemented()
+        when (call.method) {
+            "registerZone" -> {
+                val zoneId       = call.argument<String>("zoneId")
+                    ?: return result.error("MISSING_PARAM", "zoneId", null)
+                val lat          = call.argument<Double>("lat")
+                    ?: return result.error("MISSING_PARAM", "lat", null)
+                val lng          = call.argument<Double>("lng")
+                    ?: return result.error("MISSING_PARAM", "lng", null)
+                val radiusMeters = call.argument<Double>("radiusMeters")
+                    ?: return result.error("MISSING_PARAM", "radiusMeters", null)
+
+                registeredZones[zoneId] = Triple(lat, lng, radiusMeters)
+                Log.d(tag, "📍 [GEO] registerZone: $zoneId ($lat, $lng) r=${radiusMeters}m")
+                result.success(true)
+            }
+            "unregisterZone" -> {
+                val zoneId = call.argument<String>("zoneId")
+                    ?: return result.error("MISSING_PARAM", "zoneId", null)
+                registeredZones.remove(zoneId)
+                Log.d(tag, "📍 [GEO] unregisterZone: $zoneId")
+                result.success(true)
+            }
+            else -> result.notImplemented()
+        }
+    }
+
+    /**
+     * Emite un evento de transición de zona hacia Flutter via `nunakin/bridge`.
+     *
+     * Llamar desde `GeofencingBroadcastReceiver` (Sem 4) cuando el OS Android
+     * dispare la transición. En Día 5 el método queda listo pero sin caller —
+     * el trigger nativo (BroadcastReceiver + AndroidManifest + ACCESS_BACKGROUND_LOCATION)
+     * se implementa en Sem 4.
+     */
+    fun emitGeofenceEvent(messenger: BinaryMessenger, zoneId: String, isEntry: Boolean) {
+        val type = if (isEntry) "geofenceEntered" else "geofenceExited"
+        MethodChannel(messenger, "nunakin/bridge").invokeMethod(
+            "nativeEvent",
+            mapOf("type" to type, "zoneId" to zoneId)
+        )
+        Log.d(tag, "📍 [GEO] Emitiendo $type: $zoneId")
     }
 
     /** Día 5 — setBadgeCount */
     fun handleBadge(call: MethodCall, result: MethodChannel.Result) {
-        result.notImplemented()
+        val count = call.argument<Int>("count") ?: 0
+        Log.d(tag, "🔴 [BADGE] setBadgeCount: $count")
+        context.getSharedPreferences("bridge_badge", Context.MODE_PRIVATE)
+            .edit()
+            .putInt("badge_count", count)
+            .apply()
+        result.success(true)
     }
 }
