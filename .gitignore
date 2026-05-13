@@ -68,3 +68,16 @@ nul
 # Documentos de planificación efímera (work plans, análisis de impacto)
 WORK_PLAN_*.md
 IMPACT_*.md
+ANALYSIS_BRIEF.md
+
+# Memoria local de Claude Code (no se versiona)
+memory/
+
+# Screenshots ad-hoc en raíz (capturas de debugging)
+/image.png
+/image-*.png
+
+# Scripts ad-hoc en raíz (deuda técnica §13 — mover a scripts/ post-validación)
+/clean_and_run.ps1
+/launch_emulator.ps1
+/run_devices.ps1
