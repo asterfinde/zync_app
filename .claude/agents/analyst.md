@@ -12,6 +12,174 @@ model: claude-opus-4-6
 - Lenguaje: Dart
 - App: Nunakin (com.datainfers.zync)
 
+## Estructura del Proyecto — Sección 3 del CLAUDE.md (contexto estático)
+
+```
+lib/
+|   firebase_options.dart
+|   main.dart
+|
++---core
+|   |   global_keys.dart
+|   |
+|   +---cache
+|   |       in_memory_cache.dart
+|   |       persistent_cache.dart
+|   |
+|   +---di
+|   |       injection_container.dart
+|   |
+|   +---error
+|   |       exceptions.dart
+|   |       failures.dart
+|   |
+|   +---models
+|   |       user_status.dart
+|   |
+|   +---network
+|   |       network_info.dart
+|   |       network_info_impl.dart
+|   |
+|   +---services
+|   |       app_badge_service.dart
+|   |       emoji_cache_service.dart
+|   |       emoji_management_service.dart
+|   |       emoji_service.dart
+|   |       gps_service.dart
+|   |       initialization_service.dart
+|   |       keep_alive_service.dart
+|   |       native_state_bridge.dart
+|   |       quick_actions_preferences_service.dart
+|   |       session_cache_service.dart
+|   |       silent_functionality_coordinator.dart
+|   |       status_modal_service.dart
+|   |       status_service.dart
+|   |
+|   +---splash
+|   |       splash_screen.dart
+|   |
+|   +---usecases
+|   |       usecase.dart
+|   |
+|   +---utils
+|   |       performance_tracker.dart
+|   |
+|   \---widgets
+|           emoji_modal.dart
+|           quick_actions_config_widget.dart
+|           status_widget.dart
+|
++---features
+|   +---auth
+|   |   +---data
+|   |   |   +---datasources
+|   |   |   |       auth_local_data_source.dart
+|   |   |   |       auth_local_data_source_impl.dart
+|   |   |   |       auth_remote_data_source.dart
+|   |   |   |       auth_remote_data_source_impl.dart
+|   |   |   +---models
+|   |   |   |       user_model.dart
+|   |   |   \---repositories
+|   |   |           auth_repository_impl.dart
+|   |   +---domain
+|   |   |   +---entities
+|   |   |   |       user.dart
+|   |   |   +---repositories
+|   |   |   |       auth_repository.dart
+|   |   |   \---usecases
+|   |   |           get_current_user.dart
+|   |   |           sign_in_or_register.dart
+|   |   |           sign_out.dart
+|   |   \---presentation
+|   |       +---pages
+|   |       |       auth_final_page.dart  ← ÚNICO archivo activo de auth
+|   |       |       auth_wrapper.dart
+|   |       +---provider
+|   |       |       auth_state.dart
+|   |       \---widgets
+|   |               (legacy — ver decisiones técnicas abajo)
+|   |
+|   +---circle
+|   |   \---presentation
+|   |       +---pages
+|   |       |       home_page.dart
+|   |       |       quick_status_selector_page.dart
+|   |       \---widgets
+|   |               create_circle_view.dart
+|   |               in_circle_view.dart
+|   |               in_circle_view_new.dart
+|   |               join_circle_view.dart
+|   |               no_circle_view.dart
+|   |               quick_status_send_dialog.dart
+|   |
+|   +---geofencing
+|   |   +---domain
+|   |   |   \---entities
+|   |   |           zone.dart
+|   |   |           zone_event.dart
+|   |   +---presentation
+|   |   |   +---pages
+|   |   |   |       zones_page.dart
+|   |   |   \---widgets
+|   |   |           geofencing_debug_widget.dart
+|   |   |           zone_form.dart
+|   |   \---services
+|   |           geofencing_service.dart
+|   |           zone_event_service.dart
+|   |           zone_service.dart
+|   |
+|   \---settings
+|       \---presentation
+|           +---pages
+|           |       emoji_management_page.dart
+|           |       settings_page.dart
+|           \---widgets
+|                   create_emoji_dialog.dart
+|                   delete_emoji_dialog.dart
+|
++---notifications
+|       notification_actions.dart
+|       notification_service.dart
+|
++---providers
+|       circle_provider.dart
+|
++---quick_actions
+|       quick_actions_handler.dart
+|       quick_actions_service.dart
+|
++---services
+|       auth_service.dart
+|       circle_service.dart
+|
++---test_helpers
+|       performance_monitor.dart
+|       test_cache.dart
+|       test_page.dart
+|
+\---widgets
+        home_screen_widget.dart
+        notification_status_selector.dart
+        sos_gps_test_widget.dart
+        status_selector_overlay.dart
+        widget_models.dart
+        widget_service.dart
+```
+
+## Decisiones Técnicas — Sección 12 del CLAUDE.md (contexto estático)
+
+| Fecha | Decisión | Razón |
+|-------|----------|-------|
+| — | Se descartó Clean Architecture | Sobreingeniería para MVP. Se adoptó estructura por features. |
+| — | Se descartó Patrol para testing | Incompatibilidad de versiones con Flutter actual. Se usa `flutter_test` estándar. |
+| 2026-03-16 | `auth_final_page.dart` es el ÚNICO archivo activo de auth | Maneja login, registro, recuperación y navegación post-auth. `sign_in_page.dart` y `auth_form.dart` son legacy sin uso. Trabajar SOLO en `auth_final_page.dart` para cualquier tarea de auth. |
+| 2026-03-17 | Solo el creador del círculo puede eliminarlo | Miembros solo pueden abandonarlo. Evita círculos zombie en Firestore. |
+| 2026-03-17 | MVP: un único círculo por usuario | Múltiples círculos generan fricción. Múltiples círculos evaluados para v2.0. |
+| 2026-03-27 | Sin opción de salir del círculo sin eliminar cuenta | Usuarios sin círculo son ruido. La única salida es eliminar la cuenta. `btn_leave_circle` eliminado de `settings_page.dart`. |
+
+> **Nota:** Si CLAUDE.md fue actualizado y estas tablas quedaron desincronizadas, prevalece CLAUDE.md.
+> Actualizar este archivo al cierre de sesión si hubo cambios en secciones 3 o 12.
+
 ## Flujo general del sistema
 ```
 texto raw → @prompt-engineer [Sonnet-4.6]
@@ -33,7 +201,7 @@ Experto en diagnóstico de bugs en Flutter/Firebase/Android. Recibes un prompt e
 
 ### Precondiciones — qué necesito para actuar
 - Prompt estructurado válido generado por `@prompt-engineer`, con ID en formato `AUTH-YYYYMMDD-NNN`
-- Acceso de lectura a sección 3 y sección 12 del CLAUDE.md
+- Secciones 3 y 12 del CLAUDE.md disponibles como contexto estático en este archivo — no leer CLAUDE.md
 - Acceso de lectura a los archivos candidatos listados en el prompt
 
 ### Postcondiciones — qué garantizo al terminar
@@ -74,8 +242,12 @@ Experto en diagnóstico de bugs en Flutter/Firebase/Android. Recibes un prompt e
 
 1. Imprimir el anuncio de turno.
 2. Leer el prompt estructurado recibido.
-3. Del CLAUDE.md leer ÚNICAMENTE sección 3 (estructura de archivos) y sección 12 (decisiones técnicas).
+3. Consultar las secciones "Estructura del Proyecto" y "Decisiones Técnicas" disponibles en este archivo — no leer CLAUDE.md.
 4. Usar Grep y Glob para localizar los archivos candidatos mencionados en el prompt.
+4b. Antes de leer los archivos candidatos: buscar en el codebase si el mismo problema
+    fue resuelto en otro flujo (Grep por el comportamiento esperado, no por el síntoma).
+    Si existe un patrón que funciona, identificar por qué el código roto usa uno diferente
+    — esa asimetría es la causa raíz candidata más probable.
 5. Leer los archivos relevantes — solo las secciones relacionadas con el área de fallo, no el archivo completo salvo que sea necesario.
 6. Identificar la causa raíz aplicando el **checklist de §Heurísticas de causa raíz**. Si no puedes responder las 4 preguntas con evidencia, declarar *"hipótesis sin validar"* — no es diagnóstico.
 7. Producir el diagnóstico y el brief de implementación.
@@ -109,6 +281,39 @@ Antes de concluir causa raíz, validar las cuatro preguntas con evidencia explí
 - ¿La línea donde aparece el error ES la causa, o solo donde se manifiesta?
 - Patrón rojo: el fix propuesto se reduce a "ajustar parámetro X" tras 2+ iteraciones fallidas en el mismo archivo → es síntoma, no causa.
 - Patrón rojo: "el código se ve bien pero no funciona" → casi siempre es contexto o estado externo, no código.
+
+### 5. Terminación de cadenas async
+Aplicar cuando el bug involucra `await` en Flutter/Dart.
+
+Las cadenas async tienen tres estados terminales:
+- (a) Completa con resultado
+- (b) Lanza excepción / catch
+- (c) Nunca completa — suspendida por Doze, vsync pausado, network timeout sin throw
+
+La pregunta obligatoria: **¿Qué ocurre si esta cadena async nunca alcanza (a) ni (b)?**
+Si la respuesta es "el comportamiento correcto no ocurre" → el fix no puede depender
+de que la cadena termine. Restructurar para que el comportamiento correcto ocurra
+antes o independientemente del resultado async.
+
+Señal de alarma: el fix propuesto agrega código dentro del bloque `if (result.isSuccess)`
+o dentro del `catch`, pero no hay garantía de que el `await` que precede a esas ramas
+siempre complete en el contexto de ejecución del bug.
+
+### 6. Completitud de máquina de estados
+Aplicar cuando el fix introduce o modifica flags en SharedPreferences o estado persistido.
+
+Para todo flag/clave nueva o modificada, mapear explícitamente:
+1. **Entrada** — quién escribe el flag y bajo qué condición
+2. **Lectura** — quién lee y qué decide basado en él
+3. **Salida** — bajo qué condiciones se limpia o invierte
+4. **Acciones sin transición** — para CADA acción de usuario posible mientras el flag
+   está activo: ¿existe una transición que lo actualiza o limpia?
+
+Si existe al menos una acción de usuario sin transición de salida correspondiente →
+la causa raíz es la transición faltante, no el valor del flag.
+
+Señal de alarma: el fix introduce un nuevo flag persistido pero el brief no lista
+explícitamente quién y cuándo lo limpia para cada flujo de uso.
 
 ### Anti-patrón — Diagnóstico de superficie
 
