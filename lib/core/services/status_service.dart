@@ -264,7 +264,24 @@ class StatusService {
       // SOLUCIÓN: Timeout de 10s. TimeoutException capturada abajo →
       //   StatusUpdateResult.error() → callers cierran el modal.
       // ════════════════════════════════════════════════════════════
-      await batch.commit().timeout(const Duration(seconds: 10));
+      // ════════════════════════════════════════════════════════════
+      // [FIX] Forzar reapertura de WebSocket antes de batch.commit (AUTH-20260513-001)
+      // Fecha: 2026-05-13
+      // PROBLEMA: Tras Android Doze / background prolongado, el WebSocket de
+      //   Firestore queda cerrado. batch.commit() con serverTimestamp() bloquea
+      //   porque no hay canal abierto para confirmar la escritura.
+      // SOLUCIÓN: enableNetwork() fuerza reconexión del WebSocket antes del
+      //   commit. Timeout de 3s para no retrasar el happy path. Errores ignorados:
+      //   si la red no está disponible, el commit fallará igualmente con su propio
+      //   timeout (ahora 20s), que el catch existente ya maneja.
+      // ════════════════════════════════════════════════════════════
+      try {
+        await FirebaseFirestore.instance.enableNetwork().timeout(const Duration(seconds: 3));
+        log('[StatusService] 🔌 enableNetwork() completado antes de batch.commit');
+      } catch (e) {
+        log('[StatusService] ⚠️ enableNetwork() ignorado: $e');
+      }
+      await batch.commit().timeout(const Duration(seconds: 20));
       log('[StatusService] ✅ Estado actualizado exitosamente${coordinates != null ? ' con GPS' : ''}');
 
       // ════════════════════════════════════════════════════════════
@@ -298,7 +315,11 @@ class StatusService {
 
       return StatusUpdateResult.success(newStatus, coordinates);
     } catch (e) {
-      log('[StatusService] Error actualizando estado: $e');
+      if (e is TimeoutException) {
+        log('[StatusService] ⏱️ batch.commit timeout post-Doze: $e');
+      } else {
+        log('[StatusService] Error actualizando estado: $e');
+      }
       return StatusUpdateResult.error(e.toString());
     }
   }
