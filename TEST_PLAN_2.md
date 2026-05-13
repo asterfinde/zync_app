@@ -95,7 +95,7 @@
 | MN3.02 | Cambio visible a miembros | Cambiar emoji → verificar en otro dispositivo | Actualización visible sin demora | ✅ |
 | MN3.03 | Formato sin zonas | Ver pantalla Círculo, sin zonas configuradas | emoji · nickname · estado · timestamp relativo | ✅ |
 | MN3.04 | Zona activa — entrar | Entrar a zona geográfica configurada | Estado actualizado con emoji de zona | ✅ |
-| MN3.05 | Zona activa — salir | Salir de zona geográfica | Estado cambia a 🙂 "Bien" | 🕔 |
+| MN3.05 | Zona activa — salir | Salir de zona geográfica | Estado cambia a 🙂 "Bien" | ✅ |
 | MN3.06 | Override manual dentro de zona | Dentro de zona → seleccionar emoji distinto | Badge ✋ "Manual" junto al estado | ✅ |
 | MN3.07 | Cambio manual fuera de zona | Fuera de zona → seleccionar emoji | Badge ❓ "Ubicación desconocida" | ✅ |
 | MN3.08 | Botones zona inhabilitados en modal | Crear Zona → Modal Círculo con zona activa → tap botón zona | Botones 🏠🏫🏢🏥 atenuados. Tap: "Acción no permitida". Estado sin cambio | ✅ |
@@ -142,6 +142,7 @@
 | MN6.05 | Look & feel: modal BN ≈ modal Círculo | El modal de aviso para NO poder seleccioanr una zona preconfigurada debe de ser igual | Mismo fondo negro, borde menta, botón "Entendido" en menta |✅  |
 | MN6.06 | Foco inmediato para el nombre del Círculo | Login/Registro → Crear Círculo → Ingresar nombre del Círculo | El foco tarda uno segundos en posicionarse sobre el textbox que recibirá el nombre del Círculo, cuando esto debiera ser inmediato | ✅ |
 | MN6.07 | Eliminar SnackBar de éxito luego de la creación del Círculo | Login/Registro → Crear Círculo → Ingresar nombre del Círculo | No es necesario mostrar el SnackBar correspondiente puesto que la pantalla de arribo es la del Círculo creado, incluyendo su nombre | ✅ |
+| MN7.07 | Cuando se abre la pantalla para colocar el nombre del Círculo, hay una demora en que aparezca el foco en el textbox| Login/Registro → Crear Círculo → Ingresar nombre del Círculo | El foco debería apaprecer de inmediato, ni bien se ingresa a esa pantalla | 🕔 |
 ---
 
 ## MN7 — Permisos de Notificación
@@ -152,6 +153,13 @@
 | MN7.02 | Re-habilitar → activar Modo Silencio | Tap "Habilitar" → Ajustes → activar → volver → tap "Modo Silencio" | Flujo normal de activación |🕔 |
 | MN7.03 | Desactivar notifs con Modo Silencio activo | Ajustes sistema → desactivar notifs ZYNC | Ícono desaparece. SnackBar informativo al volver. Modo Silencio inactivo |🕔 |
 
+## MN8 — Arquitectura y Servicios
+
+| ID | Caso | Pasos | Resultado esperado | Estado |
+|:--:|:-----|:------|:-------------------|:------:|
+| MN8.01 | Redactorizar/optimizar el Worker | Listar responsabilidades | El Worker contiene muchas responsabilidades, es necesario refactorizarlo para una mejor claridad y delegación de las responsabilidades dentro de la app| ✅ |
+| MN8.02 | El usuario nunca queda varado sin GPS — o lo activa o regresa | GPS desactivado → dialog bloqueante con mensaje claro + botón "Abrir Configuración". Verificar esto inclusive cuando el usuario desactiva el GPS en medio del uso de la app | Forzar la activación del GPS de lo contrario la app no funcionará correctamente (bloqueante!!)| 🕔 |
+| MN8.03 | El usuario nunca queda varado si no hay red/datos/"modo avión"  | GPS desactivado → dialog bloqueante con mensaje claro + botón "Abrir Configuración". Verificar esto inclusive cuando el usuario desactiva el GPS en medio del uso de la app | Solicitar/forzar la activación de red/datos/salida "modo avión" de lo contrario la app no funcionará correctamente (bloqueante!!), salvo exista la posibilidad de trabajar off-line, sería adecuado o causaría un falso positivo del estado que verían los demás miembros del Círculo? | 🕔 |
 ---
 
 
@@ -177,6 +185,12 @@
 | MS1.07 | Notificación persiste 30s | Después de MS1.01 → esperar 30s | Ícono "i" no parpadea ni desaparece | ✅ |
 | MS1.08 | Primer tap funciona en cold start | Forzar cierre → reabrir → tap "Modo Silencio" inmediato sin esperar | App cierra. Ícono "i" aparece. Sin falso negativo | ⚠️ funciona pero demora es mayor o igual a 8s, optimizar|
 | MS1.09 | Permisos de batería en primera activación | Primera vez → tap "Modo Silencio" → dialog batería → aceptar | App cierra correctamente. Ícono "i" aparece | ⚠️ funciona pero el aviso de batería permanece a pesar de haberle dado "Aceptar" Probable comportamiento del SO Android en Samsung. Si no se muestra este aviso, afecta en algo?|
+| MS1.10 | Permanencia en Modo Silencio sin desloguear al usuario | Tap "Modo Silencio" | La app puede permanecer en Modo Silencio todo el tiempo que se desee sin desautenticar al usuario | ✅ |
+| MS1.11 | Al elegir el emoji de SOS desde la Barra de Notificaciones NO se muestra en la pantalla del Círculo el texto de enlace: "Ubicación SOS compartida" como si lo hace el modal desde el Círculo | Tap emoji "SOS" | El texto de enlace para visualizar la ubicación compartida debe de ser igual desde los 2 modales desde donde se llamó | ✅|
+| MS1.12 | El ícono del emoji "Trabajo" en el modal de la BN, NO coincide con el que se muestra en el modal del Círculo | Tap en modal desde Círculo, tap en modal desde BN | Hacer una verificación general para que los emojis/estados en ambos modales (BN y Círculo) sean exactamente iguales| ✅ |
+| MS1.13 | Colocar una marca en los modales de emojis/estados del Círculo y de la Barra de Notificaciones para que el usuario tenga un testigo de cuál es su estado actual (último) | Tap en modal desde Círculo, tap en modal desde BN | Se necesita mostrar un testigo del estado/emoji actual, el último que eligió el usuario |✅|
+
+
 
 ---
 
@@ -198,7 +212,7 @@
 | MS2.09 | No mostrar aviso: "Toca para cambiar tu estado"  | Activar Modo Silencio → minimizar | El Ícono "i" ya aparece en BN, lo cual hace redundante mostrar el aviso mencionado, salvo cuando el usuario desliza la Barra de Notificaciones para ver todos los avisos. El aviso genera ruido en la UI | ✅ |
 | MS2.10 | No guardar estado "No Molestar" justo antes del cierre de la app en MS | Activar Modo Silencio → minimizar | Este comportamiento esta errado- La fuente de la verdad aquí es: prevalece el estado/emoji que seleccionó el usuario o lo que el geofencing determino si que hubiese alguna Zona preconfigurada. NO HAY ESTADOS TEMPORALES!| ✅ |
 | MS2.11 | Se necesita que aparezca el mensaje "Toca para cambiar tu estado"  | Activar Modo Silencio → minimizar → mostrar mensaje al deslizar BN  | El Ícono "i" ya aparece en BN, lo cual hace redundante mostrar el aviso mencionado, salvo cuando el usuario desliza la Barra de Notificaciones para ver todos los avisos. El aviso genera ruido en la UI | ✅ |
-| MS2.12 | Se necesita que aparezca el mensaje "Toca para cambiar tu estado" en MS  | Activar Modo Silencio → minimizar → mostrar mensaje SOLAMENTE al deslizar BN  | Solo se necesita que aparezca el mensaje al deslizar BN, no que se muestre el aviso tal y como se especificó en MS02.9 | 🕔 |
+| MS2.12 | Se necesita que aparezca el mensaje "Toca para cambiar tu estado" en MS  | Activar Modo Silencio → minimizar → mostrar mensaje SOLAMENTE al deslizar BN  | Solo se necesita que aparezca el mensaje al deslizar BN, no que se muestre el aviso tal y como se especificó en MS02.9 | ✅ |
 ---
 
 ## MS3 — Interacción desde BN con app cerrada
@@ -255,7 +269,7 @@
 |:--:|:-----|:------|:-------------------|:------:|
 | MS6.01 | Cambio de estado desde la app → visible en tiempo real para otros miembros | **Teléfono A:** abre la app → selecciona cualquier emoji/estado. **Teléfono B:** observa la pantalla del Círculo sin hacer nada | El Teléfono B muestra el nuevo emoji y nombre del estado del usuario A en menos de 5 segundos, sin necesidad de refrescar | 🕔|
 | MS6.02 | Cambio de estado desde el modal BN (app en segundo plano) → visible en tiempo real para otros miembros | **Teléfono A:** cierra la app → desliza la barra de notificaciones → toca el ícono "i" → selecciona cualquier emoji. **Teléfono B:** observa la pantalla del Círculo | El Teléfono B muestra el nuevo emoji del usuario A en menos de 5 segundos | 🕔|
-| MS6.03 | Si se elige un estado/emoji estando la app en MS, la actualización no se lleva a cabo y aparece el estado "Casa" con un emoji que es un alfiler con la cabeza de color rojo  | Modo Silencio activo → modal BN → elegir emoji permitido | El emoji no es el elegido en el modal de la BN, sino "Casa" con el emoji de alfiler rojo  | ❌|
+| MS6.03 | Si se elige un estado/emoji estando la app en MS, la actualización no se lleva a cabo y aparece el estado "Casa" con un emoji que es un alfiler con la cabeza de color rojo  | Modo Silencio activo → modal BN → elegir emoji permitido | El emoji no es el elegido en el modal de la BN, sino "Casa" con el emoji de alfiler rojo  | ✅ |
 
 ---
 
