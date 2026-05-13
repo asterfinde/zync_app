@@ -2,7 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
+import 'package:nunakin_app/contexts/presence/application/ports/presence_repository.dart';
+import 'package:nunakin_app/contexts/presence/application/use_cases/raise_sos.dart';
+import 'package:nunakin_app/contexts/presence/domain/presence_state.dart';
 import 'package:nunakin_app/contexts/presence/domain/value_objects/status_id.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
 import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'app_badge_service.dart';
 import 'gps_service.dart';
@@ -112,6 +116,9 @@ class StatusService {
   /// - Usuario no está autenticado
   /// - Usuario no pertenece a ningún círculo
   /// - Error en Firebase
+  // TODO(sem4+): migrar callers a SetManualStatus / RaiseSOS directamente.
+  // Este método persiste como puente en Sem 3; los use cases sincronizan
+  // PresenceRepository después del batch.commit() ya existente.
   static Future<StatusUpdateResult> updateUserStatus(StatusType newStatus) async {
     try {
       log('[StatusService] Actualizando estado a: ${newStatus.description} ${newStatus.emoji}');
@@ -312,6 +319,33 @@ class StatusService {
 
       // Actualizar notificación persistente con nuevo estado
       await _updatePersistentNotification(newStatus);
+
+      // Sincronizar PresenceRepository (SharedPrefs) sin re-publicar a Firestore.
+      // El batch.commit() ya escribió el estado; aquí solo actualizamos la capa local.
+      try {
+        final repo = sl<PresenceRepository>();
+        await repo.saveState(Normal(currentId: newStatus.id, lastManualId: newStatus.id));
+        log('[StatusService] ✅ PresenceRepository sincronizado: ${newStatus.id}');
+      } catch (e) {
+        log('[StatusService] ⚠️ Error sync PresenceRepository: $e');
+      }
+
+      // Para SOS: ejecutar use case para persistir SOSActive con coordenadas GPS.
+      // NOTA: RaiseSOS llama a publisher.publish() → segunda escritura a Firestore
+      // con datos simplificados (sin zonas). Riesgo aceptado para Día 3; ver plan.
+      if (newStatus.id == StatusIds.sos && coordinates != null) {
+        try {
+          await sl<RaiseSOS>().call(
+            userId: user.uid,
+            circleId: circleId,
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+          );
+          log('[StatusService] ✅ RaiseSOS use case ejecutado');
+        } catch (e) {
+          log('[StatusService] ⚠️ RaiseSOS use case error (no crítico): $e');
+        }
+      }
 
       return StatusUpdateResult.success(newStatus, coordinates);
     } catch (e) {

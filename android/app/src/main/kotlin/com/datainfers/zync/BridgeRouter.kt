@@ -8,6 +8,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
+import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
@@ -103,12 +104,26 @@ class BridgeRouter(private val activity: Activity) {
         }
     }
 
-    /** Día 3 — updateStatus (StatusUpdateWorker → bridge) */
+    /**
+     * Emite un evento de estado actualizado hacia Flutter via `nunakin/bridge`.
+     *
+     * Llamado desde los 3 puntos de emisión en MainActivity (BroadcastReceiver,
+     * onResume, onNewIntent) cuando USE_LEGACY_BRIDGE = false.
+     * Con el flag en true los callers usan com.datainfers.zync/status_update directamente.
+     */
+    fun emitStatusEvent(messenger: BinaryMessenger, statusId: String) {
+        MethodChannel(messenger, "nunakin/bridge").invokeMethod(
+            "nativeEvent",
+            mapOf("type" to "statusUpdated", "statusId" to statusId)
+        )
+    }
+
+    /** Día 3 — Flutter→Kotlin: stub. La implementación real (actualizar notif) es Día 4. */
     fun handleStatus(call: MethodCall, result: MethodChannel.Result) {
         result.notImplemented()
     }
 
-    /** Día 3 — raiseSOS */
+    /** Día 3 — Flutter→Kotlin: stub. La lógica real de GPS y Worker se migra en Día 4. */
     fun handleSOS(call: MethodCall, result: MethodChannel.Result) {
         result.notImplemented()
     }

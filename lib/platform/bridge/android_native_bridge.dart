@@ -27,6 +27,37 @@ class AndroidNativeBridge implements NativeBridge {
   @visibleForTesting
   static const legacyChannelName = 'zync/keep_alive';
 
+  /// Registra el handler para eventos entrantes desde el lado nativo (Kotlin→Dart).
+  ///
+  /// Debe llamarse una vez, después de que el FlutterEngine esté listo.
+  /// Mientras USE_LEGACY_BRIDGE = true este método se llama igualmente; el handler
+  /// queda registrado y activo cuando el flag se flipee en Día 5.
+  void initialize() {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'nativeEvent') {
+        _handleNativeEvent(call.arguments as Map<dynamic, dynamic>);
+      }
+    });
+  }
+
+  void _handleNativeEvent(Map<dynamic, dynamic> args) {
+    final type = args['type'] as String?;
+    switch (type) {
+      case 'statusUpdated':
+        final statusId = args['statusId'] as String?;
+        if (statusId != null) {
+          _eventController.add(StatusUpdatedFromNotification(statusId));
+        }
+      case 'silentDeactivated':
+        _eventController.add(const SilentDeactivatedByUser());
+      case 'sessionCleared':
+        _eventController.add(const SessionCleared());
+      default:
+        // Evento desconocido — ignorar silenciosamente
+        break;
+    }
+  }
+
   @override
   Future<T> invoke<T>(NativeCommand<T> cmd) async {
     switch (cmd) {
