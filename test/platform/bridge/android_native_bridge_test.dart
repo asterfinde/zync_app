@@ -18,6 +18,9 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
         calls.add(call);
+        if (call.method == 'getCurrentLocation') {
+          return {'lat': 1.23, 'lng': 4.56};
+        }
         return null;
       });
       bridge = AndroidNativeBridge(channel: channel);
@@ -44,12 +47,28 @@ void main() {
       expect(calls.single.arguments, isNull);
     });
 
-    test('Unimplemented command throws UnimplementedError', () async {
-      expect(
-        () => bridge.invoke(const GetCurrentLocation()),
-        throwsA(isA<UnimplementedError>()),
-      );
-      expect(calls, isEmpty);
+    test('GetCurrentLocation invokes "getCurrentLocation" and parses result',
+        () async {
+      final loc = await bridge.invoke(const GetCurrentLocation());
+      expect(calls, hasLength(1));
+      expect(calls.single.method, 'getCurrentLocation');
+      expect(loc.lat, closeTo(1.23, 0.001));
+      expect(loc.lng, closeTo(4.56, 0.001));
+    });
+
+    test('SetUserSession invokes "setUserSession" with uid and email', () async {
+      await bridge.invoke(const SetUserSession(uid: 'u1', email: 'e@e.com'));
+      expect(calls, hasLength(1));
+      expect(calls.single.method, 'setUserSession');
+      expect(calls.single.arguments['uid'], 'u1');
+      expect(calls.single.arguments['email'], 'e@e.com');
+    });
+
+    test('ClearSession invokes "clearSession" with no arguments', () async {
+      await bridge.invoke(const ClearSession());
+      expect(calls, hasLength(1));
+      expect(calls.single.method, 'clearSession');
+      expect(calls.single.arguments, isNull);
     });
 
     test('channelName is "nunakin/bridge"', () {
