@@ -478,3 +478,90 @@ void main() {
 ---
 
 **Modelo:** Sonnet 4.6 — tareas de implementación directa (adaptador, catálogo de constantes, tests con mocks). Opus se reserva para Día 3 y la semana completa 3 (bridge nativo), donde la complejidad de razonamiento es mayor.
+
+---
+
+Aquí tienes el texto formateado de manera análoga a los documentos anteriores:
+
+---
+
+## Smoke Test — Día 5 (antes de iniciar)
+
+Ejecutar en dispositivo físico Android. Objetivo: confirmar que el comportamiento es idéntico al baseline `mvp-baseline-20260506` después de los Días 3 y 4.
+
+---
+
+### Precondiciones
+
+- App instalada con build de la rama main (commit a6752b4)
+- Usuario autenticado con círculo activo
+- Al menos 1 miembro más en el círculo (para verificar visibilidad)
+- GPS habilitado
+
+---
+
+### Paso 1 — Cold start y login
+
+1. Forzar cierre completo de la app (recientes → deslizar)
+2. Abrir la app desde cero
+3. Verificar: pantalla de splash → home en <3s sin parpadeos ni errores
+
+---
+
+### Paso 2 — Selección de estado manual
+
+4. Tocar el emoji propio en la vista del círculo
+5. Seleccionar un estado (ej: "En clase")
+6. Verificar: el estado se actualiza en pantalla Y en el círculo del otro miembro
+
+---
+
+### Paso 3 — Entrar a Silent Mode
+
+7. Activar Modo Silencio desde el botón correspondiente
+8. Verificar: ícono de Silent Mode activo; estado visible = estado pre-silent ("En clase")
+
+---
+
+### Paso 4 — Backgrounding prolongado
+
+9. Minimizar la app (botón home)
+10. Esperar ≥10 minutos sin abrir la app
+11. Volver a abrir la app
+12. Verificar:
+    - Silent Mode sigue activo
+    - Estado sigue mostrando "En clase" (no reseteó a "Bien" ni otro)
+    - No apareció ningún dialog de permisos inesperado
+
+---
+
+### Paso 5 — Desactivar Silent Mode
+
+13. Desactivar Modo Silencio
+14. Verificar:
+    - Estado vuelve a "En clase" (el manual, no "Bien")
+    - El cambio se refleja en Firestore (miembro del círculo lo ve actualizado)
+
+---
+
+### Paso 6 — Notificación de barra (BN)
+
+15. Desde otro dispositivo/cuenta, enviar un estado al círculo para generar notificación
+16. Tocar la notificación
+17. Seleccionar un estado desde el modal de barra
+18. Verificar: el estado se actualiza correctamente; el modal se cierra
+
+---
+
+### Criterio de corte
+
+| Resultado | Acción |
+|-----------|--------|
+| Todos los pasos pasan | ✅ Proceder al Día 5 |
+| Falla algún paso | 🛑 Reportar al desarrollador antes de continuar — NO iniciar Día 5 |
+
+---
+
+Nota.- Sobre las confirmaciones de PS: es el modo de permisos del entorno, no mi comportamiento. Cuando retomes con /clear, si sigue siendo un problema usa el skill `/fewer-permission-prompts` — escanea el historial y genera el allowlist automáticamente en .claude/settings.json.
+
+---
