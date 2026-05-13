@@ -24,14 +24,29 @@ class AndroidNativeBridge implements NativeBridge {
   @override
   Stream<NativeEvent> get events => _eventController.stream;
 
+  @visibleForTesting
+  static const legacyChannelName = 'zync/keep_alive';
+
   @override
   Future<T> invoke<T>(NativeCommand<T> cmd) async {
     switch (cmd) {
       case ActivateSilentMode():
-        await _channel.invokeMethod<void>('activateSilentMode');
+        await _channel
+            .invokeMethod<void>('activateSilentMode')
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => const MethodChannel(legacyChannelName)
+                  .invokeMethod<void>('activate'),
+            );
         return null as T;
       case DeactivateSilentMode():
-        await _channel.invokeMethod<void>('deactivateSilentMode');
+        await _channel
+            .invokeMethod<void>('deactivateSilentMode')
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => const MethodChannel(legacyChannelName)
+                  .invokeMethod<void>('deactivate'),
+            );
         return null as T;
       // TODO(sem3-día3+): GetCurrentLocation, SetUserSession, ClearSession
       default:
