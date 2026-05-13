@@ -71,6 +71,38 @@ void main() {
       expect(calls.single.arguments, isNull);
     });
 
+    // Día 5 — Test 11
+    test('RegisterZone invokes "registerZone" with zoneId/lat/lng/radius', () async {
+      await bridge.invoke(const RegisterZone(
+        zoneId: 'z1',
+        lat: 1.0,
+        lng: 2.0,
+        radiusMeters: 100.0,
+      ));
+      expect(calls, hasLength(1));
+      expect(calls.single.method, 'registerZone');
+      expect(calls.single.arguments['zoneId'], 'z1');
+      expect(calls.single.arguments['lat'], 1.0);
+      expect(calls.single.arguments['lng'], 2.0);
+      expect(calls.single.arguments['radiusMeters'], 100.0);
+    });
+
+    // Día 5 — Test 12
+    test('UnregisterZone invokes "unregisterZone" with zoneId', () async {
+      await bridge.invoke(const UnregisterZone(zoneId: 'z1'));
+      expect(calls, hasLength(1));
+      expect(calls.single.method, 'unregisterZone');
+      expect(calls.single.arguments, {'zoneId': 'z1'});
+    });
+
+    // Día 5 — Test 13
+    test('SetBadgeCount invokes "setBadgeCount" with count', () async {
+      await bridge.invoke(const SetBadgeCount(3));
+      expect(calls, hasLength(1));
+      expect(calls.single.method, 'setBadgeCount');
+      expect(calls.single.arguments, {'count': 3});
+    });
+
     test('channelName is "nunakin/bridge"', () {
       expect(AndroidNativeBridge.channelName, 'nunakin/bridge');
     });
@@ -142,6 +174,46 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       await sub.cancel();
       expect(events, isEmpty);
+    });
+
+    // Día 5 — Test 14
+    test('geofenceEntered event emits GeofenceEntered with zoneId', () async {
+      final expectation = expectLater(
+        bridge.events,
+        emits(isA<GeofenceEntered>()
+            .having((e) => e.zoneId, 'zoneId', 'z1')),
+      );
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+        AndroidNativeBridge.channelName,
+        codec.encodeMethodCall(
+          const MethodCall('nativeEvent', {'type': 'geofenceEntered', 'zoneId': 'z1'}),
+        ),
+        (ByteData? _) {},
+      );
+
+      await expectation;
+    });
+
+    // Día 5 — Test 15
+    test('geofenceExited event emits GeofenceExited with zoneId', () async {
+      final expectation = expectLater(
+        bridge.events,
+        emits(isA<GeofenceExited>()
+            .having((e) => e.zoneId, 'zoneId', 'z1')),
+      );
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+        AndroidNativeBridge.channelName,
+        codec.encodeMethodCall(
+          const MethodCall('nativeEvent', {'type': 'geofenceExited', 'zoneId': 'z1'}),
+        ),
+        (ByteData? _) {},
+      );
+
+      await expectation;
     });
   });
 }
