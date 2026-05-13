@@ -12,6 +12,174 @@ model: claude-sonnet-4-6
 - Lenguaje: Dart
 - App: Nunakin (com.datainfers.zync)
 
+## Estructura del Proyecto — Sección 3 del CLAUDE.md (contexto estático)
+
+```
+lib/
+|   firebase_options.dart
+|   main.dart
+|
++---core
+|   |   global_keys.dart
+|   |
+|   +---cache
+|   |       in_memory_cache.dart
+|   |       persistent_cache.dart
+|   |
+|   +---di
+|   |       injection_container.dart
+|   |
+|   +---error
+|   |       exceptions.dart
+|   |       failures.dart
+|   |
+|   +---models
+|   |       user_status.dart
+|   |
+|   +---network
+|   |       network_info.dart
+|   |       network_info_impl.dart
+|   |
+|   +---services
+|   |       app_badge_service.dart
+|   |       emoji_cache_service.dart
+|   |       emoji_management_service.dart
+|   |       emoji_service.dart
+|   |       gps_service.dart
+|   |       initialization_service.dart
+|   |       keep_alive_service.dart
+|   |       native_state_bridge.dart
+|   |       quick_actions_preferences_service.dart
+|   |       session_cache_service.dart
+|   |       silent_functionality_coordinator.dart
+|   |       status_modal_service.dart
+|   |       status_service.dart
+|   |
+|   +---splash
+|   |       splash_screen.dart
+|   |
+|   +---usecases
+|   |       usecase.dart
+|   |
+|   +---utils
+|   |       performance_tracker.dart
+|   |
+|   \---widgets
+|           emoji_modal.dart
+|           quick_actions_config_widget.dart
+|           status_widget.dart
+|
++---features
+|   +---auth
+|   |   +---data
+|   |   |   +---datasources
+|   |   |   |       auth_local_data_source.dart
+|   |   |   |       auth_local_data_source_impl.dart
+|   |   |   |       auth_remote_data_source.dart
+|   |   |   |       auth_remote_data_source_impl.dart
+|   |   |   +---models
+|   |   |   |       user_model.dart
+|   |   |   \---repositories
+|   |   |           auth_repository_impl.dart
+|   |   +---domain
+|   |   |   +---entities
+|   |   |   |       user.dart
+|   |   |   +---repositories
+|   |   |   |       auth_repository.dart
+|   |   |   \---usecases
+|   |   |           get_current_user.dart
+|   |   |           sign_in_or_register.dart
+|   |   |           sign_out.dart
+|   |   \---presentation
+|   |       +---pages
+|   |       |       auth_final_page.dart  ← ÚNICO archivo activo de auth
+|   |       |       auth_wrapper.dart
+|   |       +---provider
+|   |       |       auth_state.dart
+|   |       \---widgets
+|   |               (legacy)
+|   |
+|   +---circle
+|   |   \---presentation
+|   |       +---pages
+|   |       |       home_page.dart
+|   |       |       quick_status_selector_page.dart
+|   |       \---widgets
+|   |               create_circle_view.dart
+|   |               in_circle_view.dart
+|   |               in_circle_view_new.dart
+|   |               join_circle_view.dart
+|   |               no_circle_view.dart
+|   |               quick_status_send_dialog.dart
+|   |
+|   +---geofencing
+|   |   +---domain
+|   |   |   \---entities
+|   |   |           zone.dart
+|   |   |           zone_event.dart
+|   |   +---presentation
+|   |   |   +---pages
+|   |   |   |       zones_page.dart
+|   |   |   \---widgets
+|   |   |           geofencing_debug_widget.dart
+|   |   |           zone_form.dart
+|   |   \---services
+|   |           geofencing_service.dart
+|   |           zone_event_service.dart
+|   |           zone_service.dart
+|   |
+|   \---settings
+|       \---presentation
+|           +---pages
+|           |       emoji_management_page.dart
+|           |       settings_page.dart
+|           \---widgets
+|                   create_emoji_dialog.dart
+|                   delete_emoji_dialog.dart
+|
++---notifications
+|       notification_actions.dart
+|       notification_service.dart
+|
++---providers
+|       circle_provider.dart
+|
++---quick_actions
+|       quick_actions_handler.dart
+|       quick_actions_service.dart
+|
++---services
+|       auth_service.dart
+|       circle_service.dart
+|
++---test_helpers
+|       performance_monitor.dart
+|       test_cache.dart
+|       test_page.dart
+|
+\---widgets
+        home_screen_widget.dart
+        notification_status_selector.dart
+        sos_gps_test_widget.dart
+        status_selector_overlay.dart
+        widget_models.dart
+        widget_service.dart
+```
+
+## Decisiones Técnicas — Sección 12 del CLAUDE.md (contexto estático)
+
+| Fecha | Decisión | Razón |
+|-------|----------|-------|
+| — | Se descartó Clean Architecture | Sobreingeniería para MVP. Se adoptó estructura por features. |
+| — | Se descartó Patrol para testing | Incompatibilidad de versiones con Flutter actual. Se usa `flutter_test` estándar. |
+| 2026-03-16 | `auth_final_page.dart` es el ÚNICO archivo activo de auth | Maneja login, registro, recuperación y navegación post-auth. `sign_in_page.dart` y `auth_form.dart` son legacy sin uso. Trabajar SOLO en `auth_final_page.dart` para cualquier tarea de auth. |
+| 2026-03-17 | Solo el creador del círculo puede eliminarlo | Miembros solo pueden abandonarlo. Evita círculos zombie en Firestore. |
+| 2026-03-17 | MVP: un único círculo por usuario | Múltiples círculos generan fricción. Múltiples círculos evaluados para v2.0. |
+| 2026-03-27 | Sin opción de salir del círculo sin eliminar cuenta | Usuarios sin círculo son ruido. La única salida es eliminar la cuenta. `btn_leave_circle` eliminado de `settings_page.dart`. |
+
+> **Nota:** Si CLAUDE.md fue actualizado y estas tablas quedaron desincronizadas, prevalece CLAUDE.md.
+> Actualizar este archivo al cierre de sesión si hubo cambios en secciones 3 o 12.
+
 ## Flujo general del sistema
 ```
 texto raw → @prompt-engineer [Sonnet-4.6]
@@ -33,7 +201,7 @@ Especialista en comunicación técnica entre desarrolladores e IAs. Recibes repo
 
 ### Precondiciones — qué necesito para actuar
 - Reporte crudo del desarrollador: texto informal describiendo un bug, resultado de QA, comportamiento inesperado o regresión
-- Acceso de lectura a sección 3 y sección 12 del CLAUDE.md
+- Secciones 3 y 12 del CLAUDE.md disponibles como contexto estático en este archivo — no leer CLAUDE.md
 
 ### Postcondiciones — qué garantizo al terminar
 - Prompt estructurado completo con todas las secciones del formato de salida
@@ -73,7 +241,7 @@ Sin una de estas señales en el mensaje siguiente: no actuar.
 ## Proceso
 
 1. Imprimir el anuncio de turno.
-2. Del CLAUDE.md, leer ÚNICAMENTE sección 3 (estructura de archivos) y sección 12 (decisiones técnicas). No leer el archivo completo.
+2. Consultar las secciones "Estructura del Proyecto" y "Decisiones Técnicas" disponibles en este archivo — no leer CLAUDE.md.
 3. Identificar tipo de reporte: `bug` | `qa` | `comportamiento-inesperado` | `regresión`
 4. Si el reporte contiene múltiples bugs: generar un bloque de prompt por cada uno, numerados.
 5. Construir el prompt estructurado con el formato de salida.
@@ -118,7 +286,7 @@ Ejemplo: `AUTH-20240315-001`. Este ID viaja sin modificación hasta `@merger`.
 
 ---
 
-⏸ Prompt listo. Esperando confirmación para continuar ("ok", "procede", "ajusta X").
+⏸ Prompt listo. Esperando confirmación para continuar ("ok: procede", "x: ajusta").
 
 > **Tras confirmación del desarrollador:** pasar el prompt estructurado a `@analyst` para diagnóstico de causa raíz.
 

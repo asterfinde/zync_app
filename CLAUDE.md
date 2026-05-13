@@ -7,16 +7,16 @@
 
 ## 1. Información del Proyecto
 
-- **Nombre:** ZYNC
-- **Descripción:** Crear una aplicación móvil para Android y iOS que permite a un usuario enviar una imagen/emoji predefinido a un "círculo cercano" de confianza. La aplicación. además, tiene una función social simple y una función crítica de SOS que adjunta la ubicación actual del usuario.
-- **Tipo:** Aplicación móvil (Android en su primera etapa luego se expandirá hacia iOS)
+- **Nombre:** Nunakin
+- **Descripción:** Aplicación móvil que permite a un usuario enviar una imagen/emoji predefinido a un "círculo cercano" de confianza. Incluye función social simple y función crítica de SOS con ubicación GPS.
+- **Tipo:** Aplicación móvil (Android primera etapa, luego iOS)
 - **Etapa actual:** MVP — 90%
 - **Stack:** Flutter + Firebase (Firestore, Auth, Storage, API Key Anthropic Claude Sonnet)
 - **Versión de Flutter:** 3.38.2
 - **Versión de Dart:** 3.10.0
 - **Versión mínima de Android:** 21
 - **Versión mínima de iOS:** No considerada aún
-- **App ID:** com.datainfers.zync
+- **App ID:** com.datainfers.zync *(se mantiene por compatibilidad — no cambiar)*
 
 ---
 
@@ -37,25 +37,25 @@
 - Si un cambio solicitado impacta otros archivos, LISTAR los archivos afectados ANTES de modificar.
 - Si encuentra un bug o inconsistencia no relacionada con la tarea, REPORTARLO sin corregirlo.
 - Confirmar el alcance exacto de cada cambio antes de ejecutarlo.
-- **Antes de cualquier `git checkout` o cambio de rama:** listar explícitamente los archivos que podrían verse afectados por el cambio de rama y esperar confirmación del desarrollador — incluso en modo `SOLO`.
+- **Antes de cualquier `git checkout` o cambio de rama:** listar explícitamente los archivos que podrían verse afectados y esperar confirmación — incluso en modo `SOLO`.
 - Al cierre de sesión, proponer entradas para las secciones 11 y 12 si corresponde, y esperar aprobación.
-- **Antes de proponer cualquier cambio en lógica de navegación, tap handlers o flujos de usuario:** listar explícitamente TODOS los flujos que pasan por el mismo código — no solo el flujo roto — y confirmar que ninguno regresiona. Si algún flujo existente se ve afectado, reportarlo ANTES de pedir VoBo, no después de implementar.
-- **Para bugs de lifecycle nativo Android:** leer los logs diagnósticos antes de proponer cualquier fix. Los logs son la única fuente de la verdad — está bien confiar en el instinto, pero dado que tenemos bugs persistentes, no se pueden asumir comportamientos no comprobados en los logs.
-- **Gateway de control — "Verifica antes de VoBo":** cuando el desarrollador dice "verifica", "revisa", "investiga", "analiza" o frases similares, la IA debe presentar ÚNICAMENTE el diagnóstico y el plan de acción propuesto. NO implementar ningún cambio hasta recibir autorización explícita. La palabra "VoBo" (o su equivalente) es la señal de arranque — el diagnóstico por sí solo NO lo es. Esto aplica incluso si la sesión está en modo `SOLO`.
+- **Antes de proponer cualquier cambio en lógica de navegación, tap handlers o flujos de usuario:** listar TODOS los flujos que pasan por el mismo código y confirmar que ninguno regresiona. Si algún flujo existente se ve afectado, reportarlo ANTES de pedir VoBo.
+- **Para bugs de lifecycle nativo Android:** leer los logs diagnósticos antes de proponer cualquier fix. Los logs son la única fuente de verdad.
+- **Gateway de control — "Verifica antes de VoBo":** cuando el desarrollador dice "verifica", "revisa", "investiga", "analiza" o frases similares, presentar ÚNICAMENTE el diagnóstico y el plan propuesto. NO implementar nada hasta recibir "VoBo" explícito. Aplica incluso en modo `SOLO`.
+- **En refactorizaciones incrementales con feature flag:** antes de migrar cualquier caller Dart a una interfaz nueva (ej. `NativeBridge.invoke()`), verificar que la implementación del otro lado (Kotlin/nativo) ya está activa. Si no lo está, el caller debe incluir el fallback al camino legacy en el mismo commit — nunca en un PR separado.
+- **En el reporte de cierre de cada PR:** si algún flujo de usuario queda en estado de transición (un lado migrado, otro inactivo), incluir explícitamente la advertencia `⚠️ Riesgo activo: [descripción]. Verificar en dispositivo antes del próximo PR.` Si no se incluyó: el desarrollador debe asumir que ese flujo NO fue verificado.
 
 ### Modo autónomo vs. modo con autorización
 
-El desarrollador puede controlar el nivel de autonomía de la IA mediante prefijos en sus instrucciones:
-
 | Prefijo | Significado | Comportamiento |
 |---------|-------------|----------------|
-| `SOLO` | Sin interrupciones | La IA ejecuta todos los pasos de forma autónoma: cambios, commit, PR, merge y limpieza de ramas. No pide autorización en ningún punto del proceso. |
-| `AUTH` | Con autorización (default) | La IA muestra el alcance de cada cambio y espera aprobación antes de proceder. Este es el comportamiento por defecto. |
+| `SOLO` | Sin interrupciones | La IA ejecuta todos los pasos de forma autónoma: cambios, commit, PR, merge y limpieza de ramas. No pide autorización en ningún punto. |
+| `AUTH` | Con autorización (default) | La IA muestra el alcance de cada cambio y espera aprobación antes de proceder. |
 
-**Reglas de aplicación:**
-- El prefijo aplica únicamente a la instrucción que lo lleva, no a las siguientes.
+**Reglas:**
+- El prefijo aplica únicamente a la instrucción que lo lleva.
 - Si no hay prefijo, se asume `AUTH`.
-- En modo `SOLO`, la IA igual reporta al final un resumen de todo lo ejecutado.
+- En modo `SOLO`, la IA reporta un resumen al final de todo lo ejecutado.
 
 ---
 
@@ -64,34 +64,29 @@ El desarrollador puede controlar el nivel de autonomía de la IA mediante prefij
 ```
 lib/
 |   firebase_options.dart
-|   generate-tree.bat
-|   generate-tree.sh
 |   main.dart
-|   main_minimal_test.dart
-|   main_test.dart
-|   tree-~0,4-~4,2-~6,2.txt
-|   
+|
 +---core
 |   |   global_keys.dart
-|   |   
+|   |
 |   +---cache
 |   |       in_memory_cache.dart
 |   |       persistent_cache.dart
-|   |       
+|   |
 |   +---di
 |   |       injection_container.dart
-|   |       
+|   |
 |   +---error
 |   |       exceptions.dart
 |   |       failures.dart
-|   |       
+|   |
 |   +---models
 |   |       user_status.dart
-|   |       
+|   |
 |   +---network
 |   |       network_info.dart
 |   |       network_info_impl.dart
-|   |       
+|   |
 |   +---services
 |   |       app_badge_service.dart
 |   |       emoji_cache_service.dart
@@ -106,37 +101,21 @@ lib/
 |   |       silent_functionality_coordinator.dart
 |   |       status_modal_service.dart
 |   |       status_service.dart
-|   |       
+|   |
 |   +---splash
 |   |       splash_screen.dart
-|   |       
+|   |
 |   +---usecases
 |   |       usecase.dart
-|   |       
+|   |
 |   +---utils
 |   |       performance_tracker.dart
-|   |       
+|   |
 |   \---widgets
 |           emoji_modal.dart
-|           emoji_modal_backup.dart
-|           emoji_modal_backup_20250930_154539.dart
 |           quick_actions_config_widget.dart
 |           status_widget.dart
-|           
-+---dev_auth_simple
-|       auth_simple_page.dart
-|       
-+---dev_auth_test
-|       dev_auth_test_page.dart
-|       
-+---dev_test
-|       mock_data.dart
-|       test_members_page.dart
-|       
-+---dev_utils
-|       clean_auth.dart
-|       clean_firestore.dart
-|       
+|
 +---features
 |   +---auth
 |   |   +---data
@@ -145,134 +124,111 @@ lib/
 |   |   |   |       auth_local_data_source_impl.dart
 |   |   |   |       auth_remote_data_source.dart
 |   |   |   |       auth_remote_data_source_impl.dart
-|   |   |   |       
 |   |   |   +---models
 |   |   |   |       user_model.dart
-|   |   |   |       
 |   |   |   \---repositories
 |   |   |           auth_repository_impl.dart
-|   |   |           
 |   |   +---domain
 |   |   |   +---entities
-|   |   |   |       .gitkeep
 |   |   |   |       user.dart
-|   |   |   |       
 |   |   |   +---repositories
 |   |   |   |       auth_repository.dart
-|   |   |   |       
 |   |   |   \---usecases
 |   |   |           get_current_user.dart
 |   |   |           sign_in_or_register.dart
 |   |   |           sign_out.dart
-|   |   |           
 |   |   \---presentation
 |   |       +---pages
-|   |       |       auth_final_page.dart
+|   |       |       auth_final_page.dart  ← ÚNICO archivo activo de auth
 |   |       |       auth_wrapper.dart
-|   |       |       sign_in_page.dart
-|   |       |       
 |   |       +---provider
-|   |       |       auth_provider.dart
 |   |       |       auth_state.dart
-|   |       |       
 |   |       \---widgets
-|   |               auth_form.dart
-|   |               
+|   |               (legacy — ver sección 12)
+|   |
 |   +---circle
-|   |   +---domain_old
-|   |   |   \---entities
-|   |   |           user_status.dart
-|   |   |           
 |   |   \---presentation
 |   |       +---pages
 |   |       |       home_page.dart
-|   |       |       home_page_backup.dart
 |   |       |       quick_status_selector_page.dart
-|   |       |       quick_status_selector_page_backup.dart
-|   |       |       
 |   |       \---widgets
 |   |               create_circle_view.dart
 |   |               in_circle_view.dart
-|   |               in_circle_view_broken_backup.dart
 |   |               in_circle_view_new.dart
 |   |               join_circle_view.dart
 |   |               no_circle_view.dart
 |   |               quick_status_send_dialog.dart
-|   |               
+|   |
 |   +---geofencing
 |   |   +---domain
 |   |   |   \---entities
 |   |   |           zone.dart
 |   |   |           zone_event.dart
-|   |   |           
 |   |   +---presentation
 |   |   |   +---pages
 |   |   |   |       zones_page.dart
-|   |   |   |       
 |   |   |   \---widgets
 |   |   |           geofencing_debug_widget.dart
 |   |   |           zone_form.dart
-|   |   |           
 |   |   \---services
 |   |           geofencing_service.dart
 |   |           zone_event_service.dart
 |   |           zone_service.dart
-|   |           
+|   |
 |   \---settings
 |       \---presentation
 |           +---pages
 |           |       emoji_management_page.dart
 |           |       settings_page.dart
-|           |       
 |           \---widgets
 |                   create_emoji_dialog.dart
 |                   delete_emoji_dialog.dart
-|                   
+|
 +---notifications
 |       notification_actions.dart
 |       notification_service.dart
-|       
+|
 +---providers
 |       circle_provider.dart
-|       
+|
 +---quick_actions
 |       quick_actions_handler.dart
 |       quick_actions_service.dart
-|       
+|
 +---services
 |       auth_service.dart
 |       circle_service.dart
-|       
+|
 +---test_helpers
 |       performance_monitor.dart
 |       test_cache.dart
 |       test_page.dart
-|       
+|
 \---widgets
-	home_screen_widget.dart
-	notification_status_selector.dart
-	sos_gps_test_widget.dart
-	status_selector_overlay.dart
-	widget_models.dart
-	widget_service.dart
+        home_screen_widget.dart
+        notification_status_selector.dart
+        sos_gps_test_widget.dart
+        status_selector_overlay.dart
+        widget_models.dart
+        widget_service.dart
 ```
 
-**Regla:** 
-
-Dado el avance del proyecto, esta estructura NO se cambia. No se agregan capas adicionales
-(domain, use_cases, repositories abstractos, etc.) salvo decisión explícita del desarrollador.
+**Regla:** Esta estructura NO se cambia. No se agregan capas adicionales sin decisión explícita del desarrollador.
 
 ---
 
 ## 4. Comunicación con la IA
 
-### Estilo de Comunicación
-Responde como un cavernícola. Sin artículos, sin palabras de relleno, sin cortesías.
-Corto. Directo. El código habla por sí mismo.
-Ejemplo: "Arreglar bug. Actualizar línea 10. Listo." en lugar de "He actualizado la línea 10 para ti..."
+### Estilo de respuesta
+Respuestas cortas y directas. Sin artículos innecesarios, sin cortesías, sin relleno.
+El código habla por sí mismo.
+Ejemplo: "Bug en línea 42. Falta Text widget. Propongo esto:" — no: "He analizado tu código y encontré que..."
 
-### Idioma:
-Español neutro latinoamericano. Nunca usar modismos, conjugaciones o expresiones del español rioplatense/argentino (ej: "andá", "hacés", "vos", "resolvés", "abrís", "tenés"). Usar formas neutras: "ve", "haces", "tú/usted", "resuelves", "abres", "tienes".
+> **Nota:** Este estilo aplica a las *respuestas* de la IA, no a los prompts del desarrollador.
+> Los prompts pueden y deben ser tan detallados como la tarea lo requiera — la precisión del prompt evita iteraciones innecesarias y ahorra tokens.
+
+### Idioma
+Español neutro latinoamericano. Nunca usar modismos rioplatenses (ej: "andá", "hacés", "vos", "tenés"). Usar formas neutras: "ve", "haces", "tú/usted", "tienes".
 
 ---
 
@@ -293,45 +249,36 @@ Español neutro latinoamericano. Nunca usar modismos, conjugaciones o expresione
 - Usar `final` por defecto para variables locales.
 - Widgets pequeños: mantener en el mismo archivo.
 - Widgets complejos (> 100 líneas): extraer a archivo propio.
-- No usar `print()` para debugging — usar `debugPrint()` o `log()`.
+- No usar `print()` — usar `debugPrint()` o `log()`.
 - Manejar estados de carga y error en cada pantalla (no solo el happy path).
 
 ### State Management
-- **Solución:** [especificar: Provider, Riverpod, Bloc, etc.]
+- **⚠️ PENDIENTE DEFINIR** — completar antes de agregar nueva lógica de estado.
 - No mezclar soluciones de state management.
 - No migrar de una solución a otra sin decisión explícita del desarrollador.
 
 ---
 
-## 5. Firebase — Reglas Específicas
+## 6. Firebase — Reglas Específicas
 
 - **Firestore:** Toda lectura/escritura va dentro de `services/`. Nunca en widgets directamente.
 - **Auth:** Usar el servicio centralizado `shared/services/auth_service.dart`.
-- **Security Rules:** No asumir que las reglas de Firestore están configuradas. Preguntar antes de crear colecciones nuevas.
-- **Colecciones existentes:** circles, users, predefinedEmojis
+- **Security Rules:** No asumir que las reglas están configuradas. Preguntar antes de crear colecciones nuevas.
+- **Colecciones existentes:** `circles`, `users`, `predefinedEmojis`
 
 ```js
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Emojis predefinidos: lectura pública para usuarios autenticados
     match /predefinedEmojis/{emojiId} {
       allow read: if request.auth != null;
-      allow write: if false; // Solo admins via consola
+      allow write: if false;
     }
-    
-    // Reglas para usuarios: pueden leer y escribir sus propios datos
-    // ADEMÁS: pueden leer el nickname de otros usuarios SI están en el mismo círculo
     match /users/{userId} {
-      // Escribir: solo el propio usuario
       allow write: if request.auth != null && request.auth.uid == userId;
-      
-      // Leer: el propio usuario O miembros del mismo círculo (para nicknames)
       allow read: if request.auth != null && (
-        // El propio usuario puede leer su documento completo
         request.auth.uid == userId ||
-        // O si ambos usuarios están en el mismo círculo
         (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.circleId != null &&
@@ -339,372 +286,292 @@ service cloud.firestore {
         )
       );
     }
-    
-    // Permite acceso a sub-colecciones del usuario (para futuras funcionalidades)
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Permite leer y escribir en la colección circles para usuarios autenticados
-    // Esto permite crear, leer, actualizar y eliminar círculos
     match /circles/{circleId} {
       allow read, write: if request.auth != null;
     }
-    
-    // Permite acceso a sub-colecciones de circles (como miembros, mensajes, etc.)
     match /circles/{circleId}/{document=**} {
       allow read, write: if request.auth != null;
     }
   }
 }
-  ```
+```
+
 - No crear colecciones o subcollections nuevas sin aprobación.
 
 ---
 
-## 6. Dependencias — Regla Estricta
+## 7. Dependencias — Regla Estricta
 
-**Antes de sugerir o instalar cualquier paquete:**
+Antes de sugerir o instalar cualquier paquete:
 
-1. Informar el nombre exacto del paquete y la versión propuesta.
-2. Confirmar compatibilidad con la versión actual de Flutter del proyecto.
-3. Verificar que no genera conflictos con dependencias existentes en `pubspec.yaml`.
-4. Esperar aprobación explícita del desarrollador.
+1. Informar nombre exacto y versión propuesta.
+2. Confirmar compatibilidad con Flutter 3.38.2.
+3. Verificar que no genera conflictos con `pubspec.yaml` existente.
+4. Esperar aprobación explícita.
 
 **Si hay conflicto de versiones:**
-
-- NO intentar resolverlo con overrides o forzando versiones.
+- NO intentar resolverlo con overrides.
 - Informar el conflicto exacto y proponer alternativas.
-- Si no hay alternativa viable, decirlo claramente. No alentar a "seguir intentando".
-- Si tras dos intentos el problema persiste, DETENERSE y registrar el problema en la sección 12 como deuda técnica.
-
-**Paquetes prohibidos:**
-- No definidos
+- Si tras dos intentos el problema persiste, DETENERSE y registrar en sección 12.
 
 ---
 
-## 7. Testing
+## 8. Testing
 
 ### Frameworks
-- **Unitarios:** `flutter_test` (estándar) — para lógica de negocio en `services/` y validaciones en `models/`
-- **Integración:** `integration_test` (paquete oficial de Flutter) — para flujos completos de usuario
-- Los tests de integración se ubican en `integration_test/` en la raíz del proyecto
-- Nombrar archivos: `[flujo]_test.dart` (ej: `auth_flow_test.dart`)
+- **Unitarios:** `flutter_test` (estándar)
+- **Integración:** `integration_test` → ubicar en `integration_test/` en raíz
+- Nombrar archivos: `[flujo]_test.dart`
 
-### Reglas generales
-- **Requisito:** Todo widget interactuable debe tener un `Key` asignado antes de escribir el test.
-- No instalar frameworks de testing adicionales sin aprobación.
-- No automatizar todo de golpe. Priorizar los flujos más tediosos de probar manualmente.
-- Cada test debe ser independiente (no depender del resultado de otro test).
-
-### Plan de pruebas y estado de fases
-
-Ver [`TEST_PLAN.md`](TEST_PLAN.md) — contiene las tablas de casos por fase, estados, observaciones y el protocolo de pruebas en dispositivo físico.
+### Reglas
+- Todo widget interactuable debe tener un `Key` asignado antes de escribir el test.
+- No instalar frameworks adicionales sin aprobación.
+- Cada test debe ser independiente.
+- Ver [`TEST_PLAN.md`](TEST_PLAN.md) para casos por fase y protocolo de pruebas.
 
 ---
 
-## 8. Git — Reglas de Commit
+## 9. Git — Reglas de Commit
 
-Estoy trabajando la metodología Trunk-Based Software Development (TBSD), para tener ramas de corta duración que se integran rápidamente al "tronco" principal y único
+Metodología: Trunk-Based Development (ramas de corta duración).
 
-- **Rama obligatoria antes de cualquier commit:** Verificar que no se está en `main`. Si no hay rama activa para la tarea, crear una antes de cualquier operación git. Nunca commitear directamente en `main`.
-  - Nomenclatura: `feat/`, `fix/`, `docs/`, `test/`, `refactor/` según el tipo de cambio.
-  - Ejemplo: `git checkout -b fix/login-banner-email`
-- **Antes de commitear:** La IA debe listar TODOS los archivos modificados y explicar por qué se tocó cada uno.
-- **Si aparece un archivo inesperado:** No commitear. Investigar primero.
-- **Formato de mensaje:** `tipo: descripción breve`
-  - `feat:` nueva funcionalidad
-  - `fix:` corrección de bug
-  - `refactor:` refactorización (solo si fue solicitada)
-  - `style:` cambios de formato/estilo sin lógica
-  - `docs:` documentación
-  - `test:` agregar o modificar tests
-- **Idioma de commits:** Inglés
-- **Un commit por tarea.** No mezclar features o fixes en un solo commit.
-- **Luego del commit:** Hacer el PR correspondiente, luego borrar las ramas trabajadas (local/remota) y hacer un Pull en el repo remoto para obtener la versión última de la app.
+- **Nunca commitear directamente en `main`.**
+- Crear rama antes de cualquier operación git.
+  - Nomenclatura: `feat/`, `fix/`, `docs/`, `test/`, `refactor/`
+  - Ejemplo: `git checkout -b fix/ms2-status-text`
+- **Antes de commitear:** listar TODOS los archivos modificados con razón de cada cambio.
+- **Si aparece archivo inesperado:** no commitear, investigar primero.
+- **Formato de mensaje:** `tipo: descripción breve` en inglés.
+- **Un commit por tarea.** No mezclar features o fixes.
+- **Post-commit:** PR → merge → borrar rama local y remota → pull en main.
 
 ---
 
-## 9. Lo Que la IA No Decide
+## 10. Lo Que la IA No Decide
 
-Las siguientes decisiones son EXCLUSIVAS del desarrollador:
-
-- Arquitectura del proyecto
-- Elección de paquetes o dependencias
-- Estructura de base de datos (colecciones, esquemas)
-- Estrategia de autenticación
-- Flujo de navegación de la app
-- Diseño de UI/UX (la IA implementa, no diseña salvo que se pida)
-- Priorización de features
-- Cuándo algo "está listo"
+Decisiones EXCLUSIVAS del desarrollador:
+- Arquitectura, paquetes/dependencias, estructura de base de datos
+- Estrategia de autenticación, flujo de navegación
+- Diseño UI/UX (la IA implementa, no diseña salvo que se pida)
+- Priorización de features, cuándo algo "está listo"
 
 ---
 
-## 10. Protocolo de Sesión de Trabajo
+## 11. Protocolo de Sesión de Trabajo
 
 ### Al Inicio
-1. La IA lee este archivo completo, incluyendo las secciones 11 y 12.
-2. La IA revisa si hay ítems en la sección 12 (Deuda Técnica) relacionados con la tarea de la sesión y los menciona si es relevante.
-3. El desarrollador indica qué va a trabajar en esta sesión.
-4. La IA confirma que entiende el alcance.
+1. Leer automáticamente el archivo de memoria más reciente en:
+   `C:\Users\dante\.claude\projects\c--Users-dante-projects-zync-app\memory\`
+   El archivo sigue el patrón `project_session_YYYYMMDD.md` — leer el de fecha más reciente.
+2. Confirmar al desarrollador qué memoria se cargó y cuál es el estado actual.
+3. Leer este archivo completo, incluyendo secciones 12 y 13.
+3b. Verificar que las secciones "Estructura del Proyecto" y "Decisiones Técnicas" embebidas en
+    `.claude/agents/analyst.md` y `.claude/agents/prompt-engineer.md` coincidan con las
+    secciones 3 y 12 de este archivo. Si hay diferencias: actualizarlas antes de continuar
+    y reportar al desarrollador qué cambió.
+4. Revisar si hay ítems en sección 13 (Deuda Técnica) relacionados con la tarea y mencionarlos si es relevante.
+5. El desarrollador indica qué va a trabajar.
+6. La IA confirma que entiende el alcance.
 
 ### Durante
 1. Pedidos pequeños y verificables.
-2. La IA muestra el diff antes de aplicar.
-3. El desarrollador revisa y aprueba.
-4. Se verifica que funciona antes de seguir.
+2. Mostrar diff antes de aplicar.
+3. Verificar que funciona antes de continuar.
 
 ### Al Cierre
 
-**OBLIGATORIO:** La IA debe presentar el siguiente formato al cerrar cada sesión:
-
-#### 1. Resumen Ejecutivo de Cambios/Fixes
+**OBLIGATORIO — presentar este formato:**
 
 ```markdown
 ## 📊 RESUMEN EJECUTIVO
 
 ### Tareas Realizadas
-- [Lista de tareas completadas con checkmarks ✅]
+- [✅ lista de tareas completadas]
 
 ### Archivos Modificados
-- `ruta/archivo1.ext` (líneas X-Y): [descripción breve del cambio]
-- `ruta/archivo2.ext` (líneas A-B): [descripción breve del cambio]
+- `ruta/archivo.ext` (líneas X-Y): descripción breve
 
-### Estadísticas de Cambios
+### Estadísticas
 | Métrica | Valor |
 |---------|-------|
 | Archivos modificados | N |
 | Líneas agregadas | +X |
 | Líneas eliminadas | -Y |
-| Impacto neto | ±Z |
-| Código comentado | N líneas |
-| Documentación agregada | N líneas |
 
-### Formato de Comentarios en Código
+---
 
-**Código anterior comentado incluye**:
-- Fecha del cambio (YYYY-MM-DD)
-- Descripción del bug/problema
-- Explicación de la solución implementada
-- Referencias a issues/PRs relacionados
-
-**Ejemplo**:
-```kotlin
-// ========================================================================
-// [CORRECCIÓN] Descripción breve del fix
-// Fecha: 2026-04-11
-// 
-// PROBLEMA ORIGINAL:
-// - Descripción detallada del bug
-// - Casos afectados
-// 
-// SOLUCIÓN IMPLEMENTADA:
-// - Explicación de la nueva lógica
-// - Razón del cambio
-// ========================================================================
-```
-```
-
-#### 2. Confirmación Final de Estado
-
-```markdown
 ## ✅ CONFIRMACIÓN FINAL
 
 ### Estado del Repositorio
-- ✅ Branch `[nombre]` limpio/actualizado
-- ✅ PR #[número] mergeado exitosamente (si aplica)
-- ✅ Último commit: `[hash]` ([descripción])
-- ✅ Sin cambios pendientes de commit / [N archivos pendientes]
+- ✅ Branch `[nombre]` limpio
+- ✅ PR #[número] mergeado (si aplica)
+- ✅ Último commit: `[hash]` — descripción
 
 ### Memoria Guardada
-- ✅ Memoria creada: `MEMORY[id]`
-- ✅ Ubicación: `C:\Users\dante\.claude\projects\c--Users-dante-projects-zync-app\memory\`
-- ✅ Tags: [lista de tags separados por comas]
-- ✅ Incluye: [resumen de contenido guardado]
+- ✅ Archivo: `MEMORY[id]`
+- ✅ Ubicación: `C:\Users\dante\.claude\projects\c--Users-dante-projects-nunakin-app\memory\`
 
 ### Próximos Pasos
-- [Lista de tareas pendientes o siguiente fase]
+- [lista concreta]
 ```
 
-#### 3. Proceso de Cierre Estándar
+### Formato de comentarios en código (fixes)
 
-1. Presentar **Resumen Ejecutivo** con formato completo
-2. Presentar **Confirmación Final** con estado del repo y memoria
-3. Si hay decisiones técnicas relevantes, proponer entrada para sección 11 y esperar aprobación
-4. Si se detectaron problemas no resueltos, proponer entrada para sección 12 y esperar aprobación
-5. Confirmar que el desarrollador puede abrir nueva sesión
+```dart
+// ════════════════════════════════════════════════════════════
+// [FIX] Descripción breve
+// Fecha: YYYY-MM-DD
+// PROBLEMA: descripción del bug
+// SOLUCIÓN: explicación del cambio
+// ════════════════════════════════════════════════════════════
+```
 
 ### Gestión de contexto
 
-- Al recibir un resumen de sesión comprimida por el sistema: guardar estado en `memory/` antes de continuar.
-- Antes de cambiar a un feature no relacionado con la tarea en curso: guardar memoria y sugerir `/clear` al desarrollador.
+- Al recibir resumen comprimido por el sistema: guardar estado en `memory/` antes de continuar.
+- Antes de cambiar a feature no relacionado: guardar memoria y sugerir `/clear`.
 - Si el desarrollador dice "nueva tarea": guardar memoria → sugerir `/clear`.
-- El contenido a guardar siempre incluye:
-  - Rama activa y archivos modificados pendientes de commit
-  - Estado exacto de la tarea (qué se hizo, qué falta)
-  - Próximo paso concreto para retomar
-  - Decisiones técnicas no registradas aún en sección 11
-- La memoria persistente vive en `memory/` — no duplicar en este archivo.
 
 ---
 
-## 11. Decisiones Técnicas (Bitácora)
+## 12. Decisiones Técnicas (Bitácora)
 
-> Registrar aquí las decisiones importantes tomadas durante el desarrollo.
-> Formato: fecha — decisión — razón
->
-> **Responsabilidad:** El desarrollador toma la decisión. La IA la registra aquí
-> solo cuando el desarrollador lo indica explícitamente al cierre de sesión.
-> La IA nunca agrega entradas por su cuenta.
+> El desarrollador toma la decisión. La IA la registra solo cuando se indica al cierre de sesión. La IA nunca agrega entradas por su cuenta.
 
 | Fecha | Decisión | Razón |
 |-------|----------|-------|
-| [fecha] | Se descartó Clean Architecture | Sobreingeniería para el alcance del MVP. Se adoptó estructura por features. |
-| [fecha] | Se descartó Patrol para testing | Incompatibilidad de versiones con Flutter [versión]. Se usa flutter_test estándar. |
-| 2026-03-16 | `auth_final_page.dart` es el ÚNICO archivo activo de autenticación | Este archivo maneja login, registro, recuperación de contraseña y navegación post-auth de forma autónoma. `sign_in_page.dart` y `auth_form.dart` son legacy sin uso. La IA debe trabajar SOLO en `auth_final_page.dart` para cualquier tarea de auth. |
-| 2026-03-17 | Solo el creador de un círculo puede eliminarlo | Los miembros solo pueden abandonarlo. Al eliminar, todos los miembros quedan desvinculados. Evita círculos "zombie" en Firestore y mantiene la jerarquía clara dentro del grupo. |
-| 2026-03-17 | MVP: un único círculo por usuario | Múltiples círculos generan fricción (¿a cuál actualizo mi estado?). La agencia del adolescente se expresa en *qué comparte y cuándo*, no en cuántos círculos tiene. Múltiples círculos evaluados para v2.0. |
-| 2026-03-27 | Filosofía "estás o no estás" — sin opción de salir del círculo sin eliminar cuenta | Usuarios registrados sin círculo son ruido en los datos y no tienen funcionalidad. La única salida del círculo es eliminar la cuenta. `btn_leave_circle` y su lógica (`_leaveCircle`, `_showLeaveCircleDialog`) eliminados de `settings_page.dart`. No existe acción "eliminar círculo" explícita: ocurre como efecto del creador eliminando su cuenta. |
+| — | Se descartó Clean Architecture | Sobreingeniería para MVP. Se adoptó estructura por features. |
+| — | Se descartó Patrol para testing | Incompatibilidad de versiones con Flutter actual. Se usa `flutter_test` estándar. |
+| 2026-03-16 | `auth_final_page.dart` es el ÚNICO archivo activo de auth | Maneja login, registro, recuperación y navegación post-auth. `sign_in_page.dart` y `auth_form.dart` son legacy sin uso. Trabajar SOLO en `auth_final_page.dart` para cualquier tarea de auth. |
+| 2026-03-17 | Solo el creador del círculo puede eliminarlo | Miembros solo pueden abandonarlo. Evita círculos zombie en Firestore. |
+| 2026-03-17 | MVP: un único círculo por usuario | Múltiples círculos generan fricción. La agencia del adolescente se expresa en qué comparte y cuándo. Múltiples círculos evaluados para v2.0. |
+| 2026-03-27 | Sin opción de salir del círculo sin eliminar cuenta | Usuarios sin círculo son ruido. La única salida es eliminar la cuenta. `btn_leave_circle` y su lógica eliminados de `settings_page.dart`. |
 
 ---
 
-## 12. Problemas Conocidos / Deuda Técnica
+## 13. Deuda Técnica
 
-> Registrar aquí problemas identificados que se resolverán después del MVP.
->
-> **Responsabilidad:** La IA puede detectar y proponer ítems para esta lista,
-> pero solo se agregan con aprobación del desarrollador, quien asigna la prioridad.
-> La IA no corrige deuda técnica por iniciativa propia.
+> La IA puede detectar y proponer ítems, pero solo se agregan con aprobación del desarrollador. La IA no corrige deuda técnica por iniciativa propia.
 
 | Problema | Prioridad | Notas |
 |----------|-----------|-------|
-| Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Contienen cambios que no afectan la app. El flujo activo usa `auth_final_page.dart` directamente. Evaluar eliminación post-MVP. |
-| Scripts `.ps1` en raíz del proyecto: `launch_emulator.ps1`, `run_devices.ps1`, `clean_and_run.ps1` | Media | No son parte del código fuente. `launch_emulator.ps1` y `run_devices.ps1` no funcionaron de forma confiable (ADB offline en Windows). `clean_and_run.ps1` limpia Firebase Auth + Firestore y lanza la app — pendiente de prueba. Mover los tres fuera del repo una vez validados. |
-| Archivos y carpetas de desarrollo dentro de `lib/`: `main_test.dart`, `main_minimal_test.dart`, `dev_auth_simple/`, `dev_auth_test/`, `dev_test/`, `dev_utils/` | **Alta** | `dev_utils/` contiene `clean_auth.dart` y `clean_firestore.dart` — riesgo de ejecución accidental en producción. Eliminar o mover fuera de `lib/` antes del build de release. Revisar previo al lanzamiento del MVP. |
-| API Key de Anthropic (Claude) — ubicación desconocida | **Alta** | Búsqueda en el código no encontró la key en ningún archivo Dart, assets ni config Android. Dos escenarios: (1) las features de IA aún no están implementadas — la key no existe todavía; (2) está en un lugar no inspeccionado. **Antes del lanzamiento:** confirmar dónde vive. Si termina en el cliente (hardcodeada, assets o build vars empaquetadas en el APK), es extraíble por ingeniería inversa. La solución correcta es invocarla exclusivamente desde una Cloud Function con acceso restringido. Ver sección 15 — Seguridad. |
-| Edición de emojis personalizados — no existe `updateCustomEmoji()` | Baja | El workaround actual es borrar + crear. Implementación estimada: ~50 líneas en 3 archivos (`EmojiManagementService` + `CreateEmojiDialog` en modo edición + botón ✏️ en `EmojiManagementPage`). Sin dependencias nuevas ni riesgo de regresión. Post-MVP. |
-| Cómo se manejará el tema de las validaciones de los correos al momento de que un Ysuario se registra en la app  | Media | |
+| Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Flujo activo usa `auth_final_page.dart`. Evaluar eliminación post-MVP. |
+| Scripts `.ps1` en raíz: `launch_emulator.ps1`, `run_devices.ps1`, `clean_and_run.ps1` | Media | No son parte del código fuente. Mover fuera del repo una vez validados. |
+| Archivos de desarrollo dentro de `lib/`: `main_test.dart`, `main_minimal_test.dart`, `dev_auth_simple/`, `dev_auth_test/`, `dev_test/`, `dev_utils/` | **Alta** | `dev_utils/` contiene `clean_auth.dart` y `clean_firestore.dart` — riesgo de ejecución accidental en producción. Eliminar antes del build de release. |
+| API Key de Anthropic — ubicación desconocida | **Alta** | No encontrada en ningún archivo Dart. Antes del lanzamiento: confirmar ubicación. Si está en el cliente (hardcodeada o en assets), mover a Cloud Function. Ver sección 15 — Seguridad. |
+| Edición de emojis personalizados — no existe `updateCustomEmoji()` | Baja | Workaround: borrar + crear. ~50 líneas en 3 archivos. Post-MVP. |
+| Validación de correos al registro | Media | Sin definir aún. |
+| State Management — solución no documentada en sección 5 | Media | Completar antes de agregar nueva lógica de estado. |
+| Feature: ejercicio de respiración guiada (v2.0) | Baja | Esfera animada sobre camino trapezoidal (inspirar/aguantar/exhalar). Encuadrar como acceso desde estado de pánico/SOS, no como sección autónoma. Implementación: `CustomPainter` + `AnimatedBuilder` + `Path`. Sin dependencias nuevas. |
+| Cierre remoto de sesión — equipo perdido o robado | **Alta** | Hoy no existe mecanismo para cerrar sesión desde otro dispositivo. Modelo de amenaza idéntico a WhatsApp: quien tenga el equipo desbloqueado con sesión activa tiene acceso completo al Círculo. **Caso crítico: si el que pierde el equipo es el Creador del Círculo**, ningún miembro puede eliminarlo ni disolver el Círculo — el padre/tutor quedaría sin control. Opciones a evaluar: (1) transferencia de rol de Creador desde otro dispositivo; (2) token de sesión con TTL corto + re-auth periódica; (3) logout remoto via Cloud Function (invalida el token Firebase). Pendiente definir cuál se implementa antes del lanzamiento. |
+| **[POST-SEM3]** Limpiar §12 y §13 de CLAUDE.md | Media | Al cerrar Sem 3 (flip de `USE_LEGACY_BRIDGE=false` + todos los handlers migrados): archivar decisiones técnicas obsoletas de §12 y resolver/eliminar ítems de deuda resueltos en §13. También eliminar la regla de feature flag de §2 si ya no aplica. |
+
 ---
 
-## 13. Sistema de Memoria Persistente
-
-> La memoria permite que la IA retenga contexto entre sesiones separadas.
-> Sin ella, cada sesión comienza desde cero.
+## 14. Sistema de Memoria Persistente
 
 ### Ubicación
 
 ```
-C:\Users\dante\.claude\projects\c--Users-dante-projects-zync-app\memory\
+C:\Users\dante\.claude\projects\c--Users-dante-projects-nunakin-app\memory\
 ```
 
-El índice vive en `MEMORY.md` dentro de esa carpeta. Ese archivo se carga automáticamente al inicio de cada sesión — es lo primero que la IA lee para orientarse.
+El índice vive en `MEMORY.md`. Se carga automáticamente al inicio de cada sesión.
 
 ### Tipos de memoria
 
-| Tipo | Qué guarda | Cuándo usarlo |
-|------|------------|---------------|
-| `user` | Rol, preferencias, nivel técnico del desarrollador | Al aprender algo sobre cómo trabaja el desarrollador |
-| `feedback` | Correcciones y ajustes de comportamiento | Cuando el desarrollador dice "no hagas X" o "en vez de X haz Y" |
-| `project` | Estado de tareas, decisiones pendientes, próximo paso | Al cerrar sesión o antes de un `/clear` |
-| `reference` | Dónde vive información externa (Linear, Slack, Grafana, etc.) | Al aprender sobre recursos externos al repo |
+| Tipo | Qué guarda |
+|------|------------|
+| `user` | Rol, preferencias, nivel técnico del desarrollador |
+| `feedback` | Correcciones de comportamiento ("no hagas X", "en vez de X haz Y") |
+| `project` | Estado de tareas, decisiones pendientes, próximo paso |
+| `reference` | Dónde vive información externa al repo |
 
-### Estructura de cada archivo de memoria
+### Estructura de cada archivo
 
 ```markdown
 ---
 name: nombre descriptivo
-description: una línea — se usa para decidir si es relevante en futuras sesiones
+description: una línea
 type: user | feedback | project | reference
 ---
 
-Contenido. Para tipos feedback y project, incluir siempre:
-**Why:** razón por la que se guarda
-**How to apply:** cuándo y cómo aplicarlo
+Contenido. Para feedback y project, incluir siempre:
+**Why:** razón
+**How to apply:** cuándo y cómo
 ```
 
-### Qué NO guardar en memoria
+### Qué NO guardar
 
 - Código, arquitectura o estructura de archivos (se lee del repo)
-- Historial de git o cambios recientes (usar `git log`)
-- Soluciones a bugs (el fix está en el código; el contexto en el commit)
+- Historial de git (usar `git log`)
+- Soluciones a bugs (el fix está en el código)
 - Nada que ya esté en este CLAUDE.md
-- Estado efímero de la conversación actual
 
-### Protocolo de cierre de sesión (obligatorio)
+### Protocolo de cierre (obligatorio)
 
-Al cerrar cada sesión, la IA **debe** proponer al desarrollador una entrada de memoria de tipo `project` con:
+Proponer entrada de tipo `project` con:
+1. Feature activo — qué se estaba trabajando
+2. Archivos modificados — con estado (commiteados o pendientes)
+3. Próximo paso — acción concreta para retomar
+4. Decisiones técnicas no registradas aún en sección 12
 
-1. **Feature activo** — qué se estaba trabajando
-2. **Archivos modificados** — con estado (commiteados o pendientes)
-3. **Próximo paso** — acción concreta para retomar en la siguiente sesión
-4. **Decisiones técnicas** — las que no están aún en la sección 11
-
-El desarrollador aprueba o ajusta antes de que se guarde.
+El desarrollador aprueba o ajusta antes de guardar.
 
 ---
 
 ## 15. Seguridad
 
-> Esta sección documenta el estado de seguridad de ZYNC, distinguiendo
-> lo que ya está cubierto, lo que debe resolverse antes del lanzamiento,
-> y lo que puede esperar al post-MVP.
->
-> **Responsabilidad:** La IA no modifica configuraciones de seguridad
-> sin aprobación explícita. Si detecta un riesgo nuevo, lo reporta aquí.
+> La IA no modifica configuraciones de seguridad sin aprobación. Si detecta un riesgo nuevo, lo reporta aquí.
 
----
-
-### Lo que ya está cubierto
+### Cubierto
 
 | Capa | Mecanismo | Notas |
 |------|-----------|-------|
 | Autenticación | Firebase Auth | Email/password + re-auth para operaciones críticas |
-| Autorización | Firestore Security Rules | Acceso por rol: owner vs member, validación de mismo círculo |
-| Datos en tránsito | HTTPS/TLS | Todas las comunicaciones Firebase van cifradas por defecto |
-| Datos en reposo | Firebase encryption | Firestore y Auth cifran en reposo — gestionado por Google |
-| Signing key Android | `android/key.properties` | Excluido del repo via `.gitignore` ✅ |
-| Service account | `scripts/serviceAccountKey.json` | Excluido del repo via `.gitignore` ✅ |
+| Autorización | Firestore Security Rules | Acceso por rol: owner vs member, mismo círculo |
+| Datos en tránsito | HTTPS/TLS | Todas las comunicaciones Firebase van cifradas |
+| Datos en reposo | Firebase encryption | Gestionado por Google |
+| Signing key Android | `android/key.properties` | Excluido del repo ✅ |
+| Service account | `scripts/serviceAccountKey.json` | Excluido del repo ✅ |
 
----
-
-### Pendientes pre-lanzamiento (obligatorios antes de publicar en Play Store)
+### Pendientes pre-lanzamiento (obligatorios)
 
 | Ítem | Riesgo | Acción requerida |
 |------|--------|-----------------|
-| **Política de privacidad** | Alto — Google Play la exige | Redactar y publicar en URL pública. Debe cubrir: datos recolectados (email, nickname, Location GPS), uso, retención y eliminación |
-| **Justificación `ACCESS_BACKGROUND_LOCATION`** | Alto — permiso de alto riesgo | Google Play exige declaración explícita de uso. Justificación: geofencing para actualización automática de Status. Sin esto, la app puede ser rechazada |
-| **API Key de Anthropic** | Alto — no se encontró en código | Verificar dónde vive esta key. Si está en el cliente (hardcodeada o en assets), debe moverse a Cloud Function o Firebase Remote Config con acceso restringido. Una key de cliente es extraíble con ingeniería inversa del APK |
-| **Firebase API Key en `firebase_options.dart`** | Bajo — comportamiento normal de Firebase | La Firebase API key es un identificador público (no un secret). La protección real son las Security Rules. Verificar que las rules estén correctamente configuradas en producción |
-| **Validación server-side de inputs** | Medio | Actualmente solo hay validación en UI. Agregar validación en Cloud Functions o Firestore Rules para campos críticos (nickname, circleId, statusType) |
-| **Logs con datos de usuario** | Medio | Auditar usos de `debugPrint()` y `log()` que puedan exponer UIDs, emails o coordenadas GPS en builds de release. Usar `kDebugMode` para condicionar los logs |
+| Política de privacidad | Alto | Google Play la exige. Cubrir: email, nickname, GPS — uso, retención, eliminación. |
+| Justificación `ACCESS_BACKGROUND_LOCATION` | Alto | Google Play exige declaración explícita. Justificación: geofencing para estado automático. |
+| API Key de Anthropic | Alto | Verificar ubicación. Si está en el cliente → Cloud Function o Remote Config restringido. |
+| Firebase API Key en `firebase_options.dart` | Bajo | Es identificador público, no un secret. Verificar que Security Rules estén correctas en producción. |
+| Validación server-side de inputs | Medio | Agregar en Cloud Functions o Firestore Rules para campos críticos. |
+| Logs con datos de usuario | Medio | Auditar `debugPrint()` / `log()` que expongan UIDs, emails o coordenadas. Condicionar con `kDebugMode`. |
 
----
-
-### Pendientes post-MVP (buenas prácticas para v2.0)
+### Pendientes post-MVP
 
 | Ítem | Descripción |
 |------|-------------|
-| **Auditoría de dependencias** | Ejecutar `flutter pub audit` o equivalente para detectar paquetes con CVEs conocidos |
-| **Rate limiting** | Limitar operaciones críticas (crear Circle, activar SOS, enviar JoinRequest) para prevenir abuso |
-| **Penetration testing** | Revisión formal de seguridad por tercero antes de escalar usuarios |
-| **Certificate pinning** | Protección adicional contra ataques MITM — evaluar costo/beneficio para v2.0 |
-| **Ofuscación del APK** | ProGuard/R8 para dificultar ingeniería inversa — relevante si la app escala |
-| **Retención y eliminación de datos GPS** | Definir política formal: cuánto tiempo se guardan los ZoneEvents y coordenadas de SOS |
+| Auditoría de dependencias | `flutter pub audit` para CVEs conocidos |
+| Rate limiting | Limitar operaciones críticas (crear Circle, SOS, JoinRequest) |
+| Penetration testing | Revisión formal antes de escalar usuarios |
+| Certificate pinning | Protección MITM — evaluar para v2.0 |
+| Ofuscación del APK | ProGuard/R8 — relevante si la app escala |
+| Retención de datos GPS | Definir política: cuánto tiempo se guardan ZoneEvents y coordenadas SOS |
 
----
+### Reglas para la IA
 
-### Reglas para la IA en materia de seguridad
-
-- **Nunca** sugerir almacenar secrets (API keys, tokens) en el código fuente o en assets del APK.
-- **Nunca** modificar Firestore Security Rules sin aprobación explícita.
+- **Nunca** sugerir almacenar secrets en código fuente o assets.
+- **Nunca** modificar Firestore Security Rules sin aprobación.
 - **Siempre** condicionar logs con datos sensibles a `kDebugMode`.
-- Si se detecta una key o secret expuesto en código: reportarlo de inmediato como bloqueante.
+- Si se detecta una key expuesta: reportarlo de inmediato como bloqueante.
 
 ---
 
-## 14. Nota Final
+## 16. Nota Final
 
 - Este archivo es un documento vivo. Se actualiza conforme el proyecto avanza.
-- La IA debe tratarlo como su fuente de verdad y nunca contradecir lo que aquí se establece.
-- Si algo de este archivo entra en conflicto con una "buena práctica", **este archivo prevalece**.
-- Si la IA considera que una regla de este archivo es contraproducente para un caso específico, debe comunicarlo al desarrollador con su razonamiento, pero **no actuar hasta recibir autorización**.
+- La IA debe tratarlo como su fuente de verdad y nunca contradecirlo.
+- Si algo aquí entra en conflicto con una "buena práctica", **este archivo prevalece**.
+- Si la IA considera que una regla es contraproducente para un caso específico, debe comunicarlo con razonamiento — pero **no actuar hasta recibir autorización**.
