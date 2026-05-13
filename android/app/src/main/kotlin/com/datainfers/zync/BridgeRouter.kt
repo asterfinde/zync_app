@@ -1,13 +1,19 @@
 package com.datainfers.zync
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -130,12 +136,78 @@ class BridgeRouter(private val activity: Activity) {
 
     /** Día 4 — getCurrentLocation */
     fun handleLocation(call: MethodCall, result: MethodChannel.Result) {
-        result.notImplemented()
+        val fineOk = ActivityCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarseOk = ActivityCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!fineOk && !coarseOk) {
+            Log.w(tag, "📍 [LOCATION] Sin permiso ACCESS_FINE_LOCATION ni ACCESS_COARSE_LOCATION")
+            result.error("NO_PERMISSION", "Location permission not granted", null)
+            return
+        }
+
+        val cts = CancellationTokenSource()
+        LocationServices.getFusedLocationProviderClient(activity)
+            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    Log.d(tag, "📍 [LOCATION] Obtenida: ${location.latitude}, ${location.longitude}")
+                    result.success(mapOf("lat" to location.latitude, "lng" to location.longitude))
+                } else {
+                    Log.w(tag, "📍 [LOCATION] FusedLocationProvider devolvió null")
+                    result.error("NULL_LOCATION", "Location is null — GPS disabled or no fix", null)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(tag, "📍 [LOCATION] Error: ${e.message}")
+                result.error("LOCATION_ERROR", e.message, null)
+            }
     }
 
     /** Día 4 — setUserSession / clearSession */
-    fun handleSession(call: MethodCall, result: MethodChannel.Result) {
-        result.notImplemented()
+    fun handleSession(call: MethodCall, result: MethodChannel.Result, messenger: BinaryMessenger) {
+        when (call.method) {
+            "setUserSession" -> {
+                val uid   = call.argument<String>("uid") ?: ""
+                val email = call.argument<String>("email") ?: ""
+
+                if (uid.isNotEmpty()) {
+                    val existingCircleId = context
+                        .getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+                        .getString("circleId", "") ?: ""
+
+                    Log.d(tag, "[SESSION] setUserSession: uid=$uid circleId(preserved)=$existingCircleId")
+                    NativeStateManager.saveUserState(context, uid, email, existingCircleId)
+                    context.getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("userId", uid)
+                        .putString("circleId", existingCircleId)
+                        .commit()
+                    result.success(true)
+                } else {
+                    Log.w(tag, "[SESSION] setUserSession recibió uid vacío — usar clearSession en su lugar")
+                    result.error("INVALID_UID", "uid must not be empty", null)
+                }
+            }
+            "clearSession" -> {
+                Log.d(tag, "[SESSION] clearSession — limpiando NativeStateManager")
+                NativeStateManager.clear(context)
+                emitSessionClearedEvent(messenger)
+                result.success(true)
+            }
+            else -> result.notImplemented()
+        }
+    }
+
+    fun emitSessionClearedEvent(messenger: BinaryMessenger) {
+        MethodChannel(messenger, "nunakin/bridge").invokeMethod(
+            "nativeEvent",
+            mapOf("type" to "sessionCleared")
+        )
+        Log.d(tag, "[SESSION] SessionCleared event emitido hacia Flutter")
     }
 
     /** Día 5 — registerZone / unregisterZone */

@@ -668,6 +668,18 @@ class MainActivity: FlutterActivity() {
                 "requestBattery"       -> router.handleSilentMode(call, result)
                 "updateStatus"         -> router.handleStatus(call, result)
                 "raiseSOS"             -> router.handleSOS(call, result)
+                // Día 4
+                "getCurrentLocation"   -> router.handleLocation(call, result)
+                "setUserSession" -> {
+                    router.handleSession(call, result, messenger)
+                    currentUserId = call.argument<String>("uid")
+                    if (!currentUserId.isNullOrEmpty()) warmUpModalEngine()
+                }
+                "clearSession" -> {
+                    router.handleSession(call, result, messenger)
+                    currentUserId = null
+                    destroyModalEngine()
+                }
                 else                   -> result.notImplemented()
             }
         }

@@ -84,9 +84,24 @@ class AndroidNativeBridge implements NativeBridge {
           await const MethodChannel(legacyChannelName).invokeMethod<void>('deactivate');
         }
         return null as T;
-      // TODO(sem3-día3+): GetCurrentLocation, SetUserSession, ClearSession
-      default:
-        throw UnimplementedError('AndroidNativeBridge.invoke: $cmd');
+      case GetCurrentLocation():
+        final raw = await _channel.invokeMapMethod<String, dynamic>('getCurrentLocation');
+        if (raw == null) {
+          throw PlatformException(
+            code: 'NULL_RESULT',
+            message: 'getCurrentLocation returned null',
+          );
+        }
+        return (lat: (raw['lat'] as num).toDouble(), lng: (raw['lng'] as num).toDouble()) as T;
+      case SetUserSession(:final uid, :final email):
+        await _channel.invokeMethod<void>('setUserSession', {
+          'uid':   uid,
+          'email': email,
+        });
+        return null as T;
+      case ClearSession():
+        await _channel.invokeMethod<void>('clearSession');
+        return null as T;
     }
   }
 
