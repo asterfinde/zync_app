@@ -109,7 +109,15 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   final Map<String, Map<String, dynamic>> _memberDataCache = {};
   bool _isUpdatingStatus = false;
   final Map<String, String> _memberNicknamesCache = {};
-  bool _isLoadingNicknames = true;
+  // ════════════════════════════════════════════════════════════
+  // [FIX] Mostrar miembros inmediatamente con placeholder '...'
+  // Fecha: 2026-05-14
+  // PROBLEMA: true bloqueaba la lista completa con un spinner hasta que
+  //   _refreshDataInBackground() completaba los getUserDoc() de red (~6s).
+  // SOLUCIÓN: false desde el inicio. La lista renderiza con '...' y se
+  //   actualiza cuando llegan los nicknames reales (setState en background).
+  // ════════════════════════════════════════════════════════════
+  bool _isLoadingNicknames = false;
   List<StatusType>? _predefinedEmojis;
 
   // ════════════════════════════════════════════════════════════

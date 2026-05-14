@@ -530,8 +530,25 @@ class CircleService {
     return controller.stream;
   }
 
+  // ════════════════════════════════════════════════════════════
+  // [FIX] Source.cache primero para getUserDoc
+  // Fecha: 2026-05-14
+  // PROBLEMA: .get() sin Source.cache siempre iba a servidor (~6s en red fría),
+  //   bloqueando _getAllMemberNicknames() en InCircleView.
+  // SOLUCIÓN: intentar cache local primero (0ms si existe); si no, servidor.
+  // ════════════════════════════════════════════════════════════
   Future<DocumentSnapshot<Map<String, dynamic>>> getUserDoc(String uid) async {
-    return await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    try {
+      return await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get(const GetOptions(source: Source.cache));
+    } on FirebaseException {
+      return await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+    }
   }
 
   /// Permite al usuario actual salir del círculo
