@@ -19,6 +19,8 @@ class EmojiService {
   static List<StatusType>? _cachedPredefined;
   static final Map<String, List<StatusType>> _cachedCustomByCircle = {};
 
+  static List<StatusType>? get cachedPredefined => _cachedPredefined;
+
   /// Obtiene todos los emojis predefinidos desde Firebase
   ///
   /// Carga desde /predefinedEmojis ordenados por 'order'
