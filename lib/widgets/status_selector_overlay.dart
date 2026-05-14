@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/models/user_status.dart';
 import '../core/services/emoji_service.dart';
+import '../core/services/session_cache_service.dart';
 import '../core/services/status_service.dart';
 
 /// Modal transparente con grid 3x4 de emojis para selección rápida de estado
@@ -57,87 +58,81 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   void initState() {
     super.initState();
     _setupAnimations();
-    _loadStatusGrid(); // Cargar grid de forma asíncrona
-    // CRÍTICO: NO iniciar animación hasta que el grid esté cargado
-    // Esto previene que se muestre el modal vacío o incompleto
-    _waitForGridThenAnimate();
-  }
-
-  /// Espera a que el grid se cargue antes de animar
-  Future<void> _waitForGridThenAnimate() async {
-    // Esperar hasta que el grid esté cargado
-    while (_isLoadingGrid && mounted) {
-      await Future.delayed(const Duration(milliseconds: 50));
-    }
-    if (mounted) {
-      _animationController.forward();
-      print('[StatusSelectorOverlay] ✅ Animación iniciada después de cargar grid');
-    }
+    // ════════════════════════════════════════════════════════════
+    // [FIX] Modal instantáneo: mostrar con cache/fallback sin esperar Firestore
+    // Fecha: 2026-05-14
+    // PROBLEMA: _waitForGridThenAnimate() bloqueaba la animación hasta que
+    //   _loadStatusGrid() completaba dos Firestore .get() en serie (~8s en
+    //   red fría), manteniendo el overlay invisible.
+    // SOLUCIÓN: mostrar inmediatamente con EmojiService.cachedPredefined (si
+    //   ya fue cargado) o StatusType.fallbackPredefined. _loadStatusGrid()
+    //   refresca el grid en background (agrega custom emojis y zonas).
+    // ════════════════════════════════════════════════════════════
+    _statusGrid = EmojiService.cachedPredefined ?? StatusType.fallbackPredefined;
+    _isLoadingGrid = false;
+    _animationController.forward();
+    _loadStatusGrid(); // Refresca en background: custom emojis + zona config.
   }
 
   Future<void> _loadStatusGrid() async {
     try {
-      print('[StatusSelectorOverlay] 📡 Cargando grid desde EmojiService...');
-
-      // Obtener circleId del usuario actual
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('Usuario no autenticado');
+      if (user == null) return;
 
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users').doc(user.uid).get()
-          .timeout(const Duration(seconds: 8));
+      // Prefer SessionCache (0ms) — evita Firestore get() en cada apertura.
+      final cachedCircleId = SessionCacheService.restoreSessionSync()?['circleId'];
+      String? circleId = (cachedCircleId?.isNotEmpty == true) ? cachedCircleId : null;
 
-      final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId == null) throw Exception('Usuario sin círculo');
+      if (circleId == null) {
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get(const GetOptions(source: Source.cache))
+              .timeout(const Duration(seconds: 2));
+          circleId = userDoc.data()?['circleId'] as String?;
+        } on FirebaseException {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get()
+              .timeout(const Duration(seconds: 5));
+          circleId = userDoc.data()?['circleId'] as String?;
+        }
+      }
 
-      // Cargar emojis desde Firebase (predefinidos + custom del círculo)
-      // FIX MN4.01/MN4.02: El grid siempre usaba fallbackPredefined hardcodeado.
-      // Ahora se carga desde Firebase para que IDs y emojis coincidan con in_circle_view.
+      if (circleId == null || circleId.isEmpty) return;
+
+      // EmojiService tiene cache en memoria — 0ms si ya fue cargado.
       final predefined = await EmojiService.getPredefinedEmojis();
       final custom = await EmojiService.getCustomEmojis(circleId);
       final allEmojis = <StatusType?>[...predefined, ...custom];
 
-      debugPrint('[DIAG-MN409-FLUTTER] predefined=${predefined.length} ids=${predefined.map((e) => e.id).toList()}');
-      debugPrint('[DIAG-MN409-FLUTTER] allEmojis=${allEmojis.length}');
-      debugPrint('[StatusSelectorOverlay] ✅ Grid cargado desde Firebase: ${allEmojis.length} emojis');
+      // Cargar zonas para dimming de botones (no bloquea la apertura del modal).
+      final zonesSnapshot = await FirebaseFirestore.instance
+          .collection('circles')
+          .doc(circleId)
+          .collection('zones')
+          .get()
+          .timeout(const Duration(seconds: 5));
 
-      // Verificar zonas predefinidas configuradas para dimming de botones
-      final zonesSnapshot =
-          await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').get()
-          .timeout(const Duration(seconds: 8));
-
-      final predefinedZones = zonesSnapshot.docs.where((doc) {
-        final type = doc.data()['type'] as String?;
-        return type != null && ['home', 'school', 'university', 'work'].contains(type);
-      }).toList();
-
-      final configuredTypes = predefinedZones
+      final configuredTypes = zonesSnapshot.docs
+          .where((doc) {
+            final type = doc.data()['type'] as String?;
+            return type != null && ['home', 'school', 'university', 'work'].contains(type);
+          })
           .map((doc) => doc.data()['type'] as String)
           .toSet();
-
-      print(
-          '[StatusSelectorOverlay] 📍 Tipos de zona configurados: $configuredTypes (${predefinedZones.length} de ${zonesSnapshot.docs.length} totales)');
-
-      await Future.delayed(const Duration(milliseconds: 50));
 
       if (mounted) {
         setState(() {
           _statusGrid = allEmojis;
           _configuredZoneTypes = configuredTypes;
-          _isLoadingGrid = false;
         });
-        print(
-            '[StatusSelectorOverlay] 🔧 Estado actualizado: _configuredZoneTypes=$_configuredZoneTypes, grid.length=${_statusGrid.length}');
       }
     } catch (e) {
-      print('[StatusSelectorOverlay] ❌ ERROR cargando grid: $e');
-      if (mounted) {
-        setState(() {
-          _statusGrid = StatusType.fallbackPredefined;
-          _configuredZoneTypes = {};
-          _isLoadingGrid = false;
-        });
-      }
+      debugPrint('[StatusSelectorOverlay] ❌ Error cargando grid en background: $e');
+      // initState ya mostró fallback — no hay nada que hacer.
     }
   }
 
