@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
+import 'package:nunakin_app/core/services/session_cache_service.dart';
 import 'package:nunakin_app/core/services/status_service.dart';
 import 'package:nunakin_app/core/services/emoji_service.dart';
 import 'package:nunakin_app/core/widgets/status_widget.dart';
@@ -29,6 +30,10 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
   @override
   void initState() {
     super.initState();
+    // Show immediately with cached/fallback so modal never blocks on Firestore.
+    _availableStatuses = EmojiService.cachedPredefined ?? StatusType.fallbackPredefined;
+    _isLoading = false;
+    // Refresh in background with real data (adds custom emojis when ready).
     _loadAvailableStatuses();
   }
 
@@ -38,30 +43,43 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
     super.dispose();
   }
 
-  /// Carga los emojis predefinidos + personalizados desde Firebase
+  /// Carga los emojis predefinidos + personalizados desde Firebase.
+  /// No bloquea — initState ya mostró fallback/cache. Actualiza en background.
   Future<void> _loadAvailableStatuses() async {
     try {
-      // Obtener circleId del usuario actual
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('Usuario no autenticado');
+      if (user == null) return;
 
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      // Prefer in-memory SessionCache (0ms) to avoid a Firestore get() on every open.
+      final cachedCircleId = SessionCacheService.restoreSessionSync()?['circleId'];
+      String? circleId = (cachedCircleId?.isNotEmpty == true) ? cachedCircleId : null;
 
-      final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId == null) throw Exception('Usuario sin círculo');
+      if (circleId == null) {
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get(const GetOptions(source: Source.cache))
+              .timeout(const Duration(seconds: 2));
+          circleId = userDoc.data()?['circleId'] as String?;
+        } on FirebaseException {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get()
+              .timeout(const Duration(seconds: 3));
+          circleId = userDoc.data()?['circleId'] as String?;
+        }
+      }
 
-      // Cargar predefinidos + personalizados
+      if (circleId == null || circleId.isEmpty) return;
+
       final statuses = await EmojiService.getAllEmojisForCircle(circleId);
-      setState(() {
-        _availableStatuses = statuses;
-        _isLoading = false;
-      });
-    } catch (e) {
-      // Usar fallback si Firebase falla
-      setState(() {
-        _availableStatuses = StatusType.fallbackPredefined;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _availableStatuses = statuses);
+      }
+    } catch (_) {
+      // initState already set fallback — nothing to do.
     }
   }
 

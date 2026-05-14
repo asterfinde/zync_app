@@ -40,6 +40,11 @@ void main() async {
     );
   }
 
+  // Pre-warm Firestore gRPC WebSocket before any user interaction.
+  // Ensures enableNetwork() in StatusService returns instantly on first status update.
+  // ignore: unawaited_futures
+  FirebaseFirestore.instance.enableNetwork();
+
   await di.initDependencies();
 
   // SessionCache debe estar listo antes de que AuthWrapper renderice
