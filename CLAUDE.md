@@ -41,6 +41,11 @@
 - Al cierre de sesión, proponer entradas para las secciones 11 y 12 si corresponde, y esperar aprobación.
 - **Antes de proponer cualquier cambio en lógica de navegación, tap handlers o flujos de usuario:** listar TODOS los flujos que pasan por el mismo código y confirmar que ninguno regresiona. Si algún flujo existente se ve afectado, reportarlo ANTES de pedir VoBo.
 - **Para bugs de lifecycle nativo Android:** leer los logs diagnósticos antes de proponer cualquier fix. Los logs son la única fuente de verdad.
+- **Para bugs de performance o de flujo de UI:** antes de proponer cualquier fix:
+  1. Trazar el call graph completo desde el tap/acción del usuario hasta el widget que realmente se renderiza (grep el handler → seguir cada llamada → identificar la clase activa). No asumir que una clase en el mismo archivo es la que ejecuta.
+  2. Leer `initState()` y todos los métodos async de carga del widget identificado en (1) — no de clases cercanas o conceptualmente relacionadas.
+  3. Verificar con grep que cada archivo a modificar tiene callers activos en el flujo real. Si no hay callers: es código muerto — reportarlo y no tocarlo.
+  Un fix en código muerto no resuelve nada. El call graph es la fuente de verdad.
 - **Gateway de control — "Verifica antes de VoBo":** cuando el desarrollador dice "verifica", "revisa", "investiga", "analiza" o frases similares, presentar ÚNICAMENTE el diagnóstico y el plan propuesto. NO implementar nada hasta recibir "VoBo" explícito. Aplica incluso en modo `SOLO`.
 - **En refactorizaciones incrementales con feature flag:** antes de migrar cualquier caller Dart a una interfaz nueva (ej. `NativeBridge.invoke()`), verificar que la implementación del otro lado (Kotlin/nativo) ya está activa. Si no lo está, el caller debe incluir el fallback al camino legacy en el mismo commit — nunca en un PR separado.
 - **En el reporte de cierre de cada PR:** si algún flujo de usuario queda en estado de transición (un lado migrado, otro inactivo), incluir explícitamente la advertencia `⚠️ Riesgo activo: [descripción]. Verificar en dispositivo antes del próximo PR.` Si no se incluyó: el desarrollador debe asumir que ese flujo NO fue verificado.
