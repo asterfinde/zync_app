@@ -91,97 +91,86 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
       _currentStatus = newStatus;
     });
 
-    // Usar el servicio extraído - MISMA lógica, diferente ubicación
-    final result = await StatusService.updateUserStatus(newStatus);
+    // ════════════════════════════════════════════════════════════
+    // [FIX] Fire-and-forget: cierra el modal inmediatamente
+    // Fecha: 2026-05-14
+    // PROBLEMA: await batch.commit() en StatusService bloqueaba ~10s,
+    //   manteniendo el modal visible con spinner hasta confirmación del servidor.
+    // SOLUCIÓN: cierre inmediato. Firestore escribe en cache local (~0ms) y el
+    //   stream de _listenToStatusChanges() en InCircleView actualiza la UI en
+    //   <500ms sin esperar al servidor. Si el commit falla, Firestore hace
+    //   rollback automático y el stream re-dispara.
+    // ════════════════════════════════════════════════════════════
 
-    if (result.isSuccess) {
-      // Notify the widget service about the status change
-      await StatusWidgetService.onStatusChanged(
-        status: newStatus,
-        circleId: 'active', // We'll track the active circle later
-      );
+    // Capturar ScaffoldMessenger antes del pop (context inválido después).
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final isSos = newStatus.id == 'sos';
 
-      // Pequeña pausa para mostrar feedback visual
-      await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) Navigator.of(context).pop();
 
-      if (mounted) {
-        Navigator.of(context).pop();
+    // ignore: unawaited_futures
+    StatusService.updateUserStatus(newStatus).then((result) {
+      if (result.isSuccess) {
+        // ignore: unawaited_futures
+        StatusWidgetService.onStatusChanged(
+          status: newStatus,
+          circleId: 'active',
+        );
 
-        // Point 16: Mensaje especial para SOS con GPS
-        if (newStatus.id == 'sos' && result.coordinates != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.sos, color: Colors.white),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.location_on, color: Colors.white, size: 16),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      '🆘 SOS enviado con ubicación GPS a tu círculo',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+        // SOS: mostrar SnackBar con resultado GPS (único caso que necesita el result).
+        if (isSos) {
+          if (result.coordinates != null) {
+            scaffoldMessenger.showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.sos, color: Colors.white),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.location_on, color: Colors.white, size: 16),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        '🆘 SOS enviado con ubicación GPS a tu círculo',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 4),
               ),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        } else if (newStatus.id == 'sos') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.sos, color: Colors.white),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      '🆘 SOS enviado (sin ubicación GPS disponible)',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+            );
+          } else {
+            scaffoldMessenger.showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.sos, color: Colors.white),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        '🆘 SOS enviado (sin ubicación GPS disponible)',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 4),
               ),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        } else {
-          // Mostrar confirmación sutil para otros estados
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(newStatus.emoji),
-                  const SizedBox(width: 8),
-                  Text('Estado actualizado: ${newStatus.description}'),
-                ],
-              ),
-              duration: const Duration(seconds: 2),
-              backgroundColor: Colors.green[700],
-            ),
-          );
+            );
+          }
         }
-      }
-    } else {
-      // Manejar error - MISMA UX que antes
-      setState(() {
-        _isUpdating = false;
-        _currentStatus = null;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        // Non-SOS: sin SnackBar. El stream de InCircleView actualiza la UI en <500ms.
+      } else {
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('❌ Error: ${result.errorMessage ?? 'Error desconocido'}'),
             backgroundColor: Colors.red[700],
           ),
         );
       }
-    }
+    });
   }
 
   @override
