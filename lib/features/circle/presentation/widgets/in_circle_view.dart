@@ -24,6 +24,7 @@ import '../../../geofencing/services/geofencing_service.dart'; // Servicio de ge
 import '../../../../core/cache/in_memory_cache.dart';
 import '../../../../core/cache/persistent_cache.dart';
 import '../../../../core/services/native_state_bridge.dart';
+import '../../../../core/services/emoji_cache_service.dart';
 // Asumo que tienes una clase Coordinates en gps_service.dart o similar
 // import '../../../../core/services/gps_service.dart' show Coordinates;
 
@@ -199,6 +200,12 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     // Evita la race condition donde _userHasCircle queda false en cold start y
     // activateSilentMode dispara un getUserCircle() frío (~5-8s) al primer tap.
     SilentFunctionalityCoordinator.syncCircleState(hasCircle: true);
+
+    // Sincronizar zonas configuradas a SharedPreferences para que EmojiDialogActivity
+    // (modal BN) lea datos frescos. Se llama aquí porque en este punto el usuario
+    // ya está autenticado y widget.circle.id está disponible — evita el cold-start
+    // race donde main.dart llamaba sync antes de que Auth completara y escribía [].
+    EmojiCacheService.syncEmojisToNativeCache();
 
     // PASO 5: Escuchar solicitudes de ingreso (solo si el usuario actual es el creador)
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
