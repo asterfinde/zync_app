@@ -33,10 +33,21 @@ class CircleProvider extends ChangeNotifier {
     
     _circleSubscription?.cancel();
     _circleSubscription = _service.getUserCircleStream().listen(
-      (circle) {
-        log('[CircleProvider] Stream actualizado: ${circle.name ?? 'null'}');
-        _circle = circle;
-        _status = CircleStatus.loaded;
+      (state) {
+        switch (state) {
+          case UserInCircle(:final circle):
+            log('[CircleProvider] Stream actualizado: ${circle.name}');
+            _circle = circle;
+            _status = CircleStatus.loaded;
+          case UserPendingRequest():
+            log('[CircleProvider] Stream: solicitud pendiente');
+            _circle = null;
+            _status = CircleStatus.initial;
+          case UserNoCircle():
+            log('[CircleProvider] Stream: sin círculo');
+            _circle = null;
+            _status = CircleStatus.initial;
+        }
         _error = null;
         notifyListeners();
       },
