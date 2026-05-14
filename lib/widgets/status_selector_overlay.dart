@@ -314,85 +314,34 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
     setState(() => _isUpdating = true);
 
-    try {
-      // Haptic feedback
-      HapticFeedback.lightImpact();
-
-      print('[StatusSelectorOverlay] 🎯 Iniciando actualización de estado: ${status.description}');
-
-      // Usar el StatusService existente - ¡Sin romper nada!
-      final result = await StatusService.updateUserStatus(status);
-
-      print(
-          '[StatusSelectorOverlay] 📦 Resultado de actualización: isSuccess=${result.isSuccess}, error=${result.errorMessage}');
-
-      if (result.isSuccess) {
-        print('[StatusSelectorOverlay] ✅ Estado actualizado exitosamente: ${status.description}');
-
-        // Mostrar feedback visual rápido
-        _showSuccessFeedback(status);
-
-        // PM2 FIX: Cerrar modal inmediatamente después de seleccionar emoji
-        print('[StatusSelectorOverlay] 🚪 Iniciando cierre automático del modal...');
-        await Future.delayed(const Duration(milliseconds: 300));
-
-        print('[StatusSelectorOverlay] 🚪 Ejecutando _closeModal()...');
-        await _closeModal();
-        print('[StatusSelectorOverlay] ✅ Modal cerrado exitosamente');
-      } else {
-        print('[StatusSelectorOverlay] ⚠️ Actualización falló: ${result.errorMessage}');
-        if (result.errorMessage == 'zone_manual_selection_not_allowed') {
-          await _showZoneSelectionNotAllowedModal();
-        } else {
-          _showErrorFeedback(result.errorMessage ?? 'Error desconocido');
-          // ════════════════════════════════════════════════════════════
-          // [FIX] Cerrar modal en rama else (error no-zone)
-          // Fecha: 2026-05-05
-          // PROBLEMA: Si updateUserStatus retorna isSuccess=false (red fría
-          //           tras ~12h de background), el modal quedaba abierto.
-          // SOLUCIÓN: Cerrar el modal después del feedback de error.
-          // ════════════════════════════════════════════════════════════
-          await _closeModal();
-        }
-      }
-    } catch (e) {
-      print('[StatusSelectorOverlay] ❌ Excepción durante actualización: $e');
-      _showErrorFeedback(e.toString());
-      // ════════════════════════════════════════════════════════════
-      // [FIX] Cerrar modal en rama catch (excepción)
-      // Fecha: 2026-05-05
-      // PROBLEMA: Si updateUserStatus lanza excepción, el modal quedaba abierto.
-      // SOLUCIÓN: Cerrar el modal después del feedback de error.
-      // ════════════════════════════════════════════════════════════
-      await _closeModal();
-    } finally {
-      if (mounted) {
-        print('[StatusSelectorOverlay] 🔄 Finalizando actualización, reseteando _isUpdating');
-        setState(() => _isUpdating = false);
-      }
-    }
-  }
-
-  /// Muestra feedback de éxito (SILENCIOSO - Point 15)
-  void _showSuccessFeedback(StatusType status) {
-    if (!mounted) return;
-
-    // Point 15: Eliminar SnackBar para comportamiento silencioso
-    print('[StatusSelectorOverlay] ✅ Estado actualizado silenciosamente: ${status.emoji}');
-
-    // Solo mostrar feedback háptico
+    // ════════════════════════════════════════════════════════════
+    // [FIX] Fire-and-forget: cierra el modal inmediatamente
+    // Fecha: 2026-05-14
+    // PROBLEMA: await batch.commit() en StatusService bloqueaba ~10s,
+    //   manteniendo el overlay visible con _isUpdating=true hasta confirmación
+    //   del servidor.
+    // SOLUCIÓN: cierre inmediato con animación (~200ms). Firestore escribe en
+    //   cache local (~0ms) y el stream de InCircleView actualiza la UI antes
+    //   de la confirmación del servidor. Si el commit falla, Firestore hace
+    //   rollback automático y el stream re-dispara.
+    // ════════════════════════════════════════════════════════════
     HapticFeedback.lightImpact();
-  }
 
-  /// Muestra feedback de error (SILENCIOSO - Point 15)
-  void _showErrorFeedback(String error) {
-    if (!mounted) return;
+    // Cerrar el modal con animación antes de esperar al servidor.
+    await _closeModal();
 
-    // Point 15: Solo log para errores, sin SnackBar
-    print('[StatusSelectorOverlay] ❌ Error silencioso: $error');
-
-    // Feedback háptico de error
-    HapticFeedback.heavyImpact();
+    // Commit en background — el stream de InCircleView maneja la UI.
+    // ignore: unawaited_futures
+    StatusService.updateUserStatus(status).then((result) {
+      if (result.isSuccess) {
+        debugPrint('[StatusSelectorOverlay] ✅ Servidor confirmó: ${status.description}');
+      } else {
+        debugPrint('[StatusSelectorOverlay] ⚠️ Error en background: ${result.errorMessage}');
+        // El stream de InCircleView hace rollback automático si Firestore revierte.
+      }
+    }).catchError((e) {
+      debugPrint('[StatusSelectorOverlay] ❌ Excepción en background: $e');
+    });
   }
 
   /// Cierra el modal con animación
