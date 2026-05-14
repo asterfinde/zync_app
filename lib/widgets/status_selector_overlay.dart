@@ -42,11 +42,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   // HOTFIX: Inicializar con fallbackPredefined INMEDIATAMENTE para evitar timing issues
   List<StatusType?> _statusGrid = StatusType.fallbackPredefined;
 
-  // Solo los tipos de zona que el usuario configuró geográficamente.
-  // Únicamente esos botones se inhabilitan en el selector.
-  Set<String> _configuredZoneTypes = {};
-  bool _isLoadingGrid = true; // NUEVO: Prevenir render antes de cargar zonas
-
   // SOS press & hold
   Timer? _sosTimer;
   bool _sosHolding = false;
@@ -69,7 +64,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
     //   refresca el grid en background (agrega custom emojis y zonas).
     // ════════════════════════════════════════════════════════════
     _statusGrid = EmojiService.cachedPredefined ?? StatusType.fallbackPredefined;
-    _isLoadingGrid = false;
     _animationController.forward();
     _loadStatusGrid(); // Refresca en background: custom emojis + zona config.
   }
@@ -108,84 +102,15 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
       final custom = await EmojiService.getCustomEmojis(circleId);
       final allEmojis = <StatusType?>[...predefined, ...custom];
 
-      // Cargar zonas para dimming de botones (no bloquea la apertura del modal).
-      final zonesSnapshot = await FirebaseFirestore.instance
-          .collection('circles')
-          .doc(circleId)
-          .collection('zones')
-          .get()
-          .timeout(const Duration(seconds: 5));
-
-      final configuredTypes = zonesSnapshot.docs
-          .where((doc) {
-            final type = doc.data()['type'] as String?;
-            return type != null && ['home', 'school', 'university', 'work'].contains(type);
-          })
-          .map((doc) => doc.data()['type'] as String)
-          .toSet();
-
       if (mounted) {
         setState(() {
           _statusGrid = allEmojis;
-          _configuredZoneTypes = configuredTypes;
         });
       }
     } catch (e) {
       debugPrint('[StatusSelectorOverlay] ❌ Error cargando grid en background: $e');
       // initState ya mostró fallback — no hay nada que hacer.
     }
-  }
-
-  Future<void> _showZoneSelectionNotAllowedModal() async {
-    if (!mounted) return;
-
-    await showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.75),
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: const Color(0xFF1CE4B3).withValues(alpha: 0.4), width: 1),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Acción no permitida',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'No puedes seleccionar zonas manualmente. El estado de zonas se actualiza automáticamente por geofencing.',
-                  style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF)),
-                ),
-                const SizedBox(height: 18),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF1CE4B3),
-                    ),
-                    child: const Text(
-                      'Entendido',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   void _setupAnimations() {
@@ -302,11 +227,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   Future<void> _handleStatusSelection(StatusType status) async {
     if (_isUpdating) return;
 
-    if (_configuredZoneTypes.contains(status.id)) {
-      await _showZoneSelectionNotAllowedModal();
-      return;
-    }
-
     setState(() => _isUpdating = true);
 
     // ════════════════════════════════════════════════════════════
@@ -419,16 +339,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Grid DINÁMICO scrollable con altura máxima RESPONSIVE
-                        _isLoadingGrid
-                            ? SizedBox(
-                                height: maxGridHeight,
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFF1EE9A4),
-                                  ),
-                                ),
-                              )
-                            : ConstrainedBox(
+                        ConstrainedBox(
                                 constraints: BoxConstraints(
                                   // PM1 FIX: Altura responsive en lugar de fija
                                   maxHeight: maxGridHeight,
@@ -485,7 +396,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   /// Construye botón de estado individual
   Widget _buildStatusButton(StatusType status) {
-    final isBlockedZone = _configuredZoneTypes.contains(status.id);
     final isActive = widget.activeStatusId != null && widget.activeStatusId == status.id;
 
     return Material(
@@ -497,7 +407,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
           decoration: BoxDecoration(
             color: isActive
                 ? const Color(0xFF1CE4B3).withValues(alpha: 0.12)
-                : (_isUpdating || isBlockedZone)
+                : _isUpdating
                     ? Colors.grey.shade800.withOpacity(0.3)
                     : Colors.grey.shade800.withOpacity(0.6),
             borderRadius: BorderRadius.circular(12),
@@ -512,20 +422,17 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Opacity(
-                opacity: isBlockedZone ? 0.35 : 1.0,
-                child: Text(
-                  status.emoji,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    color: Colors.white,
-                  ),
+              Text(
+                status.emoji,
+                style: const TextStyle(
+                  fontSize: 24,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 2),
               Flexible(
                 child: Opacity(
-                  opacity: isBlockedZone ? 0.35 : 0.8,
+                  opacity: 0.8,
                   child: Text(
                     status.shortDescription,
                     style: const TextStyle(
