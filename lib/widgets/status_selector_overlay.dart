@@ -47,6 +47,21 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   Set<String> _configuredZoneTypes = {};
   bool _isLoadingGrid = true; // NUEVO: Prevenir render antes de cargar zonas
 
+  // Mapea ZoneType.value ('home', 'school', ...) al status.id que geofencing activa.
+  // Necesario porque _configuredZoneTypes almacena tipos de zona y status.id son IDs distintos.
+  static const Map<String, String> _zoneTypeToStatusId = {
+    'home': 'home',
+    'school': 'studying',
+    'university': 'studying',
+    'work': 'busy',
+  };
+
+  bool _isBlockedZone(StatusType status) {
+    return _configuredZoneTypes.any(
+      (zoneType) => _zoneTypeToStatusId[zoneType] == status.id,
+    );
+  }
+
   // SOS press & hold
   Timer? _sosTimer;
   bool _sosHolding = false;
@@ -302,7 +317,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   Future<void> _handleStatusSelection(StatusType status) async {
     if (_isUpdating) return;
 
-    if (_configuredZoneTypes.contains(status.id)) {
+    if (_isBlockedZone(status)) {
       await _showZoneSelectionNotAllowedModal();
       return;
     }
@@ -485,7 +500,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
 
   /// Construye botón de estado individual
   Widget _buildStatusButton(StatusType status) {
-    final isBlockedZone = _configuredZoneTypes.contains(status.id);
+    final isBlockedZone = _isBlockedZone(status);
     final isActive = widget.activeStatusId != null && widget.activeStatusId == status.id;
 
     return Material(
