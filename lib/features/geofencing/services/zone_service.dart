@@ -1,5 +1,6 @@
 // lib/features/geofencing/services/zone_service.dart
 
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../domain/entities/zone.dart';
@@ -73,7 +74,7 @@ class ZoneService {
     print('✅ [ZoneService] Zona creada: ${zone.name} (${zone.radiusMeters}m)');
 
     // Actualizar cache nativo para que EmojiDialogActivity refleje la nueva zona
-    await EmojiCacheService.syncEmojisToNativeCache();
+    unawaited(EmojiCacheService.syncEmojisToNativeCache());
 
     return zone;
   }
@@ -131,7 +132,7 @@ class ZoneService {
     print('✅ [ZoneService] Zona actualizada: $zoneId');
 
     // Actualizar cache nativo para que EmojiDialogActivity refleje el cambio
-    await EmojiCacheService.syncEmojisToNativeCache();
+    unawaited(EmojiCacheService.syncEmojisToNativeCache());
   }
 
   /// Eliminar zona
@@ -155,7 +156,7 @@ class ZoneService {
     print('✅ [ZoneService] Zona eliminada: $zoneId');
 
     // Actualizar cache nativo para que EmojiDialogActivity refleje la eliminación
-    await EmojiCacheService.syncEmojisToNativeCache();
+    unawaited(EmojiCacheService.syncEmojisToNativeCache());
   }
 
   /// Obtener todas las zonas de un círculo
