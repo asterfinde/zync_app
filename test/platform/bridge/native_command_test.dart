@@ -29,8 +29,34 @@ void main() {
       expect(cmd, isA<NativeCommand<void>>());
     });
 
+    test('RegisterZone stores zoneId, lat, lng and radiusMeters', () {
+      const cmd = RegisterZone(
+        zoneId: 'home',
+        lat: -33.45,
+        lng: -70.66,
+        radiusMeters: 150.0,
+      );
+      expect(cmd.zoneId, 'home');
+      expect(cmd.lat, -33.45);
+      expect(cmd.lng, -70.66);
+      expect(cmd.radiusMeters, 150.0);
+      expect(cmd, isA<NativeCommand<void>>());
+    });
+
+    test('UnregisterZone stores zoneId', () {
+      const cmd = UnregisterZone(zoneId: 'home');
+      expect(cmd.zoneId, 'home');
+      expect(cmd, isA<NativeCommand<void>>());
+    });
+
+    test('SetBadgeCount stores count', () {
+      const cmd = SetBadgeCount(7);
+      expect(cmd.count, 7);
+      expect(cmd, isA<NativeCommand<void>>());
+    });
+
     test('switch over all subtypes is exhaustive — no default needed', () {
-      const NativeCommand<void> cmd = ActivateSilentMode();
+      const NativeCommand<dynamic> cmd = ActivateSilentMode();
 
       // Si se añade un nuevo subtipo y no se cubre aquí, el análisis falla.
       final label = switch (cmd) {
@@ -39,6 +65,9 @@ void main() {
         GetCurrentLocation()   => 'location',
         SetUserSession()       => 'setSession',
         ClearSession()         => 'clearSession',
+        RegisterZone()         => 'registerZone',
+        UnregisterZone()       => 'unregisterZone',
+        SetBadgeCount()        => 'setBadgeCount',
       };
 
       expect(label, 'activate');

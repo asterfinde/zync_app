@@ -52,6 +52,16 @@ class AndroidNativeBridge implements NativeBridge {
         _eventController.add(const SilentDeactivatedByUser());
       case 'sessionCleared':
         _eventController.add(const SessionCleared());
+      case 'geofenceEntered':
+        final zoneId = args['zoneId'] as String?;
+        if (zoneId != null) {
+          _eventController.add(GeofenceEntered(zoneId));
+        }
+      case 'geofenceExited':
+        final zoneId = args['zoneId'] as String?;
+        if (zoneId != null) {
+          _eventController.add(GeofenceExited(zoneId));
+        }
       default:
         // Evento desconocido — ignorar silenciosamente
         break;
@@ -101,6 +111,20 @@ class AndroidNativeBridge implements NativeBridge {
         return null as T;
       case ClearSession():
         await _channel.invokeMethod<void>('clearSession');
+        return null as T;
+      case RegisterZone(:final zoneId, :final lat, :final lng, :final radiusMeters):
+        await _channel.invokeMethod<void>('registerZone', {
+          'zoneId':       zoneId,
+          'lat':          lat,
+          'lng':          lng,
+          'radiusMeters': radiusMeters,
+        });
+        return null as T;
+      case UnregisterZone(:final zoneId):
+        await _channel.invokeMethod<void>('unregisterZone', {'zoneId': zoneId});
+        return null as T;
+      case SetBadgeCount(:final count):
+        await _channel.invokeMethod<void>('setBadgeCount', {'count': count});
         return null as T;
     }
   }

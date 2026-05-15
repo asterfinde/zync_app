@@ -69,13 +69,18 @@ class MainActivity: FlutterActivity() {
                         apply()
                     }
                     Log.d(TAG, "✅ [BROADCAST] Estado $statusType guardado en cache - se procesará en onResume()")
-                    
-                    // Intentar procesar inmediatamente si FlutterEngine está disponible
+
+                    // Intentar procesar inmediatamente si FlutterEngine está disponible.
+                    // Bifurcación bridge vs legacy: con USE_LEGACY_BRIDGE=false el evento
+                    // se emite por nunakin/bridge (BridgeRouter.emitStatusEvent) para que
+                    // AndroidNativeBridge lo enrute como StatusUpdatedFromNotification.
                     flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
-                        val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
-                        channel.invokeMethod("updateStatus", mapOf(
-                            "statusType" to statusType
-                        ))
+                        if (BuildConfig.USE_LEGACY_BRIDGE) {
+                            MethodChannel(messenger, "com.datainfers.zync/status_update")
+                                .invokeMethod("updateStatus", mapOf("statusType" to statusType))
+                        } else {
+                            activeBridgeRouter?.emitStatusEvent(messenger, statusType)
+                        }
                         Log.d(TAG, "✅ [BROADCAST] Estado también enviado inmediatamente a Flutter")
                     } ?: Log.w(TAG, "⚠️ [BROADCAST] FlutterEngine no disponible - esperando onResume()")
                 } else {
@@ -281,9 +286,14 @@ class MainActivity: FlutterActivity() {
 
         if (pendingStatus != null) {
             Log.d(TAG, "💾 [RESUME] Estado pendiente: $pendingStatus — enviando a Flutter")
+            // Bifurcación bridge vs legacy: emisión por nunakin/bridge cuando flag=false.
             flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
-                val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
-                channel.invokeMethod("updateStatus", mapOf("statusType" to pendingStatus))
+                if (BuildConfig.USE_LEGACY_BRIDGE) {
+                    MethodChannel(messenger, "com.datainfers.zync/status_update")
+                        .invokeMethod("updateStatus", mapOf("statusType" to pendingStatus))
+                } else {
+                    activeBridgeRouter?.emitStatusEvent(messenger, pendingStatus)
+                }
                 prefs.edit().clear().apply()
                 Log.d(TAG, "✅ [RESUME] Estado enviado y cache limpiado")
             } ?: Log.d(TAG, "⏳ [RESUME] FlutterEngine no disponible — estado pendiente preservado para [HYBRID]")
@@ -341,13 +351,18 @@ class MainActivity: FlutterActivity() {
             Log.d(TAG, "👆 [NATIVE] Recibido estado desde dialog: $emoji ($status)")
             
             if (emoji != null && status != null) {
-                // Enviar a Flutter para actualizar en Firebase
+                // Bifurcación bridge vs legacy: cuando flag=false el evento se
+                // emite por nunakin/bridge usando `status` como statusId.
                 flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
-                    val channel = MethodChannel(messenger, "com.datainfers.zync/status_update")
-                    channel.invokeMethod("updateStatus", mapOf(
-                        "emoji" to emoji,
-                        "status" to status
-                    ))
+                    if (BuildConfig.USE_LEGACY_BRIDGE) {
+                        MethodChannel(messenger, "com.datainfers.zync/status_update")
+                            .invokeMethod("updateStatus", mapOf(
+                                "emoji"  to emoji,
+                                "status" to status
+                            ))
+                    } else {
+                        activeBridgeRouter?.emitStatusEvent(messenger, status)
+                    }
                     Log.d(TAG, "✅ [NATIVE] Estado enviado a Flutter")
                 }
             }
@@ -660,6 +675,8 @@ class MainActivity: FlutterActivity() {
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         activeBridgeRouter = router
         bridgeBinaryMessenger = messenger
+
+        // ── Canal unificado nunakin/bridge — los 7 handlers migrados ───────
         MethodChannel(messenger, "nunakin/bridge").setMethodCallHandler { call, result ->
             when (call.method) {
                 "activateSilentMode"   -> router.handleSilentMode(call, result)
@@ -680,7 +697,228 @@ class MainActivity: FlutterActivity() {
                     currentUserId = null
                     destroyModalEngine()
                 }
+                // Día 5
+                "registerZone"         -> router.handleGeofencing(call, result)
+                "unregisterZone"       -> router.handleGeofencing(call, result)
+                "setBadgeCount"        -> router.handleBadge(call, result)
                 else                   -> result.notImplemented()
+            }
+        }
+
+        // ── Canales legacy aún no migrados ─────────────────────────────────
+        // Permanecen activos hasta que sus callers Dart se migren a
+        // nunakin/bridge en Sem 4+. Sin estos handlers el flip del flag
+        // produce MissingPluginException en cualquier caller existente.
+        setupRemainingLegacyChannels(flutterEngine)
+    }
+
+    /**
+     * Registra los canales legacy de Dart que aún no tienen equivalente en
+     * `nunakin/bridge`. Se invoca desde `setupBridgeRouter` cuando
+     * `USE_LEGACY_BRIDGE = false`, para que los callers Dart no migrados
+     * (StatusModalService, StatusService, NativeStateBridge, NativeShortcutService,
+     * NotificationService) sigan funcionando sin `MissingPluginException`.
+     *
+     * Los handlers son copias literales de [setupLegacyChannels] — se eliminan
+     * cuando el caller correspondiente migre al bridge unificado.
+     */
+    private fun setupRemainingLegacyChannels(flutterEngine: FlutterEngine) {
+        val messenger = flutterEngine.dartExecutor.binaryMessenger
+
+        // com.datainfers.zync/status_modal — usado por StatusModalService.dart
+        MethodChannel(messenger, "com.datainfers.zync/status_modal").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openModal" -> {
+                    Log.d(TAG, "[FASE 5] Abriendo StatusModalActivity desde Flutter...")
+                    try {
+                        val intent = Intent(this, StatusModalActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                        Log.d(TAG, "[FASE 5] StatusModalActivity iniciada exitosamente")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[FASE 5] Error abriendo StatusModalActivity: ${e.message}")
+                        result.error("OPEN_MODAL_ERROR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // com.datainfers.zync/pending_status — usado por StatusService.dart (HYBRID flow)
+        MethodChannel(messenger, "com.datainfers.zync/pending_status").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getPendingStatus" -> {
+                    val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+                    val statusType = prefs.getString("statusType", null)
+                    val timestamp = prefs.getLong("timestamp", 0L)
+
+                    if (statusType != null && timestamp > 0) {
+                        Log.d(TAG, "💾 [HYBRID] Estado pendiente encontrado: $statusType")
+                        result.success(mapOf(
+                            "statusType" to statusType,
+                            "timestamp" to timestamp
+                        ))
+                    } else {
+                        Log.d(TAG, "ℹ️ [HYBRID] No hay estado pendiente")
+                        result.success(null)
+                    }
+                }
+                "clearPendingStatus" -> {
+                    val prefs = getSharedPreferences("pending_status", Context.MODE_PRIVATE)
+                    prefs.edit().clear().apply()
+                    Log.d(TAG, "✅ [HYBRID] Cache de estado pendiente limpiado")
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // zync/native_state — usado por NativeStateBridge.dart
+        MethodChannel(messenger, NATIVE_STATE_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setUserId" -> {
+                    val userId = call.argument<String>("userId")
+                    val email = call.argument<String>("email") ?: ""
+                    val circleId = call.argument<String>("circleId") ?: ""
+
+                    if (userId != null && userId.isNotEmpty()) {
+                        val existingCircleId = getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+                            .getString("circleId", "") ?: ""
+                        val finalCircleId = if (circleId.isNotEmpty()) circleId else existingCircleId
+
+                        Log.d(TAG, "[DIAG-WS] setUserId WROTE worker_state: userId=$userId circleId='$finalCircleId' (incoming='$circleId' preserved=${circleId.isEmpty() && finalCircleId.isNotEmpty()})")
+                        currentUserId = userId
+                        NativeStateManager.saveUserState(this, userId, email, finalCircleId)
+
+                        getSharedPreferences("worker_state", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("userId", userId)
+                            .putString("circleId", finalCircleId)
+                            .commit()
+
+                        warmUpModalEngine()
+                        result.success(true)
+                    } else {
+                        Log.d(TAG, "🧹 [FLUTTER→KOTLIN] Limpiando estado (logout)")
+                        currentUserId = null
+                        NativeStateManager.clear(this)
+                        destroyModalEngine()
+                        result.success(true)
+                    }
+                }
+                "getUserId" -> {
+                    val userId = NativeStateManager.getUserId(this)
+                    Log.d(TAG, "📥 [KOTLIN→FLUTTER] Enviando userId: $userId")
+                    result.success(userId)
+                }
+                "getDebugInfo" -> {
+                    val info = NativeStateManager.getDebugInfo(this)
+                    Log.d(TAG, "🔍 [KOTLIN→FLUTTER] Debug info solicitado")
+                    result.success(info)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // zync/native_shortcuts — usado por NativeShortcutService.dart / InCircleView
+        MethodChannel(messenger, "zync/native_shortcuts").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "updateShortcuts" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                        val hasCircle = call.argument<Boolean>("hasCircle") ?: false
+                        val shortcutsData = call.argument<List<Map<String, String>>>("shortcuts") ?: emptyList()
+                        val shortcuts = shortcutsData.map {
+                            ShortcutData(
+                                type = it["type"] ?: "",
+                                emoji = it["emoji"] ?: "",
+                                label = it["label"] ?: ""
+                            )
+                        }
+                        NativeShortcutManager.updateShortcuts(this, hasCircle, shortcuts)
+                        result.success(true)
+                        Log.d(TAG, "✅ [SHORTCUTS] Nativos actualizados: hasCircle=$hasCircle, count=${shortcuts.size}")
+                    } else {
+                        result.error("API_LEVEL", "Shortcuts requieren API 25+", null)
+                    }
+                }
+                "clearShortcuts" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                        NativeShortcutManager.clearShortcuts(this)
+                        result.success(true)
+                        Log.d(TAG, "🧹 [SHORTCUTS] Nativos limpiados")
+                    } else {
+                        result.success(true)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // mini_emoji/notification — usado por NotificationService.dart
+        MethodChannel(messenger, CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "requestNotificationPermission" -> {
+                    requestNotificationPermission()
+                    result.success("Permisos solicitados")
+                }
+                "showNotification" -> {
+                    Log.d(TAG, "[FASE 5] Creando notificación nativa persistente")
+                    if (hasNotificationPermission()) {
+                        showPersistentNotification()
+                        result.success("✅ Notificación mostrada - tap abre StatusModalActivity")
+                    } else {
+                        result.error("NO_PERMISSION", "Permisos de notificación requeridos", null)
+                    }
+                }
+                "cancelNotification" -> {
+                    Log.d(TAG, "[LOGOUT] 🔴 Cancelando notificación persistente (ID: $NOTIFICATION_ID)...")
+                    try {
+                        NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
+                        Log.d(TAG, "[LOGOUT] ✅ Notificación cancelada exitosamente")
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[LOGOUT] ❌ Error cancelando notificación: ${e.message}")
+                        result.error("CANCEL_ERROR", e.message, null)
+                    }
+                }
+                "cancelAllNotifications" -> {
+                    Log.d(TAG, "[LOGOUT] 🔴🔴🔴 Cancelando TODAS las notificaciones...")
+                    try {
+                        NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
+                        Log.d(TAG, "[LOGOUT] ✅ Notificación MainActivity cancelada (ID: $NOTIFICATION_ID)")
+                        NotificationManagerCompat.from(this).cancelAll()
+                        Log.d(TAG, "[LOGOUT] ✅ TODAS las notificaciones del sistema canceladas")
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[LOGOUT] ❌ Error cancelando todas las notificaciones: ${e.message}")
+                        result.error("CANCEL_ALL_ERROR", e.message, null)
+                    }
+                }
+                "openNotificationSettings" -> {
+                    Log.d(TAG, "[FASE 5] 🔧 Abriendo Settings de notificaciones...")
+                    Log.w(TAG, "⚠️ [DIAG-G1.3] startActivity(notificationSettings) — onResume() se disparará al volver. isSilentModeActive=$isSilentModeActive | modal_was_open NO se establece aquí")
+                    try {
+                        val intent = Intent().apply {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                action = android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                                putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+                            } else {
+                                action = android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                                data = android.net.Uri.parse("package:$packageName")
+                            }
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                        Log.d(TAG, "[FASE 5] ✅ Settings abierto exitosamente")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[FASE 5] ❌ Error abriendo Settings: ${e.message}")
+                        result.error("SETTINGS_ERROR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
             }
         }
     }

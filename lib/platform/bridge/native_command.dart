@@ -34,3 +34,36 @@ class SetUserSession extends NativeCommand<void> {
 class ClearSession extends NativeCommand<void> {
   const ClearSession();
 }
+
+/// Registra una zona geográfica circular en el handler nativo.
+///
+/// El handler la almacena en memoria para que el futuro
+/// `GeofencingBroadcastReceiver` (Sem 4) la consulte al recibir transiciones
+/// del OS Android.
+class RegisterZone extends NativeCommand<void> {
+  final String zoneId;
+  final double lat;
+  final double lng;
+  final double radiusMeters;
+  const RegisterZone({
+    required this.zoneId,
+    required this.lat,
+    required this.lng,
+    required this.radiusMeters,
+  });
+}
+
+/// Elimina el registro de una zona geográfica.
+class UnregisterZone extends NativeCommand<void> {
+  final String zoneId;
+  const UnregisterZone({required this.zoneId});
+}
+
+/// Actualiza el badge count del ícono de la aplicación.
+///
+/// El handler nativo persiste el valor en SharedPrefs para que la
+/// notificación persistente pueda reflejarlo via `setNumber(count)`.
+class SetBadgeCount extends NativeCommand<void> {
+  final int count;
+  const SetBadgeCount(this.count);
+}
