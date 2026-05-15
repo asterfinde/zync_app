@@ -67,6 +67,7 @@ class ZoneService {
       createdBy: currentUser.uid,
       createdAt: DateTime.now(),
       type: type,
+      isPredefined: type.isPredefinedType,
     );
 
     await zoneRef.set(zone.toFirestore());
