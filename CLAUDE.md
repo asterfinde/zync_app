@@ -40,15 +40,42 @@
 - **Antes de cualquier `git checkout` o cambio de rama:** listar explícitamente los archivos que podrían verse afectados y esperar confirmación — incluso en modo `SOLO`.
 - Al cierre de sesión, proponer entradas para las secciones 11 y 12 si corresponde, y esperar aprobación.
 - **Antes de proponer cualquier cambio en lógica de navegación, tap handlers o flujos de usuario:** listar TODOS los flujos que pasan por el mismo código y confirmar que ninguno regresiona. Si algún flujo existente se ve afectado, reportarlo ANTES de pedir VoBo.
-- **Para bugs de lifecycle nativo Android:** leer los logs diagnósticos antes de proponer cualquier fix. Los logs son la única fuente de verdad.
-- **Para bugs de performance o de flujo de UI:** antes de proponer cualquier fix:
-  1. Trazar el call graph completo desde el tap/acción del usuario hasta el widget que realmente se renderiza (grep el handler → seguir cada llamada → identificar la clase activa). No asumir que una clase en el mismo archivo es la que ejecuta.
-  2. Leer `initState()` y todos los métodos async de carga del widget identificado en (1) — no de clases cercanas o conceptualmente relacionadas.
-  3. Verificar con grep que cada archivo a modificar tiene callers activos en el flujo real. Si no hay callers: es código muerto — reportarlo y no tocarlo.
-  Un fix en código muerto no resuelve nada. El call graph es la fuente de verdad.
 - **Gateway de control — "Verifica antes de VoBo":** cuando el desarrollador dice "verifica", "revisa", "investiga", "analiza" o frases similares, presentar ÚNICAMENTE el diagnóstico y el plan propuesto. NO implementar nada hasta recibir "VoBo" explícito. Aplica incluso en modo `SOLO`.
 - **En refactorizaciones incrementales con feature flag:** antes de migrar cualquier caller Dart a una interfaz nueva (ej. `NativeBridge.invoke()`), verificar que la implementación del otro lado (Kotlin/nativo) ya está activa. Si no lo está, el caller debe incluir el fallback al camino legacy en el mismo commit — nunca en un PR separado.
 - **En el reporte de cierre de cada PR:** si algún flujo de usuario queda en estado de transición (un lado migrado, otro inactivo), incluir explícitamente la advertencia `⚠️ Riesgo activo: [descripción]. Verificar en dispositivo antes del próximo PR.` Si no se incluyó: el desarrollador debe asumir que ese flujo NO fue verificado.
+
+### Protocolo de diagnóstico de bugs (obligatorio)
+
+Aplicar en este orden en todos los bugs. No saltear pasos.
+
+**Paso 1 — Leer REGLAS_NEGOCIO.md primero**
+Si el bug involucra algo visible al usuario (bloqueo, validación, dimming, dialog "no permitido"):
+- Leer `docs/dev/REGLAS_NEGOCIO.md`.
+- Si el comportamiento está especificado como CORRECTO: el bug está en OTRO lado — **nunca eliminar la restricción**. Eliminar una restricción correcta basándose solo en el síntoma reportado es un error de diagnóstico, no un fix.
+- Si no está especificado como correcto: continuar al Paso 2.
+
+**Paso 2 — Trazar el call graph desde el tap/acción**
+1. Identificar el handler del tap (grep el texto del botón o el key del widget).
+2. Seguir cada llamada hacia abajo hasta el widget que SE RENDERIZA realmente. No asumir que una clase en el mismo archivo es la que ejecuta.
+3. Verificar con grep que cada archivo tiene callers **activos** en el flujo real. Si no hay callers: es código muerto — reportarlo, no tocarlo.
+4. Identificar la **clase activa** antes de continuar.
+
+**Paso 3 — Leer los métodos críticos de la clase activa**
+1. `initState()` completo.
+2. Todos los métodos async de carga (`loadX`, `fetchX`, `syncX`).
+3. Los `setState()` / `notifyListeners()` — qué los dispara.
+Solo la clase que el call graph confirma. No clases "cercanas conceptualmente".
+
+**Paso 4 — Identificar la fuente de verdad desincronizada**
+Checar las 7 fuentes activas: Firestore `memberStatus`, `flutter.current_status_id`, `flutter.manual_status_id`, `flutter.pre_silent_status_id`, `flutter.is_silent_mode_active`, `NativeStateManager` (Room), static fields en memoria. Identificar cuál está desincronizada.
+
+**Paso 5 — Verificar que el fix no rompe flujos existentes**
+Listar TODOS los flujos que pasan por el mismo código. Confirmar que ninguno regresiona. Si algún flujo se ve afectado → reportarlo ANTES de pedir VoBo.
+
+**Paso 6 — Proponer con nivel de confianza explícito**
+Un plan PA95C (>95% confianza) debe tener: causa raíz identificada (no hipótesis), call graph trazado hasta la línea exacta, `REGLAS_NEGOCIO.md` consultado, archivos afectados con líneas específicas, flujos impactados verificados.
+
+> Para bugs de lifecycle nativo Android: los logs diagnósticos son la única fuente de verdad — leerlos antes de cualquier otro paso.
 
 ### Modo autónomo vs. modo con autorización
 
@@ -377,7 +404,7 @@ Decisiones EXCLUSIVAS del desarrollador:
     `.claude/agents/analyst.md` y `.claude/agents/prompt-engineer.md` coincidan con las
     secciones 3 y 12 de este archivo. Si hay diferencias: actualizarlas antes de continuar
     y reportar al desarrollador qué cambió.
-4. Revisar si hay ítems en sección 13 (Deuda Técnica) relacionados con la tarea y mencionarlos si es relevante.
+4. Revisar si hay ítems en [`docs/dev/DEUDA_TECNICA.md`](docs/dev/DEUDA_TECNICA.md) relacionados con la tarea y mencionarlos si es relevante.
 5. El desarrollador indica qué va a trabajar.
 6. La IA confirma que entiende el alcance.
 
@@ -459,20 +486,9 @@ Decisiones EXCLUSIVAS del desarrollador:
 
 ## 13. Deuda Técnica
 
-> La IA puede detectar y proponer ítems, pero solo se agregan con aprobación del desarrollador. La IA no corrige deuda técnica por iniciativa propia.
-
-| Problema | Prioridad | Notas |
-|----------|-----------|-------|
-| Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Flujo activo usa `auth_final_page.dart`. Evaluar eliminación post-MVP. |
-| Scripts `.ps1` en raíz: `launch_emulator.ps1`, `run_devices.ps1`, `clean_and_run.ps1` | Media | No son parte del código fuente. Mover fuera del repo una vez validados. |
-| Archivos de desarrollo dentro de `lib/`: `main_test.dart`, `main_minimal_test.dart`, `dev_auth_simple/`, `dev_auth_test/`, `dev_test/`, `dev_utils/` | **Alta** | `dev_utils/` contiene `clean_auth.dart` y `clean_firestore.dart` — riesgo de ejecución accidental en producción. Eliminar antes del build de release. |
-| API Key de Anthropic — ubicación desconocida | **Alta** | No encontrada en ningún archivo Dart. Antes del lanzamiento: confirmar ubicación. Si está en el cliente (hardcodeada o en assets), mover a Cloud Function. Ver sección 15 — Seguridad. |
-| Edición de emojis personalizados — no existe `updateCustomEmoji()` | Baja | Workaround: borrar + crear. ~50 líneas en 3 archivos. Post-MVP. |
-| Validación de correos al registro | Media | Sin definir aún. |
-| State Management — solución no documentada en sección 5 | Media | Completar antes de agregar nueva lógica de estado. |
-| Feature: ejercicio de respiración guiada (v2.0) | Baja | Esfera animada sobre camino trapezoidal (inspirar/aguantar/exhalar). Encuadrar como acceso desde estado de pánico/SOS, no como sección autónoma. Implementación: `CustomPainter` + `AnimatedBuilder` + `Path`. Sin dependencias nuevas. |
-| Cierre remoto de sesión — equipo perdido o robado | **Alta** | Hoy no existe mecanismo para cerrar sesión desde otro dispositivo. Modelo de amenaza idéntico a WhatsApp: quien tenga el equipo desbloqueado con sesión activa tiene acceso completo al Círculo. **Caso crítico: si el que pierde el equipo es el Creador del Círculo**, ningún miembro puede eliminarlo ni disolver el Círculo — el padre/tutor quedaría sin control. Opciones a evaluar: (1) transferencia de rol de Creador desde otro dispositivo; (2) token de sesión con TTL corto + re-auth periódica; (3) logout remoto via Cloud Function (invalida el token Firebase). Pendiente definir cuál se implementa antes del lanzamiento. |
-| **[POST-SEM3]** Limpiar §12 y §13 de CLAUDE.md | Media | Al cerrar Sem 3 (flip de `USE_LEGACY_BRIDGE=false` + todos los handlers migrados): archivar decisiones técnicas obsoletas de §12 y resolver/eliminar ítems de deuda resueltos en §13. También eliminar la regla de feature flag de §2 si ya no aplica. |
+> Archivo externo: [`docs/dev/DEUDA_TECNICA.md`](docs/dev/DEUDA_TECNICA.md)
+>
+> La tabla completa vive allí para no engordar este archivo. Al inicio de cada sesión, si la tarea está relacionada con un ítem de deuda, leer ese archivo y mencionarlo al desarrollador.
 
 ---
 

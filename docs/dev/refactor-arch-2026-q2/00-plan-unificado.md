@@ -1,9 +1,9 @@
-# Plan Unificado de Refactor Arquitectónico — 6 Semanas
+# Plan Unificado de Refactor Arquitectónico — 10 Semanas
 
-> **Versión:** 1.0
+> **Versión:** 2.0
 > **Fecha de inicio:** 2026-05-06
 > **Punto base en Git:** tag `mvp-baseline-20260506` (commit `9c3518e`)
-> **Lanzamiento estimado MVP:** ~28 de junio de 2026
+> **Lanzamiento estimado MVP:** ~15 de agosto de 2026
 > **Premisa operativa:** cada semana es entregable y testeable. `main` siempre verde. Sin big-bang. Estrategia **strangler fig**.
 
 ---
@@ -259,10 +259,14 @@ class EnterSilentMode {
 |--------|------|----------------------|--------|-------------|
 | 1 | Cimientos | Estructura, DI real, `Result`, `KvStore`, contratos compartidos, hooks DbC | Bajo | [01-semana-1-cimientos.md](01-semana-1-cimientos.md) |
 | 2 | Presence (corazón) | State machine + repository + use cases. Sin cablear UI todavía | Bajo | (TBD al cierre Sem 1) |
-| 3 | Native Bridge | 1 MethodChannel unificado. `MainActivity.kt` ≤300 líneas. Migración con feature flag | **Alto — semana crítica** | (TBD al cierre Sem 2) |
+| 3 | Native Bridge | 1 MethodChannel unificado. `MainActivity.kt` ≤300 líneas. Migración con feature flag. `USE_LEGACY_BRIDGE=false` verificado en device | **Alto — semana crítica** | (TBD al cierre Sem 2) |
 | 4 | Identity + Circle | `IdentitySession` reactivo. `MembershipState` extraído. Eliminar static `_refreshController` | Medio | (TBD al cierre Sem 3) |
 | 5 | UI descomposición | `in_circle_view.dart` 3091 → ≤500 líneas. Widgets por sub-state. VM como integrador | Medio | (TBD al cierre Sem 4) |
-| 6 | Hardening + freeze | Tests E2E, eliminar shims, doc canónica, performance baseline, freeze | Bajo | (TBD al cierre Sem 5) |
+| 6 | Hardening (parcial) | Tests E2E del núcleo, eliminar shims internos, doc canónica, performance baseline | Bajo | (TBD al cierre Sem 5) |
+| 7 | Flujos no refactorizados | `emoji_cache_service`, `notification_status_selector`, `quick_actions_handler`, `widget_service`, `EmojiDialogActivity` alineado a KvStore | Medio | (TBD al cierre Sem 6) |
+| 8 | Geofencing BC completo | `ZoneRepository` + `ApplyGeofenceStatus` use case + `DomainEventBus` integrado. Cold-start race resuelto estructuralmente | Medio | (TBD al cierre Sem 7) |
+| 9 | Seguridad y Compliance | API Key → Cloud Function, Privacy Policy, `ACCESS_BACKGROUND_LOCATION` justification, auditoría logs sensibles, `flutter pub audit` | **Alto** | (TBD al cierre Sem 8) |
+| 10 | Launch Readiness + freeze | E2E suite completa, performance vs baseline, eliminación archivos `dev_utils/` legacy, Google Play prep, freeze + tag `mvp-launch-ready` | Bajo | (TBD al cierre Sem 9) |
 
 ### 3.1 Detalles de Semana 1 — Cimientos
 
@@ -322,23 +326,88 @@ Ver [01-semana-1-cimientos.md](01-semana-1-cimientos.md).
 - Migrar `auth_final_page.dart` y `settings_page.dart` a use cases en lugar de servicios estáticos.
 - `navigatorKey` sigue existiendo solo para `MaterialApp`, no como punto de inyección de servicios.
 
-### 3.6 Detalles de Semana 6 — Hardening
+### 3.6 Detalles de Semana 6 — Hardening (parcial)
 
-**Objetivo**: eliminar lo legado, sumar coverage, certificar.
+**Objetivo**: consolidar el núcleo refactorizado antes de expandir a los contextos pendientes.
 
 **Entregables**:
-- Borrar shims: `StatusService.updateUserStatus`, `setOfflineStatus`/`clearOfflineStatus`, `MainActivity.kt.backup_*`, código comentado en `main.dart` e `injection_container.dart`.
-- Tests E2E en `integration_test/`: cold start tras 12h, transición Normal→Silent→Normal, BN durante Silent, SOS desde notificación.
-- Auditoría de `debugPrint`/`log` con datos sensibles (UIDs, emails, coordenadas) — condicionar a `kDebugMode`.
-- Performance baseline: cold start, app resume, memory footprint. Comparar contra `mvp-baseline-20260506`.
-- Doc canónica: `docs/dev/architecture.md` (un solo archivo).
-- **Freeze**: solo bug fixes críticos a partir del día 5.
+- Borrar shims: `StatusService.updateUserStatus`, `setOfflineStatus`/`clearOfflineStatus`, código comentado en `main.dart` e `injection_container.dart`.
+- Tests E2E del núcleo en `integration_test/`: transición Normal→Silent→Normal, BN durante Silent, SOS desde notificación.
+- Doc canónica parcial: `docs/dev/architecture.md` con los BCs completados hasta Sem 5.
+- Performance baseline provisional: cold start y app resume. Comparar contra `mvp-baseline-20260506`.
+
+---
+
+### 3.7 Detalles de Semana 7 — Flujos no refactorizados
+
+**Objetivo**: eliminar el 40% del código legado que el refactor de Sems 1–6 no alcanzó y donde viven los bugs actuales.
+
+**Archivos objetivo**:
+
+| Archivo | Problema actual | Solución |
+|---------|----------------|----------|
+| `emoji_cache_service.dart` | Cold-start race: se llama antes de que Auth complete → escribe `configured_zone_types = []` | Eliminar llamada de `main.dart`. Mover responsabilidad a `PresenceRepository.initialize()` ya con Auth garantizado |
+| `notification_status_selector.dart` | Usa `StatusType.fallbackPredefined` hardcodeado, no el repositorio | Migrar a `GetAllEmojisForCircle` use case |
+| `quick_actions_handler.dart` | Llama directo a `StatusService` estático | Migrar a `SetManualStatus` use case |
+| `widget_service.dart` | Estado mutable global compartido con Home Screen widget Android | Migrar escritura a `PresenceRepository`, lectura vía `KvStore` |
+| `EmojiDialogActivity.kt` | Lee `configured_zone_types` de SharedPrefs con key hardcodeada | Alinear key a `StorageKeys` del nuevo `KvStore`. Eliminar dependencia implícita en strings |
+
+**Criterio**: cold-start race no reproducible. Ambos modales (Círculo + BN) leen zonas configuradas de la misma fuente con la misma key.
+
+---
+
+### 3.8 Detalles de Semana 8 — Geofencing BC completo
+
+**Objetivo**: el contexto `geofencing` tiene sus propios repositorios y use cases; ya no depende de servicios estáticos.
+
+**Entregables**:
+- `ZoneRepository` (port) + `FirestoreZoneRepository` (impl) — extrae lógica de `zone_service.dart`.
+- `ZoneEventRepository` (port) + impl — extrae lógica de `zone_event_service.dart`.
+- Use case `ApplyGeofenceStatus`: consume `ZoneEntered`/`ZoneExited` del `DomainEventBus`, dispara `SetAutomaticStatus` en el contexto `presence`. Cierra definitivamente MS5.03.
+- `geofencing_service.dart` queda como thin adapter que solo escucha el plugin nativo y publica al bus.
+- Tests unitarios de `ApplyGeofenceStatus` con mocks del bus y del `PresenceRepository`.
+
+**Criterio**: agregar una zona nueva no requiere tocar más de 1 archivo de dominio.
+
+---
+
+### 3.9 Detalles de Semana 9 — Seguridad y Compliance
+
+**Objetivo**: resolver todos los ítems bloqueantes de CLAUDE.md §15 antes del lanzamiento.
+
+**Entregables**:
+
+| Ítem | Acción concreta |
+|------|----------------|
+| API Key Anthropic | Verificar ubicación. Si está en cliente → mover a Cloud Function o Remote Config restringido |
+| Privacy Policy | Redactar cubriendo: email, nickname, GPS — uso, retención, eliminación. Publicar URL accesible |
+| `ACCESS_BACKGROUND_LOCATION` | Documentar justificación para Google Play: "geofencing para estado automático de presencia" |
+| `USE_LEGACY_BRIDGE` | Si no se hizo en Sem 3: flip definitivo a `false`, smoke test en device físico, eliminar flag |
+| Auditoría logs sensibles | Grep de `debugPrint`/`log` con UIDs, emails, coordenadas → condicionar a `kDebugMode` |
+| `flutter pub audit` | Ejecutar y resolver CVEs conocidos |
+| Firebase Security Rules | Revisión final contra esquema de datos real. Confirmar reglas de producción |
+
+**Criterio**: checklist de CLAUDE.md §15 "Pendientes pre-lanzamiento" completado al 100%.
+
+---
+
+### 3.10 Detalles de Semana 10 — Launch Readiness + Freeze
+
+**Objetivo**: el producto está listo para producción. Cero deuda crítica.
+
+**Entregables**:
+- Tests E2E completos en `integration_test/`: cold start tras 12h, transición Normal→Silent→Normal con GPS, BN durante Silent, SOS con coordenadas reales.
+- Performance final: cold start, app resume, memory footprint. Comparar contra `mvp-baseline-20260506`. Registrar en `docs/dev/performance-baseline.md`.
+- Eliminar archivos legacy (deuda §13 Alta): `dev_utils/clean_auth.dart`, `dev_utils/clean_firestore.dart`, `main_test.dart`, `main_minimal_test.dart`, carpetas `dev_auth_simple/`, `dev_auth_test/`, `dev_test/`.
+- Google Play prep: APK release build, ProGuard/R8 verificado, signing key auditada.
+- **Freeze**: solo bug fixes críticos (severity Alta) a partir del día 4.
+- Tag `mvp-launch-ready` en el commit final verificado.
 
 ---
 
 ## 4. Métricas de éxito
 
-| Métrica | Actual | Meta post-Sem 6 |
+| Métrica | Actual | Meta post-Sem 10 |
 |---------|--------|------------------|
 | Líneas en `MainActivity.kt` | 996 | ≤300 |
 | Líneas en `in_circle_view.dart` | 3091 | ≤500 |
@@ -348,6 +417,9 @@ Ver [01-semana-1-cimientos.md](01-semana-1-cimientos.md).
 | Cobertura de tests del dominio (presence + circle) | <5% | ≥80% |
 | Archivos a tocar para agregar un `StatusType` | 7 | 1 |
 | Bugs de desincronización en 7 días post-merge | 5 (en últimos 4 días) | 0 |
+| Ítems compliance pre-lanzamiento resueltos (CLAUDE.md §15) | 0/5 | 5/5 |
+| Archivos legacy `dev_utils/` eliminados | 0/6 | 6/6 |
+| `USE_LEGACY_BRIDGE` activo | `true` | `false` (Sem 3 o Sem 9) |
 
 ---
 
@@ -357,9 +429,11 @@ Ver [01-semana-1-cimientos.md](01-semana-1-cimientos.md).
 |--------|--------------|------------|
 | Refactor destapa bugs latentes | Alta | Cada semana es deployable. Tests E2E desde Sem 2. Tag `mvp-baseline-20260506` permite revertir. |
 | Sem 3 (bridge) introduce regresión en lifecycle | Media | Feature flag `USE_LEGACY_BRIDGE`. Mantener canales viejos 48h en paralelo. |
-| Lanzamiento se desliza más allá de fines de junio | Media | Sem 6 es buffer. Si Sem 3 atrasa, mover Sem 5 a post-MVP (mantener `in_circle_view` legado pero con datos del VM). |
+| `USE_LEGACY_BRIDGE` aún en `true` al iniciar Sem 9 | Media | Sem 3 debe cerrarse con flip verificado en device. Si no ocurre en Sem 3, Sem 9 lo resuelve como bloqueante antes del compliance. |
 | Conflictos de merge con trabajo en curso | Media | Trunk-based actual ayuda. Ramas cortas. PR por sub-entregable, no por semana. |
 | Resistencia a abandonar Clean en `features/auth/` | Baja | Auth ya tiene Clean — se mueve tal cual a `contexts/identity/`. |
+| API Key Anthropic en cliente (hardcoded o en assets) | Alta | Sem 9 lo detecta y bloquea el lanzamiento hasta resolverlo. No hay workaround aceptable. |
+| Lanzamiento se desliza más allá de agosto | Baja | Sem 10 es buffer explícito. Si Sem 7 u 8 atrasan, Sem 10 absorbe o se mueve a post-MVP con feature flag. |
 
 ---
 
