@@ -195,6 +195,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       });
     }
 
+    // InCircleView solo renderiza cuando el usuario tiene círculo — siempre correcto.
+    // Evita la race condition donde _userHasCircle queda false en cold start y
+    // activateSilentMode dispara un getUserCircle() frío (~5-8s) al primer tap.
+    SilentFunctionalityCoordinator.syncCircleState(hasCircle: true);
+
     // PASO 5: Escuchar solicitudes de ingreso (solo si el usuario actual es el creador)
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     if (currentUid != null && currentUid == widget.circle.creatorId) {
@@ -995,7 +1000,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     );
 
     if (confirmed == true && context.mounted) {
-      SilentFunctionalityCoordinator.activateSilentMode(context);
+      setState(() => _isUpdatingStatus = true);
+      await SilentFunctionalityCoordinator.activateSilentMode(context);
+      if (mounted) setState(() => _isUpdatingStatus = false);
     }
   }
 
