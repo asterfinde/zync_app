@@ -187,9 +187,9 @@ class _ZoneFormState extends State<ZoneForm> {
   }
 
   /// Buscar dirección y ubicar en mapa.
-  /// Usa locale es_PE para biasear resultados hacia Perú y, si el geocoding
-  /// devuelve múltiples candidatos, elige el más cercano a la posición GPS
-  /// actual del usuario para evitar resultados de otros países.
+  /// Solo muestra resultados dentro de 1500 km de la posición GPS actual
+  /// del usuario (REGLAS_NEGOCIO.md §10). Descarta resultados del mismo
+  /// nombre en otros países o continentes.
   Future<void> _searchAddress() async {
     final address = _addressController.text.trim();
     if (address.isEmpty) return;
@@ -197,16 +197,36 @@ class _ZoneFormState extends State<ZoneForm> {
     setState(() => _isSearching = true);
 
     try {
+      // Biasear resultados hacia español (geocoding 3.x usa función global)
+      await setLocaleIdentifier('es_PE');
       final locations = await locationFromAddress(address);
 
       if (locations.isEmpty) {
         throw Exception('No se encontró la dirección');
       }
 
-      // Si hay múltiples resultados, elegir el más cercano a la posición actual
-      final best = locations.length == 1
-          ? locations.first
-          : locations.reduce((a, b) {
+      // Descartar resultados más allá de 1500 km de la posición actual.
+      // Cubre todo el territorio de Perú y países limítrofes desde cualquier
+      // punto del país, eliminando falsos positivos de otros continentes.
+      const maxDistanceMeters = 1500 * 1000.0;
+      final nearby = locations.where((loc) {
+        final dist = Geolocator.distanceBetween(
+          _selectedLocation.latitude,
+          _selectedLocation.longitude,
+          loc.latitude,
+          loc.longitude,
+        );
+        return dist <= maxDistanceMeters;
+      }).toList();
+
+      if (nearby.isEmpty) {
+        throw Exception('No se encontró esa dirección cerca de tu ubicación');
+      }
+
+      // De los candidatos cercanos, elegir el más próximo a la posición actual
+      final best = nearby.length == 1
+          ? nearby.first
+          : nearby.reduce((a, b) {
               final distA = Geolocator.distanceBetween(
                 _selectedLocation.latitude,
                 _selectedLocation.longitude,
