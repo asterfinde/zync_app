@@ -205,10 +205,11 @@ class _ZoneFormState extends State<ZoneForm> {
         throw Exception('No se encontró la dirección');
       }
 
-      // Descartar resultados más allá de 1500 km de la posición actual.
-      // Cubre todo el territorio de Perú y países limítrofes desde cualquier
-      // punto del país, eliminando falsos positivos de otros continentes.
-      const maxDistanceMeters = 1500 * 1000.0;
+      // Descartar resultados fuera de la ciudad del usuario (REGLAS_NEGOCIO.md §10).
+      // 50 km cubre cualquier área metropolitana del Perú (Lima ~40 km de radio,
+      // todas las demás < 30 km). Garantiza que "Iquitos" en Lima devuelva
+      // calles en Lima, no la ciudad de Iquitos (~1 100 km).
+      const maxDistanceMeters = 50 * 1000.0;
       final nearby = locations.where((loc) {
         final dist = Geolocator.distanceBetween(
           _selectedLocation.latitude,

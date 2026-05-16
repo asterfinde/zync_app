@@ -392,15 +392,19 @@ Cuando el Creador elimina una zona de tipo `custom`:
 
 ## 10. Reglas de búsqueda de dirección al crear/editar zona
 
-### 10.1 Filtro geográfico obligatorio
+### 10.1 Filtro geográfico obligatorio — umbral = ciudad del usuario
 
-La búsqueda de dirección en el formulario de zona (`ZoneForm`) **descarta todo resultado ubicado a más de 1 500 km de la posición GPS actual del usuario**.
+La búsqueda de dirección en el formulario de zona (`ZoneForm`) **descarta todo resultado ubicado a más de 50 km de la posición GPS actual del usuario**.
 
-**Objetivo:** evitar que un nombre de lugar ambiguo o en inglés resuelva a una ciudad de otro país o continente (ej. buscar "Victoria" y obtener Victoria, Australia en lugar de Lima, Perú).
+**Regla de producto:** el umbral es la ciudad donde está el usuario en ese momento.
+- Si el usuario está en Lima → solo resultados en Lima.
+- Si el usuario está en Arequipa → solo resultados en Arequipa.
+- Si el usuario escribe "Iquitos" estando en Lima → la app encuentra calles o barrios llamados "Iquitos" dentro de Lima, **no** la ciudad de Iquitos (a ~1 100 km).
+- Si el usuario escribe "Arequipa" estando en Lima → excluido (ciudad a ~1 000 km).
 
-**Referencia de distancia:** la posición GPS cargada en `_selectedLocation`. Si el GPS aún no terminó de cargar, se usa el valor por defecto de Lima (−12.046374, −77.042793), que cubre todo el territorio peruano dentro del umbral.
+**Referencia de distancia:** la posición GPS cargada en `_selectedLocation`. El formulario de zona requiere GPS activo — si no está disponible se muestra un diálogo bloqueante y el formulario se cierra, por lo que `_selectedLocation` siempre refleja la posición real al momento de buscar.
 
-**Umbral de 1 500 km:** cubre todo el Perú más los países limítrofes desde cualquier punto del territorio, sin importar si el nombre se busca en español o inglés.
+**Umbral de 50 km:** cubre cualquier área metropolitana del Perú. Lima tiene el área metropolitana más extensa (~40 km de radio); todas las demás ciudades son considerablemente menores.
 
 ### 10.2 Comportamiento ante resultados sin candidatos cercanos
 
