@@ -1,6 +1,7 @@
 // lib/features/geofencing/services/zone_service.dart
 
 import 'dart:async';
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../domain/entities/zone.dart';
@@ -156,8 +157,60 @@ class ZoneService {
 
     print('✅ [ZoneService] Zona eliminada: $zoneId');
 
+    // ════════════════════════════════════════════════════════════
+    // [FIX] Bug C — memberStatus obsoleto tras eliminar zona
+    // Fecha: 2026-05-16
+    // PROBLEMA: deleteZone() no limpiaba memberStatus de los miembros
+    //   cuyo estado activo tenía zoneId == deletedZoneId. Quedaban
+    //   mostrando un emoji de zona que ya no existe indefinidamente.
+    // SOLUCIÓN: batch update post-delete → reset a 'fine' para afectados.
+    // ════════════════════════════════════════════════════════════
+    await _resetMemberStatusForDeletedZone(circleId: circleId, zoneId: zoneId);
+
     // Actualizar cache nativo para que EmojiDialogActivity refleje la eliminación
     unawaited(EmojiCacheService.syncEmojisToNativeCache());
+  }
+
+  /// Resetea el memberStatus de todos los miembros cuyo estado activo
+  /// apuntaba a la zona eliminada. REGLAS_NEGOCIO.md §5: salida de zona → 'fine'.
+  Future<void> _resetMemberStatusForDeletedZone({
+    required String circleId,
+    required String zoneId,
+  }) async {
+    try {
+      final circleDoc = await _firestore.collection('circles').doc(circleId).get();
+      final data = circleDoc.data();
+      if (data == null) return;
+
+      final memberStatus = data['memberStatus'] as Map<String, dynamic>?;
+      if (memberStatus == null || memberStatus.isEmpty) return;
+
+      final circleRef = _firestore.collection('circles').doc(circleId);
+      final batch = _firestore.batch();
+      var hasUpdates = false;
+
+      for (final entry in memberStatus.entries) {
+        final uid = entry.key;
+        final status = entry.value as Map<String, dynamic>?;
+        if (status == null) continue;
+        if ((status['zoneId'] as String?) != zoneId) continue;
+
+        batch.update(circleRef, {
+          'memberStatus.$uid.statusType': 'fine',
+          'memberStatus.$uid.customEmoji': FieldValue.delete(),
+          'memberStatus.$uid.zoneName': FieldValue.delete(),
+          'memberStatus.$uid.zoneId': FieldValue.delete(),
+          'memberStatus.$uid.autoUpdated': true,
+          'memberStatus.$uid.timestamp': FieldValue.serverTimestamp(),
+        });
+        hasUpdates = true;
+        log('[ZoneService] 🔄 Reset status miembro $uid (estaba en zona eliminada $zoneId)');
+      }
+
+      if (hasUpdates) await batch.commit();
+    } catch (e) {
+      log('[ZoneService] ❌ Error reseteando memberStatus post-delete: $e');
+    }
   }
 
   /// Obtener todas las zonas de un círculo

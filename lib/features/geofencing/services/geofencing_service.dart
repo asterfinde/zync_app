@@ -168,7 +168,21 @@ class GeofencingService {
     if (_currentZoneId != null && newZoneId != _currentZoneId) {
       // Buscar la zona anterior para obtener su nombre
       final zones = await _zoneService.getCircleZones(_currentCircleId!);
-      final exitedZone = zones.firstWhere((z) => z.id == _currentZoneId);
+      // ════════════════════════════════════════════════════════════
+      // [FIX] Bug E — zona eliminada mientras el usuario estaba adentro
+      // Fecha: 2026-05-16
+      // PROBLEMA: firstWhere lanzaba StateError si la zona fue borrada,
+      //   silenciando el crash en _onLocationUpdate y dejando el servicio
+      //   en estado inválido.
+      // SOLUCIÓN: guard con where().isEmpty → early-return y reset de _currentZoneId.
+      // ════════════════════════════════════════════════════════════
+      final zoneMatches = zones.where((z) => z.id == _currentZoneId);
+      if (zoneMatches.isEmpty) {
+        log('[GeofencingService] ⚠️ Zona $_currentZoneId fue eliminada — reseteando monitoreo');
+        _currentZoneId = newZoneId;
+        return;
+      }
+      final exitedZone = zoneMatches.first;
 
       log('[GeofencingService] 🚪 SALIDA de zona: ${exitedZone.name}');
       await _eventService.createEvent(
