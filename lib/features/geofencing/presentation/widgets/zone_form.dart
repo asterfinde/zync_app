@@ -373,7 +373,7 @@ class _ZoneFormState extends State<ZoneForm> {
                   children: [
                     // Búsqueda de dirección
                     const Text(
-                      'Buscar dirección',
+                      'Buscar dirección o lugar',
                       style: TextStyle(
                         color: Color(0xFF9E9E9E),
                         fontSize: 14,
@@ -387,7 +387,7 @@ class _ZoneFormState extends State<ZoneForm> {
                             controller: _addressController,
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
-                              hintText: 'Av. Principal, San Isidro',
+                              hintText: 'Av. Principal, San Isidro o nombre del lugar',
                               hintStyle: TextStyle(color: Colors.grey.shade700),
                               filled: true,
                               fillColor: const Color(0xFF1C1C1E),
