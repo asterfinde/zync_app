@@ -47,19 +47,12 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay> with Sing
   Set<String> _configuredZoneTypes = {};
   bool _isLoadingGrid = true; // NUEVO: Prevenir render antes de cargar zonas
 
-  // Mapea ZoneType.value ('home', 'school', ...) al status.id que geofencing activa.
-  // Necesario porque _configuredZoneTypes almacena tipos de zona y status.id son IDs distintos.
-  static const Map<String, String> _zoneTypeToStatusId = {
-    'home': 'home',
-    'school': 'studying',
-    'university': 'studying',
-    'work': 'busy',
-  };
-
+  // Bloquea el botón cuyo status.id coincide con el tipo de zona configurado.
+  // home→home, school→school, university→university, work→work (1:1 por diseño).
+  // studying/busy NO se bloquean: el geofencing los asigna automáticamente, pero
+  // el usuario puede seleccionarlos manualmente (REGLAS_NEGOCIO §8.1).
   bool _isBlockedZone(StatusType status) {
-    return _configuredZoneTypes.any(
-      (zoneType) => _zoneTypeToStatusId[zoneType] == status.id,
-    );
+    return _configuredZoneTypes.contains(status.id);
   }
 
   // SOS press & hold

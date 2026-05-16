@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../services/circle_service.dart';
 import '../../domain/entities/zone.dart';
 import '../../services/zone_service.dart';
@@ -22,6 +23,14 @@ class ZonesPage extends ConsumerStatefulWidget {
 class _ZonesPageState extends ConsumerState<ZonesPage> {
   final ZoneService _zoneService = ZoneService();
   bool _showDebugWidget = false;
+  late final bool _isCreator;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    _isCreator = uid != null && uid == widget.circle.creatorId;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,20 +223,12 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
           color: Colors.grey.shade600,
         ),
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Color(0xFF1EE9A4)),
-            onPressed: () => _editZone(context, zone),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: () => _confirmDelete(context, zone),
-          ),
-        ],
-      ),
-      onTap: () => _editZone(context, zone),
+      trailing: _isCreator
+          ? IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _confirmDelete(context, zone),
+            )
+          : null,
     );
   }
 
@@ -237,18 +238,6 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
       MaterialPageRoute(
         builder: (context) => ZoneForm(
           circleId: widget.circle.id,
-        ),
-      ),
-    );
-  }
-
-  void _editZone(BuildContext context, Zone zone) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ZoneForm(
-          circleId: widget.circle.id,
-          zone: zone,
         ),
       ),
     );
