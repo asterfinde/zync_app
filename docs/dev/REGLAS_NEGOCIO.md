@@ -343,3 +343,81 @@ Calcular manualOverride / locationUnknown
 Escribir batch (memberStatus + historial)
 Haptic → cerrar modal (300ms)
 ```
+
+---
+
+## 9. Reglas de borrado de Zonas
+
+### 9.1 Quién puede borrar
+
+Solo el **Creador del Círculo** puede borrar zonas. Los miembros ven la lista en modo solo-lectura.
+
+### 9.2 Borrado de zona predefinida (🏠 🏫 🎓 🏢)
+
+Cuando el Creador elimina una zona de tipo `home`, `school`, `university` o `work`:
+
+1. **Selector de estado (ambos modales):** el botón correspondiente se desbloquea automáticamente y pasa a ser seleccionable. No se requiere acción adicional — el modal re-consulta las zonas al abrirse.
+
+2. **Estado actual de miembros en esa zona:** cualquier miembro cuyo `memberStatus.zoneId` coincida con la zona eliminada recibe una actualización equivalente a una **salida de zona**:
+   - `statusType` → `fine`
+   - `customEmoji` → `null`
+   - `zoneName` → `null`
+   - `zoneId` → `null`
+   - `autoUpdated` → `true`
+
+   Esto es consistente con §5 ("GPS siempre gana") y con el comportamiento de salida de zona. La zona desapareció — semánticamente es equivalente a salir de ella.
+
+3. **Miembros no afectados** (sin `zoneId` de la zona eliminada): su estado no cambia.
+
+### 9.3 Borrado de zona personalizada (📍)
+
+Cuando el Creador elimina una zona de tipo `custom`:
+
+1. **Estado actual de miembros en esa zona:** **no se modifica**. El `memberStatus` persiste con el último emoji y `zoneName` conocidos. El estado cambia únicamente cuando:
+   - El usuario selecciona un estado nuevo manualmente.
+   - El geofencing detecta entrada o salida de otra zona configurada.
+
+2. **Selector de estado:** ningún botón estaba bloqueado por zonas personalizadas (§7.2), sin cambio.
+
+3. **No se muestra badge "zona eliminada"** en la vista del Círculo. El estado persistido es el último estado conocido válido, coherente con el §0 ("no hay resets automáticos"). Badge de zona eliminada evaluado para v2.0.
+
+### 9.4 Tabla resumen
+
+| Tipo de zona | Estado miembro en zona | Selector |
+|--------------|----------------------|----------|
+| Predefinida (🏠🏫🎓🏢) | Reset a `fine` (equivalente a salida) | Botón se desbloquea |
+| Personalizada (📍) | Persiste, sin cambio | Sin cambio (nunca estuvo bloqueado) |
+
+---
+
+## 10. Reglas de búsqueda de dirección al crear/editar zona
+
+### 10.1 Filtro geográfico obligatorio — umbral = ciudad del usuario
+
+La búsqueda de dirección en el formulario de zona (`ZoneForm`) **descarta todo resultado ubicado a más de 50 km de la posición GPS actual del usuario**.
+
+**Regla de producto:** el umbral es la ciudad donde está el usuario en ese momento.
+- Si el usuario está en Lima → solo resultados en Lima.
+- Si el usuario está en Arequipa → solo resultados en Arequipa.
+- Si el usuario escribe "Iquitos" estando en Lima → la app encuentra calles o barrios llamados "Iquitos" dentro de Lima, **no** la ciudad de Iquitos (a ~1 100 km).
+- Si el usuario escribe "Arequipa" estando en Lima → excluido (ciudad a ~1 000 km).
+
+**Referencia de distancia:** la posición GPS cargada en `_selectedLocation`. El formulario de zona requiere GPS activo — si no está disponible se muestra un diálogo bloqueante y el formulario se cierra, por lo que `_selectedLocation` siempre refleja la posición real al momento de buscar.
+
+**Umbral de 50 km:** cubre cualquier área metropolitana del Perú. Lima tiene el área metropolitana más extensa (~40 km de radio); todas las demás ciudades son considerablemente menores.
+
+### 10.2 Comportamiento ante resultados sin candidatos cercanos
+
+Si **ningún** resultado del geocoder queda dentro del umbral de 1 500 km, se muestra el error:
+
+> *"No se encontró esa dirección cerca de tu ubicación"*
+
+No se centra el mapa en ningún punto nuevo. El usuario puede refinar el texto o ajustar el marcador manualmente.
+
+### 10.3 Selección del mejor candidato cercano
+
+De los candidatos que superan el filtro de distancia, se elige el **más cercano** a `_selectedLocation`. Esto garantiza consistencia cuando hay varios resultados válidos dentro del umbral (ej. dos barrios con el mismo nombre en distintas ciudades del país).
+
+### 10.4 Idioma de resultados
+
+El geocoder se configura con `setLocaleIdentifier('es_PE')` antes de cada búsqueda para biasear las etiquetas de resultado hacia español de Perú. Este ajuste es complementario al filtro de distancia, no lo reemplaza.

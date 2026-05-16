@@ -187,9 +187,9 @@ class _ZoneFormState extends State<ZoneForm> {
   }
 
   /// Buscar dirección y ubicar en mapa.
-  /// Usa locale es_PE para biasear resultados hacia Perú y, si el geocoding
-  /// devuelve múltiples candidatos, elige el más cercano a la posición GPS
-  /// actual del usuario para evitar resultados de otros países.
+  /// Solo muestra resultados dentro de 1500 km de la posición GPS actual
+  /// del usuario (REGLAS_NEGOCIO.md §10). Descarta resultados del mismo
+  /// nombre en otros países o continentes.
   Future<void> _searchAddress() async {
     final address = _addressController.text.trim();
     if (address.isEmpty) return;
@@ -197,16 +197,37 @@ class _ZoneFormState extends State<ZoneForm> {
     setState(() => _isSearching = true);
 
     try {
+      // Biasear resultados hacia español (geocoding 3.x usa función global)
+      await setLocaleIdentifier('es_PE');
       final locations = await locationFromAddress(address);
 
       if (locations.isEmpty) {
         throw Exception('No se encontró la dirección');
       }
 
-      // Si hay múltiples resultados, elegir el más cercano a la posición actual
-      final best = locations.length == 1
-          ? locations.first
-          : locations.reduce((a, b) {
+      // Descartar resultados fuera de la ciudad del usuario (REGLAS_NEGOCIO.md §10).
+      // 50 km cubre cualquier área metropolitana del Perú (Lima ~40 km de radio,
+      // todas las demás < 30 km). Garantiza que "Iquitos" en Lima devuelva
+      // calles en Lima, no la ciudad de Iquitos (~1 100 km).
+      const maxDistanceMeters = 50 * 1000.0;
+      final nearby = locations.where((loc) {
+        final dist = Geolocator.distanceBetween(
+          _selectedLocation.latitude,
+          _selectedLocation.longitude,
+          loc.latitude,
+          loc.longitude,
+        );
+        return dist <= maxDistanceMeters;
+      }).toList();
+
+      if (nearby.isEmpty) {
+        throw Exception('No se encontró esa dirección cerca de tu ubicación');
+      }
+
+      // De los candidatos cercanos, elegir el más próximo a la posición actual
+      final best = nearby.length == 1
+          ? nearby.first
+          : nearby.reduce((a, b) {
               final distA = Geolocator.distanceBetween(
                 _selectedLocation.latitude,
                 _selectedLocation.longitude,
@@ -352,7 +373,7 @@ class _ZoneFormState extends State<ZoneForm> {
                   children: [
                     // Búsqueda de dirección
                     const Text(
-                      'Buscar dirección',
+                      'Buscar dirección o lugar',
                       style: TextStyle(
                         color: Color(0xFF9E9E9E),
                         fontSize: 14,
@@ -366,7 +387,7 @@ class _ZoneFormState extends State<ZoneForm> {
                             controller: _addressController,
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
-                              hintText: 'Av. Principal, San Isidro',
+                              hintText: 'Av. Principal, San Isidro o nombre del lugar',
                               hintStyle: TextStyle(color: Colors.grey.shade700),
                               filled: true,
                               fillColor: const Color(0xFF1C1C1E),
