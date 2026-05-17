@@ -5,6 +5,9 @@ import 'package:nunakin_app/contexts/circle/application/ports/circle_repository.
 import 'package:nunakin_app/contexts/circle/domain/circle_entity.dart';
 import 'package:nunakin_app/contexts/circle/domain/membership_state.dart';
 import 'package:nunakin_app/services/circle_service.dart' as legacy;
+import 'package:nunakin_app/shared/failure.dart';
+import 'package:nunakin_app/shared/result.dart';
+import 'package:nunakin_app/shared/unit.dart';
 
 class FirestoreCircleRepository implements CircleRepository {
   final legacy.CircleService _service;
@@ -54,5 +57,38 @@ class FirestoreCircleRepository implements CircleRepository {
   Future<String> createCircle(String name) {
     assert(name.isNotEmpty, 'circle name must not be empty');
     return _service.createCircle(name);
+  }
+
+  @override
+  Future<Result<Unit>> requestToJoin(String invitationCode) async {
+    try {
+      await _service.requestToJoinCircle(invitationCode);
+      return Success(Unit.instance);
+    } on Exception catch (e) {
+      return FailureResult(DomainFailure(message: e.toString(), cause: e));
+    }
+  }
+
+  @override
+  Future<Result<Unit>> approveJoin({
+    required String circleId,
+    required String requestingUserId,
+  }) async {
+    try {
+      await _service.approveJoinRequest(circleId, requestingUserId);
+      return Success(Unit.instance);
+    } on Exception catch (e) {
+      return FailureResult(DomainFailure(message: e.toString(), cause: e));
+    }
+  }
+
+  @override
+  Future<Result<Unit>> deleteAccount() async {
+    try {
+      await _service.deleteAccount();
+      return Success(Unit.instance);
+    } on Exception catch (e) {
+      return FailureResult(UnexpectedFailure(message: e.toString(), cause: e));
+    }
   }
 }
