@@ -466,6 +466,7 @@ Decisiones EXCLUSIVAS del desarrollador:
 - Al recibir resumen comprimido por el sistema: guardar estado en `memory/` antes de continuar.
 - Antes de cambiar a feature no relacionado: guardar memoria y sugerir `/clear`.
 - Si el desarrollador dice "nueva tarea": guardar memoria → sugerir `/clear`.
+- **Antes de `/clear`:** guardar memoria primero y confirmar al desarrollador antes de proceder.
 
 ---
 
