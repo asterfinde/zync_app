@@ -21,6 +21,8 @@ import '../../../../core/services/silent_functionality_coordinator.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../../core/models/user_status.dart';
 import '../../../geofencing/services/geofencing_service.dart'; // Servicio de geofencing
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/shared/events/domain_event_bus.dart';
 // CACHE-FIRST: Importar caches
 import '../../../../core/cache/in_memory_cache.dart';
 import '../../../../core/cache/persistent_cache.dart';
@@ -138,7 +140,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   StreamSubscription<QuerySnapshot>? _customEmojisListener;
 
   // Servicio de geofencing
-  final GeofencingService _geofencingService = GeofencingService();
+  final GeofencingService _geofencingService = GeofencingService(bus: sl<DomainEventBus>());
   // --- FIN DE LA MODIFICACIÓN ---
 
   // Aprobación de ingreso
