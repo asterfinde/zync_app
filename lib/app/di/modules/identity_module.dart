@@ -1,4 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
+import 'package:nunakin_app/contexts/identity/application/ports/identity_repository.dart';
+import 'package:nunakin_app/contexts/identity/infrastructure/firebase_identity_repository.dart';
+import 'package:nunakin_app/contexts/identity/presentation/view_models/identity_view_model.dart';
 import 'package:nunakin_app/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:nunakin_app/features/auth/data/datasources/auth_local_data_source_impl.dart';
 import 'package:nunakin_app/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -25,5 +29,13 @@ Future<void> registerIdentityModule(GetIt sl) async {
   );
   sl.registerLazySingleton<AuthLocalDataSource>(
     () => AuthLocalDataSourceImpl(sharedPreferences: sl()),
+  );
+
+  // ── NUEVO — Sem 4 Día 1 ───────────────────────────────────────────────────
+  sl.registerLazySingleton<IdentityRepository>(
+    () => FirebaseIdentityRepository(sl<FirebaseAuth>()),
+  );
+  sl.registerLazySingleton(
+    () => IdentityViewModel(repository: sl<IdentityRepository>()),
   );
 }
