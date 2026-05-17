@@ -4,6 +4,8 @@ import 'package:nunakin_app/contexts/circle/application/ports/circle_repository.
 import 'package:nunakin_app/contexts/circle/domain/circle_entity.dart';
 import 'package:nunakin_app/contexts/circle/domain/membership_state.dart';
 import 'package:nunakin_app/contexts/circle/presentation/view_models/circle_view_model.dart';
+import 'package:nunakin_app/shared/result.dart';
+import 'package:nunakin_app/shared/unit.dart';
 
 class _FakeCircleRepository implements CircleRepository {
   final _controller = StreamController<MembershipState>.broadcast();
@@ -18,6 +20,19 @@ class _FakeCircleRepository implements CircleRepository {
 
   @override
   Future<String> createCircle(String name) async => 'fake-id';
+
+  @override
+  Future<Result<Unit>> requestToJoin(String invitationCode) async =>
+      Success(Unit.instance);
+
+  @override
+  Future<Result<Unit>> approveJoin({
+    required String circleId,
+    required String requestingUserId,
+  }) async => Success(Unit.instance);
+
+  @override
+  Future<Result<Unit>> deleteAccount() async => Success(Unit.instance);
 
   void close() => _controller.close();
 }
