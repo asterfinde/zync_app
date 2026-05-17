@@ -1,4 +1,5 @@
 import 'dart:async'; // Necesario para StreamSubscription
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -918,14 +919,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       print('[InCircleView] ✅ Enviando estado rápido: ${defaultStatus.label}');
       final result = await StatusService.updateUserStatus(defaultStatus);
 
-      if (!result.isSuccess && mounted) {
-        _showError(context, 'Error: ${result.errorMessage}');
+      if (!result.isSuccess) {
+        log('[InCircleView] ⚠️ Status update falló (silent fail): ${result.errorMessage}');
       }
     } catch (e) {
-      print('[InCircleView] Error en quickStatusUpdate: $e');
-      if (mounted) {
-        _showError(context, 'Error actualizando estado');
-      }
+      log('[InCircleView] ⚠️ Error en quickStatusUpdate (silent fail): $e');
     } finally {
       // PA2 FIX: Asegurar que siempre se resetea el estado de loading
       if (mounted) {
@@ -1008,8 +1006,13 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
     if (confirmed == true && context.mounted) {
       setState(() => _isUpdatingStatus = true);
-      await SilentFunctionalityCoordinator.activateSilentMode(context);
-      if (mounted) setState(() => _isUpdatingStatus = false);
+      try {
+        await SilentFunctionalityCoordinator.activateSilentMode(context);
+      } catch (e) {
+        log('[InCircleView] ⚠️ Error activando Modo Silencio: $e');
+      } finally {
+        if (mounted) setState(() => _isUpdatingStatus = false);
+      }
     }
   }
 
@@ -1033,6 +1036,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                         : () => _confirmAndActivateSilentMode(context),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: _AppColors.accent,
+                      disabledForegroundColor: _AppColors.textSecondary,
                       backgroundColor: Colors.black,
                       side: const BorderSide(color: _AppColors.accent),
                       padding: const EdgeInsets.symmetric(vertical: 16),
