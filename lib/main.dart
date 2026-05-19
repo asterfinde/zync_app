@@ -40,6 +40,27 @@ void main() async {
     );
   }
 
+  // ════════════════════════════════════════════════════════════
+  // [FIX] Forzar refresh del Auth ID token en cold start
+  // Fecha: 2026-05-19
+  // PROBLEMA: tras horas en Modo Silencio Android mata el proceso. Firebase
+  //   Auth persiste en disco un ID token expirado (TTL=1h) + refresh token
+  //   válido. Firestore intenta sincronizar con el token vencido → servidor
+  //   rechaza → writes encoladas hasta re-login del usuario.
+  // SOLUCIÓN: getIdToken(true) antes de enableNetwork() fuerza al SDK a
+  //   obtener un ID token fresco usando el refresh token antes de que
+  //   Firestore intente cualquier operación de red.
+  // ════════════════════════════════════════════════════════════
+  final coldStartUser = FirebaseAuth.instance.currentUser;
+  if (coldStartUser != null) {
+    try {
+      await coldStartUser.getIdToken(true).timeout(const Duration(seconds: 5));
+      debugPrint('[main] ✅ Auth token refreshed on cold start');
+    } catch (e) {
+      debugPrint('[main] ⚠️ Token refresh on cold start skipped: $e');
+    }
+  }
+
   // Pre-warm Firestore gRPC WebSocket before any user interaction.
   // Ensures enableNetwork() in StatusService returns instantly on first status update.
   // ignore: unawaited_futures
@@ -222,6 +243,21 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         print('⚠️ [App] No hay usuario autenticado, no se guarda sesión');
       }
     } else if (state == AppLifecycleState.resumed) {
+      // ════════════════════════════════════════════════════════════
+      // [FIX] Forzar refresh del Auth ID token al resumir
+      // Fecha: 2026-05-19
+      // PROBLEMA: si el proceso sobrevivió en background pero el token expiró
+      //   (TTL=1h), Firestore encola writes hasta re-auth. Cubre warm resume.
+      // SOLUCIÓN: fire-and-forget para no bloquear UI.
+      // ════════════════════════════════════════════════════════════
+      final resumeUser = FirebaseAuth.instance.currentUser;
+      if (resumeUser != null) {
+        resumeUser.getIdToken(true).catchError((e) {
+          debugPrint('[App] ⚠️ Token refresh on resume error: $e');
+          return '';
+        });
+      }
+
       // 📱 App maximizada - MEDIR RENDIMIENTO
       print('📱 [App] Resumed from background - Midiendo performance...');
       PerformanceTracker.start('App Maximization');
