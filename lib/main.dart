@@ -41,14 +41,13 @@ void main() async {
   }
 
   // ════════════════════════════════════════════════════════════
-  // [FIX] Forzar refresh del Auth ID token en cold start (con retry)
+  // [FIX v3] Forzar refresh del Auth ID token en cold start (retry indefinido)
   // Fecha: 2026-05-19
   // PROBLEMA: tras horas en MS, Android mata el proceso. Firebase Auth persiste
-  //   ID token expirado en disco. El primer intento de refresh falla porque
-  //   securetoken.googleapis.com está bloqueado por Android los primeros
-  //   segundos post-Doze. Sin retry, el token sigue expirado y Firestore entra
-  //   en loop UNAUTHENTICATED hasta re-login manual.
-  // SOLUCIÓN: _refreshTokenWithRetry reintenta con backoff (0s→5s→20s→50s).
+  //   ID token expirado en disco. securetoken.googleapis.com permanece bloqueado
+  //   por más de 50s post-LMK/Doze — los 4 reintentos de v2 se agotaban.
+  // SOLUCIÓN: _refreshTokenWithRetry v3 reintenta indefinidamente (cap 120s)
+  //   y al éxito fuerza reconexión de Firestore con disable+enableNetwork().
   // ════════════════════════════════════════════════════════════
   final coldStartUser = FirebaseAuth.instance.currentUser;
   if (coldStartUser != null) {
@@ -180,19 +179,30 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
   });
 }
 
-// Reintenta getIdToken(true) con backoff progresivo.
-// securetoken.googleapis.com queda bloqueado los primeros segundos post-Doze;
-// el primer intento falla. Reintentos en 0s, 5s, 20s y 50s (acumulado).
+// ════════════════════════════════════════════════════════════
+// [FIX v3] Reintenta getIdToken(true) con backoff indefinido.
+// Fecha: 2026-05-19
+// PROBLEMA: securetoken.googleapis.com puede quedar bloqueado por más de 50s
+//   post-Doze/LMK. Fix v2 (4 reintentos, 50s máx) se agotaba antes de que el
+//   bloqueo se liberara — el token quedaba vencido indefinidamente y Firestore
+//   permanecía en loop UNAUTHENTICATED.
+// SOLUCIÓN:
+//   1. Reintentos indefinidos: después del último delay escalonado continúa
+//      cada 120s hasta éxito o sign-out (currentUser == null).
+//   2. Al éxito: disableNetwork()+enableNetwork() fuerza reconexión inmediata
+//      de Firestore — sin esto, el SDK puede tardar minutos en salir de su
+//      propio backoff UNAUTHENTICATED aunque el token ya sea válido.
+// ════════════════════════════════════════════════════════════
 void _refreshTokenWithRetry(User user, {int attempt = 0, String context = ''}) {
-  const delays = [0, 5, 15, 30];
-  if (attempt >= delays.length) {
-    debugPrint('[App] ⚠️ Token refresh agotó reintentos ($context)');
-    return;
-  }
-  Future.delayed(Duration(seconds: delays[attempt]), () {
+  const delays = [0, 5, 15, 30, 60, 120];
+  final delay = attempt < delays.length ? delays[attempt] : 120;
+  Future.delayed(Duration(seconds: delay), () {
     if (FirebaseAuth.instance.currentUser == null) return;
-    user.getIdToken(true).then((_) {
+    user.getIdToken(true).then((_) async {
       debugPrint('[App] ✅ Token refreshed — intento ${attempt + 1} ($context)');
+      await FirebaseFirestore.instance.disableNetwork();
+      await FirebaseFirestore.instance.enableNetwork();
+      debugPrint('[App] ✅ Firestore reconectado tras token refresh ($context)');
     }).catchError((Object e) {
       debugPrint('[App] ⚠️ Token refresh intento ${attempt + 1} falló ($context): $e');
       _refreshTokenWithRetry(user, attempt: attempt + 1, context: context);
@@ -258,12 +268,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       }
     } else if (state == AppLifecycleState.resumed) {
       // ════════════════════════════════════════════════════════════
-      // [FIX] Forzar refresh del Auth ID token al resumir (con retry)
+      // [FIX v3] Forzar refresh del Auth ID token al resumir (retry indefinido)
       // Fecha: 2026-05-19
-      // PROBLEMA: securetoken.googleapis.com bloqueado los primeros segundos
-      //   post-Doze. Primer intento siempre falla. Sin retry, token expirado
-      //   persiste y Firestore entra en loop UNAUTHENTICATED.
-      // SOLUCIÓN: _refreshTokenWithRetry reintenta con backoff (0s→5s→20s→50s).
+      // PROBLEMA: securetoken.googleapis.com bloqueado por más de 50s post-Doze.
+      //   Fix v2 se agotaba antes de que el bloqueo se liberara.
+      // SOLUCIÓN: _refreshTokenWithRetry v3 reintenta indefinidamente (cap 120s)
+      //   y al éxito fuerza reconexión de Firestore.
       // ════════════════════════════════════════════════════════════
       final resumeUser = FirebaseAuth.instance.currentUser;
       if (resumeUser != null) {
