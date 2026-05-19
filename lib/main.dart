@@ -41,24 +41,18 @@ void main() async {
   }
 
   // ════════════════════════════════════════════════════════════
-  // [FIX] Forzar refresh del Auth ID token en cold start
+  // [FIX] Forzar refresh del Auth ID token en cold start (con retry)
   // Fecha: 2026-05-19
-  // PROBLEMA: tras horas en Modo Silencio Android mata el proceso. Firebase
-  //   Auth persiste en disco un ID token expirado (TTL=1h) + refresh token
-  //   válido. Firestore intenta sincronizar con el token vencido → servidor
-  //   rechaza → writes encoladas hasta re-login del usuario.
-  // SOLUCIÓN: getIdToken(true) antes de enableNetwork() fuerza al SDK a
-  //   obtener un ID token fresco usando el refresh token antes de que
-  //   Firestore intente cualquier operación de red.
+  // PROBLEMA: tras horas en MS, Android mata el proceso. Firebase Auth persiste
+  //   ID token expirado en disco. El primer intento de refresh falla porque
+  //   securetoken.googleapis.com está bloqueado por Android los primeros
+  //   segundos post-Doze. Sin retry, el token sigue expirado y Firestore entra
+  //   en loop UNAUTHENTICATED hasta re-login manual.
+  // SOLUCIÓN: _refreshTokenWithRetry reintenta con backoff (0s→5s→20s→50s).
   // ════════════════════════════════════════════════════════════
   final coldStartUser = FirebaseAuth.instance.currentUser;
   if (coldStartUser != null) {
-    try {
-      await coldStartUser.getIdToken(true).timeout(const Duration(seconds: 5));
-      debugPrint('[main] ✅ Auth token refreshed on cold start');
-    } catch (e) {
-      debugPrint('[main] ⚠️ Token refresh on cold start skipped: $e');
-    }
+    _refreshTokenWithRetry(coldStartUser, context: 'cold start');
   }
 
   // Pre-warm Firestore gRPC WebSocket before any user interaction.
@@ -186,6 +180,26 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
   });
 }
 
+// Reintenta getIdToken(true) con backoff progresivo.
+// securetoken.googleapis.com queda bloqueado los primeros segundos post-Doze;
+// el primer intento falla. Reintentos en 0s, 5s, 20s y 50s (acumulado).
+void _refreshTokenWithRetry(User user, {int attempt = 0, String context = ''}) {
+  const delays = [0, 5, 15, 30];
+  if (attempt >= delays.length) {
+    debugPrint('[App] ⚠️ Token refresh agotó reintentos ($context)');
+    return;
+  }
+  Future.delayed(Duration(seconds: delays[attempt]), () {
+    if (FirebaseAuth.instance.currentUser == null) return;
+    user.getIdToken(true).then((_) {
+      debugPrint('[App] ✅ Token refreshed — intento ${attempt + 1} ($context)');
+    }).catchError((Object e) {
+      debugPrint('[App] ⚠️ Token refresh intento ${attempt + 1} falló ($context): $e');
+      _refreshTokenWithRetry(user, attempt: attempt + 1, context: context);
+    });
+  });
+}
+
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -244,18 +258,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       }
     } else if (state == AppLifecycleState.resumed) {
       // ════════════════════════════════════════════════════════════
-      // [FIX] Forzar refresh del Auth ID token al resumir
+      // [FIX] Forzar refresh del Auth ID token al resumir (con retry)
       // Fecha: 2026-05-19
-      // PROBLEMA: si el proceso sobrevivió en background pero el token expiró
-      //   (TTL=1h), Firestore encola writes hasta re-auth. Cubre warm resume.
-      // SOLUCIÓN: fire-and-forget para no bloquear UI.
+      // PROBLEMA: securetoken.googleapis.com bloqueado los primeros segundos
+      //   post-Doze. Primer intento siempre falla. Sin retry, token expirado
+      //   persiste y Firestore entra en loop UNAUTHENTICATED.
+      // SOLUCIÓN: _refreshTokenWithRetry reintenta con backoff (0s→5s→20s→50s).
       // ════════════════════════════════════════════════════════════
       final resumeUser = FirebaseAuth.instance.currentUser;
       if (resumeUser != null) {
-        resumeUser.getIdToken(true).catchError((e) {
-          debugPrint('[App] ⚠️ Token refresh on resume error: $e');
-          return '';
-        });
+        _refreshTokenWithRetry(resumeUser, context: 'resume');
       }
 
       // 📱 App maximizada - MEDIR RENDIMIENTO
