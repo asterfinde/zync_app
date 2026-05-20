@@ -102,6 +102,7 @@ void main() async {
 
   // Inicializaciones en background tras el primer frame
   WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await PersistentCache.init();
     await SilentFunctionalityCoordinator.initializeServices();
     await EmojiCacheService.syncEmojisToNativeCache();
   });
@@ -167,16 +168,6 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
     print('❌ [NATIVE→FLUTTER] Error procesando estado: $e');
   }
 
-  // ⏳ LAZY: Inicializar PersistentCache DESPUÉS del primer frame
-  // (GetIt ya fue inicializado antes de runApp)
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    print('🔄 [main] Inicializando PersistentCache en background...');
-
-    PerformanceTracker.start('Cache Init');
-    await PersistentCache.init();
-    PerformanceTracker.end('Cache Init');
-    print('✅ [main] PersistentCache inicializado.');
-  });
 }
 
 // Intenta refrescar el token en cold start / resume con backoff limitado.

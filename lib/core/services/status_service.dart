@@ -13,6 +13,7 @@ import 'gps_service.dart';
 import 'session_cache_service.dart';
 import 'package:flutter/material.dart';
 import 'package:nunakin_app/core/global_keys.dart';
+import 'package:nunakin_app/core/services/secure_credential_service.dart';
 import 'dart:async';
 import 'dart:developer';
 
@@ -281,9 +282,13 @@ class StatusService {
         await user.getIdToken(true).timeout(const Duration(seconds: 5));
         log('[StatusService] ✅ Token válido — procediendo con commit');
       } catch (e) {
-        log('[StatusService] 🔑 Token inválido — sesión expirada: $e');
-        _handleSessionExpired();
-        return StatusUpdateResult.error('session_expired');
+        log('[StatusService] 🔑 Token inválido — intentando silent re-auth: $e');
+        final reauthed = await _trySilentReauth();
+        if (!reauthed) {
+          _handleSessionExpired();
+          return StatusUpdateResult.error('session_expired');
+        }
+        log('[StatusService] ✅ Silent re-auth exitoso — continuando con commit');
       }
 
       // ════════════════════════════════════════════════════════════
@@ -413,6 +418,30 @@ class StatusService {
       return snapshot.docs.isNotEmpty;
     } catch (e) {
       log('[StatusService] ⚠️ Error verificando zona $zoneType: $e');
+      return false;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // [FIX] Silent Re-auth con Android Keystore
+  // Fecha: 2026-05-20
+  // Si hay credenciales guardadas, re-autentica silenciosamente sin interrumpir
+  // al usuario. Si falla (ej. contraseña cambiada), limpia Keystore y devuelve
+  // false para que _handleSessionExpired() muestre el SnackBar + signOut.
+  // ════════════════════════════════════════════════════════════
+  static Future<bool> _trySilentReauth() async {
+    try {
+      final credentials = await SecureCredentialService.getCredentials();
+      if (credentials == null) return false;
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: credentials['email']!,
+        password: credentials['password']!,
+      );
+      log('[StatusService] ✅ Silent re-auth exitoso');
+      return true;
+    } catch (e) {
+      log('[StatusService] ⚠️ Silent re-auth falló — limpiando credenciales: $e');
+      await SecureCredentialService.clearCredentials();
       return false;
     }
   }
