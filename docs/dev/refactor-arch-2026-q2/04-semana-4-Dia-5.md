@@ -193,16 +193,63 @@ Ninguno. Sólo se crean carpetas destino implícitamente al mover archivos.
 
 ---
 
-## Smoke test 6 pasos (pre-tag, OBLIGATORIO en device físico)
+## Smoke test completo (pre-tag, OBLIGATORIO en device físico)
 
-1. Login con cuenta existente → llega a HomePage.
-2. Estado del usuario carga correctamente en Círculo.
-3. Cambio de estado manual → refleja en Círculo + Firestore.
-4. Silent Mode ON → estado cambia; OFF → emoji previo restaurado.
-5. Minimizar (5 min) → maximizar → estado no se resetea; token refresh corre sin error.
-6. Logout → re-login → estado persiste.
+> Organizado por flujo. Cada bloque cubre una ruta que pasa por archivos movidos o lógica nueva.
+> Fallo en cualquier paso = no crear tag. Investigar antes de continuar.
 
-**Si cualquier paso falla:** no crear tag. Investigar regresión por import roto o cambio inesperado de lógica en archivos movidos.
+### Bloque A — Auth flows (AuthWrapper + AuthFinalPage + authProvider)
+
+| # | Acción | Resultado esperado |
+|---|--------|--------------------|
+| A1 | Cold start con cuenta existente (no cerrar sesión) | `AuthWrapper` detecta usuario → navega directo a `HomePage` sin pasar por login |
+| A2 | Desde `HomePage`: Settings → Cerrar sesión | `authProvider.notifier.signOut()` ejecuta → `AuthWrapper` detecta `Anonymous` → muestra `AuthFinalPage` |
+| A3 | En `AuthFinalPage`: ingresar credenciales → "Iniciar Sesión" | Login exitoso → credenciales guardadas en Keystore → navega a `HomePage` |
+| A4 | En `AuthFinalPage`: "¿Olvidaste tu contraseña?" → ingresar email → "Enviar instrucciones" | Modal funciona → SnackBar naranja de confirmación aparece |
+| A5 | En `AuthFinalPage`: toggle "Regístrate" → llenar campos → "Crear Cuenta" | Registro exitoso → credenciales guardadas en Keystore → navega a `HomePage` → doc creado en Firestore |
+
+### Bloque B — Membership states (no_circle_view + pending_request_view)
+
+| # | Acción | Resultado esperado |
+|---|--------|--------------------|
+| B1 | Login con cuenta sin círculo | `NoCircleView` se renderiza; nickname/email del usuario visibles (cargados vía `authProvider`) |
+| B2 | Login con cuenta con solicitud pendiente | `PendingRequestView` se renderiza sin crash |
+
+### Bloque C — Status management (StatusService + Firestore)
+
+| # | Acción | Resultado esperado |
+|---|--------|--------------------|
+| C1 | En `InCircleView`: tocar emoji → seleccionar estado | UI actualiza inmediatamente; **verificar en consola Firestore**: `memberStatus.{uid}.statusType` refleja el nuevo estado |
+| C2 | Minimizar app (2 min) → maximizar | Estado en UI no se resetea; `_refreshTokenWithRetry` corre sin errores visibles en logcat |
+| C3 | Logout → re-login | Estado previo persiste en Firestore y se muestra correctamente en `InCircleView` al volver |
+
+### Bloque D — Silent Mode (SilentFunctionalityCoordinator + Firestore)
+
+| # | Acción | Resultado esperado |
+|---|--------|--------------------|
+| D1 | Activar Silent Mode | Estado `do_not_disturb` en Firestore; notificación persistente activa en barra de Android |
+| D2 | Desactivar Silent Mode | Emoji previo restaurado en UI y Firestore; notificación persistente desaparece |
+| D3 | Silent Mode ON → esperar >1h → reabrir → seleccionar emoji | **Silent re-auth transparente**: emoji actualiza en Firestore SIN SnackBar rojo, SIN navegar a login. Verificar en consola Firestore. |
+
+### Bloque E — Fallback de sesión (solo si D3 falla o para test explícito)
+
+| # | Acción | Resultado esperado |
+|---|--------|--------------------|
+| E1 | Forzar token inválido + Keystore vacío (limpiar manualmente con `adb shell`) → seleccionar emoji | SnackBar rojo "Sesión expirada" → redirect automático a `AuthFinalPage` en 1s |
+
+> E1 es opcional si D3 pasa — cubre el fallback de `_handleSessionExpired()`.
+
+---
+
+**Checklist de cierre post-smoke test:**
+
+- [ ] A1–A5: todos PASS
+- [ ] B1–B2: todos PASS
+- [ ] C1–C3: todos PASS (C1 verificado en consola Firestore, no solo en UI)
+- [ ] D1–D3: todos PASS (D3 verificado en consola Firestore)
+- [ ] E1: PASS o N/A (si D3 pasó)
+
+**Si cualquier paso falla:** no crear tag. Investigar regresión por import roto o cambio inesperado en lógica de archivos movidos.
 
 ---
 
