@@ -179,24 +179,17 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
   });
 }
 
-// ════════════════════════════════════════════════════════════
-// [FIX v3] Reintenta getIdToken(true) con backoff indefinido.
-// Fecha: 2026-05-19
-// PROBLEMA: securetoken.googleapis.com puede quedar bloqueado por más de 50s
-//   post-Doze/LMK. Fix v2 (4 reintentos, 50s máx) se agotaba antes de que el
-//   bloqueo se liberara — el token quedaba vencido indefinidamente y Firestore
-//   permanecía en loop UNAUTHENTICATED.
-// SOLUCIÓN:
-//   1. Reintentos indefinidos: después del último delay escalonado continúa
-//      cada 120s hasta éxito o sign-out (currentUser == null).
-//   2. Al éxito: disableNetwork()+enableNetwork() fuerza reconexión inmediata
-//      de Firestore — sin esto, el SDK puede tardar minutos en salir de su
-//      propio backoff UNAUTHENTICATED aunque el token ya sea válido.
-// ════════════════════════════════════════════════════════════
+// Intenta refrescar el token en cold start / resume con backoff limitado.
+// Útil cuando el bloqueo de securetoken es transitorio (segundos, no minutos).
+// Si todos los intentos fallan, StatusService detectará el fallo en el próximo
+// write y forzará re-login automático vía _handleSessionExpired().
 void _refreshTokenWithRetry(User user, {int attempt = 0, String context = ''}) {
-  const delays = [0, 5, 15, 30, 60, 120];
-  final delay = attempt < delays.length ? delays[attempt] : 120;
-  Future.delayed(Duration(seconds: delay), () {
+  const delays = [0, 5, 15, 30];
+  if (attempt >= delays.length) {
+    debugPrint('[App] ℹ️ Token refresh agotó intentos ($context) — StatusService manejará el fallo en próximo write');
+    return;
+  }
+  Future.delayed(Duration(seconds: delays[attempt]), () {
     if (FirebaseAuth.instance.currentUser == null) return;
     user.getIdToken(true).then((_) async {
       debugPrint('[App] ✅ Token refreshed — intento ${attempt + 1} ($context)');
