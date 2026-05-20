@@ -40,6 +40,20 @@ void main() async {
     );
   }
 
+  // ════════════════════════════════════════════════════════════
+  // [FIX v3] Forzar refresh del Auth ID token en cold start (retry indefinido)
+  // Fecha: 2026-05-19
+  // PROBLEMA: tras horas en MS, Android mata el proceso. Firebase Auth persiste
+  //   ID token expirado en disco. securetoken.googleapis.com permanece bloqueado
+  //   por más de 50s post-LMK/Doze — los 4 reintentos de v2 se agotaban.
+  // SOLUCIÓN: _refreshTokenWithRetry v3 reintenta indefinidamente (cap 120s)
+  //   y al éxito fuerza reconexión de Firestore con disable+enableNetwork().
+  // ════════════════════════════════════════════════════════════
+  final coldStartUser = FirebaseAuth.instance.currentUser;
+  if (coldStartUser != null) {
+    _refreshTokenWithRetry(coldStartUser, context: 'cold start');
+  }
+
   // Pre-warm Firestore gRPC WebSocket before any user interaction.
   // Ensures enableNetwork() in StatusService returns instantly on first status update.
   // ignore: unawaited_futures
@@ -88,6 +102,7 @@ void main() async {
 
   // Inicializaciones en background tras el primer frame
   WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await PersistentCache.init();
     await SilentFunctionalityCoordinator.initializeServices();
     await EmojiCacheService.syncEmojisToNativeCache();
   });
@@ -153,15 +168,29 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
     print('❌ [NATIVE→FLUTTER] Error procesando estado: $e');
   }
 
-  // ⏳ LAZY: Inicializar PersistentCache DESPUÉS del primer frame
-  // (GetIt ya fue inicializado antes de runApp)
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    print('🔄 [main] Inicializando PersistentCache en background...');
+}
 
-    PerformanceTracker.start('Cache Init');
-    await PersistentCache.init();
-    PerformanceTracker.end('Cache Init');
-    print('✅ [main] PersistentCache inicializado.');
+// Intenta refrescar el token en cold start / resume con backoff limitado.
+// Útil cuando el bloqueo de securetoken es transitorio (segundos, no minutos).
+// Si todos los intentos fallan, StatusService detectará el fallo en el próximo
+// write y forzará re-login automático vía _handleSessionExpired().
+void _refreshTokenWithRetry(User user, {int attempt = 0, String context = ''}) {
+  const delays = [0, 5, 15, 30];
+  if (attempt >= delays.length) {
+    debugPrint('[App] ℹ️ Token refresh agotó intentos ($context) — StatusService manejará el fallo en próximo write');
+    return;
+  }
+  Future.delayed(Duration(seconds: delays[attempt]), () {
+    if (FirebaseAuth.instance.currentUser == null) return;
+    user.getIdToken(true).then((_) async {
+      debugPrint('[App] ✅ Token refreshed — intento ${attempt + 1} ($context)');
+      await FirebaseFirestore.instance.disableNetwork();
+      await FirebaseFirestore.instance.enableNetwork();
+      debugPrint('[App] ✅ Firestore reconectado tras token refresh ($context)');
+    }).catchError((Object e) {
+      debugPrint('[App] ⚠️ Token refresh intento ${attempt + 1} falló ($context): $e');
+      _refreshTokenWithRetry(user, attempt: attempt + 1, context: context);
+    });
   });
 }
 
@@ -222,6 +251,19 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         print('⚠️ [App] No hay usuario autenticado, no se guarda sesión');
       }
     } else if (state == AppLifecycleState.resumed) {
+      // ════════════════════════════════════════════════════════════
+      // [FIX v3] Forzar refresh del Auth ID token al resumir (retry indefinido)
+      // Fecha: 2026-05-19
+      // PROBLEMA: securetoken.googleapis.com bloqueado por más de 50s post-Doze.
+      //   Fix v2 se agotaba antes de que el bloqueo se liberara.
+      // SOLUCIÓN: _refreshTokenWithRetry v3 reintenta indefinidamente (cap 120s)
+      //   y al éxito fuerza reconexión de Firestore.
+      // ════════════════════════════════════════════════════════════
+      final resumeUser = FirebaseAuth.instance.currentUser;
+      if (resumeUser != null) {
+        _refreshTokenWithRetry(resumeUser, context: 'resume');
+      }
+
       // 📱 App maximizada - MEDIR RENDIMIENTO
       print('📱 [App] Resumed from background - Midiendo performance...');
       PerformanceTracker.start('App Maximization');

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
+import 'package:nunakin_app/core/services/secure_credential_service.dart';
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});
@@ -81,6 +82,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         email: email,
         password: _passwordController.text,
       );
+      await SecureCredentialService.saveCredentials(
+        email: email,
+        password: _passwordController.text,
+      );
       // Login exitoso — navegar a HomePage reemplazando la ruta actual.
       // Los servicios se inicializan desde AuthWrapper (sin duplicación).
       if (mounted) {
@@ -126,6 +131,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
     });
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      await SecureCredentialService.saveCredentials(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );

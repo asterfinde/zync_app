@@ -11,6 +11,9 @@ import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'app_badge_service.dart';
 import 'gps_service.dart';
 import 'session_cache_service.dart';
+import 'package:flutter/material.dart';
+import 'package:nunakin_app/core/global_keys.dart';
+import 'package:nunakin_app/core/services/secure_credential_service.dart';
 import 'dart:async';
 import 'dart:developer';
 
@@ -263,14 +266,31 @@ class StatusService {
       batch.set(historyRef, historyData);
 
       // ════════════════════════════════════════════════════════════
-      // [FIX] Timeout en batch.commit() — conexión Firestore fría
-      // PROBLEMA: Después de horas en background (Android Doze mode), el
-      //   WebSocket de Firestore se cierra. batch.commit() con
-      //   FieldValue.serverTimestamp() espera confirmación del servidor
-      //   indefinidamente → modal no cierra, botones quedan bloqueados.
-      // SOLUCIÓN: Timeout de 10s. TimeoutException capturada abajo →
-      //   StatusUpdateResult.error() → callers cierran el modal.
+      // [FIX] Detectar sesión expirada antes de encolar el write
+      // Fecha: 2026-05-19
+      // PROBLEMA: Firestore offline persistence encola el write localmente
+      //   aunque el token esté expirado — batch.commit() retorna éxito sin
+      //   sincronizar. El usuario ve el emoji en la UI pero Firestore nunca
+      //   recibe el write → falso positivo persistente.
+      // CAUSA RAÍZ: Firebase Auth SDK entra en circuit-breaker tras múltiples
+      //   fallos de securetoken.googleapis.com durante background prolongado.
+      //   Solo un re-login (identitytoolkit) resetea el estado interno del SDK.
+      // SOLUCIÓN: getIdToken(forceRefresh:true) antes del commit. Si falla →
+      //   SnackBar + signOut automático → AuthWrapper navega al login.
       // ════════════════════════════════════════════════════════════
+      try {
+        await user.getIdToken(true).timeout(const Duration(seconds: 5));
+        log('[StatusService] ✅ Token válido — procediendo con commit');
+      } catch (e) {
+        log('[StatusService] 🔑 Token inválido — intentando silent re-auth: $e');
+        final reauthed = await _trySilentReauth();
+        if (!reauthed) {
+          _handleSessionExpired();
+          return StatusUpdateResult.error('session_expired');
+        }
+        log('[StatusService] ✅ Silent re-auth exitoso — continuando con commit');
+      }
+
       // ════════════════════════════════════════════════════════════
       // [FIX] Forzar reapertura de WebSocket antes de batch.commit (AUTH-20260513-001)
       // Fecha: 2026-05-13
@@ -400,6 +420,43 @@ class StatusService {
       log('[StatusService] ⚠️ Error verificando zona $zoneType: $e');
       return false;
     }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // [FIX] Silent Re-auth con Android Keystore
+  // Fecha: 2026-05-20
+  // Si hay credenciales guardadas, re-autentica silenciosamente sin interrumpir
+  // al usuario. Si falla (ej. contraseña cambiada), limpia Keystore y devuelve
+  // false para que _handleSessionExpired() muestre el SnackBar + signOut.
+  // ════════════════════════════════════════════════════════════
+  static Future<bool> _trySilentReauth() async {
+    try {
+      final credentials = await SecureCredentialService.getCredentials();
+      if (credentials == null) return false;
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: credentials['email']!,
+        password: credentials['password']!,
+      );
+      log('[StatusService] ✅ Silent re-auth exitoso');
+      return true;
+    } catch (e) {
+      log('[StatusService] ⚠️ Silent re-auth falló — limpiando credenciales: $e');
+      await SecureCredentialService.clearCredentials();
+      return false;
+    }
+  }
+
+  static void _handleSessionExpired() {
+    rootScaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: const Text('Sesión expirada por inactividad. Vuelve a iniciar sesión.'),
+        duration: const Duration(seconds: 3),
+        backgroundColor: Colors.red.shade700,
+      ),
+    );
+    Future.delayed(const Duration(seconds: 1), () async {
+      await FirebaseAuth.instance.signOut();
+    });
   }
 
   /// Actualiza la notificación persistente con el nuevo estado

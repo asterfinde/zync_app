@@ -35,6 +35,7 @@ dependencies:
   
   # Almacenamiento local
   shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.2
   
   # Conectividad de red
   connectivity_plus: ^6.1.5

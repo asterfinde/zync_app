@@ -9,13 +9,31 @@ sealed class DomainEvent {
 class ZoneEntered extends DomainEvent {
   final String zoneId;
   final String userId;
-  const ZoneEntered({required this.zoneId, required this.userId});
+  final String circleId;
+  final String zoneTypeValue;  // 'home'|'school'|'university'|'work'|'custom'
+  final String zoneName;
+  final bool   isPredefined;
+
+  const ZoneEntered({
+    required this.zoneId,
+    required this.userId,
+    this.circleId      = '',
+    this.zoneTypeValue = 'custom',
+    this.zoneName      = '',
+    this.isPredefined  = false,
+  });
 }
 
 class ZoneExited extends DomainEvent {
   final String zoneId;
   final String userId;
-  const ZoneExited({required this.zoneId, required this.userId});
+  final String circleId;
+
+  const ZoneExited({
+    required this.zoneId,
+    required this.userId,
+    this.circleId = '',
+  });
 }
 
 // ── Identity ─────────────────────────────────────────────────────────────────

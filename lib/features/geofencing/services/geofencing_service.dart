@@ -5,6 +5,8 @@ import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:nunakin_app/shared/events/domain_event.dart';
+import 'package:nunakin_app/shared/events/domain_event_bus.dart';
 import '../domain/entities/zone.dart';
 import '../domain/entities/zone_event.dart';
 import 'zone_service.dart';
@@ -14,6 +16,9 @@ import 'zone_event_service.dart';
 class GeofencingService {
   final ZoneService _zoneService = ZoneService();
   final ZoneEventService _eventService = ZoneEventService();
+  final DomainEventBus? _bus;
+
+  GeofencingService({DomainEventBus? bus}) : _bus = bus;
 
   // Cuando el usuario elige un emoji desde la BN con el proceso muerto, al reabrir
   // startMonitoring() dispararía checkCurrentLocation() y sobreescribiría ese emoji
@@ -195,13 +200,12 @@ class GeofencingService {
       );
       _lastEventTime = DateTime.now();
 
-      // US-GEO-004: Actualizar estado a "Viajando" al salir de cualquier zona
-      try {
-        await _updateUserStatusByZoneEvent(isEntry: false, zone: null);
-        log('[Geofencing] ✅ Estado actualizado a: Viajando (salida de ${exitedZone.name})');
-      } catch (e) {
-        log('[Geofencing] ❌ Error al actualizar estado en salida: $e');
-      }
+      // US-GEO-004: Publicar evento de salida → ApplyGeofenceStatus actualiza el estado
+      _bus?.publish(ZoneExited(
+        zoneId:   _currentZoneId!,
+        userId:   user.uid,
+        circleId: _currentCircleId!,
+      ));
     }
 
     // ════════════════════════════════════════════════════════════
@@ -234,13 +238,15 @@ class GeofencingService {
       );
       _lastEventTime = DateTime.now();
 
-      // US-GEO-004: Actualizar estado según tipo de zona
-      try {
-        await _updateUserStatusByZoneEvent(isEntry: true, zone: newZone);
-        log('[Geofencing] ✅ Estado actualizado según zona (entrada a ${newZone.type.emoji}${newZone.name})');
-      } catch (e) {
-        log('[Geofencing] ❌ Error al actualizar estado en entrada: $e');
-      }
+      // US-GEO-004: Publicar evento de entrada → ApplyGeofenceStatus actualiza el estado
+      _bus?.publish(ZoneEntered(
+        zoneId:        newZoneId,
+        userId:        user.uid,
+        circleId:      _currentCircleId!,
+        zoneTypeValue: newZone.type.value,
+        zoneName:      newZone.name,
+        isPredefined:  newZone.isPredefined,
+      ));
     } // Actualizar estado actual
     _currentZoneId = newZoneId;
   }
@@ -260,8 +266,9 @@ class GeofencingService {
   /// Obtener ID del círculo siendo monitoreado
   String? get monitoringCircleId => _currentCircleId;
 
-  /// Actualiza el estado del usuario en Firestore según el evento de zona
-  /// US-GEO-004: Actualización automática de estado basado en zona
+  /// Lógica migrada a [FirestoreGeofenceStatusWriter]. Se conserva hasta Sem 8.
+  @Deprecated('Usar GeofenceStatusWriter vía DomainEventBus. Eliminar en Sem 8.')
+  // ignore: unused_element
   Future<void> _updateUserStatusByZoneEvent({
     required bool isEntry,
     Zone? zone,
