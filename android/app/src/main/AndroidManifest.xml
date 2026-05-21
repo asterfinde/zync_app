@@ -16,7 +16,7 @@
 
     <application
         android:label="NunaKin"
-        android:name="${applicationName}"
+        android:name=".ZyncApplication"
         android:icon="@mipmap/ic_launcher">
 
         <!-- MainActivity: Configuración optimizada para preservar estado -->

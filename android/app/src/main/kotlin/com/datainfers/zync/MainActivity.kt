@@ -377,6 +377,11 @@ class MainActivity: FlutterActivity() {
         }
     }
 
+    override fun provideFlutterEngine(context: Context): FlutterEngine? {
+        return FlutterEngineCache.getInstance().get(ZyncApplication.MAIN_ENGINE_ID)
+            ?: super.provideFlutterEngine(context)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         if (BuildConfig.USE_LEGACY_BRIDGE) {
