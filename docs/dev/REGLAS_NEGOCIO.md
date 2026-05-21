@@ -21,7 +21,7 @@ La fuente de la verdad es siempre el último estado registrado, ya sea:
 
 1. El usuario selecciona uno nuevo manualmente.
 2. El Geofencing detecta una entrada o salida de Zona.
-3. El usuario activa Modo Silencio (escribe `do_not_disturb` explícitamente).
+3. El usuario selecciona `do_not_disturb` (🔕 No molestar) manualmente en el selector.
 
 Cualquier comportamiento que resetee el estado a `fine` u otro valor por defecto es un **bug**, no una feature.
 
