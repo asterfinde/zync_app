@@ -815,43 +815,14 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                                 //           y pasarlo a showEmojiStatusBottomSheet.
                                 // ════════════════════════════════════════════════════════════
                                 onTap: isCurrentUser
-                                    ? () async {
-                                        String? activeStatusId;
-                                        try {
-                                          final prefs = await SharedPreferences.getInstance();
-                                          // ════════════════════════════════════════════════════════════
-                                          // [FIX] Leer manual_status_id en lugar de current_status_id
-                                          // Fecha: 2026-05-05
-                                          // PROBLEMA: current_status_id es sobreescrito por
-                                          //           StatusUpdateWorker (Kotlin/BN), borrando el último
-                                          //           emoji manual al abrir el modal.
-                                          // SOLUCIÓN: Leer manual_status_id, que solo escribe
-                                          //           StatusService.updateUserStatus() (Dart).
-                                          // ════════════════════════════════════════════════════════════
-                                          // ════════════════════════════════════════════════════════════
-                                          // [FIX] En Modo Silencio usar pre_silent_status_id
-                                          // Fecha: 2026-05-05
-                                          // PROBLEMA: Tras ~12h en background, el Worker sobreescribe
-                                          //           manual_status_id. El modal muestra emoji incorrecto.
-                                          // SOLUCIÓN: Si is_silent_mode_active == true, usar
-                                          //           pre_silent_status_id (snapshot guardado antes de
-                                          //           activar el Modo Silencio).
-                                          // ════════════════════════════════════════════════════════════
-                                          final silentPrefs = await SharedPreferences.getInstance();
-                                          final isSilentActive = silentPrefs.getBool('is_silent_mode_active') ?? false;
-                                          if (isSilentActive) {
-                                            activeStatusId = prefs.getString(NativeSharedKeys.preSilentStatusId);
-                                          } else {
-                                            // Usar status del stream de Firestore — siempre
-                                            // actualizado, evita stale de manual_status_id
-                                            // tras actualización desde modal SM.
-                                            // [FIX AUTH-20260513-001] Si status es 'loading',
-                                            // usar _lastKnownStatusId antes de pasar null.
-                                            activeStatusId = status == 'loading'
-                                                ? _lastKnownStatusId
-                                                : status;
-                                          }
-                                        } catch (_) {}
+                                    ? () {
+                                        // Stream de Firestore es siempre la fuente de verdad
+                                        // para el highlight — válido en modo normal y Silent Mode.
+                                        // pre_silent_status_id es stale si el status cambió vía
+                                        // EmojiDialogActivity mientras la app estaba en background.
+                                        final activeStatusId = status == 'loading'
+                                            ? _lastKnownStatusId
+                                            : status;
                                         if (context.mounted) {
                                           showEmojiStatusBottomSheet(
                                             context,
@@ -900,40 +871,17 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
   /// Actualización rápida del estado a "fine" (✅)
   Future<void> _quickStatusUpdate() async {
-    if (_isUpdatingStatus) return;
-
-    setState(() {
-      _isUpdatingStatus = true;
-    });
-
-    try {
-      // PA2 FIX: Asegurar que _predefinedEmojis esté cargado antes de usarlo
-      if (_predefinedEmojis == null || _predefinedEmojis!.isEmpty) {
-        print('[InCircleView] ⚠️ Emojis no cargados, cargando ahora...');
-        await _loadPredefinedEmojis();
-      }
-
-      final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
-      final defaultStatus = emojis.firstWhere(
-        (s) => s.id == 'fine',
-        orElse: () => StatusType.fallbackPredefined.first, // PM4 FIX: Siempre hay fallback
-      );
-      print('[InCircleView] ✅ Enviando estado rápido: ${defaultStatus.label}');
-      final result = await StatusService.updateUserStatus(defaultStatus);
-
-      if (!result.isSuccess) {
-        log('[InCircleView] ⚠️ Status update falló (silent fail): ${result.errorMessage}');
-      }
-    } catch (e) {
-      log('[InCircleView] ⚠️ Error en quickStatusUpdate (silent fail): $e');
-    } finally {
-      // PA2 FIX: Asegurar que siempre se resetea el estado de loading
-      if (mounted) {
-        setState(() {
-          _isUpdatingStatus = false;
-        });
-      }
+    if (_predefinedEmojis == null || _predefinedEmojis!.isEmpty) {
+      await _loadPredefinedEmojis();
     }
+    final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
+    final defaultStatus = emojis.firstWhere(
+      (s) => s.id == 'fine',
+      orElse: () => StatusType.fallbackPredefined.first,
+    );
+    // Fire-and-forget: el stream de Firestore actualiza el emoji en <500ms.
+    // Mismo patrón que StatusSelectorOverlay._handleStatusSelection().
+    StatusService.updateUserStatus(defaultStatus);
   }
 
   Future<void> _approveRequest(JoinRequest request) async {
