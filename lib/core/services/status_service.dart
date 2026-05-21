@@ -389,14 +389,14 @@ class StatusService {
   //
   // SOLUCIÓN IMPLEMENTADA:
   // - Eliminar el concepto "Desconectado" por completo.
-  // - Al activar Modo Silencio → se escribe 'do_not_disturb' en Firestore (ver
-  //   SilentFunctionalityCoordinator.activateSilentMode).
+  // - Al activar Modo Silencio → el estado/emoji se PRESERVA. Silent Mode no
+  //   escribe 'do_not_disturb' ni ningún otro estado (eliminado en PR #117).
   // - Al reabrir la app → el último estado persiste en Firestore sin reset a 'fine'.
   // - Estos métodos se conservan como no-ops para evitar errores de compilación
   //   durante la transición; eliminar en post-MVP.
   // ========================================================================
 
-  /// @deprecated — No-op. Reemplazado por escritura de 'do_not_disturb' en activateSilentMode.
+  /// @deprecated — No-op. El estado se preserva en Modo Silencio; no se escribe 'do_not_disturb'.
   static Future<void> setOfflineStatus() async {
     log('[StatusService] ⚠️ setOfflineStatus() llamado — no-op (deprecado)');
   }
