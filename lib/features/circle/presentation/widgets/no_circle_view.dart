@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../auth/presentation/provider/auth_provider.dart';
-import '../../../auth/presentation/provider/auth_state.dart';
-import '../../../auth/presentation/pages/auth_final_page.dart';
+import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
+import '../../../../contexts/identity/presentation/provider/auth_state.dart';
+import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
 import '../../../../core/services/session_cache_service.dart';
 import '../../../../services/circle_service.dart';
 import 'create_circle_view.dart';

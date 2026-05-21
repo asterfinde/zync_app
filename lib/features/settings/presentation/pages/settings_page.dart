@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../../features/auth/presentation/provider/auth_provider.dart';
-import '../../../../features/auth/presentation/provider/auth_state.dart';
-import '../../../../features/auth/presentation/pages/auth_final_page.dart';
+import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
+import '../../../../contexts/identity/presentation/provider/auth_state.dart';
+import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
 import '../../../../core/widgets/quick_actions_config_widget.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
 import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout

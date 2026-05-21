@@ -23,7 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:nunakin_app/features/auth/presentation/pages/auth_final_page.dart';
+import 'package:nunakin_app/contexts/identity/presentation/pages/auth_final_page.dart';
 import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
 import 'package:nunakin_app/firebase_options.dart';
 

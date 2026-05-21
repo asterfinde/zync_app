@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nunakin_app/firebase_options.dart';
-import 'package:nunakin_app/features/auth/presentation/pages/auth_wrapper.dart';
+import 'package:nunakin_app/contexts/identity/presentation/pages/auth_wrapper.dart';
 import 'package:nunakin_app/features/geofencing/services/geofencing_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

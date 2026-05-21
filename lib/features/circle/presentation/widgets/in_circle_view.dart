@@ -10,8 +10,8 @@ import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'package:url_launcher/url_launcher.dart';
 // Asegúrate que las rutas de importación sean correctas para tu proyecto
 import '../../../../services/circle_service.dart';
-import '../../../auth/presentation/provider/auth_provider.dart';
-import '../../../auth/presentation/provider/auth_state.dart';
+import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
+import '../../../../contexts/identity/presentation/provider/auth_state.dart';
 // Asumo que emoji_modal.dart exporta la función showEmojiStatusBottomSheet
 import '../../../../core/widgets/emoji_modal.dart';
 import '../../../../core/services/gps_service.dart';
