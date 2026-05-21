@@ -4,7 +4,7 @@ import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart' as firebase;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../features/auth/domain/entities/user.dart' as app;
+import '../contexts/identity/domain/entities/user.dart' as app;
 
 /// AuthService - Servicio simplificado para autenticación
 /// Reemplaza: AuthRepository, AuthDataSource, GetCurrentUser, SignInOrRegister, SignOut

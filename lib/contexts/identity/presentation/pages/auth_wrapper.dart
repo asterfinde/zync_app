@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth, FirebaseAuthException, User;
 import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
-import 'package:nunakin_app/features/auth/presentation/pages/auth_final_page.dart';
+import 'package:nunakin_app/contexts/identity/presentation/pages/auth_final_page.dart';
 import 'package:nunakin_app/core/services/silent_functionality_coordinator.dart';
 import 'package:nunakin_app/core/services/status_service.dart';
 import 'package:nunakin_app/core/services/app_badge_service.dart';

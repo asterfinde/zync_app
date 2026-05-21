@@ -3,15 +3,15 @@ import 'package:get_it/get_it.dart';
 import 'package:nunakin_app/contexts/identity/application/ports/identity_repository.dart';
 import 'package:nunakin_app/contexts/identity/infrastructure/firebase_identity_repository.dart';
 import 'package:nunakin_app/contexts/identity/presentation/view_models/identity_view_model.dart';
-import 'package:nunakin_app/features/auth/data/datasources/auth_local_data_source.dart';
-import 'package:nunakin_app/features/auth/data/datasources/auth_local_data_source_impl.dart';
-import 'package:nunakin_app/features/auth/data/datasources/auth_remote_data_source.dart';
-import 'package:nunakin_app/features/auth/data/datasources/auth_remote_data_source_impl.dart';
-import 'package:nunakin_app/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:nunakin_app/features/auth/domain/repositories/auth_repository.dart';
-import 'package:nunakin_app/features/auth/domain/usecases/get_current_user.dart';
-import 'package:nunakin_app/features/auth/domain/usecases/sign_in_or_register.dart';
-import 'package:nunakin_app/features/auth/domain/usecases/sign_out.dart';
+import 'package:nunakin_app/contexts/identity/infrastructure/datasources/auth_local_data_source.dart';
+import 'package:nunakin_app/contexts/identity/infrastructure/datasources/auth_local_data_source_impl.dart';
+import 'package:nunakin_app/contexts/identity/infrastructure/datasources/auth_remote_data_source.dart';
+import 'package:nunakin_app/contexts/identity/infrastructure/datasources/auth_remote_data_source_impl.dart';
+import 'package:nunakin_app/contexts/identity/infrastructure/repositories/auth_repository_impl.dart';
+import 'package:nunakin_app/contexts/identity/domain/repositories/auth_repository.dart';
+import 'package:nunakin_app/contexts/identity/domain/usecases/get_current_user.dart';
+import 'package:nunakin_app/contexts/identity/domain/usecases/sign_in_or_register.dart';
+import 'package:nunakin_app/contexts/identity/domain/usecases/sign_out.dart';
 
 Future<void> registerIdentityModule(GetIt sl) async {
   sl.registerLazySingleton(() => GetCurrentUser(sl()));
