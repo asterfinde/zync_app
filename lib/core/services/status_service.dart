@@ -277,7 +277,7 @@ class StatusService {
       //   SnackBar + signOut automático → AuthWrapper navega al login.
       // ════════════════════════════════════════════════════════════
       try {
-        await user.getIdToken(true).timeout(const Duration(seconds: 5));
+        await user.getIdToken(false).timeout(const Duration(seconds: 5));
         log('[StatusService] ✅ Token válido — procediendo con commit');
       } catch (e) {
         log('[StatusService] 🔑 Token inválido — intentando silent re-auth: $e');
