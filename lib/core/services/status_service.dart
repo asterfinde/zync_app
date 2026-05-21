@@ -11,8 +11,6 @@ import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'app_badge_service.dart';
 import 'gps_service.dart';
 import 'session_cache_service.dart';
-import 'package:flutter/material.dart';
-import 'package:nunakin_app/core/global_keys.dart';
 import 'package:nunakin_app/core/services/secure_credential_service.dart';
 import 'dart:async';
 import 'dart:developer';
@@ -447,13 +445,6 @@ class StatusService {
   }
 
   static void _handleSessionExpired() {
-    rootScaffoldMessengerKey.currentState?.showSnackBar(
-      SnackBar(
-        content: const Text('Sesión expirada por inactividad. Vuelve a iniciar sesión.'),
-        duration: const Duration(seconds: 3),
-        backgroundColor: Colors.red.shade700,
-      ),
-    );
     Future.delayed(const Duration(seconds: 1), () async {
       await FirebaseAuth.instance.signOut();
     });
