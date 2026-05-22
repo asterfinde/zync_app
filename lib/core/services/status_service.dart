@@ -21,6 +21,10 @@ class StatusService {
   static StreamSubscription<DocumentSnapshot>? _circleStatusListener;
   static bool _isListenerInitialized = false;
 
+  // Flag que activa forceRefresh en el próximo write cuando el background fue prolongado.
+  // Escrito por main.dart (paused>5min); reseteado tras getIdToken exitoso.
+  static bool tokenLikelyInvalid = false;
+
   static const String _zoneManualSelectionNotAllowedError = 'zone_manual_selection_not_allowed';
   static const Set<String> _blockedZoneStatusIds = {
     StatusIds.home,
@@ -277,8 +281,13 @@ class StatusService {
       //   SnackBar + signOut automático → AuthWrapper navega al login.
       // ════════════════════════════════════════════════════════════
       try {
-        await user.getIdToken(false).timeout(const Duration(seconds: 5));
-        log('[StatusService] ✅ Token válido — procediendo con commit');
+        // forceRefresh=true si main.dart detectó background prolongado (>5min).
+        // Detecta circuit-breaker de securetoken.googleapis.com sin degradar
+        // el happy path normal (forceRefresh=false → 0ms de red).
+        final force = tokenLikelyInvalid;
+        await user.getIdToken(force).timeout(const Duration(seconds: 5));
+        tokenLikelyInvalid = false;
+        log('[StatusService] ✅ Token válido (force=$force) — procediendo con commit');
       } catch (e) {
         log('[StatusService] 🔑 Token inválido — intentando silent re-auth: $e');
         final reauthed = await _trySilentReauth();
@@ -286,6 +295,7 @@ class StatusService {
           _handleSessionExpired();
           return StatusUpdateResult.error('session_expired');
         }
+        tokenLikelyInvalid = false;
         log('[StatusService] ✅ Silent re-auth exitoso — continuando con commit');
       }
 

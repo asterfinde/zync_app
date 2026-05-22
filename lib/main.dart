@@ -20,6 +20,7 @@ import 'package:nunakin_app/core/services/native_state_bridge.dart'; // FASE 3: 
 import 'package:nunakin_app/core/services/silent_functionality_coordinator.dart'; // Point 2: Silent Functionality
 import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'package:nunakin_app/core/services/status_service.dart'; // Para actualizar estado desde native
+import 'package:nunakin_app/core/services/secure_credential_service.dart';
 import 'package:nunakin_app/core/services/emoji_service.dart'; // Para cargar emojis desde Firebase
 import 'package:nunakin_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
 // StatusType class
@@ -177,12 +178,15 @@ Future<void> _updateStatusFromNative(String statusTypeName) async {
 void _refreshTokenWithRetry(User user, {int attempt = 0, String context = ''}) {
   const delays = [0, 5, 15, 30];
   if (attempt >= delays.length) {
-    debugPrint('[App] ℹ️ Token refresh agotó intentos ($context) — StatusService manejará el fallo en próximo write');
+    // Reintentos agotados — intentar silent re-auth via Keystore como último recurso.
+    debugPrint('[App] ℹ️ Token refresh agotó reintentos ($context) — intentando Keystore');
+    _trySilentReauthFromKeystore();
     return;
   }
   Future.delayed(Duration(seconds: delays[attempt]), () {
     if (FirebaseAuth.instance.currentUser == null) return;
     user.getIdToken(true).then((_) async {
+      StatusService.tokenLikelyInvalid = false;
       debugPrint('[App] ✅ Token refreshed — intento ${attempt + 1} ($context)');
       await FirebaseFirestore.instance.disableNetwork();
       await FirebaseFirestore.instance.enableNetwork();
@@ -194,6 +198,32 @@ void _refreshTokenWithRetry(User user, {int attempt = 0, String context = ''}) {
   });
 }
 
+// Fallback final: re-autentica via Keystore cuando getIdToken agota reintentos.
+// Si funciona → resetea tokenLikelyInvalid + reconecta Firestore.
+// Si falla → signOut silencioso → AuthWrapper navega al login.
+Future<void> _trySilentReauthFromKeystore() async {
+  try {
+    final creds = await SecureCredentialService.getCredentials();
+    if (creds == null) {
+      debugPrint('[App] ⚠️ Keystore vacío — cerrando sesión');
+      await FirebaseAuth.instance.signOut();
+      return;
+    }
+    await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: creds['email']!,
+      password: creds['password']!,
+    );
+    StatusService.tokenLikelyInvalid = false;
+    await FirebaseFirestore.instance.disableNetwork();
+    await FirebaseFirestore.instance.enableNetwork();
+    debugPrint('[App] ✅ Silent re-auth Keystore exitoso post-resume');
+  } catch (e) {
+    debugPrint('[App] ❌ Silent re-auth Keystore falló: $e — cerrando sesión');
+    await SecureCredentialService.clearCredentials();
+    await FirebaseAuth.instance.signOut();
+  }
+}
+
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -202,6 +232,9 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  // Marca cuándo la app entró al background para detectar pausas prolongadas.
+  DateTime? _backgroundedAt;
+
   @override
   void initState() {
     super.initState();
@@ -219,6 +252,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
 
     if (state == AppLifecycleState.paused) {
+      _backgroundedAt = DateTime.now();
       // 📱 App minimizada - Guardar en múltiples capas
       print('📱 [App] Went to background - Guardando en NativeState + SessionCache...');
       PerformanceTracker.onAppPaused();
@@ -259,6 +293,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // SOLUCIÓN: _refreshTokenWithRetry v3 reintenta indefinidamente (cap 120s)
       //   y al éxito fuerza reconexión de Firestore.
       // ════════════════════════════════════════════════════════════
+      // Si el background fue >5min, el token cacheado puede ser inválido
+      // (circuit-breaker de securetoken.googleapis.com post-Doze/Silent Mode).
+      // Marcar flag para que el próximo write en StatusService use forceRefresh=true.
+      final bg = _backgroundedAt;
+      if (bg != null && DateTime.now().difference(bg) > const Duration(minutes: 5)) {
+        StatusService.tokenLikelyInvalid = true;
+        debugPrint('[App] ⚠️ Background > 5min — próximo write usará forceRefresh=true');
+      }
+      _backgroundedAt = null;
+
       final resumeUser = FirebaseAuth.instance.currentUser;
       if (resumeUser != null) {
         _refreshTokenWithRetry(resumeUser, context: 'resume');
