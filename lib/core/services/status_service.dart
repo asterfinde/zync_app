@@ -21,6 +21,10 @@ class StatusService {
   static StreamSubscription<DocumentSnapshot>? _circleStatusListener;
   static bool _isListenerInitialized = false;
 
+  // Flag que activa forceRefresh en el próximo write cuando el background fue prolongado.
+  // Escrito por main.dart (paused>5min); reseteado tras getIdToken exitoso.
+  static bool tokenLikelyInvalid = false;
+
   static const String _zoneManualSelectionNotAllowedError = 'zone_manual_selection_not_allowed';
   static const Set<String> _blockedZoneStatusIds = {
     StatusIds.home,
@@ -277,16 +281,37 @@ class StatusService {
       //   SnackBar + signOut automático → AuthWrapper navega al login.
       // ════════════════════════════════════════════════════════════
       try {
-        await user.getIdToken(false).timeout(const Duration(seconds: 5));
-        log('[StatusService] ✅ Token válido — procediendo con commit');
+        // forceRefresh=true si main.dart detectó background prolongado (>5min).
+        // Detecta circuit-breaker de securetoken.googleapis.com sin degradar
+        // el happy path normal (forceRefresh=false → 0ms de red).
+        final force = tokenLikelyInvalid;
+        await user.getIdToken(force).timeout(const Duration(seconds: 5));
+        tokenLikelyInvalid = false;
+        log('[StatusService] ✅ Token válido (force=$force) — procediendo con commit');
       } catch (e) {
-        log('[StatusService] 🔑 Token inválido — intentando silent re-auth: $e');
-        final reauthed = await _trySilentReauth();
-        if (!reauthed) {
-          _handleSessionExpired();
-          return StatusUpdateResult.error('session_expired');
+        // ════════════════════════════════════════════════════════════
+        // [FIX] T5 — no signOut en errores de red transitoria
+        // Fecha: 2026-05-23
+        // PROBLEMA: error de red (Doze post-resume) disparaba _trySilentReauth()
+        //   + _handleSessionExpired() → signOut() aunque la sesión era válida.
+        // SOLUCIÓN: errores de red → continuar al commit (puede recuperarse con
+        //   enableNetwork()). Solo _handleSessionExpired() en errores de auth confirmados.
+        // ════════════════════════════════════════════════════════════
+        final isNetworkError = (e is FirebaseAuthException && e.code == 'network-request-failed')
+            || e is TimeoutException;
+        if (isNetworkError) {
+          log('[StatusService] ⚠️ getIdToken falló por red (Doze) — continuando al commit');
+          // tokenLikelyInvalid permanece true: el próximo write reintentará forceRefresh.
+        } else {
+          log('[StatusService] 🔑 Token inválido (auth) — intentando silent re-auth: $e');
+          final reauthed = await _trySilentReauth();
+          if (!reauthed) {
+            _handleSessionExpired();
+            return StatusUpdateResult.error('session_expired');
+          }
+          tokenLikelyInvalid = false;
+          log('[StatusService] ✅ Silent re-auth exitoso — continuando con commit');
         }
-        log('[StatusService] ✅ Silent re-auth exitoso — continuando con commit');
       }
 
       // ════════════════════════════════════════════════════════════
@@ -421,11 +446,13 @@ class StatusService {
   }
 
   // ════════════════════════════════════════════════════════════
-  // [FIX] Silent Re-auth con Android Keystore
-  // Fecha: 2026-05-20
-  // Si hay credenciales guardadas, re-autentica silenciosamente sin interrumpir
-  // al usuario. Si falla (ej. contraseña cambiada), limpia Keystore y devuelve
-  // false para que _handleSessionExpired() muestre el SnackBar + signOut.
+  // [FIX] T5 — distinguir error de red vs error de auth en re-auth
+  // Fecha: 2026-05-23
+  // PROBLEMA: catch genérico borraba Keystore en errores de red (Doze/timeout),
+  //   dejando al usuario sin credenciales para futuros intentos y retornando false
+  //   → _handleSessionExpired() → signOut() aunque la sesión era válida.
+  // SOLUCIÓN: solo clearCredentials() en errores de auth confirmados. Errores de
+  //   red → log + return false sin tocar Keystore ni sesión Firebase.
   // ════════════════════════════════════════════════════════════
   static Future<bool> _trySilentReauth() async {
     try {
@@ -437,9 +464,16 @@ class StatusService {
       );
       log('[StatusService] ✅ Silent re-auth exitoso');
       return true;
-    } catch (e) {
-      log('[StatusService] ⚠️ Silent re-auth falló — limpiando credenciales: $e');
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'network-request-failed') {
+        log('[StatusService] ⚠️ Silent re-auth — red no disponible: sesión intacta');
+        return false;
+      }
+      log('[StatusService] ⚠️ Silent re-auth falló (${e.code}) — limpiando credenciales');
       await SecureCredentialService.clearCredentials();
+      return false;
+    } catch (e) {
+      log('[StatusService] ⚠️ Silent re-auth error transitorio: $e — sesión intacta');
       return false;
     }
   }
