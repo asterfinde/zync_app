@@ -198,15 +198,21 @@ void _refreshTokenWithRetry(User user, {int attempt = 0, String context = ''}) {
   });
 }
 
-// Fallback final: re-autentica via Keystore cuando getIdToken agota reintentos.
-// Si funciona → resetea tokenLikelyInvalid + reconecta Firestore.
-// Si falla → signOut silencioso → AuthWrapper navega al login.
+// ════════════════════════════════════════════════════════════
+// [FIX] T1 Critical Regression — eliminar signOut agresivo
+// Fecha: 2026-05-22
+// PROBLEMA: Keystore vacío o excepción de red → signOut() destruía sesión
+//   Firebase válida. Un retry agotado (Doze/red lenta) no es señal de sesión
+//   inválida. El usuario veía la pantalla de Login sin haber cerrado sesión.
+// SOLUCIÓN: función best-effort puro. Caminos negativos → log + return.
+//   signOut real delegado exclusivamente a StatusService._handleSessionExpired()
+//   que solo actúa cuando getIdToken(true) falla en un write confirmado.
+// ════════════════════════════════════════════════════════════
 Future<void> _trySilentReauthFromKeystore() async {
   try {
     final creds = await SecureCredentialService.getCredentials();
     if (creds == null) {
-      debugPrint('[App] ⚠️ Keystore vacío — cerrando sesión');
-      await FirebaseAuth.instance.signOut();
+      debugPrint('[App] ℹ️ Keystore vacío — sesión Firebase intacta, skip re-auth');
       return;
     }
     await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -218,9 +224,10 @@ Future<void> _trySilentReauthFromKeystore() async {
     await FirebaseFirestore.instance.enableNetwork();
     debugPrint('[App] ✅ Silent re-auth Keystore exitoso post-resume');
   } catch (e) {
-    debugPrint('[App] ❌ Silent re-auth Keystore falló: $e — cerrando sesión');
-    await SecureCredentialService.clearCredentials();
-    await FirebaseAuth.instance.signOut();
+    debugPrint('[App] ⚠️ Silent re-auth Keystore falló: $e — sesión Firebase intacta');
+    // No signOut, no clearCredentials: fallo puede ser transitorio (red/Doze).
+    // StatusService._handleSessionExpired() ejecutará signOut si el token
+    // realmente expiró en el próximo write.
   }
 }
 

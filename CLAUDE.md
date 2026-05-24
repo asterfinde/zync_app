@@ -77,6 +77,18 @@ Un plan PA95C (>95% confianza) debe tener: causa raíz identificada (no hipótes
 
 > Para bugs de lifecycle nativo Android: los logs diagnósticos son la única fuente de verdad — leerlos antes de cualquier otro paso.
 
+### Protocolo de caminos negativos (obligatorio pre-implementación)
+
+Antes de escribir cualquier fix, para cada `null check`, `catch` block y agotamiento de reintentos en el código nuevo:
+
+1. Declarar explícitamente qué hace ese camino.
+2. Clasificar la acción: ¿reversible o irreversible?
+   - Irreversibles: `signOut`, `clearCredentials`, `delete`, `reset`, `truncate`.
+3. Si la acción es irreversible: confirmar que el fallo es **confirmado**, no transitorio (red lenta, Doze, timeout).
+   Si no hay certeza ≥95%: la acción debe ser `log + return`, no irreversible.
+
+> Regla de oro: una función best-effort (retry, prefetch, warm-up) nunca debe ejecutar acciones irreversibles.
+
 ### Modo autónomo vs. modo con autorización
 
 | Prefijo | Significado | Comportamiento |
