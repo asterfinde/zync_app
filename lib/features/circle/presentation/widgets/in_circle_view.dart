@@ -1,5 +1,4 @@
 ﻿import 'dart:async'; // Necesario para StreamSubscription
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +27,7 @@ import 'member_status_grid.dart';
 import 'in_circle_header.dart';
 import 'circle_info_card.dart';
 import 'join_requests_banner.dart';
+import 'in_circle_footer.dart';
 import '../../../../core/cache/persistent_cache.dart';
 import '../../../../core/services/native_state_bridge.dart';
 import '../../../../core/services/emoji_cache_service.dart';
@@ -42,7 +42,6 @@ import '../../../../core/services/emoji_cache_service.dart';
 class _AppColors {
   static const Color background = Color(0xFF000000); // Negro puro
   static const Color accent = Color(0xFF1EE9A4); // Verde menta/turquesa
-  static const Color textSecondary = Color(0xFF9E9E9E); // Gris para subtítulos y labels
   // static const Color cardBackground =
   //     Color(0xFF1C1C1E); // Gris oscuro para menús y diálogos (comentado: no usado actualmente)
   static const Color cardBorder = Color(0xFF3A3A3C); // Borde sutil para tarjetas y divider
@@ -61,7 +60,6 @@ class InCircleView extends ConsumerStatefulWidget {
 
 class _InCircleViewState extends ConsumerState<InCircleView> {
   final Map<String, Map<String, dynamic>> _memberDataCache = {};
-  bool _isUpdatingStatus = false;
   final Map<String, String> _memberNicknamesCache = {};
   // ════════════════════════════════════════════════════════════
   // [FIX] Mostrar miembros inmediatamente con placeholder '...'
@@ -584,7 +582,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildFooterButton(context),
+      bottomNavigationBar: InCircleFooter(onOk: _quickStatusUpdate),
     );
   }
 
@@ -638,152 +636,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         );
       }
     }
-  }
-
-  /// Muestra dialog de confirmación antes de activar Modo Silencio.
-  /// Fondo negro, borde menta, letras blancas — coherente con el resto del diseño.
-  Future<void> _confirmAndActivateSilentMode(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.75),
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: const Color(0xFF1CE4B3).withValues(alpha: 0.4), width: 1),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Activar Modo Silencio',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'La app se minimizará y quedará activa en segundo plano. '
-                  'Podrás cambiar tu estado desde la notificación persistente.',
-                  style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF)),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(false),
-                      style: TextButton.styleFrom(foregroundColor: Colors.white70),
-                      child: const Text('Cancelar'),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(true),
-                      style: TextButton.styleFrom(foregroundColor: Color(0xFF1CE4B3)),
-                      child: const Text('Activar', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    if (confirmed == true && context.mounted) {
-      setState(() => _isUpdatingStatus = true);
-      try {
-        await SilentFunctionalityCoordinator.activateSilentMode(context);
-      } catch (e) {
-        log('[InCircleView] ⚠️ Error activando Modo Silencio: $e');
-      } finally {
-        if (mounted) setState(() => _isUpdatingStatus = false);
-      }
-    }
-  }
-
-  /// Construye el botón del footer
-  Widget _buildFooterButton(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                // Botón secundario: Modo Silencio
-                Expanded(
-                  flex: 3,
-                  child: OutlinedButton.icon(
-                    key: const Key('btn_silent_mode'),
-                    onPressed: _isUpdatingStatus
-                        ? null
-                        : () => _confirmAndActivateSilentMode(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _AppColors.accent,
-                      disabledForegroundColor: _AppColors.textSecondary,
-                      backgroundColor: Colors.black,
-                      side: const BorderSide(color: _AppColors.accent),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                    ),
-                    icon: const Icon(Icons.bedtime_outlined, size: 18),
-                    label: const Text(
-                      'Modo Silencio',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Botón primario: OK / Actualizar estado
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    key: const Key('btn_change_status'),
-                    onPressed: _isUpdatingStatus ? null : () => _quickStatusUpdate(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _AppColors.accent,
-                      foregroundColor: _AppColors.background,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (_isUpdatingStatus)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
-                            ),
-                          )
-                        else
-                          const Icon(Icons.check_circle),
-                        const SizedBox(width: 8),
-                        Text(_isUpdatingStatus ? '...' : 'OK'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   /// Obtiene el nickname del usuario actual desde Riverpod
