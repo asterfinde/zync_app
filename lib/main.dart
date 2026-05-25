@@ -300,19 +300,22 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // SOLUCIÓN: _refreshTokenWithRetry v3 reintenta indefinidamente (cap 120s)
       //   y al éxito fuerza reconexión de Firestore.
       // ════════════════════════════════════════════════════════════
-      // Si el background fue >5min, el token cacheado puede ser inválido
-      // (circuit-breaker de securetoken.googleapis.com post-Doze/Silent Mode).
-      // Marcar flag para que el próximo write en StatusService use forceRefresh=true.
+      // Token Firebase TTL = 1h. Solo refrescar proactivamente si background > 50min.
+      // Resume corto (< 50min): token en caché del SDK — sin llamada de red.
       final bg = _backgroundedAt;
-      if (bg != null && DateTime.now().difference(bg) > const Duration(minutes: 5)) {
-        StatusService.tokenLikelyInvalid = true;
-        debugPrint('[App] ⚠️ Background > 5min — próximo write usará forceRefresh=true');
-      }
       _backgroundedAt = null;
 
+      final bgDuration = bg != null ? DateTime.now().difference(bg) : Duration.zero;
+      final longBackground = bgDuration > const Duration(minutes: 50);
+
+      if (longBackground) {
+        StatusService.tokenLikelyInvalid = true;
+        debugPrint('[App] ⚠️ Background > 50min (${bgDuration.inMinutes}min) — proactive token refresh');
+      }
+
       final resumeUser = FirebaseAuth.instance.currentUser;
-      if (resumeUser != null) {
-        _refreshTokenWithRetry(resumeUser, context: 'resume');
+      if (resumeUser != null && longBackground) {
+        _refreshTokenWithRetry(resumeUser, context: 'resume-${bgDuration.inMinutes}min');
       }
 
       // 📱 App maximizada - MEDIR RENDIMIENTO
