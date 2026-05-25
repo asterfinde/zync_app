@@ -18,7 +18,6 @@ import '../../../../core/services/gps_service.dart';
 import '../../../../core/services/status_service.dart';
 import '../../../../core/services/emoji_service.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart';
-import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../../core/models/user_status.dart';
 import '../../../geofencing/services/geofencing_service.dart'; // Servicio de geofencing
 import 'package:nunakin_app/app/di/injection_container.dart';
@@ -26,6 +25,9 @@ import 'package:nunakin_app/shared/events/domain_event_bus.dart';
 // CACHE-FIRST: Importar caches
 import '../../../../core/cache/in_memory_cache.dart';
 import 'member_status_grid.dart';
+import 'in_circle_header.dart';
+import 'circle_info_card.dart';
+import 'join_requests_banner.dart';
 import '../../../../core/cache/persistent_cache.dart';
 import '../../../../core/services/native_state_bridge.dart';
 import '../../../../core/services/emoji_cache_service.dart';
@@ -40,7 +42,6 @@ import '../../../../core/services/emoji_cache_service.dart';
 class _AppColors {
   static const Color background = Color(0xFF000000); // Negro puro
   static const Color accent = Color(0xFF1EE9A4); // Verde menta/turquesa
-  static const Color textPrimary = Color(0xFFFFFFFF); // Blanco
   static const Color textSecondary = Color(0xFF9E9E9E); // Gris para subtítulos y labels
   // static const Color cardBackground =
   //     Color(0xFF1C1C1E); // Gris oscuro para menús y diálogos (comentado: no usado actualmente)
@@ -48,47 +49,6 @@ class _AppColors {
   static const Color sosRed = Color(0xFFD32F2F); // Rojo para alertas SOS
 }
 
-/// Estilos de texto consistentes con el diseño.
-class _AppTextStyles {
-  static const TextStyle screenTitle = TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-    color: _AppColors.textPrimary,
-    letterSpacing: 1.2,
-  );
-
-  static const TextStyle userNickname = TextStyle(
-    fontSize: 16,
-    color: _AppColors.textSecondary,
-    fontWeight: FontWeight.w400,
-  );
-
-  static const TextStyle cardTitle = TextStyle(
-    fontSize: 22,
-    fontWeight: FontWeight.bold,
-    color: _AppColors.textPrimary,
-  );
-
-  static const TextStyle cardSubtitle = TextStyle(
-    color: _AppColors.textSecondary,
-    fontSize: 14,
-  );
-
-  static const TextStyle invitationCode = TextStyle(
-    fontFamily: 'monospace',
-    fontWeight: FontWeight.bold,
-    fontSize: 20,
-    color: _AppColors.textPrimary,
-    letterSpacing: 1.5,
-  );
-
-  static const TextStyle memberNickname = TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.bold,
-    color: _AppColors.textPrimary,
-  );
-
-}
 
 class InCircleView extends ConsumerStatefulWidget {
   final Circle circle;
@@ -576,51 +536,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       body: Column(
         children: [
           // --- HEADER ---
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
-            color: _AppColors.background,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('NunaKin', style: _AppTextStyles.screenTitle),
-                      Text(
-                        _getCurrentUserNickname(ref),
-                        style: _AppTextStyles.userNickname,
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton.icon(
-                  key: const Key('btn_settings'),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const SettingsPage(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1CE7E8),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    textStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.settings, size: 18),
-                  label: const Text('Ajustes'),
-                ),
-              ],
-            ),
-          ),
+          InCircleHeader(nickname: _getCurrentUserNickname(ref)),
 
           // --- BODY ---
           Expanded(
@@ -629,71 +545,17 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // --- CIRCLE INFO CARD ---
-                  Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.hub, size: 28, color: _AppColors.accent),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(circle.name, style: _AppTextStyles.cardTitle),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${circle.members.length} miembros', // Esto se actualizará si circle cambia
-                                    style: _AppTextStyles.cardSubtitle,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        const Text('Código de Invitación', style: _AppTextStyles.cardSubtitle),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(circle.invitationCode, key: const Key('text_invite_code'), style: _AppTextStyles.invitationCode),
-                            ),
-                            IconButton(
-                              onPressed: () => _copyToClipboard(context, circle.invitationCode),
-                              icon: const Icon(Icons.copy, size: 24, color: _AppColors.accent),
-                              tooltip: 'Copiar código',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  CircleInfoCard(
+                    circleName: circle.name,
+                    memberCount: circle.members.length,
+                    invitationCode: circle.invitationCode,
+                    onCopyCode: () => _copyToClipboard(context, circle.invitationCode),
                   ),
-
-                  // --- SOLICITUDES DE INGRESO (solo visible para el creador) ---
-                  if (FirebaseAuth.instance.currentUser?.uid == widget.circle.creatorId &&
-                      _pendingRequests.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const Icon(Icons.person_add_outlined,
-                            size: 24, color: _AppColors.accent),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Solicitudes de ingreso (${_pendingRequests.length})',
-                          style: _AppTextStyles.screenTitle,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    ..._pendingRequests.map((req) => _JoinRequestCard(
-                          request: req,
-                          onApprove: () => _approveRequest(req),
-                        )),
-                  ],
+                  JoinRequestsBanner(
+                    requests: _pendingRequests,
+                    isOwner: FirebaseAuth.instance.currentUser?.uid == widget.circle.creatorId,
+                    onApprove: _approveRequest,
+                  ),
 
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24.0),
@@ -1047,89 +909,4 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   }
 
 } // Fin de _InCircleViewState
-
-// ==============================================================================
-// JOIN REQUEST CARD — Tarjeta de solicitud de ingreso (visible solo al creador)
-// ==============================================================================
-class _JoinRequestCard extends StatelessWidget {
-  final JoinRequest request;
-  final VoidCallback onApprove;
-
-  const _JoinRequestCard({
-    required this.request,
-    required this.onApprove,
-  });
-
-  String _timeAgo(DateTime? dt) {
-    if (dt == null) return '';
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Ahora mismo';
-    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Hace ${diff.inHours} h';
-    return 'Hace ${diff.inDays} d';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: _AppColors.accent.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.person_outline,
-                  size: 20, color: _AppColors.accent),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  request.nickname.isNotEmpty ? request.nickname : request.userId,
-                  style: _AppTextStyles.memberNickname,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (request.requestedAt != null)
-                Text(
-                  _timeAgo(request.requestedAt),
-                  style: const TextStyle(
-                      fontSize: 12, color: _AppColors.textSecondary),
-                ),
-            ],
-          ),
-          if (request.email.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              request.email,
-              style: const TextStyle(
-                  fontSize: 13, color: _AppColors.textSecondary),
-            ),
-          ],
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              key: ValueKey('btn_approve_${request.userId}'),
-              onPressed: onApprove,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _AppColors.accent,
-                foregroundColor: _AppColors.background,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                elevation: 0,
-              ),
-              child: const Text('Aceptar',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
