@@ -25,6 +25,7 @@ import 'package:nunakin_app/app/di/injection_container.dart';
 import 'package:nunakin_app/shared/events/domain_event_bus.dart';
 // CACHE-FIRST: Importar caches
 import '../../../../core/cache/in_memory_cache.dart';
+import 'member_status_grid.dart';
 import '../../../../core/cache/persistent_cache.dart';
 import '../../../../core/services/native_state_bridge.dart';
 import '../../../../core/services/emoji_cache_service.dart';
@@ -87,17 +88,6 @@ class _AppTextStyles {
     color: _AppColors.textPrimary,
   );
 
-  static const TextStyle memberStatus = TextStyle(
-    fontSize: 14,
-    color: _AppColors.textSecondary,
-    fontWeight: FontWeight.normal,
-  );
-
-  static const TextStyle sosStatus = TextStyle(
-    fontSize: 14,
-    color: _AppColors.sosRed,
-    fontWeight: FontWeight.bold,
-  );
 }
 
 class InCircleView extends ConsumerStatefulWidget {
@@ -710,87 +700,22 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                     child: Divider(color: _AppColors.cardBorder, thickness: 1),
                   ),
 
-                  // --- MEMBERS HEADER ---
-                  const Row(
-                    children: [
-                      Icon(Icons.people_outline, size: 24, color: _AppColors.accent),
-                      SizedBox(width: 8),
-                      Text('Miembros', style: _AppTextStyles.screenTitle),
-                    ],
+                  MemberStatusGrid(
+                    sortedMemberIds: _getSortedMembers(circle.members),
+                    nicknamesCache: _memberNicknamesCache,
+                    memberDataCache: _memberDataCache,
+                    isLoading: _isLoadingNicknames,
+                    currentUserId: FirebaseAuth.instance.currentUser?.uid,
+                    currentUserNickname: _getCurrentUserNickname(ref),
+                    lastKnownStatusId: _lastKnownStatusId,
+                    predefinedEmojis: _predefinedEmojis,
+                    onTapStatus: (ctx, activeStatusId) {
+                      if (ctx.mounted) {
+                        showEmojiStatusBottomSheet(ctx, activeStatusId: activeStatusId);
+                      }
+                    },
+                    onOpenMaps: _openGoogleMaps,
                   ),
-                  const SizedBox(height: 16),
-
-                  // --- MEMBER LIST ---
-                  _isLoadingNicknames
-                      ? const Center(child: CircularProgressIndicator(color: _AppColors.accent))
-                      : Column(
-                          children: _getSortedMembers(circle.members).asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final memberId = entry.value;
-
-                            // Obtener nickname del caché (ya no hay FutureBuilder)
-                            final currentUser = FirebaseAuth.instance.currentUser;
-                            final isCurrentUser = currentUser?.uid == memberId;
-                            final nickname = _memberNicknamesCache[memberId] ??
-                                (isCurrentUser
-                                    ? _getCurrentUserNickname(ref)
-                                    : '...');
-
-                            // --- INICIO DE LA MODIFICACIÓN ---
-                            // Obtener datos del caché. Si aún no ha llegado el primer snapshot,
-                            // usa valores por defecto para evitar errores null.
-                            // [FIX AUTH-20260513-001] Usar _lastKnownStatusId como fallback
-                            // en lugar de 'loading' para evitar caption incorrecto en cold start.
-                            final memberData = _memberDataCache[memberId] ??
-                                {
-                                  'emoji': '⏳', // Emoji de espera inicial
-                                  'status': _lastKnownStatusId ?? 'fine',
-                                  'hasGPS': false,
-                                  'coordinates': null,
-                                  'lastUpdate': null,
-                                };
-                            final status = memberData['status'] ?? (_lastKnownStatusId ?? 'fine');
-                            // --- FIN DE LA MODIFICACIÓN ---
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: _MemberListItem(
-                                key: ValueKey('${memberId}_$status'),
-                                memberId: memberId,
-                                nickname: nickname,
-                                isCurrentUser: isCurrentUser,
-                                isFirst: index == 0,
-                                memberData: memberData,
-                                // ════════════════════════════════════════════════════════════
-                                // [FIX] Indicador visual de estado activo
-                                // Fecha: 2026-05-04
-                                // PROBLEMA: El modal no resaltaba el estado ya seleccionado.
-                                // SOLUCIÓN: Leer flutter.current_status_id de SharedPreferences
-                                //           y pasarlo a showEmojiStatusBottomSheet.
-                                // ════════════════════════════════════════════════════════════
-                                onTap: isCurrentUser
-                                    ? () {
-                                        // Stream de Firestore es siempre la fuente de verdad
-                                        // para el highlight — válido en modo normal y Silent Mode.
-                                        // pre_silent_status_id es stale si el status cambió vía
-                                        // EmojiDialogActivity mientras la app estaba en background.
-                                        final activeStatusId = status == 'loading'
-                                            ? _lastKnownStatusId
-                                            : status;
-                                        if (context.mounted) {
-                                          showEmojiStatusBottomSheet(
-                                            context,
-                                            activeStatusId: activeStatusId,
-                                          );
-                                        }
-                                      }
-                                    : null,
-                                onOpenMaps: _openGoogleMaps,
-                                predefinedEmojis: _predefinedEmojis, // NUEVO: Pasar lista de emojis
-                              ),
-                            );
-                          }).toList(),
-                        ),
                 ],
               ),
             ),
@@ -1207,207 +1132,4 @@ class _JoinRequestCard extends StatelessWidget {
     );
   }
 }
-
-// ==============================================================================
-// MEMBER LIST ITEM - Widget individual con diseño ultra minimalista
-// ==============================================================================
-class _MemberListItem extends StatelessWidget {
-  final String memberId;
-  final String nickname;
-  final bool isCurrentUser;
-  final bool isFirst;
-  final Map<String, dynamic> memberData;
-  final VoidCallback? onTap;
-  final Function(BuildContext, Map<String, dynamic>, String) onOpenMaps;
-  final List<StatusType>? predefinedEmojis; // NUEVO: Lista de emojis para obtener labels
-
-  const _MemberListItem({
-    super.key,
-    required this.memberId,
-    required this.nickname,
-    required this.isCurrentUser,
-    required this.isFirst,
-    required this.memberData,
-    this.onTap,
-    required this.onOpenMaps,
-    this.predefinedEmojis, // NUEVO
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Usar valores por defecto más explícitos si vienen del estado 'loading'
-    final emoji = memberData['emoji'] as String? ?? '⏳';
-    final status = memberData['status'] as String? ?? 'loading';
-    final hasGPS = memberData['hasGPS'] as bool? ?? false;
-    final coordinates = memberData['coordinates'] as Map<String, dynamic>?;
-    final lastUpdate = memberData['lastUpdate'] as DateTime?;
-    final displayText = memberData['displayText'] as String?; // 🆕 Texto del estado o zona
-    final showManualBadge = memberData['showManualBadge'] as bool? ?? false; // 🆕
-    final locationInfo = memberData['locationInfo'] as String?; // 🆕
-    final isSOS = status == 'sos';
-
-    return Material(
-      color: _AppColors.background,
-      child: InkWell(
-        onTap: (status == 'loading') // No permitir taps mientras carga
-            ? null
-            : () {
-                if (isCurrentUser && onTap != null) {
-                  HapticFeedback.mediumImpact();
-                  onTap!();
-                } else if (hasGPS && coordinates != null) {
-                  HapticFeedback.lightImpact();
-                  onOpenMaps(context, coordinates, nickname);
-                }
-              },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 150),
-                    child: Text(emoji,
-                        key: ValueKey(emoji),
-                        style: const TextStyle(fontSize: 32)), // 🆕 Cambio: ValueKey(emoji) detecta cambios de customEmoji
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                                child: Text(nickname,
-                                    style: _AppTextStyles.memberNickname,
-                                    overflow: TextOverflow.ellipsis)),
-                            if (isCurrentUser) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _AppColors.accent,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'TÚ',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: _AppColors.background,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        // Mostrar displayText si está disponible (nombre de zona o label de estado)
-                        if (displayText != null)
-                          Text(
-                            displayText,
-                            style: isSOS ? _AppTextStyles.sosStatus : _AppTextStyles.memberStatus,
-                          ),
-                        // Mostrar timestamp con formato según autoUpdated
-                        if (lastUpdate != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              key: const Key('text_member_timestamp'),
-                              _formatTimestamp(lastUpdate),
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                            ),
-                          ),
-                        // Badge ✋ Manual (SOLO cuando showManualBadge es true, que ocurre solo en estados manuales)
-                        if (showManualBadge) ...[
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              key: Key('badge_manual'),
-                              '✋ Manual',
-                              style: TextStyle(fontSize: 11, color: Colors.orange),
-                            ),
-                          ),
-                        ],
-                        // Ubicación desconocida o última zona (SOLO cuando locationInfo no es null, que ocurre solo en estados manuales)
-                        if (locationInfo != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            key: const Key('text_location_info'),
-                            locationInfo,
-                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                          ),
-                        ],
-                        if (isFirst && status != 'loading') // No mostrar "Creador" si está cargando
-                          Text(
-                            'Creador',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _AppColors.accent.withOpacity(0.8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        if (isCurrentUser && status != 'loading') ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            key: const Key('text_tap_hint'),
-                            'Toca para cambiar tu estado',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              // Mostrar sección SOS solo si el status NO es 'loading'
-              if (hasGPS && coordinates != null && status != 'loading') ...[
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    onOpenMaps(context, coordinates, nickname);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on, size: 20, color: _AppColors.sosRed),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Ubicación SOS compartida',
-                            style: TextStyle(fontSize: 13, color: _AppColors.textPrimary, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                        Icon(Icons.arrow_forward_ios, size: 14, color: Colors.red[300]),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatTimestamp(DateTime dt) {
-    final difference = DateTime.now().difference(dt);
-    if (difference.inSeconds < 60) return 'Justo Ahora';
-    if (difference.inMinutes < 60) return 'Hace ${difference.inMinutes} min';
-    if (difference.inHours < 24) return 'Hace ${difference.inHours} h';
-    return 'Hace ${difference.inDays} d';
-  }
-} // Fin de _MemberListItem
 
