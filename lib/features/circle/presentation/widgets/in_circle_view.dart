@@ -162,7 +162,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       _loadFromCache();
     } else {
       // Cache NO inicializado aún, esperar postFrameCallback
-      print('⏳ [InCircleView] Cache no listo, esperando inicialización...');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (PersistentCache.isInitialized) {
           _loadFromCache();
@@ -256,7 +255,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     // Detener monitoreo de geofencing
     _stopGeofencingMonitoring();
 
-    print("[InCircleView] Listeners cancelados.");
     super.dispose();
   }
   // --- FIN DE LA MODIFICACIÓN ---
@@ -274,23 +272,22 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
       // Recargar la lista completa de emojis cuando hay cambios
       _loadPredefinedEmojis();
-      print('[InCircleView] 🔄 Emojis personalizados actualizados');
     }, onError: (error) {
-      print('[InCircleView] ❌ Error en listener de emojis: $error');
+      debugPrint('[InCircleView] Error en listener de emojis: $error');
     });
   }
 
   /// Iniciar monitoreo de geofencing para el círculo actual
   void _startGeofencingMonitoring() {
     _geofencingService.startMonitoring(widget.circle.id).catchError((error) {
-      print('[InCircleView] ❌ Error iniciando geofencing: $error');
+      debugPrint('[InCircleView] Error iniciando geofencing: $error');
     });
   }
 
   /// Detener monitoreo de geofencing
   void _stopGeofencingMonitoring() {
     _geofencingService.stopMonitoring().catchError((error) {
-      print('[InCircleView] ❌ Error deteniendo geofencing: $error');
+      debugPrint('[InCircleView] Error deteniendo geofencing: $error');
     });
   }
 
@@ -325,9 +322,8 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         // NO llamar a _refreshMemberDataWithNewEmojis() porque sobrescribe emojis de zonas
         // Los emojis se actualizan correctamente a través del listener de Firebase
       }
-      print('[InCircleView] ✅ ${emojis.length} emojis cargados (predefinidos + personalizados)');
     } catch (e) {
-      print('[InCircleView] ⚠️ Error cargando emojis: $e');
+      debugPrint('[InCircleView] Error cargando emojis: $e');
       // Usar fallback si falla
       if (mounted) {
         setState(() {
@@ -343,14 +339,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
   /// PASO 1: Cargar desde cache (sincrónico, instantáneo)
   void _loadFromCache() {
-    print('⚡ [InCircleView] Cargando desde cache...');
-
     // Intentar InMemoryCache primero (0ms)
     final memoryNicknames = InMemoryCache.get<Map<String, String>>('nicknames_${widget.circle.id}');
     final memoryMemberData = InMemoryCache.get<Map<String, Map<String, dynamic>>>('member_data_${widget.circle.id}');
 
     if (memoryNicknames != null && memoryMemberData != null) {
-      print('✅ [InCircleView] Cache en memoria encontrado (${memoryNicknames.length} nicknames)');
       setState(() {
         _memberNicknamesCache.addAll(memoryNicknames);
         _memberDataCache.addAll(memoryMemberData);
@@ -364,7 +357,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     final diskMemberData = PersistentCache.loadMemberData();
 
     if (diskNicknames.isNotEmpty || diskMemberData.isNotEmpty) {
-      print('✅ [InCircleView] Cache en disco encontrado (${diskNicknames.length} nicknames)');
       setState(() {
         _memberNicknamesCache.addAll(diskNicknames);
         _memberDataCache.addAll(diskMemberData);
@@ -374,14 +366,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       // Guardar en memoria para próxima vez
       InMemoryCache.set('nicknames_${widget.circle.id}', diskNicknames);
       InMemoryCache.set('member_data_${widget.circle.id}', diskMemberData);
-    } else {
-      print('❌ [InCircleView] No hay cache disponible, esperando Firebase...');
     }
   }
 
   /// PASO 3: Refrescar datos en background (sin bloquear UI)
   void _refreshDataInBackground() {
-    print('🔄 [InCircleView] Refrescando datos en background...');
 
     // Cargar nicknames sin await (no bloquea)
     _getAllMemberNicknames(widget.circle.members).then((nicknames) {
@@ -396,25 +385,17 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       InMemoryCache.set('nicknames_${widget.circle.id}', _memberNicknamesCache);
       PersistentCache.saveNicknames(_memberNicknamesCache);
 
-      print('✅ [InCircleView] Nicknames actualizados (${nicknames.length} items)');
     }).catchError((error) {
-      print('❌ [InCircleView] Error refrescando nicknames: $error');
+      debugPrint('[InCircleView] Error refrescando nicknames: $error');
     });
   }
 
   /// Guardar estado a cache (llamado desde dispose)
   void _saveToCache() {
-    print('💾 [InCircleView] Guardando estado a cache...');
-
-    // Guardar en ambos caches
     InMemoryCache.set('nicknames_${widget.circle.id}', _memberNicknamesCache);
     InMemoryCache.set('member_data_${widget.circle.id}', _memberDataCache);
-
     PersistentCache.saveNicknames(_memberNicknamesCache);
     PersistentCache.saveMemberData(_memberDataCache);
-
-    print(
-        '✅ [InCircleView] Estado guardado (${_memberNicknamesCache.length} nicknames, ${_memberDataCache.length} members)');
   }
 
   // --- loadInitialData() ELIMINADO ---
@@ -427,8 +408,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       if (!mounted) return; // Verificar mounted al inicio
 
       if (!snapshot.exists || snapshot.data() == null) {
-        print("[InCircleView] Snapshot no existe o data es null.");
-        return; // Salir si no hay datos válidos
+        return;
       }
 
       final data = snapshot.data()!;
@@ -456,18 +436,13 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
             });
           });
 
-          // CACHE-FIRST: Actualizar caches cuando hay cambios
           InMemoryCache.set('member_data_${widget.circle.id}', _memberDataCache);
           PersistentCache.saveMemberData(_memberDataCache);
-          print('✅ [InCircleView] Cache actualizado con nuevos estados');
         }
       }
     }, onError: (error) {
-      // <-- Añadir manejo de errores
-      print("❌ Error en listener de círculo: $error");
-      // Opcional: mostrar un mensaje al usuario si el error es crítico
+      debugPrint('[InCircleView] Error en listener de círculo: $error');
     });
-    print("[InCircleView] Listener de círculo iniciado.");
   }
 
   Map<String, dynamic> _parseMemberData(dynamic statusData) {
@@ -495,9 +470,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     final manualOverride = statusData['manualOverride'] as bool?;
     final locationUnknown = statusData['locationUnknown'] as bool?;
 
-    print(
-        '[InCircleView] 📊 Datos recibidos: statusType=$statusType, autoUpdated=$autoUpdated, customEmoji=$customEmoji, zoneName=$zoneName');
-
     String emoji = '😊'; // Default emoji
     String? displayText;
     bool showManualBadge = false;
@@ -510,7 +482,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       displayText = zoneName; // "En Jaus", "En Torre Real", "En camino"
       showManualBadge = false; // Automático, sin badge
       locationInfo = null;
-      print('[InCircleView] 🏠 CASO 1: Zona automática - emoji: $emoji, zona: $zoneName');
     }
     // CASO 1.5: Override manual mientras SIGUE dentro de una zona
     // (customEmoji/zoneName presentes, pero autoUpdated=false)
@@ -520,28 +491,24 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         final statusEnum = emojis.firstWhere(
           (s) => s.id == statusType,
           orElse: () {
-            // PM3 FIX: Estado no encontrado (emoji eliminado o legacy)
-            print(
-                "⚠️ [InCircleView] Status '$statusType' no encontrado (posible emoji eliminado), usando 'fine' default");
-            _loadPredefinedEmojis(); // Recargar por si acaso
-            // Buscar 'fine' como fallback seguro
+            debugPrint("⚠️ [InCircleView] Status '$statusType' no encontrado");
+            _loadPredefinedEmojis();
             return emojis.firstWhere(
               (s) => s.id == 'fine',
-              orElse: () => StatusType.fallbackPredefined.first, // Último recurso
+              orElse: () => StatusType.fallbackPredefined.first,
             );
           },
         );
         emoji = statusEnum.emoji;
         displayText = statusEnum.label;
       } catch (e) {
-        print("❌ [InCircleView] Error parsing status enum (manual-in-zone): $e");
+        debugPrint('[InCircleView] Error parsing status enum (manual-in-zone): $e');
         emoji = '😊';
         displayText = 'Todo bien';
       }
 
       showManualBadge = manualOverride == true;
       locationInfo = locationUnknown == true ? '❓ Ubicación desconocida' : null;
-      print('[InCircleView] ✋ CASO 1.5: Manual dentro de zona - emoji: $emoji, status: $statusType, zona: $zoneName');
     }
     // CASO 2: Estado manual (sin customEmoji, solo statusType)
     else if (customEmoji == null) {
@@ -550,23 +517,19 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         final statusEnum = emojis.firstWhere(
           (s) => s.id == statusType,
           orElse: () {
-            // PM3 FIX: Estado no encontrado (emoji personalizado eliminado o legacy)
-            print(
-                "⚠️ [InCircleView] Status '$statusType' no encontrado (posible emoji eliminado), usando 'fine' default");
-            // Recargar emojis en background para próxima vez
+            debugPrint("⚠️ [InCircleView] Status '$statusType' no encontrado");
             _loadPredefinedEmojis();
-            // Buscar 'fine' como fallback seguro
             return emojis.firstWhere(
               (s) => s.id == 'fine',
-              orElse: () => StatusType.fallbackPredefined.first, // Último recurso
+              orElse: () => StatusType.fallbackPredefined.first,
             );
           },
         );
         emoji = statusEnum.emoji;
-        displayText = statusEnum.label; // "Estudiando", "Cansado", etc.
+        displayText = statusEnum.label;
       } catch (e) {
-        print("❌ [InCircleView] Error parsing status enum: $e, using default emoji.");
-        emoji = '😊'; // Mantener default si hay error
+        debugPrint('[InCircleView] Error parsing status enum: $e');
+        emoji = '😊';
         displayText = 'Todo bien';
       }
 
@@ -597,7 +560,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       'locationInfo': locationInfo, // 🆕 Info de ubicación desconocida/última zona
     };
 
-    print('[InCircleView] 🎯 RETORNANDO: emoji=$emoji, displayText=$displayText, autoUpdated=$autoUpdated');
     return result;
   }
 
@@ -633,18 +595,10 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Zync', style: _AppTextStyles.screenTitle),
+                      const Text('NunaKin', style: _AppTextStyles.screenTitle),
                       Text(
                         _getCurrentUserNickname(ref),
                         style: _AppTextStyles.userNickname,
-                      ),
-                      // 🔧 DEBUG: Timestamp dinámico
-                      Text(
-                        'Build: ${DateTime.now().toString().substring(0, 16)} (v6 - DYNAMIC)',
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Color(0xFF666666),
-                        ),
                       ),
                     ],
                   ),
@@ -1103,7 +1057,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           return MapEntry(uid, '...');
         }
       } catch (e) {
-        print("Error fetching nickname for $uid: $e");
+        debugPrint('Error fetching nickname for $uid: $e');
         return MapEntry(uid, '...');
       }
     });
@@ -1150,7 +1104,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         _showError(context, 'No se pudo abrir la aplicación de mapas');
       }
     } catch (e) {
-      print("Error opening Google Maps: $e");
+      debugPrint('Error opening Google Maps: $e');
       // ignore: use_build_context_synchronously
       _showError(context, 'Error al abrir la ubicación');
     }
@@ -1167,41 +1121,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     );
   }
 
-  /// Muestra diálogo de confirmación para salir del círculo
-  // TODO: Usar cuando se active la opción de salir del círculo
-  /* void _showLeaveCircleDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Salir del Círculo', style: TextStyle(color: _AppColors.textPrimary)),
-        content: const Text('Esta acción no se puede deshacer.', style: TextStyle(color: _AppColors.textSecondary)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () async {
-               Navigator.of(context).pop(); // Cerrar diálogo primero
-               try {
-                  final service = CircleService(); // Asume que esta clase existe
-                  await service.leaveCircle(); // Asume que este método existe
-                  // La navegación debería manejarse por el StreamBuilder en HomePage al detectar circle == null
-               } catch (e) {
-                 print("Error leaving circle: $e");
-                 if(mounted) {
-                    _showError(context, "Error al salir del círculo");
-                 }
-               }
-            },
-            child: const Text('Salir', style: TextStyle(color: _AppColors.sosRed)),
-          ),
-        ],
-      ),
-    );
-  } */
 } // Fin de _InCircleViewState
 
 // ==============================================================================
@@ -1322,14 +1241,10 @@ class _MemberListItem extends StatelessWidget {
     final hasGPS = memberData['hasGPS'] as bool? ?? false;
     final coordinates = memberData['coordinates'] as Map<String, dynamic>?;
     final lastUpdate = memberData['lastUpdate'] as DateTime?;
-    final autoUpdated = memberData['autoUpdated'] as bool? ?? false; // 🆕
     final displayText = memberData['displayText'] as String?; // 🆕 Texto del estado o zona
     final showManualBadge = memberData['showManualBadge'] as bool? ?? false; // 🆕
     final locationInfo = memberData['locationInfo'] as String?; // 🆕
     final isSOS = status == 'sos';
-
-    print(
-        '[_MemberListItem] 🎨 RENDERIZANDO: nickname=$nickname, emoji=$emoji, displayText=$displayText, autoUpdated=$autoUpdated');
 
     return Material(
       color: _AppColors.background,
