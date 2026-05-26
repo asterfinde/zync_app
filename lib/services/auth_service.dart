@@ -23,10 +23,18 @@ class AuthService {
       }
 
       log('[AuthService] Obteniendo datos de Firestore para: ${firebaseUser.uid}');
-      final doc = await _firestore
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .get();
+      DocumentSnapshot<Map<String, dynamic>> doc;
+      try {
+        doc = await _firestore
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .get(const GetOptions(source: Source.cache));
+      } on FirebaseException {
+        doc = await _firestore
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .get();
+      }
 
       if (!doc.exists) {
         log('[AuthService] ⚠️ Usuario no existe en Firestore: ${firebaseUser.uid}');
