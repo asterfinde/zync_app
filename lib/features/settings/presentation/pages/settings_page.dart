@@ -77,6 +77,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
+  bool _isLoadingCircle = true;
   String? _userId;
   String? _circleId;
   String? _currentUserName; // nickname/displayName
@@ -115,13 +116,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
       if (authState is Authenticated) {
         _userId = authState.user.uid;
         _userEmail = authState.user.email;
-
-        // OPTIMIZACIÓN: Usar datos del authProvider inmediatamente (cache-first)
         _currentUserName =
             authState.user.nickname.isNotEmpty ? authState.user.nickname : authState.user.email.split('@')[0];
         _userNameController.text = _currentUserName ?? '';
-
-        debugPrint('[SettingsPage] ⚡ Usuario cargado desde cache: nickname=[$_currentUserName]');
+        debugPrint('[SettingsPage] ⚡ Usuario cargado desde authProvider: nickname=[$_currentUserName]');
+      } else {
+        // authProvider puede estar en AuthInitial/AuthLoading si el stream aún no emitió.
+        // FirebaseAuth.instance.currentUser es la fuente síncrona confiable en este caso.
+        final fbUser = FirebaseAuth.instance.currentUser;
+        if (fbUser != null) {
+          _userId = fbUser.uid;
+          _userEmail = fbUser.email;
+          final displayName = fbUser.displayName;
+          _currentUserName = (displayName != null && displayName.isNotEmpty)
+              ? displayName
+              : fbUser.email?.split('@')[0];
+          _userNameController.text = _currentUserName ?? '';
+          debugPrint('[SettingsPage] ⚡ Usuario cargado desde FirebaseAuth fallback: email=[$_userEmail]');
+        }
       }
     } catch (e) {
       debugPrint('[SettingsPage] ❌ Error cargando información: $e');
@@ -201,6 +213,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
       }
     } catch (e) {
       debugPrint('[SettingsPage] Error cargando círculo: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingCircle = false);
     }
   }
 
@@ -856,7 +870,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
 
   // Tab 2: Configuración de círculo
   Widget _buildCircleTab() {
-    if (_isLoading) {
+    if (_isLoading || _isLoadingCircle) {
       return const Center(
         child: CircularProgressIndicator(color: _AppColors.accent),
       );
@@ -872,7 +886,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
               Icon(
                 Icons.group_off,
                 size: 64,
-                color: _AppColors.textSecondary.withOpacity(0.5),
+                color: _AppColors.textSecondary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -933,6 +947,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
 
   // Tab 3: Estados/Emojis
   Widget _buildStatesTab() {
+    if (_isLoadingCircle) {
+      return const Center(
+        child: CircularProgressIndicator(color: _AppColors.accent),
+      );
+    }
+
     if (_circleId == null) {
       return Center(
         child: Padding(
@@ -943,7 +963,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
               Icon(
                 Icons.emoji_emotions_outlined,
                 size: 64,
-                color: _AppColors.textSecondary.withOpacity(0.5),
+                color: _AppColors.textSecondary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -966,6 +986,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
 
   // Tab 4: Zonas geográficas
   Widget _buildZonesTab() {
+    if (_isLoadingCircle) {
+      return const Center(
+        child: CircularProgressIndicator(color: _AppColors.accent),
+      );
+    }
+
     if (_circleId == null) {
       return Center(
         child: Padding(
@@ -976,7 +1002,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
               Icon(
                 Icons.location_on_outlined,
                 size: 64,
-                color: _AppColors.textSecondary.withOpacity(0.5),
+                color: _AppColors.textSecondary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
               const Text(
