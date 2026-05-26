@@ -188,7 +188,6 @@ void _refreshTokenWithRetry(User user, {int attempt = 0, String context = ''}) {
     user.getIdToken(true).then((_) async {
       StatusService.tokenLikelyInvalid = false;
       debugPrint('[App] ✅ Token refreshed — intento ${attempt + 1} ($context)');
-      await FirebaseFirestore.instance.disableNetwork();
       await FirebaseFirestore.instance.enableNetwork();
       debugPrint('[App] ✅ Firestore reconectado tras token refresh ($context)');
     }).catchError((Object e) {

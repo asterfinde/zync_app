@@ -160,6 +160,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> refreshUser() async {
+    try {
+      final user = await _authService.getCurrentUser();
+      if (user != null && mounted) {
+        state = Authenticated(user);
+      }
+    } catch (e) {
+      log("[AuthNotifier] refreshUser error: $e");
+    }
+  }
+
   Future<void> signOut() async {
     log("[AuthNotifier] Triggering signOut...");
     state = AuthLoading();

@@ -383,9 +383,11 @@ Antes de sugerir o instalar cualquier paquete:
 Metodología: Trunk-Based Development (ramas de corta duración).
 
 - **Nunca commitear directamente en `main`.**
+- **Antes de crear cualquier rama nueva:** ejecutar `git pull origin main` para garantizar que se parte del último estado de `main`. Nunca crear una rama desde un commit desactualizado.
 - Crear rama antes de cualquier operación git.
   - Nomenclatura: `feat/`, `fix/`, `docs/`, `test/`, `refactor/`
   - Ejemplo: `git checkout -b fix/ms2-status-text`
+- **Cada rama de refactorización vive máximo un día de trabajo.** Al cierre del día: PR → merge → borrar → al día siguiente se crea rama nueva desde `main` actualizado. Una rama que acumula varios días de trabajo diverge de `main` y pierde fixes mergeados por otras ramas.
 - **Antes de commitear:** listar TODOS los archivos modificados con razón de cada cambio.
 - **Si aparece archivo inesperado:** no commitear, investigar primero.
 - **Formato de mensaje:** `tipo: descripción breve` en inglés.

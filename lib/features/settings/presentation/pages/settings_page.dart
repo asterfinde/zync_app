@@ -232,27 +232,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
       // 1. Actualizar en Firebase Auth displayName
       await FirebaseAuth.instance.currentUser?.updateDisplayName(newNickname);
 
-      // 2. Actualizar nickname en Firestore (perfil del usuario)
+      // 2. Pre-warm Firestore WebSocket antes de escribir (puede estar frío al abrir Settings)
+      try {
+        await FirebaseFirestore.instance.enableNetwork().timeout(const Duration(seconds: 3));
+      } catch (_) {}
+
+      // 3. Actualizar nickname en Firestore (perfil del usuario)
       await FirebaseFirestore.instance.collection('users').doc(_userId).update({
         'nickname': newNickname,
         'displayName': newNickname, // Mantener ambos por compatibilidad
       });
 
-      // 3. Actualizar también en el documento del círculo si existe
-      if (_circleId != null) {
-        await FirebaseFirestore.instance
-            .collection('circles')
-            .doc(_circleId)
-            .collection('members')
-            .doc(_userId)
-            .update({
-          'nickname': newNickname,
-          'displayName': newNickname,
-        });
-      }
-
-      // 4. Actualizar variable local
+      // 4. Actualizar variable local y notificar AuthNotifier para reactividad
       _currentUserName = newNickname;
+      await ref.read(authProvider.notifier).refreshUser();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -287,6 +280,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
 
     try {
       final newName = _circleNameController.text.trim();
+
+      // Pre-warm Firestore WebSocket antes de escribir (puede estar frío al abrir Settings)
+      try {
+        await FirebaseFirestore.instance.enableNetwork().timeout(const Duration(seconds: 3));
+      } catch (_) {}
 
       // Actualizar nombre del círculo en Firestore
       await FirebaseFirestore.instance.collection('circles').doc(_circleId).update({'name': newName});
