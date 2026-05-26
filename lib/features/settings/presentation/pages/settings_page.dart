@@ -243,8 +243,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
         'displayName': newNickname, // Mantener ambos por compatibilidad
       });
 
-      // 4. Actualizar variable local
+      // 4. Actualizar variable local y notificar AuthNotifier para reactividad
       _currentUserName = newNickname;
+      await ref.read(authProvider.notifier).refreshUser();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
