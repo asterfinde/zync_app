@@ -138,11 +138,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      final nickname = _nicknameController.text.trim();
+      await userCredential.user?.updateDisplayName(nickname);
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user?.uid)
           .set({
-        'nickname': _nicknameController.text.trim(),
+        'nickname': nickname,
         'email': _emailController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
