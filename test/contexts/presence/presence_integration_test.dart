@@ -125,4 +125,54 @@ void main() {
   test('PresenceViewModel antes de init — currentSnapshot es null', () {
     expect(vm.currentSnapshot, isNull);
   });
+
+  // -------------------------------------------------------------------------
+  // T2 — BackgroundNotificationActive durante Silent Mode
+  // Flujo: BN activo → EnterSilentMode → ExitSilentMode → Normal(fine)
+  //
+  // Comportamiento actual: EnterSilentMode con estado BN cae en la rama `_`
+  // y fija preSilentId = StatusIds.fine (no preserva el estado de la notificación).
+  // La restauración del estado BN post-silent es deuda pendiente de Sem 7.
+  // -------------------------------------------------------------------------
+  test('T2 — BN activo: EnterSilentMode guarda preSilentId=fine; ExitSilentMode restaura Normal(fine)', () async {
+    // Arrange: BN activo con notif 'work' y manual 'school' debajo
+    repo.setState(const BackgroundNotificationActive(
+      notifStatusId:   'work',
+      manualBeneathId: 'school',
+    ));
+
+    // Act: entrar a Silent Mode desde BN
+    final r1 = await enterSilent.call(userId: 'u1');
+    expect(r1.isSuccess, isTrue);
+    expect(repo.lastSavedState, isA<SilentMode>());
+    // preSilentId cae a fine porque BN no es Normal (rama _ de EnterSilentMode)
+    expect((repo.lastSavedState as SilentMode).preSilentId, StatusIds.fine);
+
+    // Act: salir de Silent Mode
+    final r2 = await exitSilent.call(userId: 'u1');
+    expect(r2.isSuccess, isTrue);
+    expect(repo.lastSavedState, isA<Normal>());
+    final restored = repo.lastSavedState as Normal;
+    // ExitSilentMode restaura el preSilentId (fine), no el estado BN previo
+    expect(restored.currentId,    StatusIds.fine);
+    expect(restored.lastManualId, StatusIds.fine);
+  });
+
+  test('T2b — BN activo: VM emite SilentMode y luego Normal tras el ciclo', () async {
+    await vm.init();
+    final emitted = <PresenceState>[];
+    vm.stateStream.listen(emitted.add);
+
+    repo.setState(const BackgroundNotificationActive(
+      notifStatusId: 'work',
+    ));
+
+    await enterSilent.call(userId: 'u1');
+    await exitSilent.call(userId: 'u1');
+    await Future.microtask(() {});
+
+    expect(emitted.length, 2);
+    expect(emitted[0], isA<SilentMode>());
+    expect(emitted[1], isA<Normal>());
+  });
 }
