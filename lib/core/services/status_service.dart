@@ -401,34 +401,6 @@ class StatusService {
     }
   }
 
-  // ========================================================================
-  // [ELIMINADO] setOfflineStatus / clearOfflineStatus — concepto "Desconectado"
-  // Fecha: 2026-04-14
-  //
-  // PROBLEMA ORIGINAL:
-  // - Con finishAndRemoveTask() el isolate Dart muere en AppLifecycleState.detached.
-  //   Flutter escribía "loggedOut: true" en Firestore, mostrando "💤 Desconectado"
-  //   a los miembros del círculo aunque el usuario solo activó Modo Silencio.
-  //
-  // SOLUCIÓN IMPLEMENTADA:
-  // - Eliminar el concepto "Desconectado" por completo.
-  // - Al activar Modo Silencio → el estado/emoji se PRESERVA. Silent Mode no
-  //   escribe 'do_not_disturb' ni ningún otro estado (eliminado en PR #117).
-  // - Al reabrir la app → el último estado persiste en Firestore sin reset a 'fine'.
-  // - Estos métodos se conservan como no-ops para evitar errores de compilación
-  //   durante la transición; eliminar en post-MVP.
-  // ========================================================================
-
-  /// @deprecated — No-op. El estado se preserva en Modo Silencio; no se escribe 'do_not_disturb'.
-  static Future<void> setOfflineStatus() async {
-    log('[StatusService] ⚠️ setOfflineStatus() llamado — no-op (deprecado)');
-  }
-
-  /// @deprecated — No-op. El último estado se preserva en Firestore; no resetear a fine.
-  static Future<void> clearOfflineStatus() async {
-    log('[StatusService] ⚠️ clearOfflineStatus() llamado — no-op (deprecado)');
-  }
-
   static Future<bool> _isSpecificZoneTypeConfigured(String circleId, String zoneType) async {
     try {
       final snapshot = await FirebaseFirestore.instance
