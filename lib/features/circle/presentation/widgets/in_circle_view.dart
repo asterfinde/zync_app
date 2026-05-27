@@ -1,51 +1,39 @@
-﻿import 'dart:async'; // Necesario para StreamSubscription
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nunakin_app/platform/persistence/native_keys.dart';
-import 'package:url_launcher/url_launcher.dart';
 // Asegúrate que las rutas de importación sean correctas para tu proyecto
 import '../../../../services/circle_service.dart';
 import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
 import '../../../../contexts/identity/presentation/provider/auth_state.dart';
-// Asumo que emoji_modal.dart exporta la función showEmojiStatusBottomSheet
 import '../../../../core/widgets/emoji_modal.dart';
-import '../../../../core/services/gps_service.dart';
 import '../../../../core/services/status_service.dart';
 import '../../../../core/services/emoji_service.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart';
 import '../../../../core/models/user_status.dart';
-import '../../../geofencing/services/geofencing_service.dart'; // Servicio de geofencing
+import '../../../geofencing/services/geofencing_service.dart';
 import 'package:nunakin_app/app/di/injection_container.dart';
 import 'package:nunakin_app/shared/events/domain_event_bus.dart';
-// CACHE-FIRST: Importar caches
-import '../../../../core/cache/in_memory_cache.dart';
 import 'member_status_grid.dart';
 import 'in_circle_header.dart';
 import 'circle_info_card.dart';
 import 'join_requests_banner.dart';
 import 'in_circle_footer.dart';
-import '../../../../core/cache/persistent_cache.dart';
+import 'member_data_parser.dart';
+import 'member_data_repository.dart';
+import 'circle_actions.dart';
 import '../../../../core/services/native_state_bridge.dart';
 import '../../../../core/services/emoji_cache_service.dart';
 // Asumo que tienes una clase Coordinates en gps_service.dart o similar
 // import '../../../../core/services/gps_service.dart' show Coordinates;
 
-// ===========================================================================
-// SECCIÓN DE DISEÑO: Colores y Estilos basados en la pantalla de referencia
-// ===========================================================================
-
-/// Paleta de colores extraída del diseño de la pantalla de Login.
+/// Colores locales del orquestador. Se unifican en lib/shared/theme/ en Sem 6.
 class _AppColors {
-  static const Color background = Color(0xFF000000); // Negro puro
-  static const Color accent = Color(0xFF1EE9A4); // Verde menta/turquesa
-  // static const Color cardBackground =
-  //     Color(0xFF1C1C1E); // Gris oscuro para menús y diálogos (comentado: no usado actualmente)
-  static const Color cardBorder = Color(0xFF3A3A3C); // Borde sutil para tarjetas y divider
-  static const Color sosRed = Color(0xFFD32F2F); // Rojo para alertas SOS
+  static const Color background = Color(0xFF000000);
+  static const Color cardBorder = Color(0xFF3A3A3C);
 }
 
 
@@ -95,30 +83,30 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   final _circleService = CircleService();
   List<JoinRequest> _pendingRequests = [];
   StreamSubscription<List<JoinRequest>>? _joinRequestsSubscription;
+  late final MemberDataRepository _repo;
 
   @override
   void initState() {
     super.initState();
+    _repo = MemberDataRepository(
+      circleId: widget.circle.id,
+      service: _circleService,
+    );
     _loadPredefinedEmojis();
     _loadLastKnownStatusId(); // Leer último estado conocido desde SharedPreferences
     _listenToCustomEmojis(); // Escuchar cambios en emojis personalizados
 
     // ==================== CACHE-FIRST PATTERN ====================
-    // PASO 1: Cargar cache PRIMERO (sin await, sincrónico desde memoria)
-    // 🚀 LAZY: Solo cargar si cache está inicializado, si no, esperar postFrameCallback
-    if (PersistentCache.isInitialized) {
+    // Si cache persistente está listo, carga inmediata; si no, espera postFrame.
+    if (_repo.isPersistentCacheReady) {
       _loadFromCache();
     } else {
-      // Cache NO inicializado aún, esperar postFrameCallback
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (PersistentCache.isInitialized) {
+        if (_repo.isPersistentCacheReady) {
           _loadFromCache();
         } else {
-          // Reintentar después
           Future.delayed(const Duration(milliseconds: 100), () {
-            if (mounted && PersistentCache.isInitialized) {
-              _loadFromCache();
-            }
+            if (mounted && _repo.isPersistentCacheReady) _loadFromCache();
           });
         }
       });
@@ -180,32 +168,23 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         .where((id) => !_memberNicknamesCache.containsKey(id) || _memberNicknamesCache[id] == '...')
         .toList();
     if (newMembers.isNotEmpty) {
-      _getAllMemberNicknames(newMembers).then((nicknames) {
+      _repo.fetchNicknames(newMembers).then((nicknames) {
         if (!mounted) return;
         setState(() => _memberNicknamesCache.addAll(nicknames));
-        InMemoryCache.set('nicknames_${widget.circle.id}', _memberNicknamesCache);
-        PersistentCache.saveNicknames(_memberNicknamesCache);
+        _repo.saveNicknames(_memberNicknamesCache);
       });
     }
   }
 
-  // --- INICIO DE LA MODIFICACIÓN ---
   @override
   void dispose() {
-    // CACHE-FIRST: Guardar estado antes de dispose
-    _saveToCache();
-
-    // Cancelar la suscripción al listener de Firestore para evitar memory leaks
+    _repo.saveAll(_memberNicknamesCache, _memberDataCache);
     _circleListenerSubscription?.cancel();
     _customEmojisListener?.cancel();
     _joinRequestsSubscription?.cancel();
-
-    // Detener monitoreo de geofencing
     _stopGeofencingMonitoring();
-
     super.dispose();
   }
-  // --- FIN DE LA MODIFICACIÓN ---
 
   /// Listener para detectar cuando se agregan nuevos emojis personalizados
   void _listenToCustomEmojis() {
@@ -281,72 +260,30 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     }
   }
 
-  // ========================================================================
-  // CACHE-FIRST: Métodos de cache
-  // ========================================================================
-
-  /// PASO 1: Cargar desde cache (sincrónico, instantáneo)
+  /// Cache-first: carga sincrónica desde memoria → disco.
   void _loadFromCache() {
-    // Intentar InMemoryCache primero (0ms)
-    final memoryNicknames = InMemoryCache.get<Map<String, String>>('nicknames_${widget.circle.id}');
-    final memoryMemberData = InMemoryCache.get<Map<String, Map<String, dynamic>>>('member_data_${widget.circle.id}');
-
-    if (memoryNicknames != null && memoryMemberData != null) {
-      setState(() {
-        _memberNicknamesCache.addAll(memoryNicknames);
-        _memberDataCache.addAll(memoryMemberData);
-        _isLoadingNicknames = false;
-      });
-      return; // Ya tenemos datos en memoria, no necesitamos disco
-    }
-
-    // Si no hay memoria, intentar PersistentCache (disco, ~50-100ms)
-    final diskNicknames = PersistentCache.loadNicknames();
-    final diskMemberData = PersistentCache.loadMemberData();
-
-    if (diskNicknames.isNotEmpty || diskMemberData.isNotEmpty) {
-      setState(() {
-        _memberNicknamesCache.addAll(diskNicknames);
-        _memberDataCache.addAll(diskMemberData);
-        _isLoadingNicknames = false;
-      });
-
-      // Guardar en memoria para próxima vez
-      InMemoryCache.set('nicknames_${widget.circle.id}', diskNicknames);
-      InMemoryCache.set('member_data_${widget.circle.id}', diskMemberData);
-    }
+    final cached = _repo.loadFromCache();
+    if (cached == null) return;
+    setState(() {
+      _memberNicknamesCache.addAll(cached.nicknames);
+      _memberDataCache.addAll(cached.memberData);
+      _isLoadingNicknames = false;
+    });
   }
 
-  /// PASO 3: Refrescar datos en background (sin bloquear UI)
+  /// Refresca nicknames desde Firestore en background (sin bloquear UI).
   void _refreshDataInBackground() {
-
-    // Cargar nicknames sin await (no bloquea)
-    _getAllMemberNicknames(widget.circle.members).then((nicknames) {
+    _repo.fetchNicknames(widget.circle.members).then((nicknames) {
       if (!mounted) return;
-
       setState(() {
         _memberNicknamesCache.addAll(nicknames);
         _isLoadingNicknames = false;
       });
-
-      // Actualizar ambos caches
-      InMemoryCache.set('nicknames_${widget.circle.id}', _memberNicknamesCache);
-      PersistentCache.saveNicknames(_memberNicknamesCache);
-
+      _repo.saveNicknames(_memberNicknamesCache);
     }).catchError((error) {
       debugPrint('[InCircleView] Error refrescando nicknames: $error');
     });
   }
-
-  /// Guardar estado a cache (llamado desde dispose)
-  void _saveToCache() {
-    InMemoryCache.set('nicknames_${widget.circle.id}', _memberNicknamesCache);
-    InMemoryCache.set('member_data_${widget.circle.id}', _memberDataCache);
-    PersistentCache.saveNicknames(_memberNicknamesCache);
-    PersistentCache.saveMemberData(_memberDataCache);
-  }
-
-  // --- loadInitialData() ELIMINADO ---
 
   void _listenToStatusChanges() {
     // Guardar la suscripción para poder cancelarla después
@@ -370,7 +307,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
           final newData = _parseMemberData(statusData);
           final oldData = _memberDataCache[memberId];
 
-          if (_hasChanged(oldData, newData)) {
+          if (MemberDataParser.hasChanged(oldData, newData)) {
             updates[memberId] = newData;
             hasChanges = true;
           }
@@ -384,8 +321,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
             });
           });
 
-          InMemoryCache.set('member_data_${widget.circle.id}', _memberDataCache);
-          PersistentCache.saveMemberData(_memberDataCache);
+          _repo.saveMemberData(_memberDataCache);
         }
       }
     }, onError: (error) {
@@ -394,135 +330,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   }
 
   Map<String, dynamic> _parseMemberData(dynamic statusData) {
-    if (statusData is! Map<String, dynamic>) {
-      // Valor por defecto si la data está mal formada
-      return {
-        'emoji': '❓',
-        'status': 'unknown',
-        'hasGPS': false,
-        'coordinates': null,
-        'lastUpdate': null,
-        'autoUpdated': false,
-        'zoneName': null,
-        'displayText': null,
-        'showManualBadge': false,
-        'locationInfo': null,
-      };
-    }
-
-    final rawStatusType = statusData['statusType'] as String?;
-    final statusType = _migrateOldStatus(rawStatusType);
-    final autoUpdated = statusData['autoUpdated'] as bool? ?? false;
-    final customEmoji = statusData['customEmoji'] as String?;
-    final zoneName = statusData['zoneName'] as String?;
-    final manualOverride = statusData['manualOverride'] as bool?;
-    final locationUnknown = statusData['locationUnknown'] as bool?;
-
-    String emoji = '😊'; // Default emoji
-    String? displayText;
-    bool showManualBadge = false;
-    String? locationInfo;
-
-    // CASO 1: Si es actualización automática y tiene customEmoji (entrada a zona)
-    // PRIORIDAD MÁXIMA: Este caso debe ejecutarse SIEMPRE que haya customEmoji
-    if (autoUpdated && customEmoji != null) {
-      emoji = customEmoji; // Usar emoji de la zona (🏠, 🏫, 🎓, 💼, 📍, 🚗)
-      displayText = zoneName; // "En Jaus", "En Torre Real", "En camino"
-      showManualBadge = false; // Automático, sin badge
-      locationInfo = null;
-    }
-    // CASO 1.5: Override manual mientras SIGUE dentro de una zona
-    // (customEmoji/zoneName presentes, pero autoUpdated=false)
-    else if (!autoUpdated && customEmoji != null) {
-      try {
-        final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
-        final statusEnum = emojis.firstWhere(
-          (s) => s.id == statusType,
-          orElse: () {
-            debugPrint("⚠️ [InCircleView] Status '$statusType' no encontrado");
-            _loadPredefinedEmojis();
-            return emojis.firstWhere(
-              (s) => s.id == 'fine',
-              orElse: () => StatusType.fallbackPredefined.first,
-            );
-          },
-        );
-        emoji = statusEnum.emoji;
-        displayText = statusEnum.label;
-      } catch (e) {
-        debugPrint('[InCircleView] Error parsing status enum (manual-in-zone): $e');
-        emoji = '😊';
-        displayText = 'Todo bien';
-      }
-
-      showManualBadge = manualOverride == true;
-      locationInfo = locationUnknown == true ? '❓ Ubicación desconocida' : null;
-    }
-    // CASO 2: Estado manual (sin customEmoji, solo statusType)
-    else if (customEmoji == null) {
-      try {
-        final emojis = _predefinedEmojis ?? StatusType.fallbackPredefined;
-        final statusEnum = emojis.firstWhere(
-          (s) => s.id == statusType,
-          orElse: () {
-            debugPrint("⚠️ [InCircleView] Status '$statusType' no encontrado");
-            _loadPredefinedEmojis();
-            return emojis.firstWhere(
-              (s) => s.id == 'fine',
-              orElse: () => StatusType.fallbackPredefined.first,
-            );
-          },
-        );
-        emoji = statusEnum.emoji;
-        displayText = statusEnum.label;
-      } catch (e) {
-        debugPrint('[InCircleView] Error parsing status enum: $e');
-        emoji = '😊';
-        displayText = 'Todo bien';
-      }
-
-      // Estado manual: mostrar badge SOLO si el usuario sobre-escribe un estado automático (Geofencing)
-      showManualBadge = manualOverride == true;
-
-      // Caso 3.2: si salió de zona y estaba en manual override, mostrar ubicación desconocida
-      locationInfo = locationUnknown == true ? '❓ Ubicación desconocida' : null;
-    }
-
-    final coordinates = statusData['coordinates'] as Map<String, dynamic>?;
-    final timestamp = statusData['timestamp'];
-    DateTime? lastUpdate;
-    if (timestamp is Timestamp) {
-      lastUpdate = timestamp.toDate();
-    }
-
-    final result = {
-      'emoji': emoji,
-      'status': statusType,
-      'coordinates': coordinates,
-      'hasGPS': coordinates != null && statusType == 'sos', // GPS solo relevante para SOS
-      'lastUpdate': lastUpdate,
-      'autoUpdated': autoUpdated, // 🆕 Flag para saber si es actualización automática
-      'zoneName': zoneName, // 🆕 Nombre de la zona (opcional)
-      'displayText': displayText, // 🆕 Texto a mostrar (zona o estado)
-      'showManualBadge': showManualBadge, // 🆕 Mostrar badge ✋ Manual
-      'locationInfo': locationInfo, // 🆕 Info de ubicación desconocida/última zona
-    };
-
-    return result;
-  }
-
-  bool _hasChanged(Map<String, dynamic>? oldData, Map<String, dynamic> newData) {
-    if (oldData == null) return true; // Siempre cambia si no había data previa
-    // Comparar campos relevantes (incluyendo emoji que cambia con customEmoji)
-    return oldData['emoji'] != newData['emoji'] || // 🆕 Detecta cambio de emoji de zona
-        oldData['status'] != newData['status'] ||
-        oldData['autoUpdated'] != newData['autoUpdated'] || // 🆕 Detecta cambio manual ↔ automático
-        oldData['zoneName'] != newData['zoneName'] || // 🆕 Detecta cambio de zona
-        oldData['displayText'] != newData['displayText'] || // 🆕 Detecta cambio de texto
-        oldData['showManualBadge'] != newData['showManualBadge'] || // 🆕 Detecta cambio de badge
-        oldData['locationInfo'] != newData['locationInfo'] || // 🆕 Detecta cambio de ubicación
-        oldData['lastUpdate']?.millisecondsSinceEpoch != newData['lastUpdate']?.millisecondsSinceEpoch ||
-        oldData['coordinates']?.toString() != newData['coordinates']?.toString(); // Comparación simple para coordenadas
+    final parser = MemberDataParser(
+      predefinedEmojis: _predefinedEmojis,
+      onMissingEmoji: _loadPredefinedEmojis,
+    );
+    return parser.parse(statusData);
   }
 
   @override
@@ -547,7 +359,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                     circleName: circle.name,
                     memberCount: circle.members.length,
                     invitationCode: circle.invitationCode,
-                    onCopyCode: () => _copyToClipboard(context, circle.invitationCode),
+                    onCopyCode: () => CircleActions.copyToClipboard(context, circle.invitationCode),
                   ),
                   JoinRequestsBanner(
                     requests: _pendingRequests,
@@ -574,7 +386,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                         showEmojiStatusBottomSheet(ctx, activeStatusId: activeStatusId);
                       }
                     },
-                    onOpenMaps: _openGoogleMaps,
+                    onOpenMaps: CircleActions.openGoogleMaps,
                   ),
                 ],
               ),
@@ -589,24 +401,6 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   // =========================================================================
   // === Métodos Auxiliares (sin cambios respecto a tu código original) ===
   // =========================================================================
-
-  /// PM3/PM4 FIX: Migrar estados del sistema viejo (enum) al nuevo (class)
-  String _migrateOldStatus(String? oldStatus) {
-    if (oldStatus == null) return 'fine';
-
-    switch (oldStatus) {
-      case 'available': // "Libre" en sistema viejo → "Todo bien" en nuevo
-        return 'fine';
-      case 'leave': // "Saliendo" en sistema viejo → "Ausente" en nuevo
-        return 'away';
-      case 'ready': // "Listo" en sistema viejo → "Todo bien" en nuevo
-        return 'fine';
-      case 'sad': // "Triste" en sistema viejo → "No molestar" en nuevo
-        return 'do_not_disturb';
-      default:
-        return oldStatus; // Estados válidos pasan sin cambios
-    }
-  }
 
   /// Actualización rápida del estado a "fine" (✅)
   Future<void> _quickStatusUpdate() async {
@@ -638,13 +432,23 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     }
   }
 
-  /// Obtiene el nickname del usuario actual desde Riverpod
+  /// Obtiene el nickname del usuario actual desde Riverpod.
+  /// Fallback síncrono: usa displayName de FirebaseAuth (disponible en frío)
+  /// mientras authProvider completa su primer read a Firestore.
   String _getCurrentUserNickname(WidgetRef ref) {
-    final authState = ref.watch(authProvider); // Asume que authProvider está definido e importado
+    final authState = ref.watch(authProvider);
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty ? authState.user.nickname : authState.user.email.split('@')[0];
+      return authState.user.nickname.isNotEmpty
+          ? authState.user.nickname
+          : authState.user.email.split('@')[0];
     }
-    return 'Usuario';
+    final fbUser = FirebaseAuth.instance.currentUser;
+    if (fbUser != null) {
+      final dn = fbUser.displayName;
+      if (dn != null && dn.isNotEmpty) return dn;
+      return fbUser.email?.split('@')[0] ?? '...';
+    }
+    return '...';
   }
 
   /// Ordena los miembros: usuario actual primero, resto alfabéticamente
@@ -667,98 +471,5 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     return [...currentUserList, ...otherMembers];
   }
 
-  /// Obtiene todos los nicknames de los miembros (llamado desde _loadAllNicknames)
-  Future<Map<String, String>> _getAllMemberNicknames(List<String> memberIds) async {
-    final Map<String, String> nicknames = {};
-    // Usar un servicio real si existe, o mantener la lógica directa
-    final service = CircleService(); // Asume que esta clase existe
-
-    final futures = memberIds.map((uid) async {
-      try {
-        final doc = await service.getUserDoc(uid); // Usa el método del servicio
-        if (doc.exists && doc.data() != null) {
-          final data = doc.data()!;
-          final nickname = data['nickname'] as String? ?? '';
-          final email = data['email'] as String? ?? '';
-          final name = data['name'] as String? ?? '';
-
-          String finalNickname;
-          if (nickname.isNotEmpty) {
-            finalNickname = nickname;
-          } else if (name.isNotEmpty)
-            finalNickname = name;
-          else if (email.isNotEmpty)
-            finalNickname = email.split('@')[0];
-          else
-            finalNickname = '...';
-          return MapEntry(uid, finalNickname);
-        } else {
-          return MapEntry(uid, '...');
-        }
-      } catch (e) {
-        debugPrint('Error fetching nickname for $uid: $e');
-        return MapEntry(uid, '...');
-      }
-    });
-
-    final results = await Future.wait(futures);
-    for (final entry in results) {
-      nicknames[entry.key] = entry.value;
-    }
-    return nicknames;
-  }
-
-  /// Copia texto al portapapeles
-  void _copyToClipboard(BuildContext context, String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('¡Código copiado al portapapeles!'),
-        duration: Duration(seconds: 2),
-        backgroundColor: _AppColors.accent,
-      ),
-    );
-  }
-
-  /// Abre Google Maps con las coordenadas SOS
-  void _openGoogleMaps(BuildContext context, Map<String, dynamic> coordinates, String memberName) async {
-    try {
-      final latitude = coordinates['latitude'] as double?;
-      final longitude = coordinates['longitude'] as double?;
-      if (latitude == null || longitude == null) {
-        _showError(context, 'Coordenadas GPS no válidas');
-        return;
-      }
-      // Asume que Coordinates existe o adapta la llamada
-      final url = GPSService.generateSOSLocationUrl(
-        Coordinates(latitude: latitude, longitude: longitude), // Adapta si es necesario
-        memberName,
-      );
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        HapticFeedback.lightImpact();
-      } else {
-        // ignore: use_build_context_synchronously
-        _showError(context, 'No se pudo abrir la aplicación de mapas');
-      }
-    } catch (e) {
-      debugPrint('Error opening Google Maps: $e');
-      // ignore: use_build_context_synchronously
-      _showError(context, 'Error al abrir la ubicación');
-    }
-  }
-
-  /// Muestra un SnackBar de error
-  void _showError(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: _AppColors.sosRed,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-} // Fin de _InCircleViewState
+}
 

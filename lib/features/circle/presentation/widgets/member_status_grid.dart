@@ -84,8 +84,9 @@ class MemberStatusGrid extends StatelessWidget {
               final index = entry.key;
               final memberId = entry.value;
               final isCurrentUser = currentUserId == memberId;
-              final nickname = nicknamesCache[memberId] ??
-                  (isCurrentUser ? (currentUserNickname ?? '...') : '...');
+              final nickname = isCurrentUser
+                  ? (currentUserNickname ?? nicknamesCache[memberId] ?? '...')
+                  : (nicknamesCache[memberId] ?? '...');
               final memberData = memberDataCache[memberId] ??
                   {
                     'emoji': '⏳',

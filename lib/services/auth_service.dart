@@ -23,10 +23,18 @@ class AuthService {
       }
 
       log('[AuthService] Obteniendo datos de Firestore para: ${firebaseUser.uid}');
-      final doc = await _firestore
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .get();
+      DocumentSnapshot<Map<String, dynamic>> doc;
+      try {
+        doc = await _firestore
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .get(const GetOptions(source: Source.cache));
+      } on FirebaseException {
+        doc = await _firestore
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .get();
+      }
 
       if (!doc.exists) {
         log('[AuthService] ⚠️ Usuario no existe en Firestore: ${firebaseUser.uid}');
@@ -91,11 +99,15 @@ class AuthService {
       if (!doc.exists) {
         // Crear usuario en Firestore
         log('[AuthService] Creando usuario en Firestore...');
+        final effectiveNickname = nickname.isNotEmpty ? nickname : email.split('@')[0];
+        // Sincronizar displayName en Firebase Auth para que esté disponible
+        // síncronamente en frío (antes de que llegue el primer snapshot de Firestore).
+        await firebaseUser.updateDisplayName(effectiveNickname);
         final now = DateTime.now();
         await _firestore.collection('users').doc(firebaseUser.uid).set({
           'email': email,
-          'name': nickname.isNotEmpty ? nickname : email.split('@')[0],
-          'nickname': nickname.isNotEmpty ? nickname : email.split('@')[0],
+          'name': effectiveNickname,
+          'nickname': effectiveNickname,
           'createdAt': Timestamp.fromDate(now),
           'updatedAt': Timestamp.fromDate(now),
         });
@@ -103,8 +115,8 @@ class AuthService {
         return app.User(
           uid: firebaseUser.uid,
           email: email,
-          name: nickname.isNotEmpty ? nickname : email.split('@')[0],
-          nickname: nickname.isNotEmpty ? nickname : email.split('@')[0],
+          name: effectiveNickname,
+          nickname: effectiveNickname,
           createdAt: now,
           updatedAt: now,
         );

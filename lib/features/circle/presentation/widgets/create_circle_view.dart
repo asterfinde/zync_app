@@ -93,12 +93,10 @@ class _CreateCircleViewState extends ConsumerState<CreateCircleView> {
       await _service.createCircle(circleName);
       print('[CreateCircleView] Circle created successfully');
 
-      // ACTIVAR NOTIFICACIONES después de crear el círculo
-      if (mounted) {
-        print(
-            '[CreateCircleView] Activando notificaciones después de crear...');
-        await SilentFunctionalityCoordinator.activateAfterLogin(context);
-      }
+      // Informar al coordinador que el usuario ya tiene círculo (síncrono, 0ms).
+      // activateAfterLogin hacía 2 reads Firestore innecesarios aquí — ya
+      // sabemos que el círculo existe porque acabamos de crearlo.
+      SilentFunctionalityCoordinator.syncCircleState(hasCircle: true);
 
       if (mounted) {
         // Limpiar el controller de manera segura

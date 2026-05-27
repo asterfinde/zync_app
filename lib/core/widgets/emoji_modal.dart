@@ -299,357 +299,130 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
   }
 }
 
-/// Función helper para mostrar el modal unificado
-// ════════════════════════════════════════════════════════════
-// [FIX] Indicador visual de estado activo
-// Fecha: 2026-05-04
-// PROBLEMA: El modal no resaltaba el estado ya seleccionado.
-// SOLUCIÓN: Parámetro activeStatusId opcional propagado a StatusSelectorOverlay.
-// ════════════════════════════════════════════════════════════
+/// Función helper para mostrar el modal unificado.
+/// Carga grid de emojis + zonas configuradas y los pasa al widget puro
+/// StatusSelectorOverlay (Sem 5 Día 5).
 void showEmojiStatusBottomSheet(BuildContext context, {String? activeStatusId}) {
-  // Usar el mismo modal que las notificaciones para consistencia
   Navigator.of(context).push(
     PageRouteBuilder(
-      opaque: false, // Permite transparencia
+      opaque: false,
       pageBuilder: (context, animation, secondaryAnimation) {
-        return StatusSelectorOverlay(
-          activeStatusId: activeStatusId,
-          onClose: () {
-            print('[EmojiModal] Modal cerrado por usuario');
-          },
-        );
+        return _StatusSelectorOverlayLoader(activeStatusId: activeStatusId);
       },
     ),
   );
 }
 
-// import 'package:flutter/material.dart';
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import 'package:nunakin_app/features/circle/domain/entities/user_status.dart';
-// import 'package:nunakin_app/features/circle/domain/usecases/send_user_status.dart';
-// import 'package:nunakin_app/features/auth/presentation/provider/auth_provider.dart';
-// import 'package:nunakin_app/features/auth/presentation/provider/auth_state.dart';
-// import 'package:nunakin_app/features/circle/presentation/provider/circle_provider.dart';
-// import 'package:nunakin_app/features/circle/presentation/provider/circle_state.dart';
-// import 'package:nunakin_app/core/di/injection_container.dart' as di;
+/// Loader que resuelve grid (predefinidos + personalizados) y zonas bloqueadas
+/// desde Firestore antes de renderizar el widget puro StatusSelectorOverlay.
+class _StatusSelectorOverlayLoader extends StatefulWidget {
+  final String? activeStatusId;
 
-// class EmojiModal extends ConsumerStatefulWidget {
-//   const EmojiModal({super.key});
+  const _StatusSelectorOverlayLoader({this.activeStatusId});
 
-//   @override
-//   ConsumerState<EmojiModal> createState() => _EmojiModalState();
-// }
+  @override
+  State<_StatusSelectorOverlayLoader> createState() =>
+      _StatusSelectorOverlayLoaderState();
+}
 
-// class _EmojiModalState extends ConsumerState<EmojiModal> {
-//   bool _showCheck = false;
-//   bool _isSending = false;
+class _StatusSelectorOverlayLoaderState
+    extends State<_StatusSelectorOverlayLoader> {
+  late List<StatusType> _available;
+  Set<String> _blockedZoneTypes = const {};
 
-//   // Mapear emojis del modal con StatusType existentes
-//   final List<StatusType> emojis = const [
-//     StatusType.leave,    // 🚶‍♂️ Saliendo
-//     StatusType.busy,     // 🔥 Ocupado
-//     StatusType.fine,     // 😊 Bien
-//     StatusType.sad,      // 😢 Mal
-//     StatusType.ready,    // ✅ Listo
-//     StatusType.sos,      // 🆘 SOS
-//   ];
+  @override
+  void initState() {
+    super.initState();
+    _available = EmojiService.cachedPredefined ?? StatusType.fallbackPredefined;
+    _refreshGridInBackground();
+  }
 
-//   Future<void> _onStatusTap(StatusType status) async {
-//     final authState = ref.read(authProvider);
-//     final circleState = ref.read(circleProvider);
-    
-//     final userId = authState is Authenticated ? authState.user.uid : null;
-//     String? circleId;
-//     if (circleState is CircleLoaded) {
-//       circleId = circleState.circle.id;
-//     }
+  Future<void> _refreshGridInBackground() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
 
-//     if (userId != null && circleId != null && !_isSending) {
-//       setState(() => _isSending = true);
-//       try {
-//         final sendUserStatus = di.sl<SendUserStatus>();
-//         await sendUserStatus(SendUserStatusParams(
-//           circleId: circleId,
-//           statusType: status,
-//         ));
-//         setState(() => _showCheck = true);
-//         await Future.delayed(const Duration(milliseconds: 900));
-//         if (mounted) Navigator.of(context).pop();
-//       } catch (e) {
-//         // Si hay error, mostrar mensaje pero cerrar modal
-//         if (mounted) {
-//           Navigator.of(context).pop();
-//           ScaffoldMessenger.of(context).showSnackBar(
-//             SnackBar(
-//               content: Text('❌ Error: $e'),
-//               backgroundColor: Colors.red,
-//             ),
-//           );
-//         }
-//       }
-//     } else {
-//       if (mounted) Navigator.of(context).pop();
-//     }
-//   }
+      final cachedCircleId =
+          SessionCacheService.restoreSessionSync()?['circleId'];
+      String? circleId =
+          (cachedCircleId?.isNotEmpty == true) ? cachedCircleId : null;
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Dialog(
-//       backgroundColor: Colors.white,
-//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-//       child: Container(
-//         constraints: const BoxConstraints(maxWidth: 350, maxHeight: 400),
-//         padding: const EdgeInsets.all(20.0),
-//         child: Stack(
-//           alignment: Alignment.center,
-//           children: [
-//             AnimatedOpacity(
-//               opacity: _showCheck ? 0.0 : 1.0,
-//               duration: const Duration(milliseconds: 250),
-//               child: Column(
-//                 mainAxisSize: MainAxisSize.min,
-//                 children: [
-//                   const SizedBox(height: 10),
-//                   Flexible(
-//                     child: GridView.builder(
-//                       shrinkWrap: true,
-//                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-//                         crossAxisCount: 3,
-//                         crossAxisSpacing: 12,
-//                         mainAxisSpacing: 12,
-//                         childAspectRatio: 1,
-//                       ),
-//                       itemCount: emojis.length,
-//                       itemBuilder: (context, index) {
-//                         final emoji = emojis[index];
-//                         return GestureDetector(
-//                           onTap: () => _onStatusTap(emoji),
-//                           child: Container(
-//                             decoration: BoxDecoration(
-//                               color: Colors.grey[100],
-//                               borderRadius: BorderRadius.circular(12),
-//                               border: Border.all(color: Colors.grey[300]!),
-//                             ),
-//                             child: Column(
-//                               mainAxisAlignment: MainAxisAlignment.center,
-//                               children: [
-//                                 Text(
-//                                   emoji.emoji,
-//                                   style: const TextStyle(fontSize: 24),
-//                                 ),
-//                                 const SizedBox(height: 4),
-//                                 Flexible(
-//                                   child: Text(
-//                                     emoji.description,
-//                                     style: const TextStyle(fontSize: 10),
-//                                     textAlign: TextAlign.center,
-//                                     maxLines: 1,
-//                                     overflow: TextOverflow.ellipsis,
-//                                   ),
-//                                 ),
-//                               ],
-//                             ),
-//                           ),
-//                         );
-//                       },
-//                     ),
-//                   ),
-//                   const SizedBox(height: 16),
-//                   TextButton(
-//                     onPressed: () => Navigator.of(context).pop(),
-//                     child: const Text('Cerrar'),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//             AnimatedScale(
-//               scale: _showCheck ? 1.0 : 0.7,
-//               duration: const Duration(milliseconds: 350),
-//               curve: Curves.easeOutBack,
-//               child: AnimatedOpacity(
-//                 opacity: _showCheck ? 1.0 : 0.0,
-//                 duration: const Duration(milliseconds: 250),
-//                 child: Container(
-//                   decoration: BoxDecoration(
-//                     color: Colors.green[100],
-//                     shape: BoxShape.circle,
-//                   ),
-//                   padding: const EdgeInsets.all(24),
-//                   child: Icon(Icons.check_circle_rounded, color: Colors.green[700], size: 56),
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
+      if (circleId == null) {
+        try {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get(const GetOptions(source: Source.cache))
+              .timeout(const Duration(seconds: 2));
+          circleId = userDoc.data()?['circleId'] as String?;
+        } on FirebaseException {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get()
+              .timeout(const Duration(seconds: 5));
+          circleId = userDoc.data()?['circleId'] as String?;
+        }
+      }
 
-// import 'package:flutter/material.dart';
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import 'package:nunakin_app/features/circle/domain/entities/user_status.dart';
-// import 'package:nunakin_app/features/circle/domain/usecases/send_user_status.dart';
-// import 'package:nunakin_app/features/auth/presentation/provider/auth_provider.dart';
-// import 'package:nunakin_app/features/auth/presentation/provider/auth_state.dart';
-// import 'package:nunakin_app/features/circle/presentation/provider/circle_provider.dart';
-// import 'package:nunakin_app/features/circle/presentation/provider/circle_state.dart';
-// import 'package:nunakin_app/core/di/injection_container.dart' as di;
+      if (circleId == null || circleId.isEmpty) return;
 
-// class EmojiModal extends ConsumerStatefulWidget {
-//   const EmojiModal({super.key});
+      final predefined = await EmojiService.getPredefinedEmojis();
+      final custom = await EmojiService.getCustomEmojis(circleId);
+      final allEmojis = <StatusType>[...predefined, ...custom];
 
-//   @override
-//   ConsumerState<EmojiModal> createState() => _EmojiModalState();
-// }
+      final zonesSnapshot = await FirebaseFirestore.instance
+          .collection('circles')
+          .doc(circleId)
+          .collection('zones')
+          .get()
+          .timeout(const Duration(seconds: 5));
 
-// class _EmojiModalState extends ConsumerState<EmojiModal> {
-//   bool _showCheck = false;
-//   bool _isSending = false;
+      final configuredTypes = zonesSnapshot.docs
+          .where((doc) {
+            final type = doc.data()['type'] as String?;
+            return type != null &&
+                ['home', 'school', 'university', 'work'].contains(type);
+          })
+          .map((doc) => doc.data()['type'] as String)
+          .toSet();
 
-//   // Mapear emojis del modal con StatusType existentes
-//   final List<StatusType> emojis = const [
-//     StatusType.leave,    // 🚶‍♂️ Saliendo
-//     StatusType.busy,     // 🔥 Ocupado
-//     StatusType.fine,     // 😊 Bien
-//     StatusType.sad,      // 😢 Mal
-//     StatusType.ready,    // ✅ Listo
-//     StatusType.sos,      // 🆘 SOS
-//   ];
+      if (mounted) {
+        setState(() {
+          _available = allEmojis;
+          _blockedZoneTypes = configuredTypes;
+        });
+      }
+    } catch (e) {
+      debugPrint('[EmojiModal] Error cargando grid en background: $e');
+    }
+  }
 
-//   Future<void> _onStatusTap(StatusType status) async {
-//     final authState = ref.read(authProvider);
-//     final circleState = ref.read(circleProvider);
-    
-//     final userId = authState is Authenticated ? authState.user.uid : null;
-//     String? circleId;
-//     if (circleState is CircleLoaded) {
-//       circleId = circleState.circle.id;
-//     }
+  void _onSelect(StatusType status) {
+    // Fire-and-forget: el stream de Firestore actualiza la UI en <500ms.
+    StatusService.updateUserStatus(status).then((result) {
+      if (!result.isSuccess) {
+        debugPrint(
+            '[EmojiModal] Error background: ${result.errorMessage}');
+      }
+    }).catchError((e) {
+      debugPrint('[EmojiModal] Excepción en background: $e');
+    });
+  }
 
-//     if (userId != null && circleId != null && !_isSending) {
-//       setState(() => _isSending = true);
-//       try {
-//         final sendUserStatus = di.sl<SendUserStatus>();
-//         await sendUserStatus(SendUserStatusParams(
-//           circleId: circleId,
-//           statusType: status,
-//         ));
-//         setState(() => _showCheck = true);
-//         await Future.delayed(const Duration(milliseconds: 900));
-//         if (mounted) Navigator.of(context).pop();
-//       } catch (e) {
-//         // Si hay error, mostrar mensaje pero cerrar modal
-//         if (mounted) {
-//           Navigator.of(context).pop();
-//           ScaffoldMessenger.of(context).showSnackBar(
-//             SnackBar(
-//               content: Text('❌ Error: $e'),
-//               backgroundColor: Colors.red,
-//             ),
-//           );
-//         }
-//       }
-//     } else {
-//       if (mounted) Navigator.of(context).pop();
-//     }
-//   }
+  void _onSosTriggered() {
+    final sos = StatusType.fallbackPredefined.firstWhere((s) => s.id == 'sos');
+    StatusService.updateUserStatus(sos);
+  }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Dialog(
-//       backgroundColor: Colors.white,
-//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-//       child: Container(
-//         constraints: const BoxConstraints(maxWidth: 350, maxHeight: 400),
-//         padding: const EdgeInsets.all(20.0),
-//         child: Stack(
-//           alignment: Alignment.center,
-//           children: [
-//             AnimatedOpacity(
-//               opacity: _showCheck ? 0.0 : 1.0,
-//               duration: const Duration(milliseconds: 250),
-//               child: Column(
-//                 mainAxisSize: MainAxisSize.min,
-//                 children: [
-//                   const Text(
-//                     '🎯 ¡FUNCIONÓ! Modal desde notificación',
-//                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
-//                     textAlign: TextAlign.center,
-//                   ),
-//                   const SizedBox(height: 20),
-//                   Flexible(
-//                     child: GridView.builder(
-//                       shrinkWrap: true,
-//                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-//                         crossAxisCount: 3,
-//                         crossAxisSpacing: 12,
-//                         mainAxisSpacing: 12,
-//                         childAspectRatio: 1,
-//                       ),
-//                       itemCount: emojis.length,
-//                       itemBuilder: (context, index) {
-//                         final emoji = emojis[index];
-//                         return GestureDetector(
-//                           onTap: () => _onStatusTap(emoji),
-//                           child: Container(
-//                             decoration: BoxDecoration(
-//                               color: Colors.grey[100],
-//                               borderRadius: BorderRadius.circular(12),
-//                               border: Border.all(color: Colors.grey[300]!),
-//                             ),
-//                             child: Column(
-//                               mainAxisAlignment: MainAxisAlignment.center,
-//                               children: [
-//                                 Text(
-//                                   emoji.emoji,
-//                                   style: const TextStyle(fontSize: 24),
-//                                 ),
-//                                 const SizedBox(height: 4),
-//                                 Flexible(
-//                                   child: Text(
-//                                     emoji.description,
-//                                     style: const TextStyle(fontSize: 10),
-//                                     textAlign: TextAlign.center,
-//                                     maxLines: 1,
-//                                     overflow: TextOverflow.ellipsis,
-//                                   ),
-//                                 ),
-//                               ],
-//                             ),
-//                           ),
-//                         );
-//                       },
-//                     ),
-//                   ),
-//                   const SizedBox(height: 16),
-//                   TextButton(
-//                     onPressed: () => Navigator.of(context).pop(),
-//                     child: const Text('Cerrar'),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//             AnimatedScale(
-//               scale: _showCheck ? 1.0 : 0.7,
-//               duration: const Duration(milliseconds: 350),
-//               curve: Curves.easeOutBack,
-//               child: AnimatedOpacity(
-//                 opacity: _showCheck ? 1.0 : 0.0,
-//                 duration: const Duration(milliseconds: 250),
-//                 child: Container(
-//                   decoration: BoxDecoration(
-//                     color: Colors.green[100],
-//                     shape: BoxShape.circle,
-//                   ),
-//                   padding: const EdgeInsets.all(24),
-//                   child: Icon(Icons.check_circle_rounded, color: Colors.green[700], size: 56),
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return StatusSelectorOverlay(
+      available: _available,
+      blockedZoneTypes: _blockedZoneTypes,
+      activeStatusId: widget.activeStatusId,
+      onSelect: _onSelect,
+      onSosTriggered: _onSosTriggered,
+    );
+  }
+}
