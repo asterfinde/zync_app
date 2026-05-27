@@ -262,7 +262,8 @@ class EnterSilentMode {
 | 3 | Native Bridge | 1 MethodChannel unificado. `MainActivity.kt` ≤300 líneas. Migración con feature flag. `USE_LEGACY_BRIDGE=false` verificado en device | **Alto — semana crítica** | (TBD al cierre Sem 2) |
 | 4 | Identity + Circle | `IdentitySession` reactivo. `MembershipState` extraído. Eliminar static `_refreshController` | Medio | (TBD al cierre Sem 3) |
 | 5 | UI descomposición | `in_circle_view.dart` 3091 → ≤500 líneas. Widgets por sub-state. VM como integrador | Medio | (TBD al cierre Sem 4) |
-| 6 | Hardening (parcial) | Tests E2E del núcleo, eliminar shims internos, doc canónica, performance baseline | Bajo | (TBD al cierre Sem 5) |
+| 6 | Hardening (parcial) | Tests E2E del núcleo, eliminar shims muertos, doc canónica, performance baseline | Bajo | (TBD al cierre Sem 5) |
+| 6a | Design System | Tokens Dart codificados, componentes base extraídos de Sem 5, sin lógica de negocio | Bajo | (TBD al cierre Sem 6) |
 | 7 | Flujos no refactorizados | `emoji_cache_service`, `notification_status_selector`, `quick_actions_handler`, `widget_service`, `EmojiDialogActivity` alineado a KvStore | Medio | (TBD al cierre Sem 6) |
 | 8 | Geofencing BC completo | `ZoneRepository` + `ApplyGeofenceStatus` use case + `DomainEventBus` integrado. Cold-start race resuelto estructuralmente | Medio | (TBD al cierre Sem 7) |
 | 9 | Seguridad y Compliance | API Key → Cloud Function, Privacy Policy, `ACCESS_BACKGROUND_LOCATION` justification, auditoría logs sensibles, `flutter pub audit` | **Alto** | (TBD al cierre Sem 8) |
@@ -331,10 +332,25 @@ Ver [01-semana-1-cimientos.md](01-semana-1-cimientos.md).
 **Objetivo**: consolidar el núcleo refactorizado antes de expandir a los contextos pendientes.
 
 **Entregables**:
-- Borrar shims: `StatusService.updateUserStatus`, `setOfflineStatus`/`clearOfflineStatus`, código comentado en `main.dart` e `injection_container.dart`.
+- Borrar shims muertos: `setOfflineStatus`/`clearOfflineStatus` en `status_service.dart` (no-ops sin callers). `StatusService.updateUserStatus` NO es shim — tiene 9+ callers activos, se toca en Sem 7.
 - Tests E2E del núcleo en `integration_test/`: transición Normal→Silent→Normal, BN durante Silent, SOS desde notificación.
 - Doc canónica parcial: `docs/dev/architecture.md` con los BCs completados hasta Sem 5.
 - Performance baseline provisional: cold start y app resume. Comparar contra `mvp-baseline-20260506`.
+
+---
+
+### 3.6a Detalles de Semana 6a — Design System
+
+**Objetivo**: codificar formalmente los tokens de diseño usados en Sem 5 como referencia numérica, y extraer los componentes base de UI en un sistema reutilizable. Sin lógica de negocio.
+
+**Prerrequisito**: Sem 6 mergeada y `main` verde.
+
+**Entregables**:
+- `lib/app/theme/design_tokens.dart` — tokens tipados: espaciado, radios, duraciones de animación, touch targets mínimos. Basado en `docs/ui/design_system.md`.
+- Actualizar widgets extraídos en Sem 5 (`MemberStatusGrid`, `MyStatusBar`, `SilentModeButton`, `ZonePresenceIndicator`, `JoinRequestsBanner`, `StatusSelectorOverlay`) para consumir los tokens en lugar de números literales.
+- Sin pantallas nuevas, sin lógica de negocio, sin cambios a ViewModels.
+
+**Criterio**: `flutter analyze` verde. Los números hardcodeados de Sem 5 reemplazados por constantes nombradas. Sin regresiones en smoke test.
 
 ---
 
