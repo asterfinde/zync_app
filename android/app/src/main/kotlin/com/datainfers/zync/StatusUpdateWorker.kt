@@ -133,10 +133,7 @@ class StatusUpdateWorker(
             Log.d(TAG, "[DIAG-W6] enableNetwork STARTING")
             Tasks.await(db.enableNetwork(), 10, TimeUnit.SECONDS)
             Log.d(TAG, "[DIAG-W6] enableNetwork OK")
-            // getIdToken fuerza una llamada de red real a Firebase Auth — calienta
-            // la conexión TCP antes del write (enableNetwork() solo levanta una bandera).
-            Tasks.await(currentUser.getIdToken(true), 30, TimeUnit.SECONDS)
-            Log.d(TAG, "[DIAG-W6] token refreshed — Firestore.update STARTING — circle=$circleId userId=$userId statusType=$statusType")
+            Log.d(TAG, "[DIAG-W6] Firestore.update STARTING — circle=$circleId userId=$userId statusType=$statusType")
             Tasks.await(
                 db.collection("circles")
                     .document(circleId)
