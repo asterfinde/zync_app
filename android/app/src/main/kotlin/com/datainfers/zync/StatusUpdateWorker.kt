@@ -120,11 +120,25 @@ class StatusUpdateWorker(
                 else null,
             )
 
+            // ════════════════════════════════════════════════════════════
+            // [FIX] MS-20260529 — Firestore offline tras Silent Mode prolongado
+            // PROBLEMA: Tasks.await(update) bloquea indefinidamente cuando el SDK
+            //   de Firestore está en modo offline (Doze >50min en background).
+            //   El Worker nunca loggeaba SUCCESS ni EXCEPTION — confirmado con logs
+            //   [DIAG-W6 STARTING] sin resolución en 3 Workers paralelos (64min gap).
+            // SOLUCIÓN: enableNetwork() con timeout 10s antes del write para despertar
+            //   la conexión Firebase. Si la red no está disponible, el timeout lanza
+            //   excepción → catch → Result.retry() (ver abajo).
+            // ════════════════════════════════════════════════════════════
+            Log.d(TAG, "[DIAG-W6] enableNetwork STARTING")
+            Tasks.await(db.enableNetwork(), 10, TimeUnit.SECONDS)
+            Log.d(TAG, "[DIAG-W6] enableNetwork OK")
             Log.d(TAG, "[DIAG-W6] Firestore.update STARTING — circle=$circleId userId=$userId statusType=$statusType")
             Tasks.await(
                 db.collection("circles")
                     .document(circleId)
-                    .update("memberStatus.$userId", statusData)
+                    .update("memberStatus.$userId", statusData),
+                30, TimeUnit.SECONDS
             )
 
             // ════════════════════════════════════════════════════════════
@@ -156,7 +170,9 @@ class StatusUpdateWorker(
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "[DIAG-W7] EXCEPTION: ${e.javaClass.simpleName}: ${e.message}", e)
-            Result.failure()
+            // Retry en lugar de failure — errores de red son transitorios.
+            // WorkManager reintentará con backoff exponencial (máx 6 veces por defecto).
+            Result.retry()
         }
     }
 }
