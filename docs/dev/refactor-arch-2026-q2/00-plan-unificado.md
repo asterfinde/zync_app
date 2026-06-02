@@ -8,6 +8,29 @@
 
 ---
 
+## Estado de avance — actualizado 2026-06-02
+
+| Semana | Tema | Estado | Tag / PR |
+|--------|------|--------|----------|
+| 1 | Cimientos | ✅ Completa | `refactor-sem1-done` |
+| 2 | Presence (corazón) | ✅ Completa | `refactor-sem2-done` |
+| 3 | Native Bridge | ✅ Completa | `refactor-sem3-done` |
+| 4 | Identity + Circle | ✅ Completa | `refactor-sem4-done` |
+| 5 | UI descomposición | ✅ Completa | `refactor-sem5-done` |
+| 6 | Hardening (parcial) | ✅ Completa | `refactor-sem6-done` (PR #201) |
+| — | *(Fix de producción)* | ✅ `fix/silent-mode-firestore-write` mergeado | PR #202 — raíz en GCP: Token Service API faltante en key `Android - Zync Maps` |
+| **6a** | **Design System** | **⏳ PRÓXIMA** | Rama nueva desde `main` actualizado |
+| 7 | Flujos no refactorizados | 🔲 Pendiente | — |
+| 8 | Geofencing BC completo | 🔲 Pendiente | — |
+| 9 | Seguridad y Compliance | 🔲 Pendiente | — |
+| 10 | Launch Readiness + Freeze | 🔲 Pendiente | — |
+
+**main actual:** `dba2422` — merge PR #202
+**Lanzamiento estimado MVP:** ~15 agosto 2026
+**Días hábiles restantes (al 2026-06-02):** ~55
+
+---
+
 ## 0. Resumen ejecutivo
 
 La aplicación se encuentra en estado funcional pero arquitectónicamente frágil: cada bug resuelto en las últimas dos semanas (PRs #141–#143, MS5.03, BN+Silent) es manifestación distinta del mismo defecto estructural — **fragmentación del estado y ausencia de bounded contexts**. Sin una refundación arquitectónica antes del lanzamiento, cada feature post-MVP introducirá regresiones de costo creciente.
