@@ -30,13 +30,13 @@ class _InCircleFooterState extends State<InCircleFooter> {
             side: BorderSide(color: NkColors.mintSoft(0.4), width: 1),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(NkSpacing.s5),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Activar Modo Silencio',
+                  'Silencio',
                   style: NkTextStyle.h3,
                 ),
                 const SizedBox(height: 12),
@@ -85,7 +85,7 @@ class _InCircleFooterState extends State<InCircleFooter> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(NkSpacing.s),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -115,12 +115,12 @@ class _InCircleFooterState extends State<InCircleFooter> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (_isUpdating)
-                          const SizedBox(
+                          SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
+                              valueColor: AlwaysStoppedAnimation<Color>(NkColors.onMint.withValues(alpha: 0.54)),
                             ),
                           )
                         else

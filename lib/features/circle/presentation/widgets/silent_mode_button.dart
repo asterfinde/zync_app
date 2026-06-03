@@ -25,9 +25,9 @@ class SilentModeButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
       ),
       icon: const Icon(Icons.bedtime_outlined, size: 18),
-      label: const Text(
-        'Modo Silencio',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+      label: Text(
+        'Silencio',
+        style: NkTextStyle.meta.copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }

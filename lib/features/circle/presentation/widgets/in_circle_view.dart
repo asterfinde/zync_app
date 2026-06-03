@@ -27,14 +27,9 @@ import 'member_data_repository.dart';
 import 'circle_actions.dart';
 import '../../../../core/services/native_state_bridge.dart';
 import '../../../../core/services/emoji_cache_service.dart';
+import '../../../../app/theme/design_tokens.dart';
 // Asumo que tienes una clase Coordinates en gps_service.dart o similar
 // import '../../../../core/services/gps_service.dart' show Coordinates;
-
-/// Colores locales del orquestador. Se unifican en lib/shared/theme/ en Sem 6.
-class _AppColors {
-  static const Color background = Color(0xFF000000);
-  static const Color cardBorder = Color(0xFF3A3A3C);
-}
 
 
 class InCircleView extends ConsumerStatefulWidget {
@@ -342,7 +337,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     final circle = widget.circle;
 
     return Scaffold(
-      backgroundColor: _AppColors.background,
+      backgroundColor: NkColors.canvas,
       body: Column(
         children: [
           // --- HEADER ---
@@ -369,7 +364,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24.0),
-                    child: Divider(color: _AppColors.cardBorder, thickness: 1),
+                    child: Divider(color: NkColors.surface4, thickness: 1),
                   ),
 
                   MemberStatusGrid(

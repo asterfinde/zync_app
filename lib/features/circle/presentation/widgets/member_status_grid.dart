@@ -1,38 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:nunakin_app/app/theme/design_tokens.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
-
-// Design tokens — local copy. Se unifica en lib/shared/theme/ en Sem 6.
-class _AppColors {
-  static const Color background = Color(0xFF000000);
-  static const Color accent = Color(0xFF1EE9A4);
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color sosRed = Color(0xFFD32F2F);
-}
-
-class _AppTextStyles {
-  static const TextStyle screenTitle = TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-    color: _AppColors.textPrimary,
-    letterSpacing: 1.2,
-  );
-  static const TextStyle memberNickname = TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.bold,
-    color: _AppColors.textPrimary,
-  );
-  static const TextStyle memberStatus = TextStyle(
-    fontSize: 14,
-    color: Color(0xFF9E9E9E),
-    fontWeight: FontWeight.normal,
-  );
-  static const TextStyle sosStatus = TextStyle(
-    fontSize: 14,
-    color: _AppColors.sosRed,
-    fontWeight: FontWeight.bold,
-  );
-}
 
 /// Grid de estados de miembros del círculo.
 /// Widget puro: sin acceso a Firestore, CircleService ni servicios estáticos.
@@ -70,14 +39,17 @@ class MemberStatusGrid extends StatelessWidget {
       children: [
         const Row(
           children: [
-            Icon(Icons.people_outline, size: 24, color: _AppColors.accent),
+            Icon(Icons.people_outline, size: 24, color: NkColors.mint),
             SizedBox(width: 8),
-            Text('Miembros', style: _AppTextStyles.screenTitle),
+            Text('Miembros', style: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold,
+              color: NkColors.onDark, letterSpacing: 1.2,
+            )),
           ],
         ),
         const SizedBox(height: 16),
         if (isLoading)
-          const Center(child: CircularProgressIndicator(color: _AppColors.accent))
+          const Center(child: CircularProgressIndicator(color: NkColors.mint))
         else
           Column(
             children: sortedMemberIds.asMap().entries.map((entry) {
@@ -163,7 +135,7 @@ class _MemberListItem extends StatelessWidget {
     final isSOS = status == 'sos';
 
     return Material(
-      color: _AppColors.background,
+      color: NkColors.canvas,
       child: InkWell(
         onTap: status == 'loading'
             ? null
@@ -176,7 +148,7 @@ class _MemberListItem extends StatelessWidget {
                   onOpenMaps(context, coordinates, nickname);
                 }
               },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: NkRadius.forInput,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
           child: Column(
@@ -198,7 +170,7 @@ class _MemberListItem extends StatelessWidget {
                           children: [
                             Flexible(
                               child: Text(nickname,
-                                  style: _AppTextStyles.memberNickname,
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: NkColors.onDark),
                                   overflow: TextOverflow.ellipsis),
                             ),
                             if (isCurrentUser) ...[
@@ -207,7 +179,7 @@ class _MemberListItem extends StatelessWidget {
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: _AppColors.accent,
+                                  color: NkColors.mint,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: const Text(
@@ -215,7 +187,7 @@ class _MemberListItem extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: _AppColors.background,
+                                    color: NkColors.canvas,
                                   ),
                                 ),
                               ),
@@ -226,15 +198,15 @@ class _MemberListItem extends StatelessWidget {
                         if (displayText != null)
                           Text(displayText,
                               style: isSOS
-                                  ? _AppTextStyles.sosStatus
-                                  : _AppTextStyles.memberStatus),
+                                  ? const TextStyle(fontSize: 14, color: NkColors.danger, fontWeight: FontWeight.bold)
+                                  : const TextStyle(fontSize: 14, color: NkColors.fgSub, fontWeight: FontWeight.normal)),
                         if (lastUpdate != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               key: const Key('text_member_timestamp'),
                               _formatTimestamp(lastUpdate),
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              style: const TextStyle(fontSize: 12, color: NkColors.fgSub),
                             ),
                           ),
                         if (showManualBadge) ...[
@@ -258,7 +230,7 @@ class _MemberListItem extends StatelessWidget {
                           Text(
                             key: const Key('text_location_info'),
                             locationInfo,
-                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                            style: const TextStyle(fontSize: 11, color: NkColors.fgHint),
                           ),
                         ],
                         if (isFirst && status != 'loading')
@@ -266,7 +238,7 @@ class _MemberListItem extends StatelessWidget {
                             'Creador',
                             style: TextStyle(
                               fontSize: 12,
-                              color: _AppColors.accent.withValues(alpha: 0.8),
+                              color: NkColors.mintSoft(0.8),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -275,7 +247,7 @@ class _MemberListItem extends StatelessWidget {
                           Text(
                             key: const Key('text_tap_hint'),
                             'Toca para cambiar tu estado',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                            style: const TextStyle(fontSize: 11, color: NkColors.fgHint),
                           ),
                         ],
                       ],
@@ -294,18 +266,18 @@ class _MemberListItem extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
                     child: Row(
                       children: [
-                        const Icon(Icons.location_on, size: 20, color: _AppColors.sosRed),
+                        const Icon(Icons.location_on, size: 20, color: NkColors.danger),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
                             'Ubicación SOS compartida',
                             style: TextStyle(
                                 fontSize: 13,
-                                color: _AppColors.textPrimary,
+                                color: NkColors.onDark,
                                 fontWeight: FontWeight.w500),
                           ),
                         ),
-                        Icon(Icons.arrow_forward_ios, size: 14, color: Colors.red[300]),
+                        Icon(Icons.arrow_forward_ios, size: 14, color: NkColors.danger.withValues(alpha: 0.7)),
                       ],
                     ),
                   ),
