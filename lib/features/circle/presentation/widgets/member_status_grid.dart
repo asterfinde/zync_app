@@ -42,7 +42,7 @@ class MemberStatusGrid extends StatelessWidget {
             Icon(Icons.people_outline, size: 24, color: NkColors.mint),
             SizedBox(width: 8),
             Text('Miembros', style: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.bold,
+              fontSize: 22, fontWeight: FontWeight.bold,
               color: NkColors.onDark, letterSpacing: 1.2,
             )),
           ],

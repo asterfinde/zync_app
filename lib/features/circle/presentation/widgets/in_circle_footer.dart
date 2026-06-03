@@ -92,7 +92,6 @@ class _InCircleFooterState extends State<InCircleFooter> {
             Row(
               children: [
                 Expanded(
-                  flex: 3,
                   child: SilentModeButton(
                     isActive: false,
                     onToggle: _isUpdating ? null : _confirmAndActivateSilentMode,
@@ -100,7 +99,6 @@ class _InCircleFooterState extends State<InCircleFooter> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  flex: 2,
                   child: ElevatedButton(
                     key: const Key('btn_change_status'),
                     onPressed: _isUpdating ? null : widget.onOk,

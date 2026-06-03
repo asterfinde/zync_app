@@ -33,7 +33,7 @@ class CircleInfoCard extends StatelessWidget {
                     Text(
                       circleName,
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                         color: NkColors.onDark,
                       ),
@@ -63,9 +63,9 @@ class CircleInfoCard extends StatelessWidget {
                   style: const TextStyle(
                     fontFamily: 'monospace',
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                    fontSize: 24,
                     color: NkColors.onDark,
-                    letterSpacing: 1.5,
+                    letterSpacing: 8,
                   ),
                 ),
               ),
