@@ -28,9 +28,9 @@ abstract final class NkColors {
 
   // Superficies (dark-on-black)
   static const Color surface1 = Color(0xFF000000); // canvas
-  static const Color surface2 = Color(0xFF0D0D0D); // cards
-  static const Color surface3 = Color(0xFF1A1A1A); // hover
-  static const Color surface4 = Color(0xFF242424); // pressed
+  static const Color surface2 = Color(0xFF1C1C1E); // cards / dialogs (iOS grouped bg)
+  static const Color surface3 = Color(0xFF2C2C2E); // inputs / fills (iOS secondary bg)
+  static const Color surface4 = Color(0xFF3A3A3C); // hover / pressed
 
   // Borde / línea de separación
   static const Color line     = Color(0x1AFFFFFF); // rgba(255,255,255,0.10)
@@ -67,12 +67,14 @@ abstract final class NkSpacing {
 // ── Radios ────────────────────────────────────────────────
 
 abstract final class NkRadius {
+  static const double small  = 8;
   static const double input  = 12;
   static const double button = 16;
   static const double card   = 20;
   static const double modal  = 24;
   static const double pill   = 999;
 
+  static BorderRadius forSmall  = BorderRadius.circular(small);
   static BorderRadius forInput  = BorderRadius.circular(input);
   static BorderRadius forButton = BorderRadius.circular(button);
   static BorderRadius forCard   = BorderRadius.circular(card);
