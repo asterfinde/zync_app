@@ -191,12 +191,29 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
         .snapshots()
         .listen((snapshot) {
       if (!mounted) return;
-
-      // Recargar la lista completa de emojis cuando hay cambios
-      _loadPredefinedEmojis();
+      // Usar el snapshot directamente evita la race: EmojiService.clearCache()
+      // limpia _cachedCustomByCircle al crear/borrar un emoji, y getCustomEmojis()
+      // puede consultar el servidor antes de que confirme el write nuevo.
+      // El snapshot del listener siempre incluye el write local de Firestore.
+      _rebuildFromCustomSnapshot(snapshot);
     }, onError: (error) {
       debugPrint('[InCircleView] Error en listener de emojis: $error');
     });
+  }
+
+  Future<void> _rebuildFromCustomSnapshot(QuerySnapshot snapshot) async {
+    try {
+      final predefined = await EmojiService.getPredefinedEmojis();
+      final custom = snapshot.docs
+          .map((doc) => StatusType.fromFirestore(doc))
+          .toList();
+      if (mounted) {
+        setState(() => _predefinedEmojis = [...predefined, ...custom]);
+      }
+    } catch (e) {
+      debugPrint('[InCircleView] Error reconstruyendo desde snapshot: $e');
+      _loadPredefinedEmojis(); // fallback al camino legacy
+    }
   }
 
   /// Iniciar monitoreo de geofencing para el círculo actual
