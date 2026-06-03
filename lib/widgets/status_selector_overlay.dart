@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/models/user_status.dart';
+import '../app/theme/design_tokens.dart';
 import 'zone_selection_not_allowed_dialog.dart';
 
 /// Modal de selección de estado. Widget puro: sin Firestore, Auth ni servicios estáticos.
@@ -124,7 +125,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
         return GestureDetector(
           onTap: _closeModal,
           child: Container(
-            color: Colors.black.withValues(alpha: 0.85 * _fadeAnimation.value),
+            color: NkColors.canvas.withValues(alpha: 0.85 * _fadeAnimation.value),
             child: Center(
               child: GestureDetector(
                 onTap: () {},
@@ -138,15 +139,15 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
                     constraints: const BoxConstraints(maxWidth: 380),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade900.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(20),
+                      color: NkColors.surface2.withValues(alpha: 0.95),
+                      borderRadius: NkRadius.forCard,
                       border: Border.all(
-                        color: Colors.grey.shade700.withValues(alpha: 0.5),
+                        color: NkColors.surface4.withValues(alpha: 0.5),
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.6),
+                          color: NkColors.canvas.withValues(alpha: 0.6),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -192,7 +193,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
   }
 
   Widget _buildSosButton() {
-    final bgColor = _sosHolding ? const Color(0xFFB71C1C) : Colors.red;
     final isSosActive = widget.activeStatusId == 'sos';
     return Listener(
       onPointerDown: (_) => _startSosHold(),
@@ -204,11 +204,11 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
           color: isSosActive && !_sosHolding
-              ? const Color(0xFF1CE4B3).withValues(alpha: 0.12)
-              : bgColor,
-          borderRadius: BorderRadius.circular(12),
+              ? NkColors.mintSoft(0.12)
+              : NkColors.danger,
+          borderRadius: NkRadius.forInput,
           border: Border.all(
-            color: isSosActive ? const Color(0xFF1CE4B3) : bgColor,
+            color: isSosActive ? NkColors.mint : NkColors.danger,
             width: 2,
           ),
         ),
@@ -218,7 +218,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
             const Text(
               'S.O.S',
               style: TextStyle(
-                color: Colors.white,
+                color: NkColors.onDark,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 2,
@@ -229,7 +229,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
             Text(
               _sosHolding ? 'Enviando SOS...' : 'Mantén presionado para enviar',
               style: const TextStyle(
-                color: Colors.white,
+                color: NkColors.onDark,
                 fontSize: 11,
                 decoration: TextDecoration.none,
               ),
@@ -248,19 +248,19 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _handleStatusSelection(status),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: NkRadius.forInput,
         child: Container(
           decoration: BoxDecoration(
             color: isActive
-                ? const Color(0xFF1CE4B3).withValues(alpha: 0.12)
+                ? NkColors.mintSoft(0.12)
                 : isBlockedZone
-                    ? Colors.grey.shade800.withValues(alpha: 0.3)
-                    : Colors.grey.shade800.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(12),
+                    ? NkColors.surface3.withValues(alpha: 0.3)
+                    : NkColors.surface3.withValues(alpha: 0.6),
+            borderRadius: NkRadius.forInput,
             border: Border.all(
               color: isActive
-                  ? const Color(0xFF1CE4B3)
-                  : Colors.grey.shade600.withValues(alpha: 0.4),
+                  ? NkColors.mint
+                  : NkColors.fgHint,
               width: isActive ? 2 : 1,
             ),
           ),
@@ -272,7 +272,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
                 opacity: isBlockedZone ? 0.35 : 1.0,
                 child: Text(
                   status.emoji,
-                  style: const TextStyle(fontSize: 24, color: Colors.white),
+                  style: const TextStyle(fontSize: 24, color: NkColors.onDark),
                 ),
               ),
               const SizedBox(height: 2),
@@ -283,7 +283,7 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
                     status.shortDescription,
                     style: const TextStyle(
                       fontSize: 9,
-                      color: Colors.white,
+                      color: NkColors.onDark,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,

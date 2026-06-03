@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nunakin_app/core/services/session_cache_service.dart';
 import 'package:nunakin_app/contexts/identity/presentation/pages/auth_final_page.dart';
+import 'package:nunakin_app/app/theme/design_tokens.dart';
 
 class PendingRequestView extends StatefulWidget {
   final String pendingCircleId;
@@ -42,7 +43,7 @@ class _PendingRequestViewState extends State<PendingRequestView> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: const Key('pending_request_view'),
-      backgroundColor: Colors.black,
+      backgroundColor: NkColors.canvas,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 48.0),
@@ -53,7 +54,7 @@ class _PendingRequestViewState extends State<PendingRequestView> {
               const Icon(
                 Icons.hourglass_top_rounded,
                 size: 72,
-                color: Color(0xFF1CE4B3),
+                color: NkColors.mint,
               ),
               const SizedBox(height: 32),
               const Text(
@@ -61,7 +62,7 @@ class _PendingRequestViewState extends State<PendingRequestView> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: NkColors.onDark,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -72,39 +73,38 @@ class _PendingRequestViewState extends State<PendingRequestView> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF1CE4B3),
+                    color: NkColors.mint,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
               ],
-              Text(
+              const Text(
                 'Tu solicitud fue enviada. Esperando que el creador del círculo la apruebe.',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: NkColors.fgMuted,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(NkSpacing.s),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white12),
-                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: NkColors.line),
+                  borderRadius: NkRadius.forInput,
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.info_outline,
-                        size: 18, color: Colors.white38),
-                    const SizedBox(width: 12),
+                    Icon(Icons.info_outline, size: 18, color: NkColors.fgHint),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'La pantalla se actualizará automáticamente cuando el creador tome una decisión.',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.4),
+                          color: NkColors.fgHint,
                           height: 1.4,
                         ),
                       ),
@@ -126,7 +126,7 @@ class _PendingRequestViewState extends State<PendingRequestView> {
                 },
                 child: const Text(
                   'Cerrar sesión',
-                  style: TextStyle(color: Colors.white38),
+                  style: TextStyle(color: NkColors.fgHint),
                 ),
               ),
             ],

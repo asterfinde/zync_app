@@ -8,6 +8,7 @@ import '../../domain/entities/zone.dart';
 import '../../services/zone_service.dart';
 import '../widgets/zone_form.dart';
 import '../widgets/geofencing_debug_widget.dart';
+import '../../../../app/theme/design_tokens.dart';
 
 /// Página de gestión de zonas geográficas
 /// Lista todas las zonas del círculo con opciones CRUD
@@ -35,9 +36,9 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: NkColors.canvas,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: NkColors.canvas,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
@@ -45,7 +46,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: NkColors.onDark,
             letterSpacing: 1.2,
           ),
         ),
@@ -54,7 +55,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
           IconButton(
             icon: Icon(
               Icons.bug_report,
-              color: _showDebugWidget ? const Color(0xFF1EE9A4) : Colors.grey,
+              color: _showDebugWidget ? NkColors.mint : NkColors.fgSub,
             ),
             tooltip: 'Debug: Simular eventos',
             onPressed: () {
@@ -71,10 +72,10 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
 
           return FloatingActionButton(
             onPressed: canAdd ? () => _addZone(context) : null,
-            backgroundColor: canAdd ? const Color(0xFF1EE9A4) : Colors.grey.shade800,
+            backgroundColor: canAdd ? NkColors.mint : NkColors.surface3,
             child: Icon(
               Icons.add,
-              color: canAdd ? Colors.black : Colors.grey.shade600,
+              color: canAdd ? NkColors.onMint : NkColors.fgSub,
               size: 32,
             ),
           );
@@ -87,7 +88,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
           if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(
-                color: Color(0xFF1EE9A4),
+                color: NkColors.mint,
               ),
             );
           }
@@ -97,11 +98,11 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const Icon(Icons.error_outline, size: 64, color: NkColors.danger),
                   const SizedBox(height: 16),
                   Text(
                     'Error: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: NkColors.onDark),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -116,10 +117,10 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.location_off,
                     size: 80,
-                    color: Colors.grey.shade700,
+                    color: NkColors.surface4,
                   ),
                   const SizedBox(height: 24),
                   const Text(
@@ -127,15 +128,15 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: NkColors.onDark,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  const Text(
                     'Crea tu primera zona para detectar\nllegadas y salidas automáticamente',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey.shade600,
+                      color: NkColors.fgSub,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -153,12 +154,12 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Icon(Icons.location_on, color: Colors.grey.shade600, size: 20),
+                    const Icon(Icons.location_on, color: NkColors.fgSub, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       '${zones.length} de ${ZoneService.MAX_ZONES_PER_CIRCLE} zonas',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
+                      style: const TextStyle(
+                        color: NkColors.fgSub,
                         fontSize: 14,
                       ),
                     ),
@@ -182,7 +183,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: zones.length,
                   separatorBuilder: (context, index) => const Divider(
-                    color: Color(0xFF3A3A3C),
+                    color: NkColors.surface4,
                     height: 1,
                   ),
                   itemBuilder: (context, index) {
@@ -213,19 +214,19 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
         style: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: NkColors.onDark,
         ),
       ),
       subtitle: Text(
         '${zone.radiusMeters.toInt()}m de radio',
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 14,
-          color: Colors.grey.shade600,
+          color: NkColors.fgSub,
         ),
       ),
       trailing: _isCreator
           ? IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
+              icon: const Icon(Icons.delete, color: NkColors.danger),
               onPressed: () => _confirmDelete(context, zone),
             )
           : null,
@@ -247,21 +248,21 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1C1E),
+        backgroundColor: NkColors.surface2,
         title: const Text(
           'Eliminar zona',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: NkColors.onDark),
         ),
         content: Text(
           '¿Estás seguro de eliminar "${zone.name}"?\n\nEsta acción no se puede deshacer.',
-          style: const TextStyle(color: Colors.white70),
+          style: const TextStyle(color: NkColors.fgMuted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'CANCELAR',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: NkColors.fgSub),
             ),
           ),
           TextButton(
@@ -271,7 +272,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
             },
             child: const Text(
               'ELIMINAR',
-              style: TextStyle(color: Colors.red),
+              style: TextStyle(color: NkColors.danger),
             ),
           ),
         ],
@@ -290,7 +291,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Zona "${zone.name}" eliminada'),
-            backgroundColor: const Color(0xFF1EE9A4),
+            backgroundColor: NkColors.mint,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -300,7 +301,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al eliminar: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: NkColors.danger,
             duration: const Duration(seconds: 3),
           ),
         );
