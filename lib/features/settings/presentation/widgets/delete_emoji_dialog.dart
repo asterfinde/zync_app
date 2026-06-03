@@ -1,17 +1,8 @@
 // lib/features/settings/presentation/widgets/delete_emoji_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
+import '../../../../app/theme/design_tokens.dart';
 import '../../../../core/services/emoji_management_service.dart';
-
-/// Colores de la app
-class _AppColors {
-  static const Color background = Color(0xFF000000);
-  static const Color accent = Color(0xFF1EE9A4);
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF9E9E9E);
-  static const Color cardBackground = Color(0xFF1C1C1E);
-  static const Color sosRed = Color(0xFFD32F2F);
-}
 
 /// Dialog de confirmación para borrar un estado personalizado
 ///
@@ -73,11 +64,11 @@ class _DeleteEmojiDialogState extends State<DeleteEmojiDialog> {
       );
 
       if (mounted && success) {
-        Navigator.pop(context, true); // Return true = emoji borrado
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('🗑️ Estado eliminado correctamente'),
-            backgroundColor: _AppColors.accent,
+            backgroundColor: NkColors.mint,
             duration: Duration(seconds: 2),
           ),
         );
@@ -87,7 +78,7 @@ class _DeleteEmojiDialogState extends State<DeleteEmojiDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: _AppColors.sosRed,
+          backgroundColor: NkColors.danger,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -97,18 +88,16 @@ class _DeleteEmojiDialogState extends State<DeleteEmojiDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: _AppColors.cardBackground,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      backgroundColor: NkColors.surface2,
+      shape: RoundedRectangleBorder(borderRadius: NkRadius.forButton),
       title: const Row(
         children: [
-          Icon(Icons.warning_amber_rounded, color: _AppColors.sosRed),
-          SizedBox(width: 12),
+          Icon(Icons.warning_amber_rounded, color: NkColors.danger),
+          SizedBox(width: NkSpacing.xs2),
           Text(
             '¿Borrar estado?',
             style: TextStyle(
-              color: _AppColors.textPrimary,
+              color: NkColors.onDark,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -119,109 +108,76 @@ class _DeleteEmojiDialogState extends State<DeleteEmojiDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Emoji preview
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(NkSpacing.s),
             decoration: BoxDecoration(
-              color: _AppColors.background,
-              borderRadius: BorderRadius.circular(12),
+              color: NkColors.canvas,
+              borderRadius: NkRadius.forInput,
             ),
             child: Row(
               children: [
-                Text(
-                  widget.emoji.emoji,
-                  style: const TextStyle(fontSize: 32),
-                ),
-                const SizedBox(width: 12),
+                Text(widget.emoji.emoji, style: NkTextStyle.display),
+                const SizedBox(width: NkSpacing.xs2),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.emoji.label,
-                        style: const TextStyle(
-                          color: _AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    widget.emoji.label,
+                    style: const TextStyle(
+                      color: NkColors.onDark,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Usage information
+          const SizedBox(height: NkSpacing.s),
           if (_isLoadingUsageInfo)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(8.0),
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: _AppColors.accent,
+                  color: NkColors.mint,
                 ),
               ),
             )
           else ...[
             if (_currentUsers.isNotEmpty) ...[
-              const Text(
+              Text(
                 'Usuarios que lo están usando ahora:',
-                style: TextStyle(
-                  color: _AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+                style: NkTextStyle.micro,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: NkSpacing.xs2),
               ...(_currentUsers.map((userName) => Padding(
                     padding: const EdgeInsets.only(left: 8, bottom: 4),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.person,
-                          size: 16,
-                          color: _AppColors.accent,
-                        ),
+                        const Icon(Icons.person, size: 16, color: NkColors.mint),
                         const SizedBox(width: 6),
-                        Text(
-                          userName,
-                          style: const TextStyle(
-                            color: _AppColors.textPrimary,
-                            fontSize: 14,
-                          ),
-                        ),
+                        Text(userName, style: NkTextStyle.meta),
                       ],
                     ),
                   ))),
-              const SizedBox(height: 12),
+              const SizedBox(height: NkSpacing.xs2),
             ],
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(NkSpacing.xs3),
               decoration: BoxDecoration(
-                color: _AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _AppColors.sosRed.withOpacity(0.3),
-                ),
+                color: NkColors.canvas,
+                borderRadius: NkRadius.forSmall,
+                border: Border.all(color: NkColors.dangerSoft),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: _AppColors.sosRed,
-                  ),
-                  const SizedBox(width: 8),
+                  const Icon(Icons.info_outline, size: 18, color: NkColors.danger),
+                  const SizedBox(width: NkSpacing.xs2),
                   Expanded(
                     child: Text(
                       _currentUsers.isEmpty
                           ? 'Este estado se eliminará permanentemente.'
                           : 'Al borrar, ${_currentUsers.length == 1 ? "este usuario cambiará" : "estos usuarios cambiarán"} a "Disponible".',
-                      style: const TextStyle(
-                        color: _AppColors.textPrimary,
-                        fontSize: 12,
-                      ),
+                      style: NkTextStyle.micro.copyWith(color: NkColors.onDark),
                     ),
                   ),
                 ],
@@ -234,17 +190,14 @@ class _DeleteEmojiDialogState extends State<DeleteEmojiDialog> {
         TextButton(
           key: const Key('btn_delete_emoji_cancel'),
           onPressed: _isDeleting ? null : () => Navigator.pop(context),
-          child: const Text(
-            'Cancelar',
-            style: TextStyle(color: _AppColors.textSecondary),
-          ),
+          child: Text('Cancelar', style: NkTextStyle.meta),
         ),
         ElevatedButton(
           key: const Key('btn_delete_emoji_confirm'),
           onPressed: _isDeleting ? null : _handleDelete,
           style: ElevatedButton.styleFrom(
-            backgroundColor: _AppColors.sosRed,
-            foregroundColor: _AppColors.textPrimary,
+            backgroundColor: NkColors.danger,
+            foregroundColor: NkColors.onDark,
           ),
           child: _isDeleting
               ? const SizedBox(
@@ -252,7 +205,7 @@ class _DeleteEmojiDialogState extends State<DeleteEmojiDialog> {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: _AppColors.textPrimary,
+                    color: NkColors.onDark,
                   ),
                 )
               : const Text('Borrar'),

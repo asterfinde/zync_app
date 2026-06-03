@@ -10,6 +10,7 @@ import 'package:nunakin_app/core/services/status_service.dart';
 import 'package:nunakin_app/core/services/emoji_service.dart';
 import 'package:nunakin_app/core/widgets/status_widget.dart';
 import 'package:nunakin_app/widgets/status_selector_overlay.dart';
+import 'package:nunakin_app/app/theme/design_tokens.dart';
 
 /// Bottom Sheet con grid de emojis para cambiar estado del usuario
 /// REFACTORED: Ahora carga emojis dinámicamente desde Firebase
@@ -122,13 +123,13 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
           if (result.coordinates != null) {
             scaffoldMessenger.showSnackBar(
               SnackBar(
-                content: Row(
+                content: const Row(
                   children: [
-                    const Icon(Icons.sos, color: Colors.white),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.location_on, color: Colors.white, size: 16),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    Icon(Icons.sos, color: NkColors.onDark),
+                    SizedBox(width: 8),
+                    Icon(Icons.location_on, color: NkColors.onDark, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         '🆘 SOS enviado con ubicación GPS a tu círculo',
                         style: TextStyle(fontWeight: FontWeight.bold),
@@ -136,18 +137,18 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
                     ),
                   ],
                 ),
-                backgroundColor: Colors.red,
+                backgroundColor: NkColors.danger,
                 duration: const Duration(seconds: 4),
               ),
             );
           } else {
             scaffoldMessenger.showSnackBar(
-              SnackBar(
+              const SnackBar(
                 content: Row(
                   children: [
-                    const Icon(Icons.sos, color: Colors.white),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    Icon(Icons.sos, color: NkColors.onDark),
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         '🆘 SOS enviado (sin ubicación GPS disponible)',
                         style: TextStyle(fontWeight: FontWeight.bold),
@@ -156,7 +157,7 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
                   ],
                 ),
                 backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 4),
+                duration: Duration(seconds: 4),
               ),
             );
           }
@@ -166,7 +167,7 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('❌ Error: ${result.errorMessage ?? 'Error desconocido'}'),
-            backgroundColor: Colors.red[700],
+            backgroundColor: NkColors.danger,
           ),
         );
       }
@@ -176,9 +177,9 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: NkColors.surface2,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(NkRadius.card)),
       ),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.75, // Máximo 75% de la pantalla
@@ -192,8 +193,8 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
             height: 4,
             margin: const EdgeInsets.only(top: 12),
             decoration: BoxDecoration(
-              color: Colors.grey[600],
-              borderRadius: BorderRadius.circular(8),
+              color: NkColors.fgSub,
+              borderRadius: NkRadius.forSmall,
             ),
           ),
 
@@ -202,7 +203,7 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(40.0),
-                child: CircularProgressIndicator(color: Color(0xFF1CE4B3)),
+                child: CircularProgressIndicator(color: NkColors.mint),
               ),
             )
           else
@@ -235,16 +236,16 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF1CE4B3).withOpacity(0.15) : const Color(0xFF2C2C2C),
-                            borderRadius: BorderRadius.circular(16),
+                            color: isSelected ? NkColors.mintSoft(0.15) : NkColors.surface3,
+                            borderRadius: NkRadius.forButton,
                             border: Border.all(
-                              color: isSelected ? const Color(0xFF1CE4B3) : Colors.grey[700]!,
+                              color: isSelected ? NkColors.mint : NkColors.surface4,
                               width: isSelected ? 2 : 1,
                             ),
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color: const Color(0xFF1CE4B3).withOpacity(0.2),
+                                      color: NkColors.mintSoft(0.2),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),
@@ -260,7 +261,7 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1CE4B3)),
+                                    valueColor: AlwaysStoppedAnimation<Color>(NkColors.mint),
                                   ),
                                 ),
                               ] else ...[
@@ -275,7 +276,7 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
-                                  color: isSelected ? const Color(0xFF1CE4B3) : Colors.grey[300],
+                                  color: isSelected ? NkColors.mint : NkColors.fgMuted,
                                 ),
                                 textAlign: TextAlign.center,
                                 maxLines: 1,

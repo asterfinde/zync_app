@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../app/theme/design_tokens.dart';
 import '../../../../core/models/user_status.dart';
 import '../../../../core/services/gps_service.dart';
 
 /// Acciones puras de UI: copiar al portapapeles, abrir Maps, mostrar SnackBars.
 /// Extraído de in_circle_view.dart en Sem 5 Día 5.
 class CircleActions {
-  static const _accent = Color(0xFF1EE9A4);
-  static const _sosRed = Color(0xFFD32F2F);
 
   /// Copia [text] al portapapeles y muestra confirmación.
   static void copyToClipboard(BuildContext context, String text) {
@@ -17,7 +16,7 @@ class CircleActions {
       const SnackBar(
         content: Text('¡Código copiado al portapapeles!'),
         duration: Duration(seconds: 2),
-        backgroundColor: _accent,
+        backgroundColor: NkColors.mint,
       ),
     );
   }
@@ -56,7 +55,7 @@ class CircleActions {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: _sosRed,
+        backgroundColor: NkColors.danger,
         duration: const Duration(seconds: 3),
       ),
     );

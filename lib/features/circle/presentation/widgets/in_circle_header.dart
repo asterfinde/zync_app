@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../app/theme/design_tokens.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 
 class InCircleHeader extends StatelessWidget {
@@ -10,7 +11,7 @@ class InCircleHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
-      color: Colors.black,
+      color: NkColors.canvas,
       child: Row(
         children: [
           Expanded(
@@ -22,17 +23,13 @@ class InCircleHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: NkColors.onDark,
                     letterSpacing: 1.2,
                   ),
                 ),
                 Text(
                   nickname,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF9E9E9E),
-                    fontWeight: FontWeight.w400,
-                  ),
+                  style: NkTextStyle.body.copyWith(color: NkColors.fgSub),
                 ),
               ],
             ),
@@ -43,16 +40,11 @@ class InCircleHeader extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const SettingsPage()),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1CE7E8),
-              foregroundColor: Colors.black,
+              backgroundColor: NkColors.mint,
+              foregroundColor: NkColors.onMint,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0),
-              ),
+              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
               elevation: 0,
             ),
             icon: const Icon(Icons.settings, size: 18),

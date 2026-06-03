@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../app/theme/design_tokens.dart';
 
 class SilentModeButton extends StatelessWidget {
   final bool isActive;
@@ -16,17 +17,17 @@ class SilentModeButton extends StatelessWidget {
       key: const Key('btn_silent_mode'),
       onPressed: onToggle,
       style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFF1EE9A4),
-        disabledForegroundColor: const Color(0xFF9E9E9E),
-        backgroundColor: Colors.black,
-        side: const BorderSide(color: Color(0xFF1EE9A4)),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        foregroundColor: NkColors.mint,
+        disabledForegroundColor: NkColors.fgSub,
+        backgroundColor: NkColors.canvas,
+        side: const BorderSide(color: NkColors.mint),
+        padding: const EdgeInsets.symmetric(vertical: NkSpacing.s),
+        shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
       ),
       icon: const Icon(Icons.bedtime_outlined, size: 18),
-      label: const Text(
-        'Modo Silencio',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+      label: Text(
+        'Silencio',
+        style: NkTextStyle.meta.copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }

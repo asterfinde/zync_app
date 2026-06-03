@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../app/theme/design_tokens.dart';
 import '../../../../services/circle_service.dart';
 
 class JoinRequestsBanner extends StatelessWidget {
@@ -22,7 +23,7 @@ class JoinRequestsBanner extends StatelessWidget {
         const SizedBox(height: 24),
         Row(
           children: [
-            const Icon(Icons.person_add_outlined, size: 24, color: Color(0xFF1EE9A4)),
+            const Icon(Icons.person_add_outlined, size: 24, color: NkColors.mint),
             const SizedBox(width: 8),
             Text(
               'Solicitudes de ingreso (${requests.length})',
@@ -66,15 +67,15 @@ class _JoinRequestCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFF1EE9A4).withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: NkColors.mintSoft(0.4)),
+        borderRadius: NkRadius.forInput,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.person_outline, size: 20, color: Color(0xFF1EE9A4)),
+              const Icon(Icons.person_outline, size: 20, color: NkColors.mint),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -90,16 +91,13 @@ class _JoinRequestCard extends StatelessWidget {
               if (request.requestedAt != null)
                 Text(
                   _timeAgo(request.requestedAt),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+                  style: NkTextStyle.micro,
                 ),
             ],
           ),
           if (request.email.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(
-              request.email,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF9E9E9E)),
-            ),
+            Text(request.email, style: NkTextStyle.micro),
           ],
           const SizedBox(height: 14),
           SizedBox(
@@ -108,9 +106,9 @@ class _JoinRequestCard extends StatelessWidget {
               key: ValueKey('btn_approve_${request.userId}'),
               onPressed: onApprove,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1EE9A4),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                backgroundColor: NkColors.mint,
+                foregroundColor: NkColors.onMint,
+                shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 elevation: 0,
               ),

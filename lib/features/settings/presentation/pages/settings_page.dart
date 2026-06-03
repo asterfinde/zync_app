@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../app/theme/design_tokens.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
@@ -18,14 +19,14 @@ import '../../../../services/circle_service.dart'; // Para obtener Circle object
 
 /// Paleta de colores extraída del diseño de la pantalla de referencia (InCircleView).
 class _AppColors {
-  static const Color background = Color(0xFF000000); // Negro puro
-  static const Color accent = Color(0xFF1EE9A4); // Verde menta/turquesa
-  static const Color textPrimary = Color(0xFFFFFFFF); // Blanco
-  static const Color textSecondary = Color(0xFF9E9E9E); // Gris para subtítulos y labels
-  static const Color cardBackground = Color(0xFF1C1C1E); // Gris oscuro para menús y diálogos
-  static const Color cardBorder = Color(0xFF3A3A3C); // Borde sutil para tarjetas y divider
-  static const Color sosRed = Color(0xFFD32F2F); // Rojo para alertas SOS
-  static const Color inputFill = Color(0xFF2C2C2E); // Relleno de inputs
+  static const Color background    = NkColors.canvas;
+  static const Color accent        = NkColors.mint;
+  static const Color textPrimary   = NkColors.onDark;
+  static const Color textSecondary = NkColors.fgSub;
+  static const Color cardBackground = NkColors.surface2;
+  static const Color cardBorder    = NkColors.surface4;
+  static const Color sosRed        = NkColors.danger;
+  static const Color inputFill     = NkColors.surface3;
 }
 
 /// Estilos de texto consistentes con el diseño de referencia.
@@ -433,7 +434,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                   barrierDismissible: false,
                   builder: (_) => const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1EE9A4)),
+                      valueColor: AlwaysStoppedAnimation<Color>(NkColors.mint),
                     ),
                   ),
                 );
@@ -500,8 +501,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                       : 'Error de autenticación. Intenta de nuevo.';
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(msg, style: const TextStyle(color: Colors.white)),
-                      backgroundColor: Colors.red,
+                      content: Text(msg, style: const TextStyle(color: NkColors.onDark)),
+                      backgroundColor: NkColors.danger,
                     ),
                   );
                 } catch (e) {
@@ -572,7 +573,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                   barrierDismissible: false,
                   builder: (_) => const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1EE9A4)),
+                      valueColor: AlwaysStoppedAnimation<Color>(NkColors.mint),
                     ),
                   ),
                 );
@@ -800,14 +801,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                     onPressed: () => _showLogoutDialog(context, ref),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFC401),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      foregroundColor: NkColors.canvas,
+                      padding: const EdgeInsets.symmetric(vertical: NkSpacing.s),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: NkRadius.forInput,
                       ),
                     ),
                     icon: const Icon(Icons.logout),
-                    label: const Text('Cerrar Sesión', style: TextStyle(color: Colors.black)),
+                    label: const Text('Cerrar Sesión', style: TextStyle(color: NkColors.canvas)),
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(

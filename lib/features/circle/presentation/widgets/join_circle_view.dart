@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/global_keys.dart';
 import '../../../../services/circle_service.dart';
+import '../../../../app/theme/design_tokens.dart';
+
 class JoinCircleView extends ConsumerStatefulWidget {
   const JoinCircleView({super.key});
 
@@ -40,7 +42,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
           const SnackBar(
             content: Text('Por favor ingresa un código de invitación.'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: NkColors.danger,
           ),
         );
       }
@@ -56,7 +58,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
           const SnackBar(
             content: Text('Solicitud enviada. Esperando aprobación del creador.'),
-            backgroundColor: Color(0xFF1CE4B3),
+            backgroundColor: NkColors.mint,
           ),
         );
         _joinController.clear();
@@ -67,7 +69,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: NkColors.danger,
           ),
         );
       }
@@ -77,16 +79,16 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: NkColors.canvas,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: NkColors.canvas,
+        foregroundColor: NkColors.onDark,
         title: const Text(
           'Unirse a Círculo',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: NkColors.onDark,
           ),
         ),
         centerTitle: true,
@@ -99,12 +101,12 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
             const SizedBox(height: 40),
 
             // Mensaje principal
-            Text(
+            const Text(
               "Ingresa el código de invitación que recibiste para unirte al círculo.",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w300,
-                color: Colors.white.withOpacity(0.8),
+                color: NkColors.fgMuted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -115,23 +117,22 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
               key: const Key('field_invite_code'),
               controller: _joinController,
               onChanged: (_) => _validateForm(),
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: NkColors.onDark),
               decoration: InputDecoration(
                 labelText: 'Código de Invitación',
-                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                labelStyle: const TextStyle(color: NkColors.fgMuted),
                 hintText: 'ej., ABC123',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                hintStyle: const TextStyle(color: NkColors.fgHint),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                  borderRadius: NkRadius.forInput,
+                  borderSide: const BorderSide(color: NkColors.fgHint),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: Color(0xFF1CE4B3), width: 2),
+                  borderRadius: NkRadius.forInput,
+                  borderSide: const BorderSide(color: NkColors.mint, width: 2),
                 ),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
+                fillColor: NkColors.surface3,
               ),
             ),
             const SizedBox(height: 40),
@@ -141,12 +142,11 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
               key: const Key('btn_join_circle'),
               onPressed: _isFormValid ? _onJoinCircle : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    _isFormValid ? const Color(0xFF1CE4B3) : Colors.grey[700],
-                foregroundColor: _isFormValid ? Colors.black : Colors.grey[400],
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: _isFormValid ? NkColors.mint : NkColors.surface4,
+                foregroundColor: _isFormValid ? NkColors.onMint : NkColors.fgHint,
+                padding: const EdgeInsets.symmetric(vertical: NkSpacing.s),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: NkRadius.forInput,
                 ),
                 elevation: 0,
               ),
@@ -155,7 +155,7 @@ class _JoinCircleViewState extends ConsumerState<JoinCircleView> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: _isFormValid ? Colors.black : Colors.grey[500],
+                  color: _isFormValid ? NkColors.onMint : NkColors.fgHint,
                 ),
               ),
             ),

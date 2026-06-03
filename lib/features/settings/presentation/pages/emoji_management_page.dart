@@ -6,16 +6,7 @@ import '../../../../core/services/emoji_service.dart';
 import '../../../../core/services/emoji_management_service.dart';
 import '../widgets/create_emoji_dialog.dart';
 import '../widgets/delete_emoji_dialog.dart';
-
-/// Colores de la app
-class _AppColors {
-  static const Color background = Color(0xFF000000);
-  static const Color accent = Color(0xFF1EE9A4);
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF9E9E9E);
-  static const Color cardBackground = Color(0xFF1C1C1E);
-  static const Color cardBorder = Color(0xFF3A3A3C);
-}
+import '../../../../app/theme/design_tokens.dart';
 
 /// Página de gestión de estados/emojis
 ///
@@ -137,15 +128,15 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _AppColors.background,
+      backgroundColor: NkColors.canvas,
       appBar: AppBar(
-        backgroundColor: _AppColors.background,
+        backgroundColor: NkColors.canvas,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
           'Mis Estados',
           style: TextStyle(
-            color: _AppColors.textPrimary,
+            color: NkColors.onDark,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -153,10 +144,10 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadEmojis,
-        color: _AppColors.accent,
-        backgroundColor: _AppColors.cardBackground,
+        color: NkColors.mint,
+        backgroundColor: NkColors.surface2,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(NkSpacing.s),
           children: [
             // Sección: Estados de ZYNC (predefinidos)
             _buildPredefinedSection(),
@@ -179,10 +170,10 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
           key: const Key('fab_create_emoji'),
           onPressed: _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? null : _handleCreateEmoji,
           backgroundColor:
-              _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? _AppColors.cardBorder : _AppColors.accent,
-          foregroundColor: _AppColors.background,
+              _customEmojiCount >= EmojiManagementService.maxCustomEmojis ? NkColors.surface4 : NkColors.mint,
+          foregroundColor: NkColors.canvas,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: NkRadius.forButton,
           ),
           child: const Icon(Icons.add, size: 28),
         ),
@@ -194,22 +185,22 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
   Widget _buildPredefinedSection() {
     return Container(
       decoration: BoxDecoration(
-        color: _AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _AppColors.cardBorder),
+        color: NkColors.surface2,
+        borderRadius: NkRadius.forInput,
+        border: Border.all(color: NkColors.surface4),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(NkSpacing.s),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Estados de ZYNC',
                   style: TextStyle(
-                    color: _AppColors.textPrimary,
+                    color: NkColors.onDark,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -217,13 +208,13 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _AppColors.accent.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    color: NkColors.mintSoft(0.2),
+                    borderRadius: NkRadius.forInput,
                   ),
                   child: Text(
                     '${_predefinedEmojis.length} estados',
                     style: const TextStyle(
-                      color: _AppColors.accent,
+                      color: NkColors.mint,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -232,13 +223,13 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
               ],
             ),
           ),
-          Divider(color: _AppColors.cardBorder, height: 1),
+          Divider(color: NkColors.surface4, height: 1),
           if (_isLoadingPredefined)
             const Padding(
               padding: EdgeInsets.all(32),
               child: Center(
                 child: CircularProgressIndicator(
-                  color: _AppColors.accent,
+                  color: NkColors.mint,
                 ),
               ),
             )
@@ -254,14 +245,14 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
               InkWell(
                 onTap: () => setState(() => _showAllPredefined = !_showAllPredefined),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(NkSpacing.s),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         _showAllPredefined ? 'Ver menos' : 'Ver todos (${_predefinedEmojis.length})',
                         style: const TextStyle(
-                          color: _AppColors.accent,
+                          color: NkColors.mint,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -269,7 +260,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
                       const SizedBox(width: 4),
                       Icon(
                         _showAllPredefined ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                        color: _AppColors.accent,
+                        color: NkColors.mint,
                         size: 20,
                       ),
                     ],
@@ -285,22 +276,22 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
   Widget _buildCustomSection() {
     return Container(
       decoration: BoxDecoration(
-        color: _AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _AppColors.cardBorder),
+        color: NkColors.surface2,
+        borderRadius: NkRadius.forInput,
+        border: Border.all(color: NkColors.surface4),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(NkSpacing.s),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Mis estados personalizados',
                   style: TextStyle(
-                    color: _AppColors.textPrimary,
+                    color: NkColors.onDark,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -308,7 +299,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
                 Text(
                   '$_customEmojiCount/${EmojiManagementService.maxCustomEmojis}',
                   style: const TextStyle(
-                    color: _AppColors.textSecondary,
+                    color: NkColors.fgSub,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -316,13 +307,13 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
               ],
             ),
           ),
-          Divider(color: _AppColors.cardBorder, height: 1),
+          Divider(color: NkColors.surface4, height: 1),
           if (_isLoadingCustom)
             const Padding(
               padding: EdgeInsets.all(32),
               child: Center(
                 child: CircularProgressIndicator(
-                  color: _AppColors.accent,
+                  color: NkColors.mint,
                 ),
               ),
             )
@@ -333,7 +324,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
                 child: Text(
                   'Aún no tienes estados personalizados',
                   style: TextStyle(
-                    color: _AppColors.textSecondary,
+                    color: NkColors.fgSub,
                     fontSize: 14,
                   ),
                 ),
@@ -351,11 +342,11 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
       return InkWell(
         onTap: null, // Sin acción al tocar (solo visualización)
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: NkSpacing.s, vertical: 12),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: _AppColors.cardBorder.withOpacity(0.5),
+                color: NkColors.surface4.withValues(alpha: 0.5),
               ),
             ),
           ),
@@ -366,7 +357,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
                 emoji.emoji,
                 style: const TextStyle(fontSize: 28),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: NkSpacing.s),
 
               // Label
               Expanded(
@@ -376,7 +367,7 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
                     Text(
                       emoji.label,
                       style: const TextStyle(
-                        color: _AppColors.textPrimary,
+                        color: NkColors.onDark,
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),
@@ -391,8 +382,8 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
                   key: ValueKey('btn_delete_emoji_${emoji.id}'),
                   icon: const Icon(Icons.delete_outline),
                   color: (_deletePermissions[emoji.id] ?? false)
-                      ? _AppColors.textSecondary
-                      : _AppColors.textSecondary.withOpacity(0.3),
+                      ? NkColors.fgSub
+                      : NkColors.fgDisabled,
                   onPressed: (_deletePermissions[emoji.id] ?? false) ? () => _handleDeleteEmoji(emoji) : null,
                   tooltip: (_deletePermissions[emoji.id] ?? false) ? 'Borrar estado' : 'Solo el creador puede borrar',
                 ),
@@ -405,27 +396,27 @@ class _EmojiManagementPageState extends State<EmojiManagementPage> {
 
   Widget _buildInfoTooltip() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(NkSpacing.s),
       decoration: BoxDecoration(
-        color: _AppColors.cardBackground.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
+        color: NkColors.surface2.withValues(alpha: 0.5),
+        borderRadius: NkRadius.forInput,
         border: Border.all(
-          color: _AppColors.accent.withOpacity(0.3),
+          color: NkColors.mintSoft(0.3),
         ),
       ),
-      child: Row(
+      child: const Row(
         children: [
           Icon(
             Icons.info_outline,
-            color: _AppColors.accent,
+            color: NkColors.mint,
             size: 20,
           ),
-          const SizedBox(width: 12),
-          const Expanded(
+          SizedBox(width: 12),
+          Expanded(
             child: Text(
               'Todos los miembros del círculo pueden usar estos estados',
               style: TextStyle(
-                color: _AppColors.textSecondary,
+                color: NkColors.fgSub,
                 fontSize: 13,
               ),
             ),

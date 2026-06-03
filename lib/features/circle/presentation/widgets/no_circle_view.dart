@@ -6,6 +6,7 @@ import '../../../../contexts/identity/presentation/provider/auth_state.dart';
 import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
 import '../../../../core/services/session_cache_service.dart';
 import '../../../../services/circle_service.dart';
+import '../../../../app/theme/design_tokens.dart';
 import 'create_circle_view.dart';
 import 'join_circle_view.dart';
 
@@ -27,15 +28,6 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
 
   void _navigateToCreateCircle() {
     // TODO: re-enable email verification gate after defining UX (see deuda técnica)
-    // final verified = FirebaseAuth.instance.currentUser?.emailVerified ?? true;
-    // if (!verified) {
-    //   _showVerificationRequiredModal(() {
-    //     Navigator.of(context).push(
-    //       MaterialPageRoute(builder: (context) => const CreateCircleView()),
-    //     );
-    //   });
-    //   return;
-    // }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const CreateCircleView()),
     );
@@ -43,22 +35,10 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
 
   void _navigateToJoinCircle() {
     // TODO: re-enable email verification gate after defining UX (see deuda técnica)
-    // final verified = FirebaseAuth.instance.currentUser?.emailVerified ?? true;
-    // if (!verified) {
-    //   _showVerificationRequiredModal(() {
-    //     Navigator.of(context).push(
-    //       MaterialPageRoute(builder: (context) => const JoinCircleView()),
-    //     );
-    //   });
-    //   return;
-    // }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const JoinCircleView()),
     );
   }
-
-  // TODO: re-enable after defining email verification UX (see deuda técnica)
-  // void _showVerificationRequiredModal(VoidCallback onVerified) { ... }
 
   void _showAccountDialog(BuildContext context) {
     final authState = ref.read(authProvider);
@@ -67,22 +47,22 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
+        backgroundColor: NkColors.surface2,
         title: const Text(
           'Mi Cuenta',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: NkColors.onDark),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Nickname', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const Text('Nickname', style: TextStyle(color: NkColors.fgHint, fontSize: 12)),
             const SizedBox(height: 4),
-            Text(user.nickname, style: const TextStyle(color: Colors.white, fontSize: 16)),
+            Text(user.nickname, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
             const SizedBox(height: 16),
-            const Text('Email', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const Text('Email', style: TextStyle(color: NkColors.fgHint, fontSize: 12)),
             const SizedBox(height: 4),
-            Text(user.email, style: const TextStyle(color: Colors.white, fontSize: 16)),
+            Text(user.email, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
           ],
         ),
         actions: [
@@ -91,11 +71,11 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
               Navigator.of(context).pop();
               _showDeleteAccountDialog(context);
             },
-            child: const Text('Eliminar Cuenta', style: TextStyle(color: Colors.red)),
+            child: const Text('Eliminar Cuenta', style: TextStyle(color: NkColors.danger)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cerrar', style: TextStyle(color: Colors.tealAccent)),
+            child: const Text('Cerrar', style: TextStyle(color: NkColors.mint)),
           ),
         ],
       ),
@@ -107,17 +87,17 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
       context: parentContext,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Eliminar Cuenta', style: TextStyle(color: Colors.white)),
+        backgroundColor: NkColors.surface2,
+        shape: RoundedRectangleBorder(borderRadius: NkRadius.forButton),
+        title: const Text('Eliminar Cuenta', style: TextStyle(color: NkColors.onDark)),
         content: const Text(
           '¿Estás seguro? Esta acción es irreversible. Se eliminarán tu cuenta y todos tus datos.',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: NkColors.fgSub),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancelar', style: TextStyle(color: NkColors.fgSub)),
           ),
           TextButton(
             onPressed: () {
@@ -127,7 +107,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 _executeDeleteAccount(context);
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: NkColors.danger),
             child: const Text('Eliminar Cuenta'),
           ),
         ],
@@ -147,7 +127,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
       barrierDismissible: false,
       builder: (_) => const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.tealAccent),
+          valueColor: AlwaysStoppedAnimation<Color>(NkColors.mint),
         ),
       ),
     );
@@ -175,8 +155,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
+            content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: NkColors.onDark)),
+            backgroundColor: NkColors.danger,
           ),
         );
       }
@@ -193,8 +173,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: Colors.white)),
-              backgroundColor: Colors.red,
+              content: Text('Error al eliminar la cuenta. Intenta de nuevo.', style: TextStyle(color: NkColors.onDark)),
+              backgroundColor: NkColors.danger,
             ),
           );
         }
@@ -212,39 +192,39 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          backgroundColor: Colors.grey[900],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Confirmar identidad', style: TextStyle(color: Colors.white)),
+          backgroundColor: NkColors.surface2,
+          shape: RoundedRectangleBorder(borderRadius: NkRadius.forButton),
+          title: const Text('Confirmar identidad', style: TextStyle(color: NkColors.onDark)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Por seguridad, ingresa tu contraseña para confirmar la eliminación.',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: NkColors.fgSub),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: passwordController,
                 obscureText: isPasswordObscured,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: NkColors.onDark),
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  labelStyle: const TextStyle(color: Colors.grey),
+                  labelStyle: const TextStyle(color: NkColors.fgSub),
                   filled: true,
-                  fillColor: Colors.black26,
+                  fillColor: NkColors.surface3,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: NkRadius.forInput,
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.tealAccent, width: 2),
+                    borderRadius: NkRadius.forInput,
+                    borderSide: const BorderSide(color: NkColors.mint, width: 2),
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
                       isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      color: Colors.grey,
+                      color: NkColors.fgSub,
                     ),
                     onPressed: () {
                       setDialogState(() {
@@ -259,7 +239,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              child: const Text('Cancelar', style: TextStyle(color: NkColors.fgSub)),
             ),
             TextButton(
               onPressed: () async {
@@ -271,7 +251,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   barrierDismissible: false,
                   builder: (_) => const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.tealAccent),
+                      valueColor: AlwaysStoppedAnimation<Color>(NkColors.mint),
                     ),
                   ),
                 );
@@ -292,7 +272,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content:
-                            Text('✅ Tu cuenta ha sido eliminada exitosamente', style: TextStyle(color: Colors.white)),
+                            Text('✅ Tu cuenta ha sido eliminada exitosamente', style: TextStyle(color: NkColors.onDark)),
                         backgroundColor: Colors.green,
                         duration: Duration(seconds: 3),
                       ),
@@ -312,8 +292,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       : 'Error de autenticación. Intenta de nuevo.';
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(msg, style: const TextStyle(color: Colors.white)),
-                      backgroundColor: Colors.red,
+                      content: Text(msg, style: const TextStyle(color: NkColors.onDark)),
+                      backgroundColor: NkColors.danger,
                     ),
                   );
                 } catch (e) {
@@ -322,14 +302,14 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Error al eliminar la cuenta. Intenta de nuevo.',
-                            style: TextStyle(color: Colors.white)),
-                        backgroundColor: Colors.red,
+                            style: TextStyle(color: NkColors.onDark)),
+                        backgroundColor: NkColors.danger,
                       ),
                     );
                   }
                 }
               },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: NkColors.danger),
               child: const Text('Confirmar'),
             ),
           ],
@@ -342,21 +322,21 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
+        backgroundColor: NkColors.surface2,
         title: const Text(
           'Cerrar Sesión',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: NkColors.onDark),
         ),
         content: const Text(
           '¿Estás seguro de que quieres cerrar sesión?',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: NkColors.fgSub),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text(
               'Cancelar',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: NkColors.fgSub),
             ),
           ),
           TextButton(
@@ -389,14 +369,14 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error al cerrar sesión: $e'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: NkColors.danger,
                       duration: const Duration(seconds: 2),
                     ),
                   );
                 }
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: NkColors.danger),
             child: const Text('Cerrar Sesión'),
           ),
         ],
@@ -411,7 +391,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         // AppBar personalizado (igual que InCircleView)
         Container(
           padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
-          color: Colors.black,
+          color: NkColors.canvas,
           child: Row(
             children: [
               Expanded(
@@ -423,7 +403,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: NkColors.onDark,
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -431,7 +411,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       _getCurrentUserNickname(),
                       style: const TextStyle(
                         fontSize: 16,
-                        color: Colors.white,
+                        color: NkColors.onDark,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -440,7 +420,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
               ),
               IconButton(
                 onPressed: () => _showAccountDialog(context),
-                icon: const Icon(Icons.account_circle_outlined, color: Colors.white, size: 28),
+                icon: const Icon(Icons.account_circle_outlined, color: NkColors.onDark, size: 28),
                 tooltip: 'Mi Cuenta',
               ),
               const SizedBox(width: 8),
@@ -448,15 +428,15 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 key: const Key('btn_logout'),
                 onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B6B),
-                  foregroundColor: Colors.white,
+                  backgroundColor: NkColors.danger,
+                  foregroundColor: NkColors.onDark,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
+                    borderRadius: NkRadius.forInput,
                   ),
                   elevation: 0,
                 ),
@@ -470,7 +450,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         // Contenido principal
         Expanded(
           child: Container(
-            color: Colors.black,
+            color: NkColors.canvas,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -480,24 +460,24 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   const SizedBox(height: 40), // Espacio reducido
 
                   // Mensaje principal
-                  Text(
+                  const Text(
                     "Aún no estás en un círculo",
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w300,
-                      color: Colors.white.withOpacity(0.9),
+                      color: NkColors.fgMuted,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
 
                   // Mensaje de acción
-                  Text(
+                  const Text(
                     "¿Qué te gustaría hacer?",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w400,
-                      color: Colors.white.withOpacity(0.7),
+                      color: NkColors.fgMuted,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -510,37 +490,37 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       key: const Key('btn_navigate_create_circle'),
                       onPressed: _navigateToCreateCircle,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1CE4B3),
-                        foregroundColor: Colors.black,
+                        backgroundColor: NkColors.mint,
+                        foregroundColor: NkColors.onMint,
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: NkRadius.forInput,
                         ),
                         elevation: 0,
                       ),
-                      child: Column(
+                      child: const Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.add_circle,
-                            color: Colors.black,
+                            color: NkColors.onMint,
                             size: 28,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
+                          SizedBox(height: 8),
+                          Text(
                             'Crear un Círculo',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                              color: NkColors.onMint,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
+                          SizedBox(height: 4),
+                          Text(
                             'Crea tu propio círculo e invita a otros',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.black87,
+                              color: NkColors.onMint,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -552,21 +532,21 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   const SizedBox(height: 30),
 
                   // Divider OR
-                  Row(
+                  const Row(
                     children: [
-                      Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                      Expanded(child: Divider(color: NkColors.fgHint)),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: EdgeInsets.symmetric(horizontal: 16.0),
                         child: Text(
                           "O",
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: NkColors.fgSub,
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                      Expanded(child: Divider(color: NkColors.fgHint)),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -578,37 +558,37 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       key: const Key('btn_navigate_join_circle'),
                       onPressed: _navigateToJoinCircle,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 91, 207, 139),
-                        foregroundColor: Colors.black,
+                        backgroundColor: NkColors.mint,
+                        foregroundColor: NkColors.onMint,
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: NkRadius.forInput,
                         ),
                         elevation: 0,
                       ),
-                      child: Column(
+                      child: const Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.group_add,
-                            color: Colors.black,
+                            color: NkColors.onMint,
                             size: 28,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
+                          SizedBox(height: 8),
+                          Text(
                             'Unirse a un Círculo',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                              color: NkColors.onMint,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
+                          SizedBox(height: 4),
+                          Text(
                             'Únete con un código de invitación',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.black87,
+                              color: NkColors.onMint,
                             ),
                             textAlign: TextAlign.center,
                           ),

@@ -3,6 +3,7 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../../app/theme/design_tokens.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
 import 'package:nunakin_app/core/services/secure_credential_service.dart';
@@ -101,7 +102,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_message, style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
+            backgroundColor: NkColors.danger,
           ),
         );
       }
@@ -113,7 +114,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_message, style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
+            backgroundColor: NkColors.danger,
           ),
         );
       }
@@ -166,7 +167,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_message, style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
+            backgroundColor: NkColors.danger,
           ),
         );
       }
@@ -253,7 +254,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
     showModalBottomSheet(
       context: rootContext,
       isScrollControlled: true,
-      backgroundColor: Colors.black,
+      backgroundColor: NkColors.canvas,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -284,7 +285,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   Text(
                     'Ingresa tu correo electrónico y te enviaremos instrucciones para recuperar tu contraseña.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFF7EAEA0)),
+                    style: TextStyle(color: NkColors.fgSub),
                   ),
                   const SizedBox(height: 24),
                   TextField(
@@ -294,9 +295,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Email',
-                      labelStyle: TextStyle(color: Color(0xFF7EAEA0)),
+                      labelStyle: TextStyle(color: NkColors.fgSub),
                       prefixIcon:
-                          Icon(Icons.alternate_email, color: Color(0xFF7EAEA0)),
+                          Icon(Icons.alternate_email, color: NkColors.fgSub),
                       filled: true,
                       fillColor: Color(0xFF171D1B),
                       border: OutlineInputBorder(
@@ -306,7 +307,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide:
-                            BorderSide(color: Color(0xFF7EAEA0), width: 2),
+                            BorderSide(color: NkColors.fgSub, width: 2),
                       ),
                     ),
                   ),
@@ -314,7 +315,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   if (isLoading)
                     CircularProgressIndicator(
                       valueColor:
-                          AlwaysStoppedAnimation<Color>(Color(0xFF7EAEA0)),
+                          AlwaysStoppedAnimation<Color>(NkColors.fgSub),
                     )
                   else
                     SizedBox(
@@ -322,7 +323,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                       child: ElevatedButton(
                         key: const Key('btn_send_reset'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF7EAEA0),
+                          backgroundColor: NkColors.fgSub,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -350,7 +351,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                               SnackBar(
                                 content: Text('Por favor ingresa un correo.',
                                     style: TextStyle(color: Colors.white)),
-                                backgroundColor: Colors.red,
+                                backgroundColor: NkColors.danger,
                               ),
                             );
                             return;
@@ -471,7 +472,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                                 SnackBar(
                                   content: Text(errorMessage,
                                       style: TextStyle(color: Colors.white)),
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: NkColors.danger,
                                 ),
                               );
                             }
@@ -522,18 +523,18 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = Colors.tealAccent.shade400;
-    final primaryTextColor = Colors.white;
-    final secondaryTextColor = Colors.grey.shade400;
-    final inputFillColor = Colors.black26;
+    const accentColor = NkColors.mint;
+    const primaryTextColor = NkColors.onDark;
+    const secondaryTextColor = NkColors.fgMuted;
+    const inputFillColor = NkColors.surface2;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Zync'),
-        backgroundColor: Colors.black,
+        backgroundColor: NkColors.canvas,
         elevation: 0,
       ),
-      backgroundColor: Colors.black,
+      backgroundColor: NkColors.canvas,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -556,7 +557,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   'v$_currentTime',
                   style: TextStyle(
                     fontSize: 10,
-                    color: Colors.grey.shade700,
+                    color: NkColors.fgHint,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -742,7 +743,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                           minimumSize: const Size(double.infinity, 55),
                           backgroundColor: _isFormValid && !_isLoading
                               ? Colors.transparent
-                              : const Color(0xFF171D1B),
+                              : NkColors.canvas,
                           shadowColor: Colors.transparent,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
@@ -756,7 +757,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                             fontWeight: FontWeight.bold,
                             color: _isFormValid && !_isLoading
                                 ? Colors.black
-                                : const Color(0xFF7EAEA0),
+                                : NkColors.fgSub,
                           ),
                         ),
                       ),

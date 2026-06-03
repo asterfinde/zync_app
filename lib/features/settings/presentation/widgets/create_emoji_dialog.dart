@@ -2,18 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../app/theme/design_tokens.dart';
 import '../../../../core/services/emoji_management_service.dart';
-
-/// Colores de la app
-class _AppColors {
-  static const Color background = Color(0xFF000000);
-  static const Color accent = Color(0xFF1EE9A4);
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF9E9E9E);
-  static const Color cardBackground = Color(0xFF1C1C1E);
-  static const Color inputFill = Color(0xFF2C2C2E);
-  static const Color sosRed = Color(0xFFD32F2F);
-}
 
 /// Dialog para crear un nuevo estado personalizado
 ///
@@ -24,7 +14,7 @@ class _AppColors {
 /// - Muestra límite actual (X/10)
 class CreateEmojiDialog extends StatefulWidget {
   final String circleId;
-  final int currentCount; // Actual count of custom emojis
+  final int currentCount;
 
   const CreateEmojiDialog({
     super.key,
@@ -72,11 +62,11 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
       );
 
       if (mounted) {
-        Navigator.pop(context, true); // Return true = emoji creado
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ Estado creado correctamente'),
-            backgroundColor: _AppColors.accent,
+            backgroundColor: NkColors.mint,
             duration: Duration(seconds: 2),
           ),
         );
@@ -91,7 +81,7 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: _AppColors.sosRed,
+        backgroundColor: NkColors.danger,
         duration: const Duration(seconds: 3),
       ),
     );
@@ -100,19 +90,16 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: _AppColors.cardBackground,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      backgroundColor: NkColors.surface2,
+      shape: RoundedRectangleBorder(borderRadius: NkRadius.forButton),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(NkSpacing.m),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -122,54 +109,42 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: _AppColors.textPrimary,
+                        color: NkColors.onDark,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: NkSpacing.xs2),
                   Text(
                     '${widget.currentCount}/${EmojiManagementService.maxCustomEmojis}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: _AppColors.textSecondary,
-                    ),
+                    style: NkTextStyle.meta,
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-
-              // Emoji selector
+              const SizedBox(height: NkSpacing.m),
               _buildEmojiSelector(),
-              const SizedBox(height: 16),
-
-              // Emoji picker (si está activo)
+              const SizedBox(height: NkSpacing.s),
               if (_showEmojiPicker) _buildEmojiPicker(),
-
-              // Name field (solo si no está el picker abierto)
               if (!_showEmojiPicker) ...[
                 Form(
                   key: _formKey,
                   child: TextFormField(
                     key: const Key('field_emoji_name'),
                     controller: _nameController,
-                    style: const TextStyle(color: _AppColors.textPrimary),
+                    style: const TextStyle(color: NkColors.onDark),
                     decoration: InputDecoration(
                       labelText: 'Nombre del estado',
-                      labelStyle: const TextStyle(color: _AppColors.textSecondary),
+                      labelStyle: NkTextStyle.meta,
                       hintText: 'Ej: Natación, Guitarra, Doctor',
-                      hintStyle: const TextStyle(color: _AppColors.textSecondary),
+                      hintStyle: NkTextStyle.meta,
                       filled: true,
-                      fillColor: _AppColors.inputFill,
+                      fillColor: NkColors.surface3,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: NkRadius.forInput,
                         borderSide: BorderSide.none,
                       ),
                       counter: Text(
                         '${_nameController.text.length}/30',
-                        style: const TextStyle(
-                          color: _AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
+                        style: NkTextStyle.micro,
                       ),
                     ),
                     maxLength: 30,
@@ -185,34 +160,27 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // Preview
-                if (_selectedEmoji.isNotEmpty && _nameController.text.trim().isNotEmpty) _buildPreview(),
-
-                const SizedBox(height: 20),
-
-                // Buttons
+                const SizedBox(height: NkSpacing.s),
+                if (_selectedEmoji.isNotEmpty && _nameController.text.trim().isNotEmpty)
+                  _buildPreview(),
+                const SizedBox(height: NkSpacing.m),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
                       onPressed: _isCreating ? null : () => Navigator.pop(context),
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(color: _AppColors.textSecondary),
-                      ),
+                      child: Text('Cancelar', style: NkTextStyle.meta),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: NkSpacing.xs2),
                     ElevatedButton(
                       key: const Key('btn_create_emoji'),
                       onPressed: _isCreating ? null : _handleCreate,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _AppColors.accent,
-                        foregroundColor: _AppColors.background,
+                        backgroundColor: NkColors.mint,
+                        foregroundColor: NkColors.onMint,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                          horizontal: NkSpacing.m,
+                          vertical: NkSpacing.xs2,
                         ),
                       ),
                       child: _isCreating
@@ -221,7 +189,7 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
                               height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: _AppColors.background,
+                                color: NkColors.onMint,
                               ),
                             )
                           : const Text('Crear'),
@@ -240,12 +208,12 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
     return InkWell(
       key: const Key('btn_select_emoji'),
       onTap: () => setState(() => _showEmojiPicker = !_showEmojiPicker),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: NkRadius.forInput,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(NkSpacing.s),
         decoration: BoxDecoration(
-          color: _AppColors.inputFill,
-          borderRadius: BorderRadius.circular(12),
+          color: NkColors.surface3,
+          borderRadius: NkRadius.forInput,
         ),
         child: Row(
           children: [
@@ -253,8 +221,8 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: _AppColors.cardBackground,
-                borderRadius: BorderRadius.circular(8),
+                color: NkColors.surface2,
+                borderRadius: NkRadius.forSmall,
               ),
               child: Center(
                 child: Text(
@@ -263,32 +231,23 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: NkSpacing.xs2),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Emoji',
-                    style: TextStyle(
-                      color: _AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
+                  Text('Emoji', style: NkTextStyle.micro),
                   const SizedBox(height: 4),
                   Text(
                     _selectedEmoji.isEmpty ? 'Toca para elegir' : 'Toca para cambiar',
-                    style: const TextStyle(
-                      color: _AppColors.textPrimary,
-                      fontSize: 14,
-                    ),
+                    style: NkTextStyle.meta,
                   ),
                 ],
               ),
             ),
             Icon(
               _showEmojiPicker ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              color: _AppColors.textSecondary,
+              color: NkColors.fgSub,
             ),
           ],
         ),
@@ -299,10 +258,10 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
   Widget _buildEmojiPicker() {
     return Container(
       height: 300,
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.only(top: NkSpacing.xs2),
       decoration: BoxDecoration(
-        color: _AppColors.inputFill,
-        borderRadius: BorderRadius.circular(12),
+        color: NkColors.surface3,
+        borderRadius: NkRadius.forInput,
       ),
       child: EmojiPicker(
         onEmojiSelected: (category, emoji) {
@@ -316,25 +275,25 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
           checkPlatformCompatibility: true,
           emojiViewConfig: EmojiViewConfig(
             emojiSizeMax: 28,
-            backgroundColor: _AppColors.inputFill,
+            backgroundColor: NkColors.surface3,
             columns: 7,
             buttonMode: ButtonMode.MATERIAL,
           ),
           skinToneConfig: const SkinToneConfig(),
           categoryViewConfig: CategoryViewConfig(
-            backgroundColor: _AppColors.inputFill,
-            iconColor: _AppColors.textSecondary,
-            iconColorSelected: _AppColors.accent,
-            indicatorColor: _AppColors.accent,
+            backgroundColor: NkColors.surface3,
+            iconColor: NkColors.fgSub,
+            iconColorSelected: NkColors.mint,
+            indicatorColor: NkColors.mint,
           ),
           bottomActionBarConfig: BottomActionBarConfig(
-            backgroundColor: _AppColors.inputFill,
-            buttonColor: _AppColors.inputFill,
-            buttonIconColor: _AppColors.textSecondary,
+            backgroundColor: NkColors.surface3,
+            buttonColor: NkColors.surface3,
+            buttonIconColor: NkColors.fgSub,
           ),
           searchViewConfig: SearchViewConfig(
-            backgroundColor: _AppColors.inputFill,
-            buttonIconColor: _AppColors.textSecondary,
+            backgroundColor: NkColors.surface3,
+            buttonIconColor: NkColors.fgSub,
             hintText: 'Buscar emoji...',
           ),
         ),
@@ -347,42 +306,30 @@ class _CreateEmojiDialogState extends State<CreateEmojiDialog> {
     final shortLabel = label.length > 6 ? '${label.substring(0, 6)}.' : label;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(NkSpacing.xs3),
       decoration: BoxDecoration(
-        color: _AppColors.inputFill,
-        borderRadius: BorderRadius.circular(12),
+        color: NkColors.surface3,
+        borderRadius: NkRadius.forInput,
       ),
       child: Row(
         children: [
-          const Text(
-            'Vista previa:',
-            style: TextStyle(
-              color: _AppColors.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 12),
+          Text('Vista previa:', style: NkTextStyle.micro),
+          const SizedBox(width: NkSpacing.xs2),
           Container(
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: _AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(8),
+              color: NkColors.surface2,
+              borderRadius: NkRadius.forSmall,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  _selectedEmoji,
-                  style: const TextStyle(fontSize: 24),
-                ),
+                Text(_selectedEmoji, style: const TextStyle(fontSize: 24)),
                 const SizedBox(height: 2),
                 Text(
                   shortLabel,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: _AppColors.textSecondary,
-                  ),
+                  style: NkTextStyle.micro,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
