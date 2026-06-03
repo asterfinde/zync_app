@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../app/theme/design_tokens.dart';
 
 class CircleInfoCard extends StatelessWidget {
   final String circleName;
@@ -23,7 +24,7 @@ class CircleInfoCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.hub, size: 28, color: Color(0xFF1EE9A4)),
+              const Icon(Icons.hub, size: 28, color: NkColors.mint),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -34,13 +35,13 @@ class CircleInfoCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: NkColors.onDark,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '$memberCount miembros',
-                      style: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
+                      style: NkTextStyle.meta,
                     ),
                   ],
                 ),
@@ -50,7 +51,7 @@ class CircleInfoCard extends StatelessWidget {
           const SizedBox(height: 20),
           const Text(
             'Código de Invitación',
-            style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
+            style: NkTextStyle.meta,
           ),
           const SizedBox(height: 8),
           Row(
@@ -63,14 +64,14 @@ class CircleInfoCard extends StatelessWidget {
                     fontFamily: 'monospace',
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
-                    color: Colors.white,
+                    color: NkColors.onDark,
                     letterSpacing: 1.5,
                   ),
                 ),
               ),
               IconButton(
                 onPressed: onCopyCode,
-                icon: const Icon(Icons.copy, size: 24, color: Color(0xFF1EE9A4)),
+                icon: const Icon(Icons.copy, size: 24, color: NkColors.mint),
                 tooltip: 'Copiar código',
               ),
             ],

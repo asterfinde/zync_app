@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import '../../../../app/theme/design_tokens.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart';
 import 'silent_mode_button.dart';
 
@@ -18,15 +19,15 @@ class _InCircleFooterState extends State<InCircleFooter> {
   Future<void> _confirmAndActivateSilentMode() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.75),
+      barrierColor: NkColors.canvas.withValues(alpha: 0.75),
       barrierDismissible: true,
       builder: (dialogContext) {
         return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          backgroundColor: NkColors.canvas,
+          insetPadding: const EdgeInsets.symmetric(horizontal: NkSpacing.m, vertical: NkSpacing.m),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: const Color(0xFF1CE4B3).withValues(alpha: 0.4), width: 1),
+            borderRadius: NkRadius.forButton,
+            side: BorderSide(color: NkColors.mintSoft(0.4), width: 1),
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -36,13 +37,13 @@ class _InCircleFooterState extends State<InCircleFooter> {
               children: [
                 const Text(
                   'Activar Modo Silencio',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: NkTextStyle.h3,
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'La app se minimizará y quedará activa en segundo plano. '
                   'Podrás cambiar tu estado desde la notificación persistente.',
-                  style: TextStyle(fontSize: 14, color: Color(0xCCFFFFFF)),
+                  style: NkTextStyle.meta.copyWith(color: NkColors.fgMuted),
                 ),
                 const SizedBox(height: 18),
                 Row(
@@ -50,13 +51,13 @@ class _InCircleFooterState extends State<InCircleFooter> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(dialogContext).pop(false),
-                      style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                      style: TextButton.styleFrom(foregroundColor: NkColors.fgSub),
                       child: const Text('Cancelar'),
                     ),
                     const SizedBox(width: 8),
                     TextButton(
                       onPressed: () => Navigator.of(dialogContext).pop(true),
-                      style: TextButton.styleFrom(foregroundColor: Color(0xFF1CE4B3)),
+                      style: TextButton.styleFrom(foregroundColor: NkColors.mint),
                       child: const Text('Activar', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
@@ -104,13 +105,11 @@ class _InCircleFooterState extends State<InCircleFooter> {
                     key: const Key('btn_change_status'),
                     onPressed: _isUpdating ? null : widget.onOk,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1EE9A4),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: NkColors.mint,
+                      foregroundColor: NkColors.onMint,
+                      padding: const EdgeInsets.symmetric(vertical: NkSpacing.s),
                       textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
