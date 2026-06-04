@@ -13,7 +13,7 @@ class InCircleHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
       color: NkColors.canvas,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
