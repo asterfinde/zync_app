@@ -13,20 +13,24 @@ class InCircleHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
       color: NkColors.canvas,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
                   'NunaKin',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 26,
                     fontWeight: FontWeight.bold,
-                    color: NkColors.onDark,
+                    color: NkColors.mint,
                     letterSpacing: 1.2,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   nickname,
                   style: NkTextStyle.body.copyWith(color: NkColors.fgSub),
@@ -34,18 +38,17 @@ class InCircleHeader extends StatelessWidget {
               ],
             ),
           ),
-          ElevatedButton.icon(
+          OutlinedButton.icon(
             key: const Key('btn_settings'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SettingsPage()),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: NkColors.mint,
-              foregroundColor: NkColors.onMint,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: NkColors.mint,
+              backgroundColor: const Color(0xFF052A1D),
+              side: BorderSide.none,
               textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
-              elevation: 0,
             ),
             icon: const Icon(Icons.settings, size: 18),
             label: const Text('Ajustes'),

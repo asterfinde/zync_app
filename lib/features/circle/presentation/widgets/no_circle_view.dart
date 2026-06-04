@@ -21,9 +21,13 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   String _getCurrentUserNickname() {
     final authState = ref.watch(authProvider);
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty ? authState.user.nickname : authState.user.email.split('@')[0];
+      return authState.user.nickname.isNotEmpty
+          ? authState.user.nickname
+          : authState.user.email.split('@')[0];
     }
-    return 'Usuario';
+    final fbUser = FirebaseAuth.instance.currentUser;
+    if (fbUser?.displayName?.isNotEmpty == true) return fbUser!.displayName!;
+    return '...';
   }
 
   void _navigateToCreateCircle() {
@@ -393,27 +397,25 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
           padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
           color: NkColors.canvas,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Zync',
+                      'NunaKin',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: NkColors.onDark,
+                        color: NkColors.mint,
                         letterSpacing: 1.2,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       _getCurrentUserNickname(),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: NkColors.onDark,
-                        fontWeight: FontWeight.w400,
-                      ),
+                      style: NkTextStyle.body.copyWith(color: NkColors.fgSub),
                     ),
                   ],
                 ),
@@ -428,8 +430,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 key: const Key('btn_logout'),
                 onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: NkColors.danger,
-                  foregroundColor: NkColors.onDark,
+                  backgroundColor: const Color(0xFF052A1D),
+                  foregroundColor: NkColors.mint,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   textStyle: const TextStyle(
                     fontSize: 14,
@@ -441,7 +443,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   elevation: 0,
                 ),
                 icon: const Icon(Icons.logout, size: 18),
-                label: const Text('Cerrar Sesión'),
+                label: const Text('Cerrar sesión'),
               ),
             ],
           ),
@@ -463,9 +465,10 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   const Text(
                     "Aún no estás en un círculo",
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w300,
-                      color: NkColors.fgMuted,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: NkColors.onDark,
+                      letterSpacing: 1.2,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -510,7 +513,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                           Text(
                             'Crear un Círculo',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
                               color: NkColors.onMint,
                             ),
@@ -558,7 +561,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       key: const Key('btn_navigate_join_circle'),
                       onPressed: _navigateToJoinCircle,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: NkColors.mint,
+                        backgroundColor: const Color(0xFF4FCB8E),
                         foregroundColor: NkColors.onMint,
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         shape: RoundedRectangleBorder(
@@ -578,7 +581,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                           Text(
                             'Unirse a un Círculo',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
                               color: NkColors.onMint,
                             ),
