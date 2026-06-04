@@ -27,6 +27,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     }
     final fbUser = FirebaseAuth.instance.currentUser;
     if (fbUser?.displayName?.isNotEmpty == true) return fbUser!.displayName!;
+    if (fbUser?.email?.isNotEmpty == true) return fbUser!.email!.split('@')[0];
     return '...';
   }
 
@@ -46,12 +47,36 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
 
   void _showAccountDialog(BuildContext context) {
     final authState = ref.read(authProvider);
-    if (authState is! Authenticated) return;
-    final user = authState.user;
+    final fbUser = FirebaseAuth.instance.currentUser;
+
+    // ════════════════════════════════════════════════════════════
+    // [FIX] Dialog no aparecía si authProvider aún estaba en AuthLoading
+    // Fecha: 2026-06-04
+    // PROBLEMA: el guard `authState is! Authenticated` retornaba silenciosamente
+    //   mientras el header ya mostraba el nickname real (vía Firebase fallback),
+    //   dando la impresión de que la funcionalidad fue eliminada.
+    // SOLUCIÓN: mismo patrón fallback que _getCurrentUserNickname — si Riverpod
+    //   no tiene datos aún, usar FirebaseAuth directamente.
+    // ════════════════════════════════════════════════════════════
+    if (authState is! Authenticated && fbUser == null) return;
+
+    final nickname = authState is Authenticated
+        ? authState.user.nickname
+        : (fbUser?.displayName?.isNotEmpty == true
+            ? fbUser!.displayName!
+            : fbUser?.email?.split('@')[0] ?? '');
+    final email = authState is Authenticated
+        ? authState.user.email
+        : (fbUser?.email ?? '');
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: NkColors.surface2,
+        backgroundColor: NkColors.canvas,
+        shape: RoundedRectangleBorder(
+          borderRadius: NkRadius.forButton,
+          side: BorderSide(color: NkColors.mintSoft(0.4), width: 1),
+        ),
         title: const Text(
           'Mi Cuenta',
           style: TextStyle(color: NkColors.onDark),
@@ -62,11 +87,11 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
           children: [
             const Text('Nickname', style: TextStyle(color: NkColors.fgHint, fontSize: 12)),
             const SizedBox(height: 4),
-            Text(user.nickname, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
+            Text(nickname, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
             const SizedBox(height: 16),
             const Text('Email', style: TextStyle(color: NkColors.fgHint, fontSize: 12)),
             const SizedBox(height: 4),
-            Text(user.email, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
+            Text(email, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
           ],
         ),
         actions: [
