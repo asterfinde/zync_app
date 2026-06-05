@@ -302,7 +302,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                       fillColor: Color(0xFF171D1B),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                        borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -530,7 +530,15 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Zync'),
+        title: const Text(
+          'NunaKin',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+            color: NkColors.mint,
+            letterSpacing: 1.2,
+          ),
+        ),
         backgroundColor: NkColors.canvas,
         elevation: 0,
       ),
@@ -543,12 +551,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _isLogin ? 'Bienvenido' : 'Crea tu Cuenta',
+                  _isLogin ? 'Bienvenido' : 'Crea tu cuenta',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 32,
+                  style: const TextStyle(
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: primaryTextColor,
+                    color: NkColors.onDark,
+                    letterSpacing: 1.2,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -583,7 +592,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                         style: TextStyle(color: primaryTextColor),
                         decoration: InputDecoration(
                           labelText: 'Nickname',
-                          labelStyle: TextStyle(color: secondaryTextColor),
+                          labelStyle: const TextStyle(color: NkColors.fgSub),
+                          floatingLabelStyle: const TextStyle(color: NkColors.mint),
                           hintText: 'Tu apodo público (mínimo 1 caracter)',
                           hintStyle: TextStyle(
                               color: secondaryTextColor.withValues(alpha: 0.5)),
@@ -593,12 +603,12 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                           fillColor: inputFillColor,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                            borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide:
-                                BorderSide(color: accentColor, width: 2),
+                                BorderSide(color: accentColor, width: 1),
                           ),
                         ),
                       ),
@@ -613,7 +623,8 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   style: TextStyle(color: primaryTextColor),
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    labelStyle: TextStyle(color: secondaryTextColor),
+                    labelStyle: const TextStyle(color: NkColors.fgSub),
+                    floatingLabelStyle: const TextStyle(color: NkColors.mint),
                     hintText: 'tu.email@ejemplo.com',
                     hintStyle: TextStyle(
                         color: secondaryTextColor.withValues(alpha: 0.5)),
@@ -623,11 +634,11 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     fillColor: inputFillColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                      borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: accentColor, width: 2),
+                      borderSide: BorderSide(color: accentColor, width: 1),
                     ),
                   ),
                 ),
@@ -640,18 +651,19 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   style: TextStyle(color: primaryTextColor),
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
-                    labelStyle: TextStyle(color: secondaryTextColor),
+                    labelStyle: const TextStyle(color: NkColors.fgSub),
+                    floatingLabelStyle: const TextStyle(color: NkColors.mint),
                     prefixIcon:
                         Icon(Icons.lock_outline, color: secondaryTextColor),
                     filled: true,
                     fillColor: inputFillColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                      borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: accentColor, width: 2),
+                      borderSide: BorderSide(color: accentColor, width: 1),
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -678,17 +690,18 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                     style: TextStyle(color: primaryTextColor),
                     decoration: InputDecoration(
                       labelText: 'Confirmar Contraseña',
-                      labelStyle: TextStyle(color: secondaryTextColor),
+                      labelStyle: const TextStyle(color: NkColors.fgSub),
+                      floatingLabelStyle: const TextStyle(color: NkColors.mint),
                       prefixIcon: Icon(Icons.lock_outline, color: secondaryTextColor),
                       filled: true,
                       fillColor: inputFillColor,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                        borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: accentColor, width: 2),
+                        borderSide: BorderSide(color: accentColor, width: 1),
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
