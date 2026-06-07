@@ -22,13 +22,12 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   String _getCurrentUserNickname() {
     final authState = ref.watch(authProvider);
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty
-          ? authState.user.nickname
-          : authState.user.email.split('@')[0];
+      final u = authState.user;
+      if (u.nickname.isNotEmpty) return u.nickname;
+      if (u.name.isNotEmpty) return u.name;
     }
     final fbUser = FirebaseAuth.instance.currentUser;
     if (fbUser?.displayName?.isNotEmpty == true) return fbUser!.displayName!;
-    if (fbUser?.email?.isNotEmpty == true) return fbUser!.email!.split('@')[0];
     return '...';
   }
 
@@ -457,25 +456,11 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () => _showAccountDialog(context),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: NkColors.surface2,
-                    border: Border.all(color: NkColors.fgHint, width: 1.5),
-                  ),
-                  child: const Icon(Icons.person_outline, color: NkColors.fgSub, size: 18),
-                ),
-              ),
-              const SizedBox(width: 6),
               ElevatedButton.icon(
                 key: const Key('btn_logout'),
                 onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: NkColors.mintSoft(0.08),
+                  backgroundColor: const Color(0xFF02130D),
                   foregroundColor: NkColors.mint,
                   side: BorderSide(color: NkColors.mintSoft(0.3), width: 1),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -575,7 +560,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                                 ),
                                 SizedBox(height: 3),
                                 Text(
-                                  'Inicia un nuevo círculo e invita a otros',
+                                  'Inicia un nuevo círculo e invita a\notros',
                                   style: TextStyle(fontSize: 12, color: NkColors.fgHint),
                                 ),
                               ],
@@ -637,11 +622,11 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               children: [
                                 Text(
                                   'Unirse a un Círculo',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.mint),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
                                 ),
                                 SizedBox(height: 3),
                                 Text(
-                                  'Ingresa con un código de invitación privado',
+                                  'Ingresa con un código de\ninvitación privado',
                                   style: TextStyle(fontSize: 12, color: NkColors.fgHint),
                                 ),
                               ],
@@ -655,6 +640,25 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   const SizedBox(height: NkSpacing.xl),
                 ],
               ),
+            ),
+          ),
+        ),
+
+        // Footer — ícono de cuenta (centrado verticalmente entre última tarjeta y borde inferior)
+        Container(
+          color: NkColors.canvas,
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 46),
+          child: GestureDetector(
+            onTap: () => _showAccountDialog(context),
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: NkColors.surface2,
+                border: Border.all(color: NkColors.fgHint, width: 1.5),
+              ),
+              child: const Icon(Icons.person_outline, color: NkColors.fgSub, size: 24),
             ),
           ),
         ),
