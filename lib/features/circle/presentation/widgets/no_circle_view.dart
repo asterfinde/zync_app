@@ -623,7 +623,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               children: [
                                 Text(
                                   'Unirse a un Círculo',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.mint),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
                                 ),
                                 SizedBox(height: 3),
                                 Text(
@@ -645,21 +645,21 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
           ),
         ),
 
-        // Footer — ícono de cuenta
+        // Footer — ícono de cuenta (centrado verticalmente entre última tarjeta y borde inferior)
         Container(
           color: NkColors.canvas,
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           child: GestureDetector(
             onTap: () => _showAccountDialog(context),
             child: Container(
-              width: 36,
-              height: 36,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: NkColors.surface2,
                 border: Border.all(color: NkColors.fgHint, width: 1.5),
               ),
-              child: const Icon(Icons.person_outline, color: NkColors.fgSub, size: 18),
+              child: const Icon(Icons.person_outline, color: NkColors.fgSub, size: 24),
             ),
           ),
         ),
