@@ -460,7 +460,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 key: const Key('btn_logout'),
                 onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: NkColors.mintSoft(0.08),
+                  backgroundColor: const Color(0xFF02130D),
                   foregroundColor: NkColors.mint,
                   side: BorderSide(color: NkColors.mintSoft(0.3), width: 1),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
