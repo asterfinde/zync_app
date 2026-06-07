@@ -457,20 +457,6 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () => _showAccountDialog(context),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: NkColors.surface2,
-                    border: Border.all(color: NkColors.fgHint, width: 1.5),
-                  ),
-                  child: const Icon(Icons.person_outline, color: NkColors.fgSub, size: 18),
-                ),
-              ),
-              const SizedBox(width: 6),
               ElevatedButton.icon(
                 key: const Key('btn_logout'),
                 onPressed: () => _showLogoutDialog(context),
@@ -575,7 +561,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                                 ),
                                 SizedBox(height: 3),
                                 Text(
-                                  'Inicia un nuevo círculo e invita a otros',
+                                  'Inicia un nuevo círculo e invita a\notros',
                                   style: TextStyle(fontSize: 12, color: NkColors.fgHint),
                                 ),
                               ],
@@ -641,7 +627,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                                 ),
                                 SizedBox(height: 3),
                                 Text(
-                                  'Ingresa con un código de invitación privado',
+                                  'Ingresa con un código de\ninvitación privado',
                                   style: TextStyle(fontSize: 12, color: NkColors.fgHint),
                                 ),
                               ],
@@ -655,6 +641,25 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   const SizedBox(height: NkSpacing.xl),
                 ],
               ),
+            ),
+          ),
+        ),
+
+        // Footer — ícono de cuenta
+        Container(
+          color: NkColors.canvas,
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: GestureDetector(
+            onTap: () => _showAccountDialog(context),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: NkColors.surface2,
+                border: Border.all(color: NkColors.fgHint, width: 1.5),
+              ),
+              child: const Icon(Icons.person_outline, color: NkColors.fgSub, size: 18),
             ),
           ),
         ),
