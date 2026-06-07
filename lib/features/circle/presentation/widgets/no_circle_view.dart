@@ -22,13 +22,10 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   String _getCurrentUserNickname() {
     final authState = ref.watch(authProvider);
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty
-          ? authState.user.nickname
-          : authState.user.email.split('@')[0];
+      return authState.user.nickname.isNotEmpty ? authState.user.nickname : '...';
     }
     final fbUser = FirebaseAuth.instance.currentUser;
     if (fbUser?.displayName?.isNotEmpty == true) return fbUser!.displayName!;
-    if (fbUser?.email?.isNotEmpty == true) return fbUser!.email!.split('@')[0];
     return '...';
   }
 
@@ -648,7 +645,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         // Footer — ícono de cuenta (centrado verticalmente entre última tarjeta y borde inferior)
         Container(
           color: NkColors.canvas,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 46),
           child: GestureDetector(
             onTap: () => _showAccountDialog(context),
             child: Container(
