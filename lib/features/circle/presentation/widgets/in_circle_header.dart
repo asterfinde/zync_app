@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/design_tokens.dart';
+import '../../../../core/splash/splash_screen.dart' show ZyncLogoPainter;
 import '../../../settings/presentation/pages/settings_page.dart';
 
 class InCircleHeader extends StatelessWidget {
@@ -21,14 +22,25 @@ class InCircleHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'NunaKin',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: NkColors.mint,
-                    letterSpacing: 1.2,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CustomPaint(painter: ZyncLogoPainter(color: NkColors.mint)),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'NunaKin',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: NkColors.mint,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
