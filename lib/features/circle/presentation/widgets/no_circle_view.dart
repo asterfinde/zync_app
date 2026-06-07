@@ -455,16 +455,12 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 key: const Key('btn_logout'),
                 onPressed: () => _showLogoutDialog(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF052A1D),
+                  backgroundColor: NkColors.mintSoft(0.08),
                   foregroundColor: NkColors.mint,
+                  side: BorderSide(color: NkColors.mintSoft(0.3), width: 1),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: NkRadius.forInput,
-                  ),
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
                   elevation: 0,
                 ),
                 icon: const Icon(Icons.logout, size: 18),
@@ -484,7 +480,22 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 40), // Espacio reducido
+                  const SizedBox(height: 40),
+
+                  // Ícono de estado vacío
+                  Center(
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: NkColors.surfaceCard,
+                        border: Border.all(color: NkColors.surfaceBorder),
+                        borderRadius: NkRadius.forCard,
+                      ),
+                      child: const Icon(Icons.group_off_outlined, color: NkColors.mint, size: 28),
+                    ),
+                  ),
+                  const SizedBox(height: NkSpacing.s),
 
                   // Mensaje principal
                   const Text(
@@ -511,121 +522,117 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Botón Crear Círculo
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 16),
-                    child: ElevatedButton(
-                      key: const Key('btn_navigate_create_circle'),
-                      onPressed: _navigateToCreateCircle,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: NkColors.mint,
-                        foregroundColor: NkColors.onMint,
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: NkRadius.forInput,
-                        ),
-                        elevation: 0,
+                  // Tarjeta Crear Círculo
+                  GestureDetector(
+                    key: const Key('btn_navigate_create_circle'),
+                    onTap: _navigateToCreateCircle,
+                    child: Container(
+                      padding: const EdgeInsets.all(NkSpacing.s5),
+                      decoration: BoxDecoration(
+                        color: NkColors.surfaceCard,
+                        border: Border.all(color: NkColors.surfaceBorder),
+                        borderRadius: NkRadius.forCard,
                       ),
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Row(
                         children: [
-                          Icon(
-                            Icons.add_circle,
-                            color: NkColors.onMint,
-                            size: 28,
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Crear un Círculo',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: NkColors.onMint,
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: NkColors.mintSoft(0.1),
+                              borderRadius: NkRadius.forButton,
                             ),
+                            child: const Icon(Icons.add, color: NkColors.mint),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Crea tu propio círculo e invita a otros',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: NkColors.onMint,
+                          const SizedBox(width: NkSpacing.s),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Crear un Círculo',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'Inicia un nuevo círculo e invita a otros',
+                                  style: TextStyle(fontSize: 12, color: NkColors.fgHint),
+                                ),
+                              ],
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: NkSpacing.xs3),
 
-                  // Divider OR
-                  const Row(
+                  // Divider
+                  Row(
                     children: [
-                      Expanded(child: Divider(color: NkColors.fgHint)),
+                      Expanded(child: Divider(color: NkColors.surfaceBorder)),
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: const EdgeInsets.symmetric(horizontal: NkSpacing.xs3),
                         child: Text(
-                          "O",
+                          'o',
                           style: TextStyle(
-                            color: NkColors.fgSub,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                            color: NkColors.fgHint,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      Expanded(child: Divider(color: NkColors.fgHint)),
+                      Expanded(child: Divider(color: NkColors.surfaceBorder)),
                     ],
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: NkSpacing.xs3),
 
-                  // Botón Unirse a Círculo
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 16),
-                    child: ElevatedButton(
-                      key: const Key('btn_navigate_join_circle'),
-                      onPressed: _navigateToJoinCircle,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4FCB8E),
-                        foregroundColor: NkColors.onMint,
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: NkRadius.forInput,
-                        ),
-                        elevation: 0,
+                  // Tarjeta Unirse a Círculo
+                  GestureDetector(
+                    key: const Key('btn_navigate_join_circle'),
+                    onTap: _navigateToJoinCircle,
+                    child: Container(
+                      padding: const EdgeInsets.all(NkSpacing.s5),
+                      decoration: BoxDecoration(
+                        color: NkColors.surfaceCard,
+                        border: Border.all(color: NkColors.surfaceBorder),
+                        borderRadius: NkRadius.forCard,
                       ),
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Row(
                         children: [
-                          Icon(
-                            Icons.group_add,
-                            color: NkColors.onMint,
-                            size: 28,
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Unirse a un Círculo',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: NkColors.onMint,
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: NkColors.surfaceCard,
+                              borderRadius: NkRadius.forButton,
                             ),
+                            child: const Icon(Icons.group_add, color: NkColors.fgSub),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Únete con un código de invitación',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: NkColors.onMint,
+                          const SizedBox(width: NkSpacing.s),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Unirse a un Círculo',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'Únete con un código de invitación',
+                                  style: TextStyle(fontSize: 12, color: NkColors.fgHint),
+                                ),
+                              ],
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 100), // Espacio final
+                  const SizedBox(height: NkSpacing.xl),
                 ],
               ),
             ),
