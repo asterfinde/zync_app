@@ -524,17 +524,17 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: NkColors.onDark,
-                      letterSpacing: 1.2,
+                      letterSpacing: 0,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
                   // Mensaje de acción
                   const Text(
-                    "¿Qué te gustaría hacer?",
+                    "¿Qué te gustaría hacer hoy?",
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w400,
                       color: NkColors.fgMuted,
                     ),
@@ -628,7 +628,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               color: NkColors.surfaceCard,
                               borderRadius: NkRadius.forButton,
                             ),
-                            child: const Icon(Icons.group_add, color: NkColors.fgSub),
+                            child: const Icon(Icons.near_me, color: NkColors.mint),
                           ),
                           const SizedBox(width: NkSpacing.s),
                           const Expanded(
@@ -637,11 +637,11 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               children: [
                                 Text(
                                   'Unirse a un Círculo',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.mint),
                                 ),
                                 SizedBox(height: 3),
                                 Text(
-                                  'Únete con un código de invitación',
+                                  'Ingresa con un código de invitación privado',
                                   style: TextStyle(fontSize: 12, color: NkColors.fgHint),
                                 ),
                               ],

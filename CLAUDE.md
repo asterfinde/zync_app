@@ -301,6 +301,12 @@ Español neutro latinoamericano. Nunca usar modismos rioplatenses (ej: "andá", 
 - No mezclar soluciones de state management.
 - No migrar de una solución a otra sin decisión explícita del desarrollador.
 
+### Design System
+- **UFV (Única Fuente de Verdad):** `docs/ui/NunaKin Design System.md`
+- El HTML (`docs/ui/interactive_simulator.html`) es un **preview visual derivado**. Si HTML y MD divergen: el MD gana.
+- Flujo obligatorio: actualizar el MD primero → luego sincronizar el HTML. Nunca al revés.
+- Tokens canónicos en `lib/app/theme/design_tokens.dart`. No usar valores literales de color/spacing en widgets nuevos.
+
 ---
 
 ## 6. Firebase — Reglas Específicas
