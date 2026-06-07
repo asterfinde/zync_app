@@ -32,7 +32,11 @@ abstract final class NkColors {
   static const Color surface3 = Color(0xFF2C2C2E); // inputs / fills (iOS secondary bg)
   static const Color surface4 = Color(0xFF3A3A3C); // hover / pressed
 
-  // Borde / línea de separación
+  // Superficies translúcidas DS v2.0
+  static const Color surfaceCard   = Color(0x0AFFFFFF); // rgba(255,255,255,0.04) — card/input bg
+  static const Color surfaceBorder = Color(0x14FFFFFF); // rgba(255,255,255,0.08) — resting border
+
+  // Borde / línea de separación (legacy — preferir surfaceBorder en código nuevo)
   static const Color line     = Color(0x1AFFFFFF); // rgba(255,255,255,0.10)
 
   // SOS y acciones destructivas — rojo Material 700
@@ -68,10 +72,10 @@ abstract final class NkSpacing {
 
 abstract final class NkRadius {
   static const double small  = 8;
-  static const double input  = 12;
-  static const double button = 16;
-  static const double card   = 20;
-  static const double modal  = 24;
+  static const double input  = 14;  // v2.0: 12→14 (Inputs y Botones Pequeños)
+  static const double button = 14;  // v2.0: 16→14 (unificado con input)
+  static const double card   = 18;  // v2.0: 20→18 (Tarjetas e Items de Lista)
+  static const double modal  = 28;  // v2.0: 24→28 (Modales y Bottom Sheets)
   static const double pill   = 999;
 
   static BorderRadius forSmall  = BorderRadius.circular(small);
