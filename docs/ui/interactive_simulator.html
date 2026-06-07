@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NunaKin UI Simulator v2.0</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons para simular SF Symbols / Material Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .mono-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Efectos de neón sutil */
+    .mint-glow {
+      box-shadow: 0 0 25px rgba(28, 232, 161, 0.12);
+    }
+    .sos-glow {
+      box-shadow: 0 0 25px rgba(229, 62, 62, 0.2);
+    }
+    /* Estilo de scrollbar oculto */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-slate-100 min-h-screen flex flex-col md:flex-row items-center justify-center p-4 md:p-8 gap-8 overflow-x-hidden">
+
+  <!-- Panel de Control Izquierdo (Desktop) -->
+  <div class="w-full max-w-md bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-3xl backdrop-blur-md">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-xl bg-[#1CE8A1]/10 flex items-center justify-center text-[#1CE8A1] text-xl font-bold">
+        <i class="fa-solid fa-circle-nodes"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-white tracking-tight">NunaKin Simulator</h1>
+        <p class="text-xs text-zinc-400">Design System v2.0 (Modern & Minimal)</p>
+      </div>
+    </div>
+    
+    <p class="text-sm text-zinc-300 mb-6 leading-relaxed">
+      Navega por el prototipo interactivo utilizando los controles de abajo o interactuando directamente con la simulación del teléfono a la derecha. 
+      <br><br>
+      <strong class="text-[#1CE8A1]">Nueva Mejora:</strong> Todos los campos de texto ahora implementan el patrón <strong>Floating Label</strong> dinámico. Haz clic en ellos, escribe texto y observa cómo la etiqueta Mint se eleva de manera interactiva.
+    </p>
+
+    <div class="space-y-2">
+      <span class="text-xs font-semibold text-zinc-500 uppercase tracking-widest block mb-2">Pantallas del Flujo</span>
+      <button onclick="switchScreen('login')" id="btn-login" class="screen-btn w-full text-left px-4 py-3 rounded-xl bg-[#1CE8A1]/10 text-[#1CE8A1] border border-[#1CE8A1]/20 font-medium transition-all flex items-center justify-between">
+        <span>1. Iniciar Sesión</span>
+        <i class="fa-solid fa-right-to-bracket"></i>
+      </button>
+      <button onclick="switchScreen('register')" id="btn-register" class="screen-btn w-full text-left px-4 py-3 rounded-xl bg-zinc-900 text-zinc-400 hover:text-white border border-transparent hover:border-zinc-800 transition-all flex items-center justify-between">
+        <span>2. Crear Cuenta (Registro)</span>
+        <i class="fa-solid fa-user-plus"></i>
+      </button>
+      <button onclick="switchScreen('emptyCircle')" id="btn-emptyCircle" class="screen-btn w-full text-left px-4 py-3 rounded-xl bg-zinc-900 text-zinc-400 hover:text-white border border-transparent hover:border-zinc-800 transition-all flex items-center justify-between">
+        <span>3. Círculo Vacío</span>
+        <i class="fa-solid fa-circle-question"></i>
+      </button>
+      <button onclick="switchScreen('activeCircle')" id="btn-activeCircle" class="screen-btn w-full text-left px-4 py-3 rounded-xl bg-zinc-900 text-zinc-400 hover:text-white border border-transparent hover:border-zinc-800 transition-all flex items-center justify-between">
+        <span>4. Miembros del Círculo</span>
+        <i class="fa-solid fa-users"></i>
+      </button>
+    </div>
+
+    <!-- Notas de Rediseño -->
+    <div class="mt-6 pt-6 border-t border-zinc-800/80">
+      <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">Mejoras de Inputs Unificados</h3>
+      <ul class="text-xs text-zinc-400 space-y-2">
+        <li class="flex items-start gap-2">
+          <i class="fa-solid fa-chevron-right text-[#1CE8A1] mt-0.5"></i>
+          <span><strong>Dynamic Floating Labels:</strong> Al escribir, el placeholder se convierte automáticamente en una etiqueta Mint elegante en mayúsculas.</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <i class="fa-solid fa-chevron-right text-[#1CE8A1] mt-0.5"></i>
+          <span><strong>Foco Iluminado:</strong> El contenedor del input completo se ilumina sutilmente al recibir foco para avisar de la interacción.</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Contenedor del Celular de Simulación -->
+  <div class="relative w-[385px] h-[800px] bg-black rounded-[55px] border-[12px] border-zinc-800 shadow-2xl p-4 flex flex-col justify-between overflow-hidden ring-1 ring-zinc-700/50">
+    
+    <!-- Notch/Isla Dinámica -->
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-full z-50 flex items-center justify-between px-4">
+      <div class="w-2.5 h-2.5 bg-zinc-900 rounded-full"></div>
+      <div class="w-12 h-1.5 bg-zinc-900 rounded-full"></div>
+    </div>
+
+    <!-- Barra de Estado Simulada -->
+    <div class="flex justify-between items-center px-6 pt-3 text-xs font-semibold tracking-tight text-white select-none z-40">
+      <span id="clock-display">09:41</span>
+      <div class="flex items-center gap-1.5">
+        <i class="fa-solid fa-signal text-[10px]"></i>
+        <i class="fa-solid fa-wifi text-[10px]"></i>
+        <i class="fa-solid fa-battery-three-quarters text-[12px]"></i>
+      </div>
+    </div>
+
+    <!-- Contenido de las Pantallas (Scrollable) -->
+    <div class="flex-1 overflow-y-auto no-scrollbar pt-6 pb-4 px-3 flex flex-col relative">
+      
+      <!-- ================= PANTALLA: LOGIN ================= -->
+      <div id="screen-login" class="screen-view flex-1 flex flex-col justify-between pt-4">
+        <div class="flex flex-col items-center">
+          <!-- Logo NunaKin Moderno -->
+          <div class="flex items-center gap-2 mt-4 self-start">
+            <i class="fa-solid fa-circle-nodes text-[#1CE8A1] text-xl animate-pulse"></i>
+            <span class="text-xl font-bold tracking-tight text-[#1CE8A1]">NunaKin</span>
+          </div>
+          
+          <div class="text-center mt-12 w-full">
+            <h2 class="text-3xl font-extrabold tracking-tight text-white">Bienvenido</h2>
+            <span class="text-[11px] mono-font text-zinc-500 tracking-wider block mt-1">v11:00:15 (v2.0)</span>
+            <p class="text-sm text-zinc-400 mt-2">Inicia sesión para continuar</p>
+          </div>
+
+          <!-- Campos de Entrada Modernos con Floating Labels Dinámicos -->
+          <div class="w-full mt-10 space-y-3">
+            
+            <!-- Campo Email -->
+            <div class="input-container bg-zinc-900/60 border border-zinc-800/80 rounded-2xl px-4 py-2 flex items-center transition-all min-h-[60px]">
+              <span class="icon text-zinc-500 mr-3 shrink-0 transition-colors"><i class="fa-solid fa-at"></i></span>
+              <div class="flex-1 flex flex-col justify-center">
+                <span class="label text-[9px] text-[#1CE8A1] uppercase tracking-wider font-bold transition-all duration-150 h-0 opacity-0 pointer-events-none">Email</span>
+                <input type="email" placeholder="Email" onfocus="onInputFocus(this)" onblur="onInputBlur(this)" oninput="onInputWrite(this)" class="bg-transparent border-0 text-sm outline-none text-white placeholder-zinc-500 w-full p-0 font-semibold">
+              </div>
+            </div>
+            
+            <!-- Campo Contraseña -->
+            <div class="input-container bg-zinc-900/60 border border-zinc-800/80 rounded-2xl px-4 py-2 flex items-center transition-all min-h-[60px]">
+              <span class="icon text-zinc-500 mr-3 shrink-0 transition-colors"><i class="fa-solid fa-lock"></i></span>
+              <div class="flex-1 flex flex-col justify-center">
+                <span class="label text-[9px] text-[#1CE8A1] uppercase tracking-wider font-bold transition-all duration-150 h-0 opacity-0 pointer-events-none">Contraseña</span>
+                <input type="password" placeholder="Contraseña" onfocus="onInputFocus(this)" onblur="onInputBlur(this)" oninput="onInputWrite(this)" class="bg-transparent border-0 text-sm outline-none text-white placeholder-zinc-500 w-full p-0 font-semibold">
+              </div>
+              <button class="w-8 h-8 flex items-center justify-center text-zinc-500 active:text-zinc-300 transition-colors"><i class="fa-solid fa-eye-slash"></i></button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Botones y Enlaces Inferiores -->
+        <div class="mt-8 space-y-5">
+          <button onclick="switchScreen('emptyCircle')" class="w-full py-4 bg-[#1CE8A1] text-zinc-950 font-bold rounded-2xl tracking-wide active:scale-[0.97] active:opacity-90 transition-all mint-glow text-center block">
+            Iniciar Sesión
+          </button>
+          
+          <div class="text-center space-y-3 pb-4">
+            <p class="text-xs text-zinc-400">
+              ¿No tienes una cuenta? 
+              <button onclick="switchScreen('register')" class="text-[#1CE8A1] font-semibold active:underline bg-transparent border-0 p-0">Regístrate</button>
+            </p>
+            <button class="text-xs text-[#1CE8A1]/80 active:text-[#1CE8A1] transition-colors block mx-auto bg-transparent border-0">¿Olvidaste tu contraseña?</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PANTALLA: REGISTRO ================= -->
+      <div id="screen-register" class="screen-view hidden flex-1 flex flex-col justify-between pt-4">
+        <div class="flex flex-col items-center">
+          <div class="flex items-center gap-2 mt-4 self-start">
+            <i class="fa-solid fa-circle-nodes text-[#1CE8A1] text-xl"></i>
+            <span class="text-xl font-bold tracking-tight text-[#1CE8A1]">NunaKin</span>
+          </div>
+
+          <div class="text-center mt-10 w-full">
+            <h2 class="text-3xl font-extrabold tracking-tight text-white">Crea tu cuenta</h2>
+            <span class="text-[11px] mono-font text-zinc-500 tracking-wider block mt-1">v11:00:15 (v2.0)</span>
+            <p class="text-sm text-zinc-400 mt-2">Completa los campos para registrarte</p>
+          </div>
+
+          <!-- Campos de Entrada Registro con Floating Labels Dinámicos -->
+          <div class="w-full mt-8 space-y-3">
+            
+            <!-- Campo Nickname (Llenado inicial 'df' con label visible) -->
+            <div class="input-container bg-zinc-900/60 border border-zinc-800/80 rounded-2xl px-4 py-2 flex items-center transition-all min-h-[60px]">
+              <span class="icon text-zinc-500 mr-3 shrink-0 transition-colors"><i class="fa-solid fa-user"></i></span>
+              <div class="flex-1 flex flex-col justify-center">
+                <span class="label text-[9px] text-[#1CE8A1] uppercase tracking-wider font-bold transition-all duration-150 h-0 opacity-0 pointer-events-none">Nickname</span>
+                <input type="text" value="df" placeholder="Nickname" onfocus="onInputFocus(this)" onblur="onInputBlur(this)" oninput="onInputWrite(this)" class="bg-transparent border-0 text-sm outline-none text-white placeholder-zinc-500 w-full p-0 font-semibold">
+              </div>
+            </div>
+
+            <!-- Campo Correo Electrónico -->
+            <div class="input-container bg-zinc-900/60 border border-zinc-800/80 rounded-2xl px-4 py-2 flex items-center transition-all min-h-[60px]">
+              <span class="icon text-zinc-500 mr-3 shrink-0 transition-colors"><i class="fa-solid fa-at"></i></span>
+              <div class="flex-1 flex flex-col justify-center">
+                <span class="label text-[9px] text-[#1CE8A1] uppercase tracking-wider font-bold transition-all duration-150 h-0 opacity-0 pointer-events-none">Email</span>
+                <input type="email" placeholder="Email" onfocus="onInputFocus(this)" onblur="onInputBlur(this)" oninput="onInputWrite(this)" class="bg-transparent border-0 text-sm outline-none text-white placeholder-zinc-500 w-full p-0 font-semibold">
+              </div>
+            </div>
+
+            <!-- Campo Contraseña -->
+            <div class="input-container bg-zinc-900/60 border border-zinc-800/80 rounded-2xl px-4 py-2 flex items-center transition-all min-h-[60px]">
+              <span class="icon text-zinc-500 mr-3 shrink-0 transition-colors"><i class="fa-solid fa-lock"></i></span>
+              <div class="flex-1 flex flex-col justify-center">
+                <span class="label text-[9px] text-[#1CE8A1] uppercase tracking-wider font-bold transition-all duration-150 h-0 opacity-0 pointer-events-none">Contraseña</span>
+                <input type="password" placeholder="Contraseña" onfocus="onInputFocus(this)" onblur="onInputBlur(this)" oninput="onInputWrite(this)" class="bg-transparent border-0 text-sm outline-none text-white placeholder-zinc-500 w-full p-0 font-semibold">
+              </div>
+            </div>
+
+            <!-- Campo Confirmar Contraseña -->
+            <div class="input-container bg-zinc-900/60 border border-zinc-800/80 rounded-2xl px-4 py-2 flex items-center transition-all min-h-[60px]">
+              <span class="icon text-zinc-500 mr-3 shrink-0 transition-colors"><i class="fa-solid fa-shield-halved"></i></span>
+              <div class="flex-1 flex flex-col justify-center">
+                <span class="label text-[9px] text-[#1CE8A1] uppercase tracking-wider font-bold transition-all duration-150 h-0 opacity-0 pointer-events-none">Confirmar Contraseña</span>
+                <input type="password" placeholder="Confirmar Contraseña" onfocus="onInputFocus(this)" onblur="onInputBlur(this)" oninput="onInputWrite(this)" class="bg-transparent border-0 text-sm outline-none text-white placeholder-zinc-500 w-full p-0 font-semibold">
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="mt-8 space-y-5">
+          <button onclick="switchScreen('emptyCircle')" class="w-full py-4 bg-[#1CE8A1] text-zinc-950 font-bold rounded-2xl tracking-wide active:scale-[0.97] active:opacity-90 transition-all mint-glow text-center block">
+            Crear Cuenta
+          </button>
+          
+          <div class="text-center pb-4">
+            <p class="text-xs text-zinc-400">
+              ¿Ya tienes una cuenta? 
+              <button onclick="switchScreen('login')" class="text-[#1CE8A1] font-semibold active:underline bg-transparent border-0 p-0">Inicia Sesión</button>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PANTALLA: CÍRCULO VACÍO ================= -->
+      <div id="screen-emptyCircle" class="screen-view hidden flex-1 flex flex-col justify-between pt-2">
+        <!-- Header — UFV spec: logo + tracking-tighter + person icon circular -->
+        <div class="flex items-center justify-between">
+          <div class="flex flex-col">
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-nodes text-[#1CE8A1] text-base"></i>
+              <span class="text-lg font-bold text-[#1CE8A1] tracking-tighter">NunaKin</span>
+            </div>
+            <span class="text-xs text-zinc-500">df</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Ícono persona: círculo oscuro, borde sutil, ícono outline -->
+            <div class="w-9 h-9 rounded-full bg-zinc-900 border border-zinc-700/60 flex items-center justify-center text-zinc-400 cursor-pointer active:bg-zinc-800 transition-all">
+              <i class="fa-regular fa-user text-sm"></i>
+            </div>
+            <button onclick="switchScreen('login')" class="px-3 py-1.5 rounded-xl border border-[#1CE8A1]/30 text-[#1CE8A1] bg-[#1CE8A1]/10 text-xs font-semibold active:bg-[#1CE8A1]/30 active:scale-95 transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span>Cerrar sesión</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Vacío Content con rediseño elegante -->
+        <div class="my-auto text-center py-8">
+          <!-- UFV spec: ícono sobre tarjetas — fondo opaco oscuro, borde sutil, ícono mint sólido -->
+          <div class="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800/60 flex items-center justify-center text-[#1CE8A1] mx-auto mb-4 text-2xl">
+            <i class="fa-solid fa-users-slash"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white tracking-tight">Aún no estás en un círculo</h3>
+          <p class="text-sm text-zinc-400 mt-1">¿Qué te gustaría hacer hoy?</p>
+
+          <!-- Acciones en Tarjetas Glassmorphic de Alta Calidad -->
+          <div class="mt-8 space-y-4">
+            
+            <!-- Crear Círculo Card v2 — UFV spec: fondo levemente más claro (zinc-800/40) -->
+            <button onclick="switchScreen('activeCircle')" class="w-full text-left p-5 rounded-2xl bg-zinc-800/40 border border-zinc-700/60 active:border-[#1CE8A1]/50 active:bg-zinc-800/70 active:scale-[0.97] transition-all flex items-center gap-4 group">
+              <div class="w-12 h-12 rounded-xl bg-[#1CE8A1]/10 flex items-center justify-center text-[#1CE8A1] text-lg">
+                <i class="fa-solid fa-plus"></i>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-white text-base">Crear un Círculo</h4>
+                <p class="text-xs text-zinc-400 mt-0.5">Inicia un nuevo círculo e invita a otros</p>
+              </div>
+            </button>
+
+            <!-- Separador minimalista v2 -->
+            <div class="flex items-center justify-between px-6">
+              <div class="h-[1px] bg-zinc-800/80 flex-1"></div>
+              <span class="text-[10px] uppercase font-bold text-zinc-600 px-3 tracking-widest">ó</span>
+              <div class="h-[1px] bg-zinc-800/80 flex-1"></div>
+            </div>
+
+            <!-- Unirse a Círculo Card v2 — UFV spec: mismo fondo que Crear (zinc-800/40) -->
+            <button onclick="switchScreen('activeCircle')" class="w-full text-left p-5 rounded-2xl bg-zinc-800/40 border border-zinc-700/60 active:border-[#1CE8A1]/50 active:bg-zinc-800/70 active:scale-[0.97] transition-all flex items-center gap-4 group">
+              <div class="w-12 h-12 rounded-xl bg-[#1CE8A1]/5 flex items-center justify-center text-zinc-300 text-lg">
+                <i class="fa-solid fa-circle-nodes"></i>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-white text-base">Unirse a un Círculo</h4>
+                <p class="text-xs text-zinc-400 mt-0.5">Ingresa con un código de invitación privado</p>
+              </div>
+            </button>
+
+          </div>
+        </div>
+
+        <div class="h-4"></div>
+      </div>
+
+      <!-- ================= PANTALLA: CÍRCULO ACTIVO ================= -->
+      <div id="screen-activeCircle" class="screen-view hidden flex-1 flex flex-col justify-between pt-2">
+        <div>
+          <!-- Header Círculo — UFV spec: logo + tracking-tighter -->
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col">
+              <div class="flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-nodes text-[#1CE8A1] text-base"></i>
+                <span class="text-lg font-bold text-[#1CE8A1] tracking-tighter">NunaKin</span>
+              </div>
+              <span class="text-xs text-zinc-500">df</span>
+            </div>
+            <!-- Botón Ajustes rediseñado según la imagen image_8925c7.png -->
+            <button class="px-4 py-2 rounded-xl bg-[#1CE8A1]/10 text-[#1CE8A1] border border-[#1CE8A1]/30 text-xs font-semibold active:bg-[#1CE8A1]/30 active:scale-95 transition-all flex items-center gap-2">
+              <i class="fa-solid fa-gear"></i>
+              <span>Ajustes</span>
+            </button>
+          </div>
+
+          <!-- Información del círculo -->
+          <div class="mt-6 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 relative overflow-hidden">
+            <!-- Glow sutil de fondo -->
+            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-[#1CE8A1]/5 rounded-full blur-xl"></div>
+            
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-xl bg-[#1CE8A1]/10 flex items-center justify-center text-[#1CE8A1] text-2xl">
+                <i class="fa-solid fa-circle-nodes"></i>
+              </div>
+              <div>
+                <h3 class="text-2xl font-bold text-white">CC</h3>
+                <span class="text-xs text-zinc-500 font-medium flex items-center gap-1 mt-0.5">
+                  <i class="fa-solid fa-user-group text-[10px]"></i> 1 miembros en total
+                </span>
+              </div>
+            </div>
+
+            <!-- Código de Invitación con Formato Mono elegante -->
+            <div class="mt-5 pt-4 border-t border-zinc-800/80 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Código de Invitación</span>
+                <span class="text-xl font-bold text-white tracking-[0.2em] mono-font block mt-1">JV1FIR</span>
+              </div>
+              <button onclick="showToast('Código copiado')" class="w-10 h-10 rounded-xl bg-zinc-900 active:bg-zinc-800 border border-zinc-800 active:border-[#1CE8A1]/30 text-[#1CE8A1] active:scale-95 transition-all flex items-center justify-center">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sección Miembros -->
+          <div class="mt-6">
+            <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-4">
+              <i class="fa-solid fa-users text-[10px]"></i> Miembros
+            </h4>
+
+            <!-- Tarjeta Miembro Único click táctil sin mouse hovers molestos -->
+            <div onclick="openStatusModal()" class="w-full p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/80 active:border-[#1CE8A1]/30 active:bg-zinc-900/60 transition-all flex items-center gap-4 cursor-pointer active:scale-[0.98]">
+              <!-- Emoji gigante de Estado -->
+              <div class="w-14 h-14 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-3xl relative">
+                <span id="current-emoji">🙂</span>
+                <!-- Indicador de cambio de estado interactivo sutil -->
+                <span class="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#1CE8A1] text-zinc-950 flex items-center justify-center text-[10px] shadow-md border border-black">
+                  <i class="fa-solid fa-pen"></i>
+                </span>
+              </div>
+              
+              <!-- Info miembro -->
+              <div class="flex-1 text-left">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-white text-base">df</span>
+                  <span class="px-2 py-0.5 rounded bg-[#1CE8A1]/10 text-[#1CE8A1] text-[9px] font-extrabold tracking-wider uppercase">TÚ</span>
+                </div>
+                <p id="current-status-text" class="text-sm font-medium text-white mt-0.5">Todo bien</p>
+                <div class="flex items-center gap-3 mt-1.5">
+                  <span class="text-xs text-zinc-500 flex items-center gap-1">
+                    <i class="fa-regular fa-clock"></i> Justo ahora
+                  </span>
+                  <span class="text-xs text-[#1CE8A1]/80 font-semibold">• Creador</span>
+                </div>
+              </div>
+            </div>
+            
+            <p class="text-[11px] text-zinc-500 text-center mt-3">Toca sobre ti para actualizar tu estado</p>
+          </div>
+        </div>
+
+        <!-- Botones de Acción de Pantalla Completa en v2 -->
+        <div class="mt-8 grid grid-cols-2 gap-3 pb-2">
+          <!-- Botón Silencio (Outline táctil con Moon) -->
+          <button onclick="toggleSilence(this)" id="silence-btn" class="py-3.5 px-4 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-300 font-bold transition-all active:scale-95 flex items-center justify-center gap-2 text-sm">
+            <i class="fa-regular fa-moon"></i>
+            <span>Silencio</span>
+          </button>
+
+          <!-- Botón Confirmación principal (Mint Sólido) -->
+          <button onclick="showToast('Estado confirmado')" class="py-3.5 px-4 rounded-xl bg-[#1CE8A1] text-zinc-950 font-bold active:opacity-85 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>OK</span>
+          </button>
+        </div>
+      </div>
+
+    </div> <!-- Fin Screen Container -->
+
+    <!-- Barra de Navegación del Sistema Móvil -->
+    <div class="h-5 flex items-center justify-center select-none z-40">
+      <div class="w-32 h-1 bg-zinc-800 rounded-full"></div>
+    </div>
+
+    <!-- ================= MODAL/BOTTOM SHEET DE ESTADOS (OVERLAY) ================= -->
+    <div id="status-modal" class="absolute inset-x-0 bottom-0 top-[40px] bg-black/90 backdrop-blur-md z-50 rounded-t-[38px] border-t border-zinc-800/80 p-5 flex flex-col justify-between transform translate-y-full transition-transform duration-300 ease-out">
+      
+      <!-- Manija de Cierre para simular gesto -->
+      <div class="flex flex-col items-center cursor-pointer" onclick="closeStatusModal()">
+        <div class="w-12 h-1.5 bg-zinc-800 rounded-full mb-4"></div>
+        <h3 class="text-lg font-bold text-white tracking-tight">Cambiar Estado</h3>
+        <p class="text-xs text-zinc-500 mt-1">Selecciona cómo te encuentras en un toque</p>
+      </div>
+
+      <!-- Grilla de Estados Unificada (Efecto Táctil Puro Sin Hover) -->
+      <div class="grid grid-cols-4 gap-2 my-auto pt-4 max-h-[350px] overflow-y-auto no-scrollbar">
+        <!-- Celdas de estado con active:scale-90 y sin clases hover -->
+        <div onclick="selectStatus('Bien', '🙂')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🙂</span>
+          <span class="text-[10px] font-medium text-zinc-400">Bien</span>
+        </div>
+        <div onclick="selectStatus('Ocupado', '🔴')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🔴</span>
+          <span class="text-[10px] font-medium text-zinc-400">Ocupado</span>
+        </div>
+        <div onclick="selectStatus('Ausente', '🟡')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🟡</span>
+          <span class="text-[10px] font-medium text-zinc-400">Ausente</span>
+        </div>
+        <div onclick="selectStatus('No molestar', '🔕')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🔕</span>
+          <span class="text-[10px] font-medium text-zinc-400">Silencio</span>
+        </div>
+
+        <div onclick="selectStatus('Casa', '🏠')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🏠</span>
+          <span class="text-[10px] font-medium text-zinc-400">Casa</span>
+        </div>
+        <div onclick="selectStatus('Colegio', '🏫')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🏫</span>
+          <span class="text-[10px] font-medium text-zinc-400">Colegio</span>
+        </div>
+        <div onclick="selectStatus('Universidad', '🎓')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🎓</span>
+          <span class="text-[10px] font-medium text-zinc-400">Uni</span>
+        </div>
+        <div onclick="selectStatus('Trabajo', '🏢')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🏢</span>
+          <span class="text-[10px] font-medium text-zinc-400">Trabajo</span>
+        </div>
+
+        <div onclick="selectStatus('Consulta', '🏥')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🏥</span>
+          <span class="text-[10px] font-medium text-zinc-400">Consulta</span>
+        </div>
+        <div onclick="selectStatus('Reunión', '📅')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">📅</span>
+          <span class="text-[10px] font-medium text-zinc-400">Reunión</span>
+        </div>
+        <div onclick="selectStatus('Estudia', '📚')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">📚</span>
+          <span class="text-[10px] font-medium text-zinc-400">Estudia</span>
+        </div>
+        <div onclick="selectStatus('Comiendo', '🍽️')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🍽️</span>
+          <span class="text-[10px] font-medium text-zinc-400">Comiendo</span>
+        </div>
+
+        <div onclick="selectStatus('Ejercicio', '💪')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">💪</span>
+          <span class="text-[10px] font-medium text-zinc-400">Gimnasio</span>
+        </div>
+        <div onclick="selectStatus('Camino', '🚗')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🚗</span>
+          <span class="text-[10px] font-medium text-zinc-400">Camino</span>
+        </div>
+        <div onclick="selectStatus('Caminando', '🚶')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🚶</span>
+          <span class="text-[10px] font-medium text-zinc-400">Caminando</span>
+        </div>
+        <div onclick="selectStatus('Transporte', '🚌')" class="status-cell p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 active:border-[#1CE8A1]/40 text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-90">
+          <span class="text-2xl">🚌</span>
+          <span class="text-[10px] font-medium text-zinc-400">Transporte</span>
+        </div>
+      </div>
+
+      <!-- Botón S.O.S Rediseñado Moderno (Gradiente Carmesí a Coral con Glow) -->
+      <div class="mt-4 pb-2">
+        <button 
+          onmousedown="startSOS()" 
+          onmouseup="cancelSOS()" 
+          onmouseleave="cancelSOS()"
+          ontouchstart="startSOS(event)"
+          ontouchend="cancelSOS(event)"
+          class="w-full py-4 bg-gradient-to-r from-red-600 to-rose-500 active:from-red-700 active:to-rose-600 text-white font-extrabold rounded-2xl transition-all sos-glow flex flex-col items-center justify-center select-none active:scale-[0.98]">
+          <span class="text-lg tracking-[0.2em]">S.O.S</span>
+          <span id="sos-sub" class="text-[10px] font-medium text-red-100 mt-0.5 opacity-90 transition-all">Mantén presionado para enviar</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Toast de Notificación Interno del Simulador -->
+    <div id="toast" class="absolute top-16 left-1/2 -translate-x-1/2 bg-zinc-900 border border-[#1CE8A1]/30 text-white px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center gap-2 shadow-lg opacity-0 pointer-events-none transition-all duration-300 z-50">
+      <i class="fa-solid fa-bell text-[#1CE8A1]"></i>
+      <span id="toast-text">Notificación</span>
+    </div>
+
+  </div>
+
+  <script>
+    // Reloj dinámico del simulador
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('clock-display').textContent = `${hours}:${minutes}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Navegación de Pantallas
+    function switchScreen(screenId) {
+      // Ocultar todas las pantallas
+      document.querySelectorAll('.screen-view').forEach(view => {
+        view.classList.add('hidden');
+      });
+      // Mostrar pantalla seleccionada
+      document.getElementById(`screen-login`).classList.add('hidden');
+      document.getElementById(`screen-register`).classList.add('hidden');
+      document.getElementById(`screen-emptyCircle`).classList.add('hidden');
+      document.getElementById(`screen-activeCircle`).classList.add('hidden');
+      
+      const targetScreen = document.getElementById(`screen-${screenId}`);
+      if (targetScreen) targetScreen.classList.remove('hidden');
+
+      // Actualizar botones de control del panel izquierdo
+      document.querySelectorAll('.screen-btn').forEach(btn => {
+        btn.className = "screen-btn w-full text-left px-4 py-3 rounded-xl bg-zinc-900 text-zinc-400 hover:text-white border border-transparent hover:border-zinc-800 transition-all flex items-center justify-between";
+      });
+      const activeBtn = document.getElementById(`btn-${screenId}`);
+      if (activeBtn) {
+        activeBtn.className = "screen-btn w-full text-left px-4 py-3 rounded-xl bg-[#1CE8A1]/10 text-[#1CE8A1] border border-[#1CE8A1]/20 font-medium transition-all flex items-center justify-between";
+      }
+
+      // Asegurar que el modal de estados se cierre al cambiar de pantalla
+      closeStatusModal();
+    }
+
+    // Funciones del Floating Label Dinámico en JS
+    function onInputFocus(input) {
+      const container = input.closest('.input-container');
+      container.classList.add('border-[#1CE8A1]/40', 'mint-glow');
+      container.classList.remove('border-zinc-800/80');
+      
+      const icon = container.querySelector('.icon');
+      if (icon) {
+        icon.classList.add('text-[#1CE8A1]');
+        icon.classList.remove('text-zinc-500');
+      }
+      
+      const label = container.querySelector('.label');
+      label.classList.remove('opacity-0', 'h-0', 'pointer-events-none');
+      label.classList.add('opacity-100', 'mb-0.5');
+      input.placeholder = "";
+    }
+
+    function onInputBlur(input) {
+      const container = input.closest('.input-container');
+      container.classList.remove('border-[#1CE8A1]/40', 'mint-glow');
+      container.classList.add('border-zinc-800/80');
+      
+      const icon = container.querySelector('.icon');
+      if (icon) {
+        icon.classList.remove('text-[#1CE8A1]');
+        icon.classList.add('text-zinc-500');
+      }
+
+      const label = container.querySelector('.label');
+      if (input.value.trim() === '') {
+        label.classList.add('opacity-0', 'h-0', 'pointer-events-none');
+        label.classList.remove('opacity-100', 'mb-0.5');
+        input.placeholder = input.getAttribute('data-placeholder');
+      }
+    }
+
+    function onInputWrite(input) {
+      // Función reservada por si se requiere lógica reactiva durante la escritura
+    }
+
+    // Inicialización de Inputs (para Nickname pre-llenado 'df')
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.input-container input').forEach(input => {
+        const container = input.closest('.input-container');
+        const label = container.querySelector('.label');
+        
+        // Guardamos el placeholder original en un atributo de datos
+        input.setAttribute('data-placeholder', input.placeholder);
+        
+        if (input.value.trim() !== '') {
+          label.classList.remove('opacity-0', 'h-0', 'pointer-events-none');
+          label.classList.add('opacity-100', 'mb-0.5');
+          input.placeholder = "";
+        }
+      });
+    });
+
+    // Modal de Estados
+    function openStatusModal() {
+      const modal = document.getElementById('status-modal');
+      modal.classList.remove('translate-y-full');
+    }
+
+    // Cerrar modal de estados
+    function closeStatusModal() {
+      const modal = document.getElementById('status-modal');
+      modal.classList.add('translate-y-full');
+    }
+
+    // Cambiar estado seleccionado
+    function selectStatus(statusText, emoji) {
+      document.getElementById('current-emoji').textContent = emoji;
+      document.getElementById('current-status-text').textContent = statusText;
+      closeStatusModal();
+      showToast(`Estado actualizado: ${statusText} ${emoji}`);
+    }
+
+    // Simular interruptor de Silencio
+    function toggleSilence(btn) {
+      const isSilent = btn.classList.contains('border-[#1CE8A1]');
+      if (isSilent) {
+        btn.classList.remove('border-[#1CE8A1]', 'text-[#1CE8A1]');
+        btn.classList.add('border-zinc-800', 'text-zinc-300');
+        btn.querySelector('span').textContent = "Silencio";
+        showToast("Modo silencio desactivado");
+      } else {
+        btn.classList.add('border-[#1CE8A1]', 'text-[#1CE8A1]');
+        btn.classList.remove('border-zinc-800', 'text-zinc-300');
+        btn.querySelector('span').textContent = "Silencioso";
+        showToast("Modo silencio activado");
+      }
+    }
+
+    // Sistema SOS con Temporizador
+    let sosTimer;
+    function startSOS(e) {
+      if (e) e.preventDefault();
+      const sub = document.getElementById('sos-sub');
+      let countdown = 3;
+      sub.textContent = `Enviando S.O.S en ${countdown}...`;
+      sub.classList.add('text-yellow-200');
+
+      sosTimer = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+          sub.textContent = `Enviando S.O.S en ${countdown}...`;
+        } else {
+          clearInterval(sosTimer);
+          sub.textContent = `¡ALERTA S.O.S ENVIADA!`;
+          sub.className = "text-[10px] font-bold text-white uppercase tracking-wider mt-0.5 animate-bounce";
+          showToast("🚨 Alerta S.O.S transmitida al círculo");
+          setTimeout(() => {
+            closeStatusModal();
+            cancelSOS();
+          }, 1500);
+        }
+      }, 500);
+    }
+
+    function cancelSOS(e) {
+      if (e) e.preventDefault();
+      clearInterval(sosTimer);
+      const sub = document.getElementById('sos-sub');
+      sub.textContent = "Mantén presionado para enviar";
+      sub.className = "text-[10px] font-medium text-red-100 mt-0.5 opacity-90 transition-all";
+    }
+
+    // Toast de Feedback
+    let toastTimeout;
+    function showToast(text) {
+      clearTimeout(toastTimeout);
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-text').textContent = text;
+      toast.classList.remove('opacity-0', 'translate-y-2');
+      toast.classList.add('opacity-100', '-translate-y-1');
+
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', '-translate-y-1');
+        toast.classList.add('opacity-0');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>

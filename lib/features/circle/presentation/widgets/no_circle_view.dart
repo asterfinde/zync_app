@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/splash/splash_screen.dart' show ZyncLogoPainter;
 import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
 import '../../../../contexts/identity/presentation/provider/auth_state.dart';
 import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
@@ -428,14 +429,25 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'NunaKin',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: NkColors.mint,
-                        letterSpacing: 1.2,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CustomPaint(painter: ZyncLogoPainter(color: NkColors.mint)),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'NunaKin',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: NkColors.mint,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -445,12 +457,20 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () => _showAccountDialog(context),
-                icon: const Icon(Icons.account_circle_outlined, color: NkColors.onDark, size: 28),
-                tooltip: 'Mi Cuenta',
+              GestureDetector(
+                onTap: () => _showAccountDialog(context),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: NkColors.surface2,
+                    border: Border.all(color: NkColors.fgHint, width: 1.5),
+                  ),
+                  child: const Icon(Icons.person_outline, color: NkColors.fgSub, size: 18),
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               ElevatedButton.icon(
                 key: const Key('btn_logout'),
                 onPressed: () => _showLogoutDialog(context),
@@ -488,8 +508,8 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: NkColors.surfaceCard,
-                        border: Border.all(color: NkColors.surfaceBorder),
+                        color: NkColors.surface2,
+                        border: Border.all(color: NkColors.line),
                         borderRadius: NkRadius.forCard,
                       ),
                       child: const Icon(Icons.group_off_outlined, color: NkColors.mint, size: 28),
@@ -504,17 +524,17 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: NkColors.onDark,
-                      letterSpacing: 1.2,
+                      letterSpacing: 0,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
                   // Mensaje de acción
                   const Text(
-                    "¿Qué te gustaría hacer?",
+                    "¿Qué te gustaría hacer hoy?",
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w400,
                       color: NkColors.fgMuted,
                     ),
@@ -529,7 +549,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     child: Container(
                       padding: const EdgeInsets.all(NkSpacing.s5),
                       decoration: BoxDecoration(
-                        color: NkColors.surfaceCard,
+                        color: const Color(0x18FFFFFF),
                         border: Border.all(color: NkColors.surfaceBorder),
                         borderRadius: NkRadius.forCard,
                       ),
@@ -595,7 +615,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                     child: Container(
                       padding: const EdgeInsets.all(NkSpacing.s5),
                       decoration: BoxDecoration(
-                        color: NkColors.surfaceCard,
+                        color: const Color(0x18FFFFFF),
                         border: Border.all(color: NkColors.surfaceBorder),
                         borderRadius: NkRadius.forCard,
                       ),
@@ -608,7 +628,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               color: NkColors.surfaceCard,
                               borderRadius: NkRadius.forButton,
                             ),
-                            child: const Icon(Icons.group_add, color: NkColors.fgSub),
+                            child: const Icon(Icons.near_me, color: NkColors.mint),
                           ),
                           const SizedBox(width: NkSpacing.s),
                           const Expanded(
@@ -617,11 +637,11 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               children: [
                                 Text(
                                   'Unirse a un Círculo',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.mint),
                                 ),
                                 SizedBox(height: 3),
                                 Text(
-                                  'Únete con un código de invitación',
+                                  'Ingresa con un código de invitación privado',
                                   style: TextStyle(fontSize: 12, color: NkColors.fgHint),
                                 ),
                               ],
