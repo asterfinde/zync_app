@@ -22,7 +22,9 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   String _getCurrentUserNickname() {
     final authState = ref.watch(authProvider);
     if (authState is Authenticated) {
-      return authState.user.nickname.isNotEmpty ? authState.user.nickname : '...';
+      final u = authState.user;
+      if (u.nickname.isNotEmpty) return u.nickname;
+      if (u.name.isNotEmpty) return u.name;
     }
     final fbUser = FirebaseAuth.instance.currentUser;
     if (fbUser?.displayName?.isNotEmpty == true) return fbUser!.displayName!;

@@ -165,7 +165,7 @@ Este patrón es una de las soluciones de usabilidad y diseño móvil más sofist
 | Fondo | `surface2` (#1C1C1E) |
 | Borde | 1.5px `fgHint` (40% white) |
 | Ícono | `person_outline`, 24px, `fgSub` (60% white) |
-| Padding footer | 20px horizontal y vertical (simétrico) |
+| Padding footer | left/right 20px, top 20px, bottom 46px (ícono centrado entre última tarjeta y borde inferior, desplazado ½ su altura hacia arriba) |
 
 [image1]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADsAAAAZCAYAAACPQVaOAAADdElEQVR4Xu2Xz2tTQRDHkzQqiFqtCDVN30titBoUlaJUWrGC2msF8VSrqAdvQkWLlOIPqKhgRZEqCv4CQdGCqFSlioIg9VBP/gHePPhH1M/k7drN5D1je2it5AvD7n5nZt/O7uxsEotVUcWsolAozG9oaFiueYVEKpVaqMk5hUwm0+553lvf9weQdVpvEMemC/1JrZhx5PP5FWCR5gXCp9PpDQRVr3W5XG4NAXxA1yJj+u+RI/C1jk0tgZ6CfyrfmfSeHSRZSH9YGrLIC+hGkD5kENnm6hn3IK+tL0GfEw6/+7SjRp4hY42Njdtd3xkHi1jJwh7TftfBymkhnS4np4Nc54QWyBjfWyL2LtI/IGLtzcnfmc6JJpubm+dpUiGOJDQZgSQL60W63dMxiMP1cxpbHK4YHPwnNiEjY/pDEowNFvoQ0mHt0Q1O+URxuov8RCaQ0VhEQLKD6I9qPgzY7WRhZ+Uu6mCbmpoWwz1Et9b1IdgzsgbaNhnLt6Q42ZNjPOD6+EFBqrHjimARaZxOMGlOFiaphTyAy2rbTFAZ92k+DPgPydwSpA7Wcn8ItpiqnFqK8QjjLoYJ2TzapOgkhaecvkxwUHMCJvP40A1/8sTHfFVAoiCpZe9dWLASJNx4pWAjUPLM8J0l9M8jn5FH2rgEfHCp5lxIac9ms1tjZkcrQXabxdy047BgeWpWY/NlOsGiK/imKMmG0r/CPKdRJeUJQ79M+5QAg1YcLtLeQ/ZrvYV504r3KQKy68dZwF5LhAX7t2msIW8yuqu2KOHfgv04h7HRmMj3dzsupZBKZ1JAfqH0McELnPfEQoqULC5qIQITxEvkHXZvRKSP/JAW/ycsdFVUgfKDdJyAb3d5C28yfYtFCbtjEqw7D+Oe3w4ashP2fhnEJeCMKlJyN+CumZSOQkLSSIK2IinLPKPSInWx4DrUSCb5qgZ4wdNTdpctfPWmmkwosYfrtf0yoGzVnIU5qcNekN5iV3baFRA3D/9HAs27CrkS8Lfdn5GMv/GdXa6dQbEoSeuSBNmJz1ff+c0snGszI2BxbX5QxV3RKTeMDMF1SEqagMo2FL7gOUXPwrz7w555DpmjXp47bfevQH43bzbB7tBKgakpl9Fv0joBNWA9+lfoLxH0c62fa4ibn4slKawgz07dnP8/W0UVVVTx3+MXiqPiZmT2s68AAAAASUVORK5CYII=>
 
