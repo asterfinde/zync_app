@@ -7,6 +7,7 @@ import '../../../../../app/theme/design_tokens.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
 import 'package:nunakin_app/core/services/secure_credential_service.dart';
+import 'package:nunakin_app/core/widgets/nunakin_text_field.dart';
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});
@@ -36,10 +37,18 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
     super.initState();
     _updateTime();
     _startTimeUpdater();
+    _nicknameController.addListener(_updateFormValid);
+    _emailController.addListener(_updateFormValid);
+    _passwordController.addListener(_updateFormValid);
+    _confirmPasswordController.addListener(_updateFormValid);
   }
 
   @override
   void dispose() {
+    _nicknameController.removeListener(_updateFormValid);
+    _emailController.removeListener(_updateFormValid);
+    _passwordController.removeListener(_updateFormValid);
+    _confirmPasswordController.removeListener(_updateFormValid);
     _emailFocusNode.dispose();
     _nicknameFocusNode.dispose();
     super.dispose();
@@ -524,9 +533,6 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
   @override
   Widget build(BuildContext context) {
     const accentColor = NkColors.mint;
-    const primaryTextColor = NkColors.onDark;
-    const secondaryTextColor = NkColors.fgMuted;
-    const inputFillColor = NkColors.surface2;
 
     return Scaffold(
       appBar: AppBar(
@@ -577,145 +583,76 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: secondaryTextColor,
+                    color: NkColors.fgMuted,
                   ),
                 ),
                 const SizedBox(height: 40),
                 if (!_isLogin)
                   Column(
                     children: [
-                      TextField(
+                      NunaKinTextField(
                         key: const Key('field_nickname'),
+                        label: 'Nickname',
+                        placeholder: 'Tu apodo público (mínimo 1 caracter)',
+                        icon: Icons.person_outline,
                         controller: _nicknameController,
                         focusNode: _nicknameFocusNode,
-                        onChanged: (_) => _updateFormValid(),
-                        style: TextStyle(color: primaryTextColor),
-                        decoration: InputDecoration(
-                          labelText: 'Nickname',
-                          labelStyle: const TextStyle(color: NkColors.fgSub),
-                          floatingLabelStyle: const TextStyle(color: NkColors.mint),
-                          hintText: 'Tu apodo público (mínimo 1 caracter)',
-                          hintStyle: TextStyle(
-                              color: secondaryTextColor.withValues(alpha: 0.5)),
-                          prefixIcon: Icon(Icons.person_outline,
-                              color: secondaryTextColor),
-                          filled: true,
-                          fillColor: inputFillColor,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: accentColor, width: 1),
-                          ),
-                        ),
                       ),
                       const SizedBox(height: 16),
                     ],
                   ),
-                TextField(
+                NunaKinTextField(
                   key: const Key('field_email'),
+                  label: 'Email',
+                  placeholder: 'tu.email@ejemplo.com',
+                  icon: Icons.alternate_email,
                   controller: _emailController,
                   focusNode: _emailFocusNode,
-                  onChanged: (_) => _updateFormValid(),
-                  style: TextStyle(color: primaryTextColor),
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: const TextStyle(color: NkColors.fgSub),
-                    floatingLabelStyle: const TextStyle(color: NkColors.mint),
-                    hintText: 'tu.email@ejemplo.com',
-                    hintStyle: TextStyle(
-                        color: secondaryTextColor.withValues(alpha: 0.5)),
-                    prefixIcon:
-                        Icon(Icons.alternate_email, color: secondaryTextColor),
-                    filled: true,
-                    fillColor: inputFillColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: accentColor, width: 1),
-                    ),
-                  ),
+                  keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                NunaKinTextField(
                   key: const Key('field_password'),
+                  label: 'Contraseña',
+                  placeholder: '',
+                  icon: Icons.lock_outline,
                   controller: _passwordController,
-                  onChanged: (_) => _updateFormValid(),
                   obscureText: _isPasswordObscured,
-                  style: TextStyle(color: primaryTextColor),
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    labelStyle: const TextStyle(color: NkColors.fgSub),
-                    floatingLabelStyle: const TextStyle(color: NkColors.mint),
-                    prefixIcon:
-                        Icon(Icons.lock_outline, color: secondaryTextColor),
-                    filled: true,
-                    fillColor: inputFillColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordObscured
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: NkColors.fgSub,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: accentColor, width: 1),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordObscured
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: secondaryTextColor,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordObscured = !_isPasswordObscured;
-                        });
-                      },
-                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordObscured = !_isPasswordObscured;
+                      });
+                    },
                   ),
                 ),
                 if (!_isLogin) ...[
                   const SizedBox(height: 16),
-                  TextField(
+                  NunaKinTextField(
                     key: const Key('field_confirm_password'),
+                    label: 'Confirmar Contraseña',
+                    placeholder: '',
+                    icon: Icons.lock_outline,
                     controller: _confirmPasswordController,
-                    onChanged: (_) => _updateFormValid(),
                     obscureText: _isConfirmPasswordObscured,
-                    style: TextStyle(color: primaryTextColor),
-                    decoration: InputDecoration(
-                      labelText: 'Confirmar Contraseña',
-                      labelStyle: const TextStyle(color: NkColors.fgSub),
-                      floatingLabelStyle: const TextStyle(color: NkColors.mint),
-                      prefixIcon: Icon(Icons.lock_outline, color: secondaryTextColor),
-                      filled: true,
-                      fillColor: inputFillColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: NkColors.mintSoft(0.4), width: 0.5),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isConfirmPasswordObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: NkColors.fgSub,
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: accentColor, width: 1),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isConfirmPasswordObscured
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: secondaryTextColor,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
-                          });
-                        },
-                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
+                        });
+                      },
                     ),
                   ),
                 ],
@@ -787,7 +724,7 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                             _isLogin
                                 ? '¿No tienes una cuenta? '
                                 : '¿Ya tienes una cuenta? ',
-                            style: TextStyle(color: secondaryTextColor),
+                            style: TextStyle(color: NkColors.fgMuted),
                           ),
                           TextButton(
                             key: const Key('btn_toggle_mode'),
