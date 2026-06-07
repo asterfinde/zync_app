@@ -81,3 +81,8 @@ memory/
 /clean_and_run.ps1
 /launch_emulator.ps1
 /run_devices.ps1
+
+# Plataformas no objetivo (app es Android/iOS — desktop no aplica)
+linux/
+windows/
+macos/
