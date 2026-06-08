@@ -86,7 +86,7 @@ class _NunaKinTextFieldState extends State<NunaKinTextField> {
         vertical: NkSpacing.xs2,
       ),
       decoration: BoxDecoration(
-        color: _isFocused ? NkColors.mintSoft(0.08) : NkColors.surfaceCard,
+        color: _isFocused ? NkColors.mintSoft(0.08) : const Color(0x18FFFFFF),
         border: Border.all(
           color: _isFocused ? NkColors.mintSoft(0.4) : NkColors.surfaceBorder,
         ),
