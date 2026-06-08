@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
 import 'package:nunakin_app/core/services/secure_credential_service.dart';
 import 'package:nunakin_app/core/widgets/nunakin_text_field.dart';
+import 'package:nunakin_app/core/widgets/nk_app_header.dart';
 
 class AuthFinalPage extends StatefulWidget {
   const AuthFinalPage({super.key});
@@ -535,22 +536,13 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
     const accentColor = NkColors.mint;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'NunaKin',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: NkColors.mint,
-            letterSpacing: 1.2,
-          ),
-        ),
-        backgroundColor: NkColors.canvas,
-        elevation: 0,
-      ),
       backgroundColor: NkColors.canvas,
-      body: Center(
-        child: SingleChildScrollView(
+      body: Column(
+        children: [
+          const NkAppHeader(),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -782,6 +774,9 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
             ),
           ),
         ),
+            ),
+          ),
+        ],
       ),
     );
   }

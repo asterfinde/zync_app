@@ -87,23 +87,74 @@ Este patrón es una de las soluciones de usabilidad y diseño móvil más sofist
 
 ## **4\. Tokens Visuales v2.0 (Especificaciones de Código)**
 
-### **Colores (Color Tokens)**
+### **Colores (NkColors)**
 
-* BG\_CANVAS: \#000000 (Negro absoluto, sin gradientes generales).  
-* COLOR\_BRAND: \#1CE8A1 (Mint característico \- usado para CTAs activos, acentos seleccionados).  
-* COLOR\_BRAND\_DEEP: \#0F6B4C (Mint oscuro \- usado para estados hovered, fondos de botones secundarios).  
-* COLOR\_SOS: \#E53E3E a \#C53030 (Gradiente de alerta premium para S.O.S).  
-* SURFACE\_CARD: rgba(255, 255, 255, 0.04) (Para contenedores, inputs y tarjetas).  
-* SURFACE\_BORDER: rgba(255, 255, 255, 0.08) (Bordes sutiles de 1px para delimitar superficies).  
-* TEXT\_PRIMARY: \#FFFFFF (Blanco puro para títulos y lecturas principales).  
-* TEXT\_MUTED: rgba(255, 255, 255, 0.4) (Gris suave para placeholders).
+| Token Dart | Valor | Descripción |
+| :---- | :---- | :---- |
+| `NkColors.canvas` | `#000000` | Fondo base negro absoluto — sin gradientes generales |
+| `NkColors.mint` | `#1CE8A1` | Mint de marca — CTAs activos, acentos, seleccionados |
+| `NkColors.mintDeep` | `#17C98C` | Mint oscuro — estado pressed del CTA primario |
+| `NkColors.mintSoft(α)` | `mint.withOpacity(α)` | Mint semitransparente — fondos de íconos, bordes sutiles |
+| `NkColors.onDark` | `#FFFFFF` | Texto primario sobre canvas y superficies oscuras |
+| `NkColors.fgMuted` | `rgba(255,255,255, 0.80)` | Texto secundario — subtítulos, descripciones |
+| `NkColors.fgSub` | `rgba(255,255,255, 0.60)` | Texto terciario — labels, captions |
+| `NkColors.fgHint` | `rgba(255,255,255, 0.40)` | Texto sutil — placeholders, hints |
+| `NkColors.fgDisabled` | `rgba(255,255,255, 0.25)` | Texto deshabilitado |
+| `NkColors.surface1` | `#000000` | Alias de canvas |
+| `NkColors.surface2` | `#1C1C1E` | Cards, dialogs — iOS grouped background |
+| `NkColors.surface3` | `#2C2C2E` | Inputs, fills — iOS secondary background |
+| `NkColors.surface4` | `#3A3A3C` | Hover / pressed sobre superficie |
+| `NkColors.surfaceCard` | `rgba(255,255,255, 0.04)` | Fondo de tarjetas e inputs DS v2.0 |
+| `NkColors.surfaceBorder` | `rgba(255,255,255, 0.08)` | Borde de reposo de 1px en superficies DS v2.0 |
+| `NkColors.line` | `rgba(255,255,255, 0.10)` | Divisor / borde legacy (preferir `surfaceBorder` en código nuevo) |
+| `NkColors.danger` | `#D32F2F` | Acciones destructivas — eliminar cuenta, errores críticos |
+| `NkColors.dangerSoft` | `rgba(211,47,47, 0.20)` | Fondo tenue de alerta destructiva |
+| `NkColors.mintGlow` | `rgba(28,232,161, 0.16)` | Resplandor del CTA primario |
+| `NkColors.onMint` | `#000000` | Foreground sobre botón mint sólido |
 
-### **Radios de Esquinas (Radii)**
+> **Gradiente SOS:** `#E53E3E → #C53030` — usado directamente en el widget SOS, no como token `NkColors`.
 
-* Inputs y Botones Pequeños: 14px  
-* Tarjetas e Items de Lista: 18px  
-* Modales y Bottom Sheets: 28px  
-* Chips y Pills de Estado: 999px
+### **Radios de Esquinas (NkRadius)**
+
+| Token Dart | Valor | Uso |
+| :---- | :---- | :---- |
+| `NkRadius.forSmall` | 8px | Elementos muy pequeños |
+| `NkRadius.forInput` | 14px | Inputs y botones pequeños |
+| `NkRadius.forButton` | 14px | Botones (unificado con `forInput` en v2.0) |
+| `NkRadius.forCard` | 18px | Tarjetas e items de lista |
+| `NkRadius.forModal` | 28px | Modales y bottom sheets |
+| `NkRadius.forPill` | 999px | Chips y pills de estado |
+
+### **Espaciado (NkSpacing — grid de 4pt)**
+
+| Token Dart | Valor (pt) | Uso frecuente |
+| :---- | :---- | :---- |
+| `NkSpacing.xs1` | 4 | — |
+| `NkSpacing.xs2` | 8 | — |
+| `NkSpacing.xs3` | 12 | Separación entre secciones menores, dividers |
+| `NkSpacing.s` | 16 | Gap entre ítems de lista |
+| `NkSpacing.s5` | 20 | Padding interno de tarjetas de acción |
+| `NkSpacing.m` | 24 | Padding lateral default de cards / CTAs |
+| `NkSpacing.l` | 32 | Gap entre secciones principales |
+| `NkSpacing.xl` | 40 | Espaciado mayor entre bloques |
+| `NkSpacing.xl2` | 48 | — |
+| `NkSpacing.xxl` | 64 | — |
+| `NkSpacing.touchTarget` | 44 | Touch target mínimo obligatorio (HIG) |
+
+### **Tipografía (NkTextStyle)**
+
+Fuente: sistema operativo nativo (SF Pro en iOS, Roboto en Android).
+
+| Token Dart | fontSize | fontWeight | Color default |
+| :---- | :---- | :---- | :---- |
+| `NkTextStyle.display` | 32px | w700 | `onDark` |
+| `NkTextStyle.h1` | 28px | w700 | `onDark` |
+| `NkTextStyle.h2` | 22px | w600 | `onDark` |
+| `NkTextStyle.h3` | 18px | w600 | `onDark` |
+| `NkTextStyle.body` | 16px | w400 | `onDark` |
+| `NkTextStyle.meta` | 14px | w400 | `fgMuted` |
+| `NkTextStyle.micro` | 12px | w400 | `fgSub` |
+| `NkTextStyle.mono` | 16px | w500 | `onDark` — monospace, `letterSpacing: 2.0` (códigos de invitación, debug) |
 
 ## **5\. Copywriting & Microcopy v2.0**
 
