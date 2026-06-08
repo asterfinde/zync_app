@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../../core/splash/splash_screen.dart' show ZyncLogoPainter;
+import '../../../../core/widgets/nk_app_header.dart';
 import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
 import '../../../../contexts/identity/presentation/provider/auth_state.dart';
 import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
@@ -25,9 +25,13 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
       final u = authState.user;
       if (u.nickname.isNotEmpty) return u.nickname;
       if (u.name.isNotEmpty) return u.name;
+      if (u.email.isNotEmpty) return u.email.split('@')[0];
     }
     final fbUser = FirebaseAuth.instance.currentUser;
-    if (fbUser?.displayName?.isNotEmpty == true) return fbUser!.displayName!;
+    if (fbUser != null) {
+      if (fbUser.displayName?.isNotEmpty == true) return fbUser.displayName!;
+      return fbUser.email?.split('@')[0] ?? '...';
+    }
     return '...';
   }
 
@@ -417,61 +421,22 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // AppBar personalizado (igual que InCircleView)
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
-          color: NkColors.canvas,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CustomPaint(painter: ZyncLogoPainter(color: NkColors.mint)),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'NunaKin',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: NkColors.mint,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _getCurrentUserNickname(),
-                      style: NkTextStyle.body.copyWith(color: NkColors.fgSub),
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton.icon(
-                key: const Key('btn_logout'),
-                onPressed: () => _showLogoutDialog(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF02130D),
-                  foregroundColor: NkColors.mint,
-                  side: BorderSide(color: NkColors.mintSoft(0.3), width: 1),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
-                  elevation: 0,
-                ),
-                icon: const Icon(Icons.logout, size: 18),
-                label: const Text('Cerrar sesión'),
-              ),
-            ],
+        NkAppHeader(
+          subtitle: _getCurrentUserNickname(),
+          trailing: ElevatedButton.icon(
+            key: const Key('btn_logout'),
+            onPressed: () => _showLogoutDialog(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF02130D),
+              foregroundColor: NkColors.mint,
+              side: BorderSide(color: NkColors.mintSoft(0.3), width: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Cerrar sesión'),
           ),
         ),
 
@@ -555,7 +520,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Crear un Círculo',
+                                  'Crear un círculo',
                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
                                 ),
                                 SizedBox(height: 3),
@@ -621,7 +586,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Unirse a un Círculo',
+                                  'Unirse a un círculo',
                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
                                 ),
                                 SizedBox(height: 3),
