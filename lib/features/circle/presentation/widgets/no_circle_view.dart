@@ -471,7 +471,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                   const Text(
                     "Aún no estás en un círculo",
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 23,
                       fontWeight: FontWeight.bold,
                       color: NkColors.onDark,
                       letterSpacing: 0,
@@ -521,7 +521,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               children: [
                                 Text(
                                   'Crear un círculo',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
+                                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: NkColors.onDark),
                                 ),
                                 SizedBox(height: 3),
                                 Text(
@@ -587,7 +587,7 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
                               children: [
                                 Text(
                                   'Unirse a un círculo',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: NkColors.onDark),
+                                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: NkColors.onDark),
                                 ),
                                 SizedBox(height: 3),
                                 Text(
