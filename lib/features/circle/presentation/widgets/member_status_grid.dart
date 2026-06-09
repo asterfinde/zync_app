@@ -134,23 +134,30 @@ class _MemberListItem extends StatelessWidget {
     final locationInfo = memberData['locationInfo'] as String?;
     final isSOS = status == 'sos';
 
-    return Material(
-      color: NkColors.canvas,
-      child: InkWell(
-        onTap: status == 'loading'
-            ? null
-            : () {
-                if (isCurrentUser && onTap != null) {
-                  HapticFeedback.mediumImpact();
-                  onTap!();
-                } else if (hasGPS && coordinates != null) {
-                  HapticFeedback.lightImpact();
-                  onOpenMaps(context, coordinates, nickname);
-                }
-              },
-        borderRadius: NkRadius.forInput,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0x18FFFFFF),
+        border: Border.all(color: NkColors.surfaceBorder),
+        borderRadius: NkRadius.forCard,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: status == 'loading'
+              ? null
+              : () {
+                  if (isCurrentUser && onTap != null) {
+                    HapticFeedback.mediumImpact();
+                    onTap!();
+                  } else if (hasGPS && coordinates != null) {
+                    HapticFeedback.lightImpact();
+                    onOpenMaps(context, coordinates, nickname);
+                  }
+                },
+          borderRadius: NkRadius.forCard,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -284,6 +291,7 @@ class _MemberListItem extends StatelessWidget {
                 ),
               ],
             ],
+          ),
           ),
         ),
       ),
