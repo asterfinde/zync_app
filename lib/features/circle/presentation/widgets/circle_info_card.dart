@@ -27,33 +27,17 @@ class CircleInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.hub, size: 28, color: NkColors.mint),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      circleName,
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: NkColors.onDark,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$memberCount miembros',
-                      style: NkTextStyle.meta,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            circleName,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: NkColors.onDark,
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 2),
+          Text('$memberCount miembros', style: NkTextStyle.meta),
+          const SizedBox(height: 16),
           const Text(
             'Código de Invitación',
             style: NkTextStyle.meta,
