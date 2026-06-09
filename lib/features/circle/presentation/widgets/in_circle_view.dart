@@ -397,10 +397,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                     onApprove: _approveRequest,
                   ),
 
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24.0),
-                    child: Divider(color: NkColors.surfaceBorder, thickness: 1),
-                  ),
+                  const SizedBox(height: 16),
 
                   MemberStatusGrid(
                     sortedMemberIds: _getSortedMembers(circle.members),

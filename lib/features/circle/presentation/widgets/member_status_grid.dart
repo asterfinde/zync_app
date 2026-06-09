@@ -37,16 +37,7 @@ class MemberStatusGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
-          children: [
-            Icon(Icons.people_outline, size: 24, color: NkColors.mint),
-            SizedBox(width: 8),
-            Text('Miembros', style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.bold,
-              color: NkColors.onDark, letterSpacing: 1.2,
-            )),
-          ],
-        ),
+        const Icon(Icons.people_outline, size: 24, color: NkColors.mint),
         const SizedBox(height: 16),
         if (isLoading)
           const Center(child: CircularProgressIndicator(color: NkColors.mint))
@@ -157,141 +148,166 @@ class _MemberListItem extends StatelessWidget {
                 },
           borderRadius: NkRadius.forCard,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 150),
-                    child: Text(emoji,
-                        key: ValueKey(emoji), style: const TextStyle(fontSize: 32)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Emoji avatar con badge de edición para el usuario actual
+                    Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(nickname,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: NkColors.onDark),
-                                  overflow: TextOverflow.ellipsis),
-                            ),
-                            if (isCurrentUser) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: NkColors.mint,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'TÚ',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: NkColors.canvas,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0x20FFFFFF),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          alignment: Alignment.center,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 150),
+                            child: Text(emoji,
+                                key: ValueKey(emoji),
+                                style: const TextStyle(fontSize: 26)),
+                          ),
                         ),
-                        const SizedBox(height: 4),
-                        if (displayText != null)
-                          Text(displayText,
-                              style: isSOS
-                                  ? const TextStyle(fontSize: 14, color: NkColors.danger, fontWeight: FontWeight.bold)
-                                  : const TextStyle(fontSize: 14, color: NkColors.fgSub, fontWeight: FontWeight.normal)),
-                        if (lastUpdate != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              key: const Key('text_member_timestamp'),
-                              _formatTimestamp(lastUpdate),
-                              style: const TextStyle(fontSize: 12, color: NkColors.fgSub),
+                        if (isCurrentUser && status != 'loading')
+                          Positioned(
+                            right: -4,
+                            bottom: -4,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                color: NkColors.mint,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit, size: 10, color: NkColors.canvas),
                             ),
                           ),
-                        if (showManualBadge) ...[
-                          const SizedBox(height: 4),
-                          Container(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              key: Key('badge_manual'),
-                              '✋ Manual',
-                              style: TextStyle(fontSize: 11, color: Colors.orange),
-                            ),
-                          ),
-                        ],
-                        if (locationInfo != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            key: const Key('text_location_info'),
-                            locationInfo,
-                            style: const TextStyle(fontSize: 11, color: NkColors.fgHint),
-                          ),
-                        ],
-                        if (isFirst && status != 'loading')
-                          Text(
-                            'Creador',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: NkColors.mintSoft(0.8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        if (isCurrentUser && status != 'loading') ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            key: const Key('text_tap_hint'),
-                            'Toca para cambiar tu estado',
-                            style: const TextStyle(fontSize: 11, color: NkColors.fgHint),
-                          ),
-                        ],
                       ],
                     ),
-                  ),
-                ],
-              ),
-              if (hasGPS && coordinates != null && status != 'loading') ...[
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    onOpenMaps(context, coordinates, nickname);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Nombre + badge TÚ
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(nickname,
+                                    style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: NkColors.onDark),
+                                    overflow: TextOverflow.ellipsis),
+                              ),
+                              if (isCurrentUser) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: NkColors.mint,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'TÚ',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: NkColors.canvas,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          // Estado
+                          if (displayText != null)
+                            Text(displayText,
+                                style: isSOS
+                                    ? const TextStyle(
+                                        fontSize: 13,
+                                        color: NkColors.danger,
+                                        fontWeight: FontWeight.bold)
+                                    : const TextStyle(
+                                        fontSize: 13, color: NkColors.fgSub)),
+                          // Línea meta: timestamp • Creador • Manual
+                          Wrap(
+                            spacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (lastUpdate != null)
+                                Text(
+                                  key: const Key('text_member_timestamp'),
+                                  _formatTimestamp(lastUpdate),
+                                  style: const TextStyle(
+                                      fontSize: 11, color: NkColors.fgHint),
+                                ),
+                              if (isFirst && status != 'loading')
+                                Text(
+                                  '• Creador',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: NkColors.mintSoft(0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              if (showManualBadge)
+                                const Text(
+                                  key: Key('badge_manual'),
+                                  '• ✋ Manual',
+                                  style: TextStyle(
+                                      fontSize: 11, color: Colors.orange),
+                                ),
+                            ],
+                          ),
+                          if (locationInfo != null)
+                            Text(
+                              key: const Key('text_location_info'),
+                              locationInfo,
+                              style: const TextStyle(
+                                  fontSize: 11, color: NkColors.fgHint),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (hasGPS && coordinates != null && status != 'loading') ...[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      onOpenMaps(context, coordinates, nickname);
+                    },
                     child: Row(
                       children: [
-                        const Icon(Icons.location_on, size: 20, color: NkColors.danger),
-                        const SizedBox(width: 8),
+                        const Icon(Icons.location_on,
+                            size: 16, color: NkColors.danger),
+                        const SizedBox(width: 6),
                         const Expanded(
                           child: Text(
                             'Ubicación SOS compartida',
                             style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: NkColors.onDark,
                                 fontWeight: FontWeight.w500),
                           ),
                         ),
-                        Icon(Icons.arrow_forward_ios, size: 14, color: NkColors.danger.withValues(alpha: 0.7)),
+                        Icon(Icons.arrow_forward_ios,
+                            size: 12,
+                            color: NkColors.danger.withValues(alpha: 0.7)),
                       ],
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
-          ),
+            ),
           ),
         ),
       ),
