@@ -18,8 +18,9 @@ import '../../../geofencing/services/geofencing_service.dart';
 import 'package:nunakin_app/app/di/injection_container.dart';
 import 'package:nunakin_app/shared/events/domain_event_bus.dart';
 import 'member_status_grid.dart';
-import 'in_circle_header.dart';
 import 'circle_info_card.dart';
+import '../../../../core/widgets/nk_app_header.dart';
+import '../../../settings/presentation/pages/settings_page.dart';
 import 'join_requests_banner.dart';
 import 'in_circle_footer.dart';
 import 'member_data_parser.dart';
@@ -358,7 +359,24 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       body: Column(
         children: [
           // --- HEADER ---
-          InCircleHeader(nickname: _getCurrentUserNickname(ref)),
+          NkAppHeader(
+            subtitle: _getCurrentUserNickname(ref),
+            trailing: OutlinedButton.icon(
+              key: const Key('btn_settings'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: NkColors.mint,
+                backgroundColor: const Color(0xFF052A1D),
+                side: BorderSide.none,
+                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                shape: RoundedRectangleBorder(borderRadius: NkRadius.forInput),
+              ),
+              icon: const Icon(Icons.settings, size: 18),
+              label: const Text('Ajustes'),
+            ),
+          ),
 
           // --- BODY ---
           Expanded(
@@ -381,7 +399,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24.0),
-                    child: Divider(color: NkColors.surface4, thickness: 1),
+                    child: Divider(color: NkColors.surfaceBorder, thickness: 1),
                   ),
 
                   MemberStatusGrid(

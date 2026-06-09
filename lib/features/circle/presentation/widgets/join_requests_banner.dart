@@ -30,7 +30,7 @@ class JoinRequestsBanner extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: NkColors.onDark,
                 letterSpacing: 1.2,
               ),
             ),
@@ -83,7 +83,7 @@ class _JoinRequestCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: NkColors.onDark,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

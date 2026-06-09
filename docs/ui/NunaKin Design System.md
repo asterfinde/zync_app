@@ -189,7 +189,7 @@ Fuente: sistema operativo nativo (SF Pro en iOS, Roboto en Android).
 
 | Texto | Tamaño | Peso | Letter-spacing | Color |
 | :---- | :---- | :---- | :---- | :---- |
-| "Aún no estás en un círculo" | 22px | bold (700) | 0 | `onDark` (blanco) |
+| "Aún no estás en un círculo" | 23px | bold (700) | 0 | `onDark` (blanco) |
 | "¿Qué te gustaría hacer hoy?" | 16px | regular (400) | 0 | `fgMuted` (80% white) |
 
 **Tarjetas de acción:**
@@ -203,7 +203,7 @@ Fuente: sistema operativo nativo (SF Pro en iOS, Roboto en Android).
 | Fondo ícono | `mintSoft(0.1)` (10% Mint) | `surfaceCard` (4% white) |
 | Radio ícono | 14px | 14px |
 | Tamaño ícono contenedor | 48×48px | 48×48px |
-| Título | "Crear Círculo" — blanco bold 16px | "Unirse a un Círculo" — **blanco** bold 16px |
+| Título | "Crear un círculo" — blanco bold 17px | "Unirse a un círculo" — blanco bold 17px |
 | Descripción | "Inicia un nuevo círculo e invita a / otros" — `fgHint` 12px, 2 líneas | "Ingresa con un código de / invitación privado" — `fgHint` 12px, 2 líneas |
 
 **Ícono de cuenta (footer):**
@@ -217,6 +217,156 @@ Fuente: sistema operativo nativo (SF Pro en iOS, Roboto en Android).
 | Borde | 1.5px `fgHint` (40% white) |
 | Ícono | `person_outline`, 24px, `fgSub` (60% white) |
 | Padding footer | left/right 20px, top 20px, bottom 46px (ícono centrado entre última tarjeta y borde inferior, desplazado ½ su altura hacia arriba) |
+
+### **6.3 AuthFinalPage — Pantalla de Login / Registro**
+
+**Header:** `NkAppHeader` sin subtitle ni trailing.
+
+**Textos de pantalla:**
+
+| Texto | Tamaño | Peso | Letter-spacing | Color |
+| :---- | :---- | :---- | :---- | :---- |
+| "Bienvenido" / "Crea tu cuenta" | 28px | w700 | 1.2 | `onDark` |
+| "Inicia sesión…" / "Completa los campos…" | 16px | w400 | 0 | `fgMuted` |
+| Timestamp debug (v10:50:30) | 10px | w400 | 0 | `fgHint` |
+
+**NunaKinTextField — estados:**
+
+| Estado | Fondo contenedor | Borde | Icono | Label |
+| :---- | :---- | :---- | :---- | :---- |
+| Reposo | `Color(0x18FFFFFF)` (9.4% white) | `surfaceBorder` (8% white) 1px | `fgHint` 20px | placeholder `fgHint` |
+| Enfocado | `mintSoft(0.08)` | `mintSoft(0.4)` 1px | `mint` 20px | label flotante mint 9px w700 letterSpacing 1.2 UPPERCASE |
+| Con contenido | `Color(0x18FFFFFF)` | `surfaceBorder` 1px | `fgHint` 20px | label flotante mint 9px w700 (permanece visible) |
+
+Texto ingresado: 15px w600 `onDark`. Radio contenedor: `NkRadius.forInput`. Padding interno: h:`NkSpacing.s`, v:`NkSpacing.xs2`.
+
+**Botón CTA (Iniciar Sesión / Crear Cuenta):**
+
+| Propiedad | Activo | Deshabilitado |
+| :---- | :---- | :---- |
+| Fondo | Gradiente `mint(0.8) → mint`, radius 12 | `NkColors.canvas` |
+| Texto | 18px bold `Colors.black` | 18px bold `fgSub` |
+| Altura mínima | 55px | 55px |
+| Sombra | `mint(0.3)` blur 15 offset (0,5) | — |
+
+**Controles secundarios:**
+
+| Elemento | Estilo |
+| :---- | :---- |
+| "¿No tienes cuenta? Regístrate" | `TextButton`, texto link color `mint` |
+| "¿Olvidaste tu contraseña?" | `TextButton`, color `mint` |
+
+**Modal recuperación de contraseña:**
+
+| Propiedad | Valor |
+| :---- | :---- |
+| Fondo | `NkColors.canvas` |
+| Radio top | 24px |
+| Campo email | `fillColor: Color(0xFF171D1B)`, border `mintSoft(0.4)` 0.5px, focused border `fgSub` 2px — ⚠️ pendiente alinear a `NunaKinTextField` |
+| Botón enviar | bg `fgSub`, texto `Colors.black` bold 16px, radius 30 |
+
+---
+
+### **6.4 InCircleView — Pantalla de Círculo Activo**
+
+**Header:** `NkAppHeader(subtitle: nickname, trailing: OutlinedButton.icon "Ajustes")`
+
+| Prop. botón Ajustes | Valor |
+| :---- | :---- |
+| Foreground | `mint` |
+| Background | `Color(0xFF052A1D)` |
+| Border | ninguno (`BorderSide.none`) |
+| Radio | `NkRadius.forInput` |
+| Texto | 14px bold |
+| Ícono | `Icons.settings` 18px |
+
+**Body padding:** `fromLTRB(16, 16, 16, 24)`.
+
+**CircleInfoCard** (tarjeta con contenedor):
+
+| Propiedad | Valor |
+| :---- | :---- |
+| Fondo | `Color(0x18FFFFFF)` (9.4% white) |
+| Borde | `surfaceBorder` (8% white) 1px |
+| Radio | `NkRadius.forCard` (18px) |
+| Padding | `NkSpacing.s5` (20px) |
+| Ícono hub | `Icons.hub` 28px mint |
+| Nombre círculo | 26px bold `onDark` |
+| Conteo miembros | `NkTextStyle.meta` (14px `fgMuted`) |
+| Label "Código de Invitación" | `NkTextStyle.meta` |
+| Código | `NkTextStyle.mono` — 24px w500 `onDark` letterSpacing 8 |
+| Ícono copiar | `Icons.copy` 24px mint |
+
+**Divider entre CircleInfoCard y sección Miembros:**
+
+| Propiedad | Valor |
+| :---- | :---- |
+| Color | `NkColors.surfaceBorder` |
+| Grosor | 1px |
+| Padding vertical | 24px cada lado |
+
+**Sección "Miembros":**
+
+| Elemento | Valor |
+| :---- | :---- |
+| Ícono | `people_outline` 24px mint |
+| Título | "Miembros" — 22px bold `onDark` letterSpacing 1.2 |
+| Gap tras título | 16px |
+
+**MemberListItem** (tarjeta por miembro):
+
+| Propiedad | Valor |
+| :---- | :---- |
+| Fondo | `Color(0x18FFFFFF)` |
+| Borde | `surfaceBorder` 1px |
+| Radio | `NkRadius.forCard` |
+| Padding | v:16 h:8 |
+| Emoji | 32px — `AnimatedSwitcher` 150ms |
+| Nickname | 18px bold `onDark` |
+| Badge "TÚ" | bg `mint`, texto 10px bold `canvas`, radius 4, padding h:6 v:2 |
+| Display text (normal) | 14px `fgSub` w400 |
+| Display text (SOS) | 14px `danger` bold |
+| Timestamp | 12px `fgSub` |
+| Badge "Manual" | bg `Colors.orange(0.2)`, texto 11px orange, radius 4, padding h:8 v:4 |
+| Location info | 11px `fgHint` |
+| Label "Creador" | 12px `mintSoft(0.8)` w500 |
+| Hint "Toca para cambiar" | 11px `fgHint` |
+| Fila GPS SOS | `location_on` 20px `danger` + texto 13px `onDark` w500 + flecha `danger(0.7)` 14px |
+
+**JoinRequestsBanner** (solo visible al creador, si hay solicitudes):
+
+| Elemento | Valor |
+| :---- | :---- |
+| Ícono sección | `person_add_outlined` 24px mint |
+| Título sección | 20px bold `onDark` letterSpacing 1.2 |
+| Tarjeta solicitud | border `mintSoft(0.4)`, radius `forInput`, padding 16 |
+| Nickname solicitante | 18px bold `onDark` |
+| Email / timestamp | `NkTextStyle.micro` (12px `fgSub`) |
+| Botón Aceptar | bg `mint`, fg `onMint`, radius `forInput`, padding v:10, bold |
+
+**InCircleFooter:**
+
+| Elemento | Valor |
+| :---- | :---- |
+| Contenedor | `SafeArea` + padding `NkSpacing.s` (16px) |
+| Botón Silencio | `OutlinedButton`, fg `mint`, bg `canvas`, borde `mint` 1px, padding v:`NkSpacing.s`, radius `forInput`, ícono `bedtime_outlined` 18px, texto 14px bold |
+| Botón OK | `ElevatedButton`, bg `mint`, fg `onMint`, padding v:`NkSpacing.s`, texto 16px bold, radius `forInput`, ícono `check_circle` |
+| Separación entre botones | 12px |
+
+**Dialog confirmación Modo Silencio:**
+
+| Propiedad | Valor |
+| :---- | :---- |
+| Fondo | `NkColors.canvas` |
+| Barrera | `canvas(0.75)` |
+| Borde | `mintSoft(0.4)` 1px |
+| Radio | `NkRadius.forButton` |
+| Título | `NkTextStyle.h3` (18px w600) |
+| Cuerpo | `NkTextStyle.meta` + `fgMuted` |
+| Botón Cancelar | `TextButton` `fgSub` |
+| Botón Activar | `TextButton` `mint` bold |
+
+---
 
 [image1]: <data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADsAAAAZCAYAAACPQVaOAAADdElEQVR4Xu2Xz2tTQRDHkzQqiFqtCDVN30titBoUlaJUWrGC2msF8VSrqAdvQkWLlOIPqKhgRZEqCv4CQdGCqFSlioIg9VBP/gHePPhH1M/k7drN5D1je2it5AvD7n5nZt/O7uxsEotVUcWsolAozG9oaFiueYVEKpVaqMk5hUwm0+553lvf9weQdVpvEMemC/1JrZhx5PP5FWCR5gXCp9PpDQRVr3W5XG4NAXxA1yJj+u+RI/C1jk0tgZ6CfyrfmfSeHSRZSH9YGrLIC+hGkD5kENnm6hn3IK+tL0GfEw6/+7SjRp4hY42Njdtd3xkHi1jJwh7TftfBymkhnS4np4Nc54QWyBjfWyL2LtI/IGLtzcnfmc6JJpubm+dpUiGOJDQZgSQL60W63dMxiMP1cxpbHK4YHPwnNiEjY/pDEowNFvoQ0mHt0Q1O+URxuov8RCaQ0VhEQLKD6I9qPgzY7WRhZ+Uu6mCbmpoWwz1Et9b1IdgzsgbaNhnLt6Q42ZNjPOD6+EFBqrHjimARaZxOMGlOFiaphTyAy2rbTFAZ92k+DPgPydwSpA7Wcn8ItpiqnFqK8QjjLoYJ2TzapOgkhaecvkxwUHMCJvP40A1/8sTHfFVAoiCpZe9dWLASJNx4pWAjUPLM8J0l9M8jn5FH2rgEfHCp5lxIac9ms1tjZkcrQXabxdy047BgeWpWY/NlOsGiK/imKMmG0r/CPKdRJeUJQ79M+5QAg1YcLtLeQ/ZrvYV504r3KQKy68dZwF5LhAX7t2msIW8yuqu2KOHfgv04h7HRmMj3dzsupZBKZ1JAfqH0McELnPfEQoqULC5qIQITxEvkHXZvRKSP/JAW/ycsdFVUgfKDdJyAb3d5C28yfYtFCbtjEqw7D+Oe3w4ashP2fhnEJeCMKlJyN+CumZSOQkLSSIK2IinLPKPSInWx4DrUSCb5qgZ4wdNTdpctfPWmmkwosYfrtf0yoGzVnIU5qcNekN5iV3baFRA3D/9HAs27CrkS8Lfdn5GMv/GdXa6dQbEoSeuSBNmJz1ff+c0snGszI2BxbX5QxV3RKTeMDMF1SEqagMo2FL7gOUXPwrz7w555DpmjXp47bfevQH43bzbB7tBKgakpl9Fv0joBNWA9+lfoLxH0c62fa4ibn4slKawgz07dnP8/W0UVVVTx3+MXiqPiZmT2s68AAAAASUVORK5CYII=>
 

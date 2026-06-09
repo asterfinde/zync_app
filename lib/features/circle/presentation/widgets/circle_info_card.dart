@@ -17,8 +17,13 @@ class CircleInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
+    return Container(
+      padding: const EdgeInsets.all(NkSpacing.s5),
+      decoration: BoxDecoration(
+        color: const Color(0x18FFFFFF),
+        border: Border.all(color: NkColors.surfaceBorder),
+        borderRadius: NkRadius.forCard,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
