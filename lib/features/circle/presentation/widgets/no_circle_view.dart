@@ -8,6 +8,7 @@ import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
 import '../../../../core/services/session_cache_service.dart';
 import '../../../../services/circle_service.dart';
 import '../../../../app/theme/design_tokens.dart';
+import '../../../../core/widgets/nk_dialog.dart';
 import 'create_circle_view.dart';
 import 'join_circle_view.dart';
 
@@ -73,79 +74,50 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
         ? authState.user.email
         : (fbUser?.email ?? '');
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: NkColors.canvas,
-        shape: RoundedRectangleBorder(
-          borderRadius: NkRadius.forButton,
-          side: BorderSide(color: NkColors.mintSoft(0.4), width: 1),
-        ),
-        title: const Text(
-          'Mi Cuenta',
-          style: TextStyle(color: NkColors.onDark),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Nickname', style: TextStyle(color: NkColors.fgHint, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(nickname, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
-            const SizedBox(height: 16),
-            const Text('Email', style: TextStyle(color: NkColors.fgHint, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(email, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
-          ],
-        ),
-        actions: [
+    NkDialog.inform(
+      context,
+      title: 'Mi Cuenta',
+      contentWidget: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Nickname', style: TextStyle(color: NkColors.fgHint, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(nickname, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
+          const SizedBox(height: 16),
+          const Text('Email', style: TextStyle(color: NkColors.fgHint, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(email, style: const TextStyle(color: NkColors.onDark, fontSize: 16)),
+          const SizedBox(height: 16),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               _showDeleteAccountDialog(context);
             },
-            child: const Text('Eliminar Cuenta', style: TextStyle(color: NkColors.danger)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cerrar', style: TextStyle(color: NkColors.mint)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteAccountDialog(BuildContext parentContext) {
-    showDialog(
-      context: parentContext,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: NkColors.surface2,
-        shape: RoundedRectangleBorder(borderRadius: NkRadius.forButton),
-        title: const Text('Eliminar Cuenta', style: TextStyle(color: NkColors.onDark)),
-        content: const Text(
-          '¿Estás seguro? Esta acción es irreversible. Se eliminarán tu cuenta y todos tus datos.',
-          style: TextStyle(color: NkColors.fgSub),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: NkColors.fgSub)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              // FIX: Usar mounted del State y this.context en lugar del context del diálogo
-              if (mounted) {
-                _executeDeleteAccount(context);
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: NkColors.danger),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              foregroundColor: NkColors.danger,
+            ),
             child: const Text('Eliminar Cuenta'),
           ),
         ],
       ),
+      closeLabel: 'Cerrar',
     );
+  }
+
+  void _showDeleteAccountDialog(BuildContext parentContext) async {
+    final confirmed = await NkDialog.confirm(
+      parentContext,
+      title: 'Eliminar Cuenta',
+      body: '¿Estás seguro? Esta acción es irreversible. Se eliminarán tu cuenta y todos tus datos.',
+      confirmLabel: 'Eliminar Cuenta',
+      confirmDestructive: true,
+      barrierDismissible: false,
+    );
+    if (confirmed == true && mounted) {
+      _executeDeleteAccount(context);
+    }
   }
 
   Future<void> _executeDeleteAccount(BuildContext context) async {
@@ -351,70 +323,39 @@ class _NoCircleViewState extends ConsumerState<NoCircleView> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: NkColors.surface2,
-        title: const Text(
-          'Cerrar Sesión',
-          style: TextStyle(color: NkColors.onDark),
-        ),
-        content: const Text(
-          '¿Estás seguro de que quieres cerrar sesión?',
-          style: TextStyle(color: NkColors.fgSub),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: NkColors.fgSub),
-            ),
-          ),
-          TextButton(
-            key: const Key('dialog_btn_logout_confirm'),
-            onPressed: () async {
-              Navigator.of(context).pop();
-              try {
-                print('🔴 [LOGOUT] Iniciando logout desde NoCircleView (sin círculo)...');
-
-                // PASO 1: Limpiar cache PRIMERO (evita parpadeo de NoCircleView)
-                print('🔴 [LOGOUT] Limpiando SessionCache...');
-                await SessionCacheService.clearSession();
-
-                // PASO 2: Cerrar sesión Firebase
-                await FirebaseAuth.instance.signOut();
-                print('🔴 [LOGOUT] Firebase signOut completado');
-
-                // PASO 3: Navegar directo a login (sin SnackBar)
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const AuthFinalPage()),
-                    (route) => false,
-                  );
-                  print('✅ [LOGOUT] Navegación completada');
-                }
-              } catch (e) {
-                print('❌ [LOGOUT] Error: $e');
-                // Solo mostrar error si realmente falla
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error al cerrar sesión: $e'),
-                      backgroundColor: NkColors.danger,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: NkColors.danger),
-            child: const Text('Cerrar Sesión'),
-          ),
-        ],
-      ),
+  void _showLogoutDialog(BuildContext outerContext) async {
+    final confirmed = await NkDialog.confirm(
+      outerContext,
+      title: 'Cerrar Sesión',
+      body: '¿Estás seguro de que quieres cerrar sesión?',
+      confirmLabel: 'Cerrar Sesión',
     );
+    if (confirmed != true) return;
+    try {
+      print('🔴 [LOGOUT] Iniciando logout desde NoCircleView (sin círculo)...');
+      print('🔴 [LOGOUT] Limpiando SessionCache...');
+      await SessionCacheService.clearSession();
+      await FirebaseAuth.instance.signOut();
+      print('🔴 [LOGOUT] Firebase signOut completado');
+      if (outerContext.mounted) {
+        Navigator.of(outerContext).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+          (route) => false,
+        );
+        print('✅ [LOGOUT] Navegación completada');
+      }
+    } catch (e) {
+      print('❌ [LOGOUT] Error: $e');
+      if (outerContext.mounted) {
+        ScaffoldMessenger.of(outerContext).showSnackBar(
+          SnackBar(
+            content: Text('Error al cerrar sesión: $e'),
+            backgroundColor: NkColors.danger,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   @override

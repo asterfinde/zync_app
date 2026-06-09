@@ -9,6 +9,7 @@ import '../../services/zone_service.dart';
 import '../widgets/zone_form.dart';
 import '../widgets/geofencing_debug_widget.dart';
 import '../../../../app/theme/design_tokens.dart';
+import '../../../../core/widgets/nk_dialog.dart';
 
 /// Página de gestión de zonas geográficas
 /// Lista todas las zonas del círculo con opciones CRUD
@@ -244,40 +245,19 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
     );
   }
 
-  void _confirmDelete(BuildContext context, Zone zone) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: NkColors.surface2,
-        title: const Text(
-          'Eliminar zona',
-          style: TextStyle(color: NkColors.onDark),
-        ),
-        content: Text(
-          '¿Estás seguro de eliminar "${zone.name}"?\n\nEsta acción no se puede deshacer.',
-          style: const TextStyle(color: NkColors.fgMuted),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'CANCELAR',
-              style: TextStyle(color: NkColors.fgSub),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _deleteZone(context, zone);
-            },
-            child: const Text(
-              'ELIMINAR',
-              style: TextStyle(color: NkColors.danger),
-            ),
-          ),
-        ],
-      ),
+  void _confirmDelete(BuildContext context, Zone zone) async {
+    final confirmed = await NkDialog.confirm(
+      context,
+      title: 'Eliminar zona',
+      body: '¿Estás seguro de eliminar "${zone.name}"?\n\nEsta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      cancelLabel: 'Cancelar',
+      confirmDestructive: true,
+      barrierDismissible: false,
     );
+    if (confirmed == true && context.mounted) {
+      await _deleteZone(context, zone);
+    }
   }
 
   Future<void> _deleteZone(BuildContext context, Zone zone) async {

@@ -8,7 +8,7 @@
 
 ---
 
-## Estado de avance — actualizado 2026-06-02
+## Estado de avance — actualizado 2026-06-09
 
 | Semana | Tema | Estado | Tag / PR |
 |--------|------|--------|----------|
@@ -17,17 +17,19 @@
 | 3 | Native Bridge | ✅ Completa | `refactor-sem3-done` |
 | 4 | Identity + Circle | ✅ Completa | `refactor-sem4-done` |
 | 5 | UI descomposición | ✅ Completa | `refactor-sem5-done` |
-| 6 | Hardening (parcial) | ✅ Completa | `refactor-sem6-done` (PR #201) |
-| — | *(Fix de producción)* | ✅ `fix/silent-mode-firestore-write` mergeado | PR #202 — raíz en GCP: Token Service API faltante en key `Android - Zync Maps` |
-| **6a** | **Design System** | **⏳ PRÓXIMA** | Rama nueva desde `main` actualizado |
-| 7 | Flujos no refactorizados | 🔲 Pendiente | — |
+| 6 | Hardening (parcial) | ✅ Completa | `refactor-sem6-done` @ `9fcfda2` (PR #201) |
+| — | *(Fix de producción)* | ✅ Mergeado | PR #202 — raíz en GCP: Token Service API faltante en key `Android - Zync Maps` |
+| **6a** | **Design System** | ✅ **Completa** | PRs #203, #205–#218 — tokens + DS v2.0 Minimalist completo |
+| **7** | **Flujos no refactorizados** | **🔲 PRÓXIMA** | 4 PRs (A–D) · doc: [07-semana-7-flujos-legacy.md](07-semana-7-flujos-legacy.md) |
 | 8 | Geofencing BC completo | 🔲 Pendiente | — |
 | 9 | Seguridad y Compliance | 🔲 Pendiente | — |
 | 10 | Launch Readiness + Freeze | 🔲 Pendiente | — |
 
-**main actual:** `dba2422` — merge PR #202
+**main actual:** `1a0edaf` — PR #217 (compact InCircleView cards)
 **Lanzamiento estimado MVP:** ~15 agosto 2026
-**Días hábiles restantes (al 2026-06-02):** ~55
+**Días hábiles restantes (al 2026-06-09):** ~47
+
+**Nota — `USE_LEGACY_BRIDGE`:** ya en `false` en `android/app/build.gradle.kts:58`. No requiere acción en Sem 9.
 
 ---
 
@@ -350,7 +352,9 @@ Ver [01-semana-1-cimientos.md](01-semana-1-cimientos.md).
 - Migrar `auth_final_page.dart` y `settings_page.dart` a use cases en lugar de servicios estáticos.
 - `navigatorKey` sigue existiendo solo para `MaterialApp`, no como punto de inyección de servicios.
 
-### 3.6 Detalles de Semana 6 — Hardening (parcial)
+### 3.6 Detalles de Semana 6 — Hardening (parcial) ✅
+
+> Doc completo: [`06-semana-6-hardening.md`](06-semana-6-hardening.md)
 
 **Objetivo**: consolidar el núcleo refactorizado antes de expandir a los contextos pendientes.
 
@@ -362,7 +366,9 @@ Ver [01-semana-1-cimientos.md](01-semana-1-cimientos.md).
 
 ---
 
-### 3.6a Detalles de Semana 6a — Design System
+### 3.6a Detalles de Semana 6a — Design System ✅
+
+> Doc completo: [`06a-semana-6a-design-system.md`](06a-semana-6a-design-system.md)
 
 **Objetivo**: codificar formalmente los tokens de diseño usados en Sem 5 como referencia numérica, y extraer los componentes base de UI en un sistema reutilizable. Sin lógica de negocio.
 

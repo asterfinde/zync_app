@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import '../../../../app/theme/design_tokens.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart';
+import '../../../../core/widgets/nk_dialog.dart';
 import 'silent_mode_button.dart';
 
 class InCircleFooter extends StatefulWidget {
@@ -17,56 +18,12 @@ class _InCircleFooterState extends State<InCircleFooter> {
   bool _isUpdating = false;
 
   Future<void> _confirmAndActivateSilentMode() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierColor: NkColors.canvas.withValues(alpha: 0.75),
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: NkColors.canvas,
-          insetPadding: const EdgeInsets.symmetric(horizontal: NkSpacing.m, vertical: NkSpacing.m),
-          shape: RoundedRectangleBorder(
-            borderRadius: NkRadius.forButton,
-            side: BorderSide(color: NkColors.mintSoft(0.4), width: 1),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(NkSpacing.s5),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Silencio',
-                  style: NkTextStyle.h3,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'La app se minimizará y quedará activa en segundo plano. '
-                  'Podrás cambiar tu estado desde la notificación persistente.',
-                  style: NkTextStyle.meta.copyWith(color: NkColors.fgMuted),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(false),
-                      style: TextButton.styleFrom(foregroundColor: NkColors.fgSub),
-                      child: const Text('Cancelar'),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(true),
-                      style: TextButton.styleFrom(foregroundColor: NkColors.mint),
-                      child: const Text('Activar', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    final confirmed = await NkDialog.confirm(
+      context,
+      title: 'Silencio',
+      body: 'La app se minimizará y quedará activa en segundo plano. '
+          'Podrás cambiar tu estado desde la notificación persistente.',
+      confirmLabel: 'Activar',
     );
 
     if (confirmed == true && mounted) {

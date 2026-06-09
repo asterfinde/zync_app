@@ -9,6 +9,7 @@ import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
 import '../../../../core/widgets/quick_actions_config_widget.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
 import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout
+import '../../../../core/widgets/nk_dialog.dart';
 import 'emoji_management_page.dart'; // Gestión de estados/emojis
 import '../../../geofencing/presentation/pages/zones_page.dart'; // Gestión de zonas geográficas
 import '../../../../services/circle_service.dart'; // Para obtener Circle object
@@ -315,36 +316,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
     }
   }
 
-  /// Point 1 SPEC: Muestra diálogo de confirmación para cerrar sesión
-  void _showDeleteAccountDialog(BuildContext context) {
-    showDialog(
-      context: context,
+  /// Point 1 SPEC: Muestra diálogo de confirmación para eliminar cuenta
+  void _showDeleteAccountDialog(BuildContext context) async {
+    final confirmed = await NkDialog.confirm(
+      context,
+      title: 'Eliminar Cuenta',
+      body: '¿Estás seguro? Esta acción es irreversible. Se eliminarán tu cuenta y todos tus datos.',
+      confirmLabel: 'Eliminar Cuenta',
+      confirmDestructive: true,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: _AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Eliminar Cuenta', style: TextStyle(color: _AppColors.textPrimary)),
-        content: const Text(
-          '¿Estás seguro? Esta acción es irreversible. Se eliminarán tu cuenta y todos tus datos.',
-          style: TextStyle(color: _AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(dialogContext).pop();
-              if (mounted) {
-                _executeDeleteAccount(this.context);
-              }
-            },
-            child: const Text('Eliminar Cuenta', style: TextStyle(color: _AppColors.sosRed)),
-          ),
-        ],
-      ),
     );
+    if (confirmed == true && mounted) {
+      _executeDeleteAccount(this.context);
+    }
   }
 
   Future<void> _executeDeleteAccount(BuildContext context) async {
@@ -527,110 +511,66 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
   }
 
   void _showCircleLostInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: _AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Ya no estás en tu círculo', style: TextStyle(color: _AppColors.textPrimary)),
-        content: const Text(
-          'Al cancelar la eliminación saliste de tu círculo. Para volver, pídele a alguien del grupo que te comparta el código de invitación.',
-          style: TextStyle(color: _AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Entendido', style: TextStyle(color: _AppColors.accent)),
-          ),
-        ],
-      ),
+    NkDialog.inform(
+      context,
+      title: 'Ya no estás en tu círculo',
+      body: 'Al cancelar la eliminación saliste de tu círculo. Para volver, pídele a alguien del grupo que te comparta el código de invitación.',
     );
   }
 
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Evitar cerrar el diálogo accidentalmente durante el proceso
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: _AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.textPrimary)),
-        content: const Text('¿Estás seguro?', style: TextStyle(color: _AppColors.textSecondary)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: _AppColors.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () async {
-              // 1. Cerrar el diálogo PRIMERO
-              Navigator.of(dialogContext).pop();
-
-              // 2. Mostrar indicador de carga
-              if (context.mounted) {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (_) => const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(NkColors.mint),
-                    ),
-                  ),
-                );
-              }
-
-              try {
-                // 3. Limpiar notificaciones y servicios (Point 1.1 - paso 2 y 3)
-                print('🔴 [LOGOUT] Iniciando proceso de logout desde Settings...');
-                print('🔴 [LOGOUT] Paso 1/3: Desactivando funcionalidad silenciosa...');
-
-                await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
-                  const Duration(seconds: 10),
-                  onTimeout: () {
-                    print('⚠️ [LOGOUT] Timeout en deactivateAfterLogout, continuando...');
-                  },
-                );
-
-                // FIX: Limpiar SessionCache INMEDIATAMENTE para evitar parpadeo
-                print('🔴 [LOGOUT] Limpiando SessionCache...');
-                await SessionCacheService.clearSession();
-
-                print('🔴 [LOGOUT] Paso 2/3: Cerrando sesión de Firebase...');
-
-                // 4. Invalidar sesión (Point 1.1 - paso 1)
-                await FirebaseAuth.instance.signOut().timeout(
-                  const Duration(seconds: 10),
-                  onTimeout: () {
-                    print('⚠️ [LOGOUT] Timeout en signOut, continuando...');
-                  },
-                );
-
-                print('🔴 [LOGOUT] Paso 3/3: Redirigiendo a login...');
-              } catch (e) {
-                print('❌ [LOGOUT] Error durante logout: $e');
-                // Continuar con navegación incluso si hay error
-              } finally {
-                // 5. SIEMPRE navegar a login (Point 1.1 - paso 4)
-                // Garantizar que la navegación ocurra sin importar errores anteriores
-                if (context.mounted) {
-                  // Cerrar indicador de carga si existe
-                  Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
-
-                  // Navegar a AuthFinalPage
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const AuthFinalPage()),
-                    (route) => false,
-                  );
-
-                  print('✅ [LOGOUT] Logout completado exitosamente');
-                }
-              }
-            },
-            child: const Text('Cerrar Sesión', style: TextStyle(color: _AppColors.sosRed)),
-          ),
-        ],
-      ),
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) async {
+    final confirmed = await NkDialog.confirm(
+      context,
+      title: 'Cerrar Sesión',
+      body: '¿Estás seguro?',
+      confirmLabel: 'Cerrar Sesión',
+      barrierDismissible: false,
     );
+    if (confirmed != true) return;
+
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(NkColors.mint),
+          ),
+        ),
+      );
+    }
+
+    try {
+      print('🔴 [LOGOUT] Iniciando proceso de logout desde Settings...');
+      print('🔴 [LOGOUT] Paso 1/3: Desactivando funcionalidad silenciosa...');
+      await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('⚠️ [LOGOUT] Timeout en deactivateAfterLogout, continuando...');
+        },
+      );
+      print('🔴 [LOGOUT] Limpiando SessionCache...');
+      await SessionCacheService.clearSession();
+      print('🔴 [LOGOUT] Paso 2/3: Cerrando sesión de Firebase...');
+      await FirebaseAuth.instance.signOut().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('⚠️ [LOGOUT] Timeout en signOut, continuando...');
+        },
+      );
+      print('🔴 [LOGOUT] Paso 3/3: Redirigiendo a login...');
+    } catch (e) {
+      print('❌ [LOGOUT] Error durante logout: $e');
+    } finally {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+          (route) => false,
+        );
+        print('✅ [LOGOUT] Logout completado exitosamente');
+      }
+    }
   }
   // --- FIN DE LÓGICA (SIN CAMBIOS) ---
 
