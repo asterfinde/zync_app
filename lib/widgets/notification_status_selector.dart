@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/presence/application/use_cases/set_manual_status.dart';
 import '../core/models/user_status.dart';
-import '../core/services/status_service.dart';
+import '../core/services/emoji_service.dart';
+import '../core/services/session_cache_service.dart';
 
 /// Modal de selección de estado ESPECÍFICO para notificaciones
 /// Idéntico al StatusSelectorOverlay del Círculo — fuente de verdad: fallbackPredefined
@@ -62,12 +65,11 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
 
   Future<void> _loadStatusGrid() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('Usuario no autenticado');
+      final session = SessionCacheService.restoreSessionSync();
+      final circleId = session?['circleId'];
+      if (circleId == null || circleId.isEmpty) throw Exception('circleId no disponible');
 
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      final circleId = userDoc.data()?['circleId'] as String?;
-      if (circleId == null) throw Exception('Usuario sin círculo');
+      final emojis = await EmojiService.getAllEmojisForCircle(circleId);
 
       final zonesSnapshot =
           await FirebaseFirestore.instance.collection('circles').doc(circleId).collection('zones').get();
@@ -85,6 +87,7 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
 
       if (mounted) {
         setState(() {
+          _statusGrid = emojis;
           _configuredZoneTypes = configuredTypes;
           _isLoadingGrid = false;
         });
@@ -169,9 +172,12 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
   Future<void> _triggerSos() async {
     final sos = StatusType.fallbackPredefined.firstWhere((s) => s.id == 'sos');
     _cancelSosHold();
-    // Cerrar modal inmediatamente — el update de GPS/Firestore corre en background
+    // Cerrar modal inmediatamente — el update corre en background
     unawaited(_closeModal());
-    StatusService.updateUserStatus(sos);
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final circleId = SessionCacheService.restoreSessionSync()?['circleId'];
+    if (userId == null || userId.isEmpty || circleId == null || circleId.isEmpty) return;
+    unawaited(sl<SetManualStatus>().call(statusId: sos.id, userId: userId, circleId: circleId));
   }
 
   Widget _buildSosButton() {
@@ -246,14 +252,25 @@ class _NotificationStatusSelectorState extends State<NotificationStatusSelector>
     try {
       HapticFeedback.lightImpact();
 
-      final result = await StatusService.updateUserStatus(status);
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final circleId = SessionCacheService.restoreSessionSync()?['circleId'];
+      if (userId == null || userId.isEmpty || circleId == null || circleId.isEmpty) {
+        HapticFeedback.heavyImpact();
+        return;
+      }
+
+      final result = await sl<SetManualStatus>().call(
+        statusId: status.id,
+        userId: userId,
+        circleId: circleId,
+      );
 
       if (result.isSuccess) {
         HapticFeedback.lightImpact();
         await Future.delayed(const Duration(milliseconds: 300));
         await _closeModal();
       } else {
-        if (result.errorMessage == 'zone_manual_selection_not_allowed') {
+        if (result.failureOrNull?.message == 'zone_manual_selection_not_allowed') {
           await _showZoneSelectionNotAllowedModal();
         }
         HapticFeedback.heavyImpact();
