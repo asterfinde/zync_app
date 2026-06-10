@@ -22,7 +22,6 @@ import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import 'package:nunakin_app/core/services/status_service.dart'; // Para actualizar estado desde native
 import 'package:nunakin_app/core/services/secure_credential_service.dart';
 import 'package:nunakin_app/core/services/emoji_service.dart'; // Para cargar emojis desde Firebase
-import 'package:nunakin_app/core/services/emoji_cache_service.dart'; // Para sincronizar emojis a cache nativo
 // StatusType class
 import 'package:nunakin_app/services/circle_service.dart'; // Para verificar membresía en círculo
 
@@ -105,7 +104,6 @@ void main() async {
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await PersistentCache.init();
     await SilentFunctionalityCoordinator.initializeServices();
-    await EmojiCacheService.syncEmojisToNativeCache();
   });
 }
 
