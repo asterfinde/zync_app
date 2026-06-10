@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:home_widget/home_widget.dart';
-import '../core/services/status_service.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/presence/application/use_cases/set_manual_status.dart';
+import 'package:nunakin_app/core/services/session_cache_service.dart';
 import '../core/services/emoji_service.dart';
 import '../core/models/user_status.dart';
 import 'dart:developer';
@@ -34,7 +37,17 @@ class WidgetService {
     try {
       final statusType = await _parseStatusFromAction(action);
       if (statusType != null) {
-        await StatusService.updateUserStatus(statusType);
+        final userId = FirebaseAuth.instance.currentUser?.uid;
+        final circleId = SessionCacheService.restoreSessionSync()?['circleId'];
+        if (userId == null || userId.isEmpty || circleId == null || circleId.isEmpty) {
+          log('[WidgetService] userId o circleId no disponible — sin acción');
+          return;
+        }
+        await sl<SetManualStatus>().call(
+          statusId: statusType.id,
+          userId: userId,
+          circleId: circleId,
+        );
         await _updateWidgetWithStatus(action);
       }
     } catch (e) {

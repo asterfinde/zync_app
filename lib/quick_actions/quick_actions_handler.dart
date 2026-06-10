@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/presence/application/use_cases/set_manual_status.dart';
+import 'package:nunakin_app/core/services/session_cache_service.dart';
 import '../core/models/user_status.dart';
-import '../core/services/status_service.dart';
 import '../core/services/emoji_service.dart';
 import 'dart:developer';
 
@@ -13,13 +16,21 @@ class QuickActionsHandler {
       final statusType = await _mapActionToStatusType(action);
 
       if (statusType != null) {
-        // Actualizar estado directamente usando StatusService
-        final result = await StatusService.updateUserStatus(statusType);
-
+        final userId = FirebaseAuth.instance.currentUser?.uid;
+        final circleId = SessionCacheService.restoreSessionSync()?['circleId'];
+        if (userId == null || userId.isEmpty || circleId == null || circleId.isEmpty) {
+          log('[QuickActionsHandler] userId o circleId no disponible — sin acción');
+          return;
+        }
+        final result = await sl<SetManualStatus>().call(
+          statusId: statusType.id,
+          userId: userId,
+          circleId: circleId,
+        );
         if (result.isSuccess) {
           log('[QuickActionsHandler] Quick action handled successfully: $action');
         } else {
-          log('[QuickActionsHandler] Error updating status: ${result.errorMessage}');
+          log('[QuickActionsHandler] Error updating status: ${result.failureOrNull?.message}');
         }
       } else {
         log('[QuickActionsHandler] Unknown action: $action');
