@@ -1,24 +1,69 @@
-// TODO(sem2-day4): estos tests requieren `fake_cloud_firestore` en dev_dependencies.
-// Agregar a pubspec.yaml antes de activar:
-//
-//   dev_dependencies:
-//     fake_cloud_firestore: ^3.0.4   # verificar última versión compatible
-//
-// Una vez agregado, descomentar los tests y remover el @Skip.
-//
-// Escenarios a cubrir:
-//   1. Normal state → batch escribe en circles/{id}/memberStatus/{uid}
-//      y en circles/{id}/statusEvents/ sin campo 'coordinates'.
-//   2. SOSActive state → batch incluye 'coordinates' en memberStatus y statusEvents.
-
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nunakin_app/contexts/presence/domain/presence_state.dart';
+import 'package:nunakin_app/contexts/presence/infrastructure/firestore_presence_publisher.dart';
 
 void main() {
-  group('FirestorePresencePublisher', () {
-    test(
-      'pendiente: requiere fake_cloud_firestore en dev_dependencies',
-      () {},
-      skip: 'Agregar fake_cloud_firestore a pubspec.yaml para activar estos tests',
+  late FakeFirebaseFirestore firestore;
+  late FirestorePresencePublisher publisher;
+
+  const circleId = 'circle1';
+  const userId = 'user1';
+
+  setUp(() async {
+    firestore = FakeFirebaseFirestore();
+    publisher = FirestorePresencePublisher(firestore);
+    // batch.update requiere que el documento del círculo ya exista.
+    await firestore.collection('circles').doc(circleId).set({
+      'members': [userId],
+    });
+  });
+
+  test('Normal → memberStatus + statusEvents sin coordinates', () async {
+    final result = await publisher.publish(
+      state: const Normal(currentId: 'busy'),
+      userId: userId,
+      circleId: circleId,
     );
+
+    expect(result.isSuccess, isTrue);
+
+    final circle = await firestore.collection('circles').doc(circleId).get();
+    final memberStatus =
+        (circle.data()!['memberStatus'] as Map)[userId] as Map<String, dynamic>;
+    expect(memberStatus['statusType'], 'busy');
+    expect(memberStatus.containsKey('coordinates'), isFalse);
+
+    final events = await firestore
+        .collection('circles')
+        .doc(circleId)
+        .collection('statusEvents')
+        .get();
+    expect(events.docs.length, 1);
+    expect(events.docs.first.data().containsKey('coordinates'), isFalse);
+  });
+
+  test('SOSActive → coordinates presentes en memberStatus y statusEvents', () async {
+    final result = await publisher.publish(
+      state: const SOSActive(previousId: 'fine', latitude: -12.05, longitude: -77.04),
+      userId: userId,
+      circleId: circleId,
+    );
+
+    expect(result.isSuccess, isTrue);
+
+    final circle = await firestore.collection('circles').doc(circleId).get();
+    final memberStatus =
+        (circle.data()!['memberStatus'] as Map)[userId] as Map<String, dynamic>;
+    expect(memberStatus['coordinates'],
+        {'latitude': -12.05, 'longitude': -77.04});
+
+    final events = await firestore
+        .collection('circles')
+        .doc(circleId)
+        .collection('statusEvents')
+        .get();
+    expect(events.docs.first.data()['coordinates'],
+        {'latitude': -12.05, 'longitude': -77.04});
   });
 }
