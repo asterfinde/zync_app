@@ -382,6 +382,14 @@ Antes de sugerir o instalar cualquier paquete:
 - Cada test debe ser independiente.
 - Ver [`TEST_PLAN.md`](TEST_PLAN.md) para casos por fase y protocolo de pruebas.
 
+### Regla de cierre de PR (obligatoria)
+
+Todo PR debe tener uno o más ítems de Test Plan asociados. **Un PR no puede mergearse hasta que todos sus ítems de Test Plan tengan estado PASS**, salvo que el desarrollador declare formalmente una excepción con razón explícita (ej. "merge sin test — entorno no disponible, riesgo aceptado").
+
+- La IA incluye el Test Plan en el body de cada PR que crea.
+- Si el desarrollador pide mergear un PR sin confirmar PASS: la IA recuerda esta regla y solicita confirmación explícita antes de proceder.
+- Excepciones válidas: cambios exclusivamente de documentación, refactors sin lógica de negocio con `flutter analyze` en verde y sin cambios de comportamiento.
+
 ---
 
 ## 9. Git — Reglas de Commit
