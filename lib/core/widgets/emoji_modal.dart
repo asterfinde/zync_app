@@ -303,12 +303,14 @@ class _EmojiStatusBottomSheetState extends ConsumerState<EmojiStatusBottomSheet>
 /// Función helper para mostrar el modal unificado.
 /// Carga grid de emojis + zonas configuradas y los pasa al widget puro
 /// StatusSelectorOverlay (Sem 5 Día 5).
-void showEmojiStatusBottomSheet(BuildContext context, {String? activeStatusId}) {
+void showEmojiStatusBottomSheet(BuildContext context,
+    {String? activeStatusId, List<StatusType>? initialStatuses}) {
   Navigator.of(context).push(
     PageRouteBuilder(
       opaque: false,
       pageBuilder: (context, animation, secondaryAnimation) {
-        return _StatusSelectorOverlayLoader(activeStatusId: activeStatusId);
+        return _StatusSelectorOverlayLoader(
+            activeStatusId: activeStatusId, initialStatuses: initialStatuses);
       },
     ),
   );
@@ -318,8 +320,10 @@ void showEmojiStatusBottomSheet(BuildContext context, {String? activeStatusId}) 
 /// desde Firestore antes de renderizar el widget puro StatusSelectorOverlay.
 class _StatusSelectorOverlayLoader extends StatefulWidget {
   final String? activeStatusId;
+  final List<StatusType>? initialStatuses;
 
-  const _StatusSelectorOverlayLoader({this.activeStatusId});
+  const _StatusSelectorOverlayLoader(
+      {this.activeStatusId, this.initialStatuses});
 
   @override
   State<_StatusSelectorOverlayLoader> createState() =>
@@ -334,7 +338,7 @@ class _StatusSelectorOverlayLoaderState
   @override
   void initState() {
     super.initState();
-    _available = EmojiService.cachedPredefined ?? StatusType.fallbackPredefined;
+    _available = widget.initialStatuses ?? EmojiService.cachedPredefined ?? StatusType.fallbackPredefined;
     _refreshGridInBackground();
   }
 

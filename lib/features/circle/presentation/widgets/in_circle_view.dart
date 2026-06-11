@@ -202,9 +202,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
     });
   }
 
-  Future<void> _rebuildFromCustomSnapshot(QuerySnapshot snapshot) async {
+  void _rebuildFromCustomSnapshot(QuerySnapshot snapshot) {
     try {
-      final predefined = await EmojiService.getPredefinedEmojis();
+      final predefined = EmojiService.cachedPredefined ?? StatusType.fallbackPredefined;
       final custom = snapshot.docs
           .map((doc) => StatusType.fromFirestore(doc))
           .toList();
@@ -213,7 +213,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       }
     } catch (e) {
       debugPrint('[InCircleView] Error reconstruyendo desde snapshot: $e');
-      _loadPredefinedEmojis(); // fallback al camino legacy
+      _loadPredefinedEmojis();
     }
   }
 
@@ -239,7 +239,11 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
       final prefs = await SharedPreferences.getInstance();
       final manualId = prefs.getString(NativeSharedKeys.manualStatusId);
       final currentId = prefs.getString(NativeSharedKeys.currentStatusId);
-      final resolved = manualId ?? currentId ?? 'fine';
+      final isSilent = prefs.getBool(NativeSharedKeys.isSilentModeActive) ?? false;
+      final preSilentId = prefs.getString(NativeSharedKeys.preSilentStatusId);
+      final resolved = isSilent
+          ? (preSilentId ?? currentId ?? 'fine')
+          : (manualId ?? currentId ?? 'fine');
       if (mounted) {
         setState(() {
           _lastKnownStatusId = resolved;
@@ -410,7 +414,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
                     predefinedEmojis: _predefinedEmojis,
                     onTapStatus: (ctx, activeStatusId) {
                       if (ctx.mounted) {
-                        showEmojiStatusBottomSheet(ctx, activeStatusId: activeStatusId);
+                        showEmojiStatusBottomSheet(ctx,
+                            activeStatusId: activeStatusId,
+                            initialStatuses: _predefinedEmojis);
                       }
                     },
                     onOpenMaps: CircleActions.openGoogleMaps,

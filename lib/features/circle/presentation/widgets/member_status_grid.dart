@@ -72,7 +72,9 @@ class MemberStatusGrid extends StatelessWidget {
                   onTap: isCurrentUser
                       ? () {
                           final activeStatusId =
-                              status == 'loading' ? lastKnownStatusId : status;
+                              (status == 'loading' || status == 'unknown')
+                                  ? lastKnownStatusId
+                                  : status;
                           onTapStatus(context, activeStatusId);
                         }
                       : null,
@@ -137,15 +139,17 @@ class _MemberListItem extends StatelessWidget {
         child: InkWell(
           onTap: status == 'loading'
               ? null
-              : () {
-                  if (isCurrentUser && onTap != null) {
-                    HapticFeedback.mediumImpact();
-                    onTap!();
-                  } else if (hasGPS && coordinates != null) {
-                    HapticFeedback.lightImpact();
-                    onOpenMaps(context, coordinates, nickname);
-                  }
-                },
+              : (isCurrentUser && onTap != null) || (hasGPS && coordinates != null)
+                  ? () {
+                      if (isCurrentUser && onTap != null) {
+                        HapticFeedback.mediumImpact();
+                        onTap!();
+                      } else {
+                        HapticFeedback.lightImpact();
+                        onOpenMaps(context, coordinates!, nickname);
+                      }
+                    }
+                  : null,
           borderRadius: NkRadius.forCard,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),

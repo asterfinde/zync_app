@@ -110,10 +110,22 @@ class EmojiDialogActivity : Activity() {
         emojis = loadEmojisFromCache()
         configuredZoneTypes = loadConfiguredZoneTypes()
 
-        // [FIX] Leer estado activo desde SharedPreferences (escrito por StatusService en Flutter)
+        // ════════════════════════════════════════════════════════════
+        // [FIX] Bug A — Borde verde en modal MS sin selección previa
+        // Fecha: 2026-06-11
+        // PROBLEMA: activeStatusId leía solo current_status_id con default null.
+        //   Sin selección previa → null → ninguna celda resaltada.
+        // SOLUCIÓN: replicar cadena de resolución del modal Círculo
+        //   (in_circle_view._loadLastKnownStatusId) — paridad exacta.
+        // ════════════════════════════════════════════════════════════
         val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        activeStatusId = flutterPrefs.getString(SharedKeys.flutter(SharedKeys.CURRENT_STATUS_ID), null)
-        Log.d(TAG, "[ACTIVE-STATUS] activeStatusId=$activeStatusId")
+        val manualId    = flutterPrefs.getString(SharedKeys.flutter(SharedKeys.MANUAL_STATUS_ID), null)
+        val currentId   = flutterPrefs.getString(SharedKeys.flutter(SharedKeys.CURRENT_STATUS_ID), null)
+        val isSilent    = flutterPrefs.getBoolean(SharedKeys.flutter(SharedKeys.IS_SILENT_MODE_ACTIVE), false)
+        val preSilentId = flutterPrefs.getString(SharedKeys.flutter(SharedKeys.PRE_SILENT_STATUS_ID), null)
+        activeStatusId = if (isSilent) (preSilentId ?: currentId ?: "fine")
+                         else          (manualId ?: currentId ?: "fine")
+        Log.d(TAG, "[ACTIVE-STATUS] activeStatusId=$activeStatusId (isSilent=$isSilent manual=$manualId current=$currentId preSilent=$preSilentId)")
 
         val ws = getSharedPreferences("worker_state", Context.MODE_PRIVATE)
         Log.d(TAG, "[DIAG-WS] BN onCreate worker_state: userId=${ws.getString("userId", null)} circleId='${ws.getString("circleId", null)}'")
