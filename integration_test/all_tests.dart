@@ -7,8 +7,10 @@
 //   Fase 1 — Registro y Login        (auth_flow_test.dart)
 //   Fase 2 — Círculos                (circle_flow_test.dart)
 //   Fase 3 — Emojis / Estados        (status_flow_test.dart)
-//   Fase 4 — Modo Silent (auto only) (silent_mode_flow_test.dart)
 //   Fase 5 — Configuración           (settings_flow_test.dart)
+//
+// Fase 4 (Modo Silent): tests automatizados removidos junto con el modal
+// NotificationStatusSelector (FASE 5 dead-code). T4.1–T4.3 son manuales.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -16,7 +18,6 @@ import 'package:integration_test/integration_test.dart';
 import 'auth_flow_test.dart' as fase1;
 import 'circle_flow_test.dart' as fase2;
 import 'status_flow_test.dart' as fase3;
-import 'silent_mode_flow_test.dart' as fase4;
 import 'settings_flow_test.dart' as fase5;
 
 void main() {
@@ -25,6 +26,5 @@ void main() {
   group('Fase 1 — Registro y Login', fase1.main);
   group('Fase 2 — Círculos', fase2.main);
   group('Fase 3 — Emojis y Estados', fase3.main);
-  group('Fase 4 — Modo Silent', fase4.main);
   group('Fase 5 — Configuración', fase5.main);
 }

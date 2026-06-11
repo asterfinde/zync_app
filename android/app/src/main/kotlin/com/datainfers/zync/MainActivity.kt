@@ -392,27 +392,6 @@ class MainActivity: FlutterActivity() {
     }
 
     private fun setupLegacyChannels(flutterEngine: FlutterEngine) {
-        // Point 21 FASE 5: Handler para abrir StatusModalActivity desde Flutter
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/status_modal").setMethodCallHandler { call, result ->
-            when (call.method) {
-                "openModal" -> {
-                    Log.d(TAG, "[FASE 5] Abriendo StatusModalActivity desde Flutter...")
-                    try {
-                        val intent = Intent(this, StatusModalActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                        startActivity(intent)
-                        result.success(true)
-                        Log.d(TAG, "[FASE 5] StatusModalActivity iniciada exitosamente")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "[FASE 5] Error abriendo StatusModalActivity: ${e.message}")
-                        result.error("OPEN_MODAL_ERROR", e.message, null)
-                    }
-                }
-                else -> result.notImplemented()
-            }
-        }
-        
         // � [HYBRID] Canal para leer/limpiar estado pendiente del cache
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/pending_status").setMethodCallHandler { call, result ->
             when (call.method) {
@@ -604,7 +583,7 @@ class MainActivity: FlutterActivity() {
             }
         }
 
-        // Point 21 FASE 5: Canal para notificaciones (apunta a StatusModalActivity)
+        // Canal de notificaciones: showNotification → notificación persistente (tap abre EmojiDialogActivity)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "requestNotificationPermission" -> {
@@ -615,7 +594,7 @@ class MainActivity: FlutterActivity() {
                     Log.d(TAG, "[FASE 5] Creando notificación nativa persistente")
                     if (hasNotificationPermission()) {
                         showPersistentNotification()
-                        result.success("✅ Notificación mostrada - tap abre StatusModalActivity")
+                        result.success("✅ Notificación mostrada - tap abre EmojiDialogActivity")
                     } else {
                         result.error("NO_PERMISSION", "Permisos de notificación requeridos", null)
                     }
@@ -729,27 +708,6 @@ class MainActivity: FlutterActivity() {
      */
     private fun setupRemainingLegacyChannels(flutterEngine: FlutterEngine) {
         val messenger = flutterEngine.dartExecutor.binaryMessenger
-
-        // com.datainfers.zync/status_modal — usado por StatusModalService.dart
-        MethodChannel(messenger, "com.datainfers.zync/status_modal").setMethodCallHandler { call, result ->
-            when (call.method) {
-                "openModal" -> {
-                    Log.d(TAG, "[FASE 5] Abriendo StatusModalActivity desde Flutter...")
-                    try {
-                        val intent = Intent(this, StatusModalActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                        startActivity(intent)
-                        result.success(true)
-                        Log.d(TAG, "[FASE 5] StatusModalActivity iniciada exitosamente")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "[FASE 5] Error abriendo StatusModalActivity: ${e.message}")
-                        result.error("OPEN_MODAL_ERROR", e.message, null)
-                    }
-                }
-                else -> result.notImplemented()
-            }
-        }
 
         // com.datainfers.zync/pending_status — usado por StatusService.dart (HYBRID flow)
         MethodChannel(messenger, "com.datainfers.zync/pending_status").setMethodCallHandler { call, result ->
@@ -872,7 +830,7 @@ class MainActivity: FlutterActivity() {
                     Log.d(TAG, "[FASE 5] Creando notificación nativa persistente")
                     if (hasNotificationPermission()) {
                         showPersistentNotification()
-                        result.success("✅ Notificación mostrada - tap abre StatusModalActivity")
+                        result.success("✅ Notificación mostrada - tap abre EmojiDialogActivity")
                     } else {
                         result.error("NO_PERMISSION", "Permisos de notificación requeridos", null)
                     }
@@ -1040,19 +998,6 @@ class MainActivity: FlutterActivity() {
             flutterEngine.dartExecutor.executeDartEntrypoint(
                 DartExecutor.DartEntrypoint.createDefault()
             )
-            
-            // OPTIMIZACIÓN: Configurar canal de StatusModalService inmediatamente
-            // Esto reduce el tiempo de apertura del modal
-            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.datainfers.zync/status_modal")
-                .setMethodCallHandler { call, result ->
-                    when (call.method) {
-                        "closeModal" -> {
-                            Log.d(TAG, "[MODAL] Solicitud de cierre recibida")
-                            result.success(true)
-                        }
-                        else -> result.notImplemented()
-                    }
-                }
             
             // Cachear el engine para reutilizarlo
             FlutterEngineCache

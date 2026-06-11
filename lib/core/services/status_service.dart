@@ -463,8 +463,6 @@ class StatusService {
       // Point 15: Comportamiento silencioso - NO actualizar notificación
       // Solo mantener la notificación inicial para acceso rápido
       log('[StatusService] 🔇 Actualización silenciosa - notificación persistente sin cambios');
-
-      // await NotificationService.showQuickActionNotification(currentStatus: status);
     } catch (e) {
       log('[StatusService] Error actualizando notificación persistente: $e');
       // No lanzamos la excepción para no afectar el flujo principal

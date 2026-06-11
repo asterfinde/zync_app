@@ -27,8 +27,7 @@ import 'package:nunakin_app/services/circle_service.dart'; // Para verificar mem
 
 import 'core/global_keys.dart';
 
-// Point 21 FASE 5: NavigatorKey global para acceso al contexto desde servicios
-// Necesario para StatusModalService cuando se abre desde notificaciones
+// NavigatorKey global para acceso al contexto desde servicios sin BuildContext.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -385,7 +384,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Zync App',
       theme: baseTheme,
-      navigatorKey: navigatorKey, // Point 21 FASE 5: Para acceso desde StatusModalService
+      navigatorKey: navigatorKey, // Acceso al contexto desde servicios sin BuildContext
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       home: const AuthWrapper(),
     );

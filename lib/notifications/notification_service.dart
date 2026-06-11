@@ -90,30 +90,6 @@ class NotificationService {
     log('[NotificationService] Silent notification shown for ${status.label}');
   }
 
-  /// Point 21 FASE 5: Muestra notificación persistente NATIVA
-  /// Usa el método nativo de MainActivity que apunta a StatusModalActivity
-  static Future<void> showQuickActionNotification(
-      {StatusType? currentStatus}) async {
-    await _ensureInitialized();
-
-    try {
-      // FASE 5 FIX: Usar el canal nativo existente que ya apunta a StatusModalActivity
-      const platform = MethodChannel('mini_emoji/notification');
-
-      log('[NotificationService] 🎯 [FASE 5] Solicitando notificación NATIVA a Android...');
-      log('[NotificationService] 📡 Usando canal: mini_emoji/notification → showNotification');
-
-      final result = await platform.invokeMethod('showNotification');
-
-      log('[NotificationService] ✅ [FASE 5] Notificación nativa creada: $result');
-      log('[NotificationService] 🎯 [FASE 5] Tap abrirá StatusModalActivity (modal transparente)');
-    } catch (e) {
-      log('[NotificationService] ❌ [FASE 5] Error creando notificación nativa: $e');
-      log('[NotificationService] � [FASE 5] Asegúrate de que el método nativo esté disponible');
-      rethrow;
-    }
-  }
-
   /// Cancela todas las notificaciones
   static Future<void> cancelAll() async {
     await _notifications.cancelAll();

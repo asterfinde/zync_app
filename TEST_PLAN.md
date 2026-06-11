@@ -132,8 +132,8 @@
 | 4.1 | Botón "Modo Silencio" visible en pantalla del Círculo | Botón con fondo negro, borde menta, letras blancas, ubicado encima del botón "Ok" en `in_circle_view.dart` | 👁 |✅ | Nuevo. Pendiente de implementación. |
 | 4.2 | Tap en "Modo Silencio" → aparece modal de confirmación | Modal con fondo negro, borde menta, letras blancas, botones Confirmar / Cancelar | 👁 |✅ | Nuevo. Si el usuario no tiene permiso de notificaciones, el permiso se solicita primero (Android 13+). Si lo deniega, aparece SnackBar informativo y el modal de confirmación no se muestra. |
 | 4.3 | Confirmar Modo Silencio → app pasa al background de inmediato | La app se cierra sin dialogs adicionales (ni de Android ni de la app). El ícono "i" aparece en la barra de notificaciones. La sesión del usuario permanece activa. | 👁 | ✅ | Implementar con `moveTaskToBack(true)` en Kotlin. Sin dialog de Android post-confirmación. |
-| 4.4 | Modal NotificationStatusSelector muestra 16 botones de estado | Grid visible con los 16 estados del sistema | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Modal renderizado en aislamiento. |
-| 4.5 | Selección de estado desde modal de barra → Firestore actualizado | `statusType` actualizado en `circles/{id}/memberStatus` | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
+| 4.4 | ~~Modal NotificationStatusSelector muestra 16 botones de estado~~ | — | 🔗 | ⛔ | **Obsoleto 2026-06-11.** Test removido junto con `NotificationStatusSelector` (código muerto FASE 5, nunca renderizado en producción). El modal real de barra es `EmojiDialogActivity` nativo — ver T4.0. |
+| 4.5 | ~~Selección de estado desde modal de barra → Firestore actualizado~~ | — | 🔗 | ⛔ | **Obsoleto 2026-06-11.** Test removido (mismo motivo que T4.4). El flujo real se ejerce vía `EmojiDialogActivity` → `SetManualStatus`. |
 | 4.6 | Íconos de zona opacos/inhabilitados en modal de barra | Con zona geográfica configurada: los íconos 🏠🏫🏢🏥 aparecen atenuados en el modal de barra, igual que en el modal del Círculo. Si se tocan, aparece aviso "Acción no permitida". | 👁 | ✅| Comportamiento ya existe en el modal del Círculo — replicar en `EmojiDialogActivity`. |
 | 4.7 | Intento de swipe sobre la notificación persistente | La notificación no se puede descartar con swipe | 👁 | | `setOngoing=true` en `KeepAliveService.kt` debería cubrirlo — verificar en dispositivo físico. |
 | 4.8 | "Borrar todo" en la barra de notificaciones | La notificación de ZYNC permanece intacta | 👁 | | Las notificaciones `ongoing` están excluidas del borrado masivo de Android — verificar en dispositivo físico. |
@@ -482,8 +482,6 @@ Los siguientes tests del plan anterior describen comportamiento que cambia con l
 - flutter test integration_test/circle_flow_test.dart -d R58W315389R
 
 - flutter test integration_test/status_flow_test.dart -d R58W315389R
-
-- flutter test integration_test/silent_mode_flow_test.dart -d R58W315389R
 
 - flutter test integration_test/settings_flow_test.dart -d R58W315389R
 
