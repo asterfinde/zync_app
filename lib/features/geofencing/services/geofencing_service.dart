@@ -3,18 +3,18 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:nunakin_app/shared/events/domain_event.dart';
 import 'package:nunakin_app/shared/events/domain_event_bus.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/geofencing/application/ports/zone_repository.dart';
 import '../domain/entities/zone.dart';
 import '../domain/entities/zone_event.dart';
-import 'zone_service.dart';
 import 'zone_event_service.dart';
 
 /// Servicio para monitoreo de geofencing y detección de entrada/salida de zonas
 class GeofencingService {
-  final ZoneService _zoneService = ZoneService();
+  final ZoneRepository _zoneRepo = sl<ZoneRepository>();
   final ZoneEventService _eventService = ZoneEventService();
   final DomainEventBus? _bus;
 
@@ -119,7 +119,8 @@ class GeofencingService {
 
     try {
       // Obtener todas las zonas del círculo
-      final zones = await _zoneService.getCircleZones(_currentCircleId!);
+      final zonesResult = await _zoneRepo.getCircleZones(_currentCircleId!);
+      final zones = zonesResult.valueOrNull ?? const <Zone>[];
       if (zones.isEmpty) {
         log('[GeofencingService] ℹ️ No hay zonas configuradas en el círculo');
         return;
@@ -172,7 +173,8 @@ class GeofencingService {
     // SALIDA de zona anterior
     if (_currentZoneId != null && newZoneId != _currentZoneId) {
       // Buscar la zona anterior para obtener su nombre
-      final zones = await _zoneService.getCircleZones(_currentCircleId!);
+      final zonesResult = await _zoneRepo.getCircleZones(_currentCircleId!);
+      final zones = zonesResult.valueOrNull ?? const <Zone>[];
       // ════════════════════════════════════════════════════════════
       // [FIX] Bug E — zona eliminada mientras el usuario estaba adentro
       // Fecha: 2026-05-16
@@ -265,93 +267,4 @@ class GeofencingService {
 
   /// Obtener ID del círculo siendo monitoreado
   String? get monitoringCircleId => _currentCircleId;
-
-  /// Lógica migrada a [FirestoreGeofenceStatusWriter]. Se conserva hasta Sem 8.
-  @Deprecated('Usar GeofenceStatusWriter vía DomainEventBus. Eliminar en Sem 8.')
-  // ignore: unused_element
-  Future<void> _updateUserStatusByZoneEvent({
-    required bool isEntry,
-    Zone? zone,
-  }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _currentCircleId == null) return;
-
-    try {
-      // Respetar selección manual del usuario: si manualOverride == true,
-      // el geofencing no debe sobreescribir el estado elegido explícitamente.
-      final circleDoc = await FirebaseFirestore.instance
-          .collection('circles')
-          .doc(_currentCircleId)
-          .get();
-      final currentMemberStatus =
-          circleDoc.data()?['memberStatus'] as Map<String, dynamic>?;
-      final currentUserStatus =
-          currentMemberStatus?[user.uid] as Map<String, dynamic>?;
-      final hasManualOverride =
-          currentUserStatus?['manualOverride'] as bool? ?? false;
-
-      if (hasManualOverride) {
-        log('[Geofencing] ⏸️ Actualización automática omitida — usuario tiene selección manual activa');
-        return;
-      }
-
-      final Map<String, dynamic> statusData = {
-        'timestamp': FieldValue.serverTimestamp(),
-      };
-
-      if (isEntry && zone != null) {
-        // ENTRADA A ZONA
-        if (zone.isPredefined) {
-          // Zona predefinida: emoji específico (🏠🏫🎓💼)
-          statusData['customEmoji'] = zone.type.emoji;
-          statusData['statusType'] = _getStatusFromZoneType(zone.type);
-        } else {
-          // Zona personalizada: emoji genérico (📍)
-          statusData['customEmoji'] = '📍';
-          statusData['statusType'] = 'fine';
-        }
-
-        statusData['zoneName'] = zone.name;
-        statusData['zoneId'] = zone.id;
-        statusData['autoUpdated'] = true;
-      } else {
-        // SALIDA DE ZONA → "Bien" (neutral, sin implicar dirección desconocida)
-        statusData['statusType'] = 'fine';
-        statusData['customEmoji'] = null;
-        statusData['zoneName'] = null;
-        statusData['zoneId'] = null;
-        statusData['autoUpdated'] = true;
-
-        // Guardar última zona conocida
-        if (_currentZoneId != null) {
-          statusData['lastKnownZone'] = _currentZoneId;
-          statusData['lastKnownZoneTime'] = FieldValue.serverTimestamp();
-        }
-      }
-
-      await FirebaseFirestore.instance.collection('circles').doc(_currentCircleId).update({
-        'memberStatus.${user.uid}': statusData,
-      });
-
-      log('[Geofencing] ✅ Estado actualizado a: ${statusData['statusType']}');
-    } catch (e) {
-      log('[Geofencing] ❌ Error actualizando estado: $e');
-      rethrow;
-    }
-  }
-
-  String _getStatusFromZoneType(ZoneType type) {
-    switch (type) {
-      case ZoneType.home:
-        return 'fine';
-      case ZoneType.school:
-        return 'studying'; // 📚 Estudiando
-      case ZoneType.university:
-        return 'studying'; // 📚 Estudiando
-      case ZoneType.work:
-        return 'busy'; // 🔴 Ocupado
-      default:
-        return 'fine';
-    }
-  }
 }

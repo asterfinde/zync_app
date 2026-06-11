@@ -4,8 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/geofencing/application/ports/zone_repository.dart';
+import 'package:nunakin_app/contexts/geofencing/application/use_cases/create_zone.dart';
+import 'package:nunakin_app/contexts/geofencing/application/use_cases/update_zone.dart';
+import 'package:nunakin_app/contexts/geofencing/domain/zone_constraints.dart';
+import 'package:nunakin_app/shared/result.dart';
 import '../../domain/entities/zone.dart';
-import '../../services/zone_service.dart';
 
 /// Formulario para crear/editar zonas geográficas
 /// Incluye búsqueda de dirección, mapa interactivo y option buttons
@@ -27,7 +32,6 @@ class _ZoneFormState extends State<ZoneForm> {
   final _formKey = GlobalKey<FormState>();
   final _addressController = TextEditingController();
   final _customNameController = TextEditingController();
-  final ZoneService _zoneService = ZoneService();
 
   GoogleMapController? _mapController;
   late LatLng _selectedLocation;
@@ -70,12 +74,9 @@ class _ZoneFormState extends State<ZoneForm> {
 
   /// Cargar zonas existentes para deshabilitar tipos ocupados
   Future<void> _loadExistingZones() async {
-    try {
-      final zones = await _zoneService.getCircleZones(widget.circleId);
-      setState(() => _existingZones = zones);
-    } catch (e) {
-      print('❌ Error cargando zonas: $e');
-    }
+    final result = await sl<ZoneRepository>().getCircleZones(widget.circleId);
+    final zones = result.valueOrNull ?? const <Zone>[];
+    if (mounted) setState(() => _existingZones = zones);
   }
 
   /// Verificar si un tipo de zona está disponible
@@ -518,8 +519,8 @@ class _ZoneFormState extends State<ZoneForm> {
                         Expanded(
                           child: Slider(
                             value: _radiusMeters,
-                            min: ZoneService.MIN_RADIUS_METERS,
-                            max: ZoneService.MAX_RADIUS_METERS,
+                            min: ZoneConstraints.minRadiusMeters,
+                            max: ZoneConstraints.maxRadiusMeters,
                             divisions: 45,
                             activeColor: const Color(0xFF1EE9A4),
                             inactiveColor: const Color(0xFF3A3A3C),
@@ -638,50 +639,46 @@ class _ZoneFormState extends State<ZoneForm> {
         }
       }
 
-      if (widget.zone == null) {
-        // Crear nueva zona
-        await _zoneService.createZone(
-          circleId: widget.circleId,
-          name: zoneName,
-          latitude: _selectedLocation.latitude,
-          longitude: _selectedLocation.longitude,
-          radiusMeters: _radiusMeters,
-          type: _selectedType!,
-        );
+      final isCreate = widget.zone == null;
+      final Result<Object> result = isCreate
+          ? await sl<CreateZone>().call(
+              circleId: widget.circleId,
+              name: zoneName,
+              latitude: _selectedLocation.latitude,
+              longitude: _selectedLocation.longitude,
+              radiusMeters: _radiusMeters,
+              type: _selectedType!,
+            )
+          : await sl<UpdateZone>().call(
+              circleId: widget.circleId,
+              zoneId: widget.zone!.id,
+              name: zoneName,
+              latitude: _selectedLocation.latitude,
+              longitude: _selectedLocation.longitude,
+              radiusMeters: _radiusMeters,
+              type: _selectedType!,
+            );
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Zona creada exitosamente'),
-              backgroundColor: Color(0xFF1EE9A4),
-              duration: Duration(seconds: 2),
-            ),
-          );
-          Navigator.pop(context);
-        }
-      } else {
-        // Actualizar zona existente
-        await _zoneService.updateZone(
-          circleId: widget.circleId,
-          zoneId: widget.zone!.id,
-          name: zoneName,
-          latitude: _selectedLocation.latitude,
-          longitude: _selectedLocation.longitude,
-          radiusMeters: _radiusMeters,
-          type: _selectedType!,
+      if (!mounted) return;
+      if (result.isFailure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${result.failureOrNull?.message ?? 'No se pudo guardar la zona'}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
         );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Zona actualizada exitosamente'),
-              backgroundColor: Color(0xFF1EE9A4),
-              duration: Duration(seconds: 2),
-            ),
-          );
-          Navigator.pop(context);
-        }
+        return;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isCreate ? 'Zona creada exitosamente' : 'Zona actualizada exitosamente'),
+          backgroundColor: const Color(0xFF1EE9A4),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
