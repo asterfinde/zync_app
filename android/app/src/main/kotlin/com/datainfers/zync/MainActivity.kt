@@ -23,7 +23,6 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
-import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 
@@ -44,12 +43,6 @@ class MainActivity: FlutterActivity() {
 
     // Current user (sincronizado con Flutter)
     private var currentUserId: String? = null
-
-    // Point 4: Engine cacheado para modal instantáneo
-    companion object {
-        const val MODAL_ENGINE_ID = "status_modal_engine"
-        private var isModalEngineWarmedUp = false
-    }
 
     // BroadcastReceiver para actualizar estado sin abrir app
     private val statusUpdateReceiver = object : BroadcastReceiver() {
@@ -447,19 +440,13 @@ class MainActivity: FlutterActivity() {
                             .putString("circleId", finalCircleId)
                             .commit()
 
-                        // Point 4: Pre-calentar engine para modal instantáneo
-                        warmUpModalEngine()
-                        
                         result.success(true)
                     } else {
                         // Logout - limpiar estado
                         Log.d(TAG, "🧹 [FLUTTER→KOTLIN] Limpiando estado (logout)")
                         currentUserId = null
                         NativeStateManager.clear(this)
-                        
-                        // Point 4: Destruir engine cacheado al hacer logout
-                        destroyModalEngine()
-                        
+
                         result.success(true)
                     }
                 }
@@ -674,12 +661,10 @@ class MainActivity: FlutterActivity() {
                 "setUserSession" -> {
                     router.handleSession(call, result, messenger)
                     currentUserId = call.argument<String>("uid")
-                    if (!currentUserId.isNullOrEmpty()) warmUpModalEngine()
                 }
                 "clearSession" -> {
                     router.handleSession(call, result, messenger)
                     currentUserId = null
-                    destroyModalEngine()
                 }
                 // Día 5
                 "registerZone"         -> router.handleGeofencing(call, result)
@@ -761,13 +746,11 @@ class MainActivity: FlutterActivity() {
                             .putString("circleId", finalCircleId)
                             .commit()
 
-                        warmUpModalEngine()
                         result.success(true)
                     } else {
                         Log.d(TAG, "🧹 [FLUTTER→KOTLIN] Limpiando estado (logout)")
                         currentUserId = null
                         NativeStateManager.clear(this)
-                        destroyModalEngine()
                         result.success(true)
                     }
                 }
@@ -980,66 +963,6 @@ class MainActivity: FlutterActivity() {
         }
     }
     
-    // Point 4: Pre-calentar Flutter Engine para modal instantáneo
-    private fun warmUpModalEngine() {
-        if (isModalEngineWarmedUp) {
-            Log.d(TAG, "⚡ [MODAL] Engine ya está pre-calentado")
-            return
-        }
-        
-        try {
-            Log.d(TAG, "🔥 [MODAL] Pre-calentando Flutter Engine...")
-            val startTime = System.currentTimeMillis()
-            
-            // Crear un nuevo Flutter Engine
-            val flutterEngine = FlutterEngine(applicationContext)
-            
-            // Inicializar Dart VM (esto toma tiempo)
-            flutterEngine.dartExecutor.executeDartEntrypoint(
-                DartExecutor.DartEntrypoint.createDefault()
-            )
-            
-            // Cachear el engine para reutilizarlo
-            FlutterEngineCache
-                .getInstance()
-                .put(MODAL_ENGINE_ID, flutterEngine)
-            
-            val duration = System.currentTimeMillis() - startTime
-            isModalEngineWarmedUp = true
-            
-            Log.d(TAG, "✅ [MODAL] Engine pre-calentado en ${duration}ms - Modal será instantáneo")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ [MODAL] Error pre-calentando engine: ${e.message}")
-        }
-    }
-    
-    // Point 4: Destruir engine cacheado al hacer logout
-    private fun destroyModalEngine() {
-        if (!isModalEngineWarmedUp) {
-            Log.d(TAG, " [MODAL] Engine no estaba pre-calentado")
-            return
-        }
-        
-        try {
-            Log.d(TAG, " [MODAL] Destruyendo engine cacheado...")
-            
-            val cachedEngine = FlutterEngineCache
-                .getInstance()
-                .get(MODAL_ENGINE_ID)
-            
-            if (cachedEngine != null) {
-                FlutterEngineCache.getInstance().remove(MODAL_ENGINE_ID)
-                cachedEngine.destroy()
-                Log.d(TAG, " [MODAL] Engine destruido exitosamente")
-            }
-            
-            isModalEngineWarmedUp = false
-            
-        } catch (e: Exception) {
-            Log.e(TAG, " [MODAL] Error destruyendo engine: ${e.message}")
-        }
-    }
 }
 
 /////////////////////////////////////////
