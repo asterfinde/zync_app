@@ -201,7 +201,8 @@ class EmojiDialogActivity : Activity() {
         val cacheMap = mutableMapOf<String, Triple<String, String, String>>()
 
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val cachedJson = prefs.getString("flutter.predefined_emojis", null)
+        // Contrato Dart↔Kotlin: clave escrita por EmojiCacheService (ver SharedKeys.kt / native_keys.dart)
+        val cachedJson = prefs.getString(SharedKeys.flutter(SharedKeys.PREDEFINED_EMOJIS), null)
 
         if (cachedJson != null) {
             try {
@@ -269,7 +270,8 @@ class EmojiDialogActivity : Activity() {
      */
     private fun loadConfiguredZoneTypes(): Set<String> {
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val json = prefs.getString("flutter.configured_zone_types", null)
+        // Contrato Dart↔Kotlin: clave escrita por EmojiCacheService (ver SharedKeys.kt / native_keys.dart)
+        val json = prefs.getString(SharedKeys.flutter(SharedKeys.CONFIGURED_ZONE_TYPES), null)
             ?: return emptySet<String>().also {
                 Log.d(TAG, "⚠️ [ZONES] Sin cache de zonas configuradas")
             }
