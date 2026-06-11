@@ -10,7 +10,6 @@ import 'package:nunakin_app/platform/persistence/native_keys.dart';
 import '../../notifications/notification_service.dart';
 import '../../quick_actions/quick_actions_service.dart';
 import '../../services/circle_service.dart';
-import 'status_modal_service.dart';
 
 /// Coordinador de Modo Silencio — interfaz mínima entre Flutter y Kotlin.
 ///
@@ -39,7 +38,6 @@ class SilentFunctionalityCoordinator {
     try {
       await NotificationService.initialize();
       await QuickActionsService.initialize();
-      await StatusModalService.initialize();
       _isInitialized = true;
     } catch (e) {
       debugPrint('[SilentCoordinator] ❌ Error en initializeServices: $e');

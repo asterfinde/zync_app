@@ -53,16 +53,6 @@
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="true"/>
 
-        <activity
-            android:name=".StatusModalActivity"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
-            android:excludeFromRecents="true"
-            android:finishOnTaskLaunch="true"
-            android:noHistory="true"/>
-
         <!-- EmojiDialogActivity: Modal nativo INSTANTÁNEO con cache Firebase -->
         <activity
             android:name=".EmojiDialogActivity"
