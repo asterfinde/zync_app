@@ -32,7 +32,6 @@ class StatusSelectorOverlay extends StatefulWidget {
 class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
-  late final Animation<double> _fadeAnimation;
   late final Animation<double> _scaleAnimation;
 
   Timer? _sosTimer;
@@ -50,9 +49,6 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
@@ -125,7 +121,8 @@ class _StatusSelectorOverlayState extends State<StatusSelectorOverlay>
         return GestureDetector(
           onTap: _closeModal,
           child: Container(
-            color: NkColors.canvas.withValues(alpha: 0.85 * _fadeAnimation.value),
+            // [B] Velo a opacidad fija — sin fade-in (quita el efecto de "difuminado" progresivo)
+            color: NkColors.canvas.withValues(alpha: 0.85),
             child: Center(
               child: GestureDetector(
                 onTap: () {},
