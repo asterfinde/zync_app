@@ -3,7 +3,6 @@ import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/create_zone.dart';
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/delete_zone.dart';
-import 'package:nunakin_app/contexts/geofencing/application/use_cases/update_zone.dart';
 import 'package:nunakin_app/contexts/geofencing/infrastructure/firestore_zone_repository.dart';
 import 'package:nunakin_app/features/geofencing/domain/entities/zone.dart';
 import 'package:nunakin_app/shared/failure.dart';
@@ -100,45 +99,6 @@ void main() {
       final result = await CreateZone(repo, auth(), firestore).call(
         circleId: circleId, name: 'gimnasio', latitude: -12, longitude: -77,
         radiusMeters: 100, type: ZoneType.custom,
-      );
-      expect(result.failureOrNull, isA<DomainFailure>());
-    });
-  });
-
-  group('UpdateZone', () {
-    test('éxito → preserva createdBy/createdAt y aplica cambios', () async {
-      await seedCircle();
-      final zoneId = await seedZone(name: 'Casa', type: ZoneType.home);
-
-      final result = await UpdateZone(repo, auth(), firestore).call(
-        circleId: circleId, zoneId: zoneId, name: 'Casa 2',
-        latitude: -12, longitude: -77, radiusMeters: 200, type: ZoneType.home,
-      );
-
-      expect(result.isSuccess, isTrue);
-      final updated = (await repo.getZone(circleId, zoneId)).valueOrNull!;
-      expect(updated.name, 'Casa 2');
-      expect(updated.radiusMeters, 200);
-      expect(updated.createdBy, uid);
-      expect(updated.createdAt, DateTime(2026, 1, 1));
-    });
-
-    test('zona inexistente → DomainFailure', () async {
-      await seedCircle();
-      final result = await UpdateZone(repo, auth(), firestore).call(
-        circleId: circleId, zoneId: 'nope', name: 'X',
-        latitude: -12, longitude: -77, radiusMeters: 100, type: ZoneType.custom,
-      );
-      expect(result.failureOrNull, isA<DomainFailure>());
-    });
-
-    test('nombre duplicado de otra zona → DomainFailure', () async {
-      await seedCircle();
-      await seedZone(name: 'Trabajo');
-      final zoneId = await seedZone(name: 'Casa');
-      final result = await UpdateZone(repo, auth(), firestore).call(
-        circleId: circleId, zoneId: zoneId, name: 'Trabajo',
-        latitude: -12, longitude: -77, radiusMeters: 100, type: ZoneType.custom,
       );
       expect(result.failureOrNull, isA<DomainFailure>());
     });

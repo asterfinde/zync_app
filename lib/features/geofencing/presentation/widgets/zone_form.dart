@@ -7,21 +7,18 @@ import 'package:geocoding/geocoding.dart';
 import 'package:nunakin_app/app/di/injection_container.dart';
 import 'package:nunakin_app/contexts/geofencing/application/ports/zone_repository.dart';
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/create_zone.dart';
-import 'package:nunakin_app/contexts/geofencing/application/use_cases/update_zone.dart';
 import 'package:nunakin_app/contexts/geofencing/domain/zone_constraints.dart';
-import 'package:nunakin_app/shared/result.dart';
 import '../../domain/entities/zone.dart';
 
-/// Formulario para crear/editar zonas geográficas
-/// Incluye búsqueda de dirección, mapa interactivo y option buttons
+/// Formulario para crear zonas geográficas.
+/// La edición no existe como flujo de producto: editar = eliminar + crear.
+/// Incluye búsqueda de dirección, mapa interactivo y option buttons.
 class ZoneForm extends StatefulWidget {
   final String circleId;
-  final Zone? zone; // null = crear, no-null = editar
 
   const ZoneForm({
     super.key,
     required this.circleId,
-    this.zone,
   });
 
   @override
@@ -47,21 +44,10 @@ class _ZoneFormState extends State<ZoneForm> {
     super.initState();
     _loadExistingZones();
 
-    if (widget.zone != null) {
-      // Modo edición
-      _selectedLocation = LatLng(widget.zone!.latitude, widget.zone!.longitude);
-      _radiusMeters = widget.zone!.radiusMeters;
-      _selectedType = widget.zone!.type;
-      if (widget.zone!.type == ZoneType.custom) {
-        _customNameController.text = widget.zone!.name;
-      }
-    } else {
-      // Modo creación - obtener ubicación actual por defecto
-      _selectedLocation = const LatLng(-12.046374, -77.042793);
-      _radiusMeters = 150.0;
-      print('🗺️ [ZoneForm] Ubicación inicial: ${_selectedLocation.latitude}, ${_selectedLocation.longitude}');
-      _getCurrentLocation(); // Obtener ubicación actual automáticamente
-    }
+    // Ubicación por defecto hasta que el GPS resuelva la posición real.
+    _selectedLocation = const LatLng(-12.046374, -77.042793);
+    _radiusMeters = 150.0;
+    _getCurrentLocation();
   }
 
   @override
@@ -83,9 +69,6 @@ class _ZoneFormState extends State<ZoneForm> {
   bool _isZoneTypeAvailable(ZoneType type) {
     // Solo las predefinidas se pueden ocupar (una vez)
     if (!type.isPredefinedType) return true;
-
-    // En modo edición, el tipo actual siempre está disponible
-    if (widget.zone != null && widget.zone!.type == type) return true;
 
     // Verificar si el tipo ya está ocupado
     return !_existingZones.any((z) => z.type == type);
@@ -290,9 +273,9 @@ class _ZoneFormState extends State<ZoneForm> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          widget.zone == null ? 'CREAR ZONA' : 'EDITAR ZONA',
-          style: const TextStyle(
+        title: const Text(
+          'CREAR ZONA',
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -639,31 +622,20 @@ class _ZoneFormState extends State<ZoneForm> {
         }
       }
 
-      final isCreate = widget.zone == null;
-      final Result<Object> result = isCreate
-          ? await sl<CreateZone>().call(
-              circleId: widget.circleId,
-              name: zoneName,
-              latitude: _selectedLocation.latitude,
-              longitude: _selectedLocation.longitude,
-              radiusMeters: _radiusMeters,
-              type: _selectedType!,
-            )
-          : await sl<UpdateZone>().call(
-              circleId: widget.circleId,
-              zoneId: widget.zone!.id,
-              name: zoneName,
-              latitude: _selectedLocation.latitude,
-              longitude: _selectedLocation.longitude,
-              radiusMeters: _radiusMeters,
-              type: _selectedType!,
-            );
+      final result = await sl<CreateZone>().call(
+        circleId: widget.circleId,
+        name: zoneName,
+        latitude: _selectedLocation.latitude,
+        longitude: _selectedLocation.longitude,
+        radiusMeters: _radiusMeters,
+        type: _selectedType!,
+      );
 
       if (!mounted) return;
       if (result.isFailure) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${result.failureOrNull?.message ?? 'No se pudo guardar la zona'}'),
+            content: Text('Error: ${result.failureOrNull?.message ?? 'No se pudo crear la zona'}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -672,10 +644,10 @@ class _ZoneFormState extends State<ZoneForm> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isCreate ? 'Zona creada exitosamente' : 'Zona actualizada exitosamente'),
-          backgroundColor: const Color(0xFF1EE9A4),
-          duration: const Duration(seconds: 2),
+        const SnackBar(
+          content: Text('Zona creada exitosamente'),
+          backgroundColor: Color(0xFF1EE9A4),
+          duration: Duration(seconds: 2),
         ),
       );
       Navigator.pop(context);

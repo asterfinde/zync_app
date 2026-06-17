@@ -6,7 +6,6 @@ import 'package:nunakin_app/contexts/geofencing/application/ports/zone_repositor
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/apply_geofence_status.dart';
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/create_zone.dart';
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/delete_zone.dart';
-import 'package:nunakin_app/contexts/geofencing/application/use_cases/update_zone.dart';
 import 'package:nunakin_app/contexts/geofencing/infrastructure/firestore_geofence_status_writer.dart';
 import 'package:nunakin_app/contexts/geofencing/infrastructure/firestore_zone_repository.dart';
 import 'package:nunakin_app/shared/events/domain_event_bus.dart';
@@ -18,9 +17,6 @@ Future<void> registerGeofencingModule(GetIt sl) async {
 
   sl.registerFactory(
     () => CreateZone(sl<ZoneRepository>(), sl<FirebaseAuth>(), sl<FirebaseFirestore>()),
-  );
-  sl.registerFactory(
-    () => UpdateZone(sl<ZoneRepository>(), sl<FirebaseAuth>(), sl<FirebaseFirestore>()),
   );
   sl.registerFactory(
     () => DeleteZone(sl<ZoneRepository>(), sl<FirebaseAuth>(), sl<FirebaseFirestore>()),
