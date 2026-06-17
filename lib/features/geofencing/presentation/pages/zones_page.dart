@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../services/circle_service.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/geofencing/application/ports/zone_repository.dart';
+import 'package:nunakin_app/contexts/geofencing/application/use_cases/delete_zone.dart';
+import 'package:nunakin_app/contexts/geofencing/domain/zone_constraints.dart';
 import '../../domain/entities/zone.dart';
-import '../../services/zone_service.dart';
 import '../widgets/zone_form.dart';
 import '../widgets/geofencing_debug_widget.dart';
 import '../../../../app/theme/design_tokens.dart';
@@ -23,7 +26,6 @@ class ZonesPage extends ConsumerStatefulWidget {
 }
 
 class _ZonesPageState extends ConsumerState<ZonesPage> {
-  final ZoneService _zoneService = ZoneService();
   bool _showDebugWidget = false;
   late final bool _isCreator;
 
@@ -66,10 +68,10 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
         ],
       ),
       floatingActionButton: StreamBuilder<List<Zone>>(
-        stream: _zoneService.listenToZones(widget.circle.id),
+        stream: sl<ZoneRepository>().watchCircleZones(widget.circle.id),
         builder: (context, snapshot) {
           final zones = snapshot.data ?? [];
-          final canAdd = zones.length < ZoneService.MAX_ZONES_PER_CIRCLE;
+          final canAdd = zones.length < ZoneConstraints.maxZonesPerCircle;
 
           return FloatingActionButton(
             onPressed: canAdd ? () => _addZone(context) : null,
@@ -84,7 +86,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: StreamBuilder<List<Zone>>(
-        stream: _zoneService.listenToZones(widget.circle.id),
+        stream: sl<ZoneRepository>().watchCircleZones(widget.circle.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(
@@ -158,7 +160,7 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
                     const Icon(Icons.location_on, color: NkColors.fgSub, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      '${zones.length} de ${ZoneService.MAX_ZONES_PER_CIRCLE} zonas',
+                      '${zones.length} de ${ZoneConstraints.maxZonesPerCircle} zonas',
                       style: const TextStyle(
                         color: NkColors.fgSub,
                         fontSize: 14,
@@ -261,31 +263,28 @@ class _ZonesPageState extends ConsumerState<ZonesPage> {
   }
 
   Future<void> _deleteZone(BuildContext context, Zone zone) async {
-    try {
-      await _zoneService.deleteZone(
-        circleId: widget.circle.id,
-        zoneId: zone.id,
+    final result = await sl<DeleteZone>().call(
+      circleId: widget.circle.id,
+      zoneId: zone.id,
+    );
+    if (!mounted) return;
+    if (result.isFailure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Error al eliminar: ${result.failureOrNull?.message ?? 'No se pudo eliminar la zona'}'),
+          backgroundColor: NkColors.danger,
+          duration: const Duration(seconds: 3),
+        ),
       );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Zona "${zone.name}" eliminada'),
-            backgroundColor: NkColors.mint,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al eliminar: $e'),
-            backgroundColor: NkColors.danger,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      return;
     }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Zona "${zone.name}" eliminada'),
+        backgroundColor: NkColors.mint,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 }

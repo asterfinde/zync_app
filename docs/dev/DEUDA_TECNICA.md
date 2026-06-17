@@ -11,7 +11,7 @@
 | Archivos legacy de auth sin uso: `sign_in_page.dart`, `auth_form.dart`, `auth_provider.dart`, `auth_service.dart` | Media | Flujo activo usa `auth_final_page.dart`. Evaluar eliminación post-MVP. |
 | Scripts `.ps1` en raíz: `launch_emulator.ps1`, `run_devices.ps1`, `clean_and_run.ps1` | Media | No son parte del código fuente. Mover fuera del repo una vez validados. |
 | Archivos de desarrollo dentro de `lib/`: `main_test.dart`, `main_minimal_test.dart`, `dev_auth_simple/`, `dev_auth_test/`, `dev_test/`, `dev_utils/` | **Alta** | `dev_utils/` contiene `clean_auth.dart` y `clean_firestore.dart` — riesgo de ejecución accidental en producción. Eliminar antes del build de release. Cubierto en plan de refactor Sem 10. |
-| API Key de Anthropic — ubicación desconocida | **Alta** | No encontrada en ningún archivo Dart. Antes del lanzamiento: confirmar ubicación. Si está en el cliente (hardcodeada o en assets), mover a Cloud Function. Ver CLAUDE.md §15. Cubierto en plan de refactor Sem 9. |
+| API Key de Anthropic — **confirmado: NO existe en el cliente** | Media | Sondeo 2026-06-11: cero referencias a `anthropic`/`claude`/`sk-ant`/endpoints `/v1/messages` en `lib`+`android`+`assets`; sin archivos `.env`; sin assets de config. La integración con Claude **no está implementada aún**. ✅ **Sin riesgo de key expuesta hoy.** Acción Sem 9: cuando se implemente la feature de IA, hacerla **server-side (Cloud Function) desde el inicio** — nunca key en cliente. Ver CLAUDE.md §15. |
 | Edición de emojis personalizados — no existe `updateCustomEmoji()` | Baja | Workaround: borrar + crear. ~50 líneas en 3 archivos. Post-MVP. |
 | Validación de correos al registro | Media | Sin definir aún. |
 | State Management — solución no documentada en CLAUDE.md §5 | Media | Completar antes de agregar nueva lógica de estado. |
@@ -19,7 +19,25 @@
 | Cierre remoto de sesión — equipo perdido o robado | **Alta** | Hoy no existe mecanismo para cerrar sesión desde otro dispositivo. Modelo de amenaza idéntico a WhatsApp: quien tenga el equipo desbloqueado con sesión activa tiene acceso completo al Círculo. **Caso crítico: si el que pierde el equipo es el Creador del Círculo**, ningún miembro puede eliminarlo ni disolver el Círculo — el padre/tutor quedaría sin control. Opciones a evaluar: (1) transferencia de rol de Creador desde otro dispositivo; (2) token de sesión con TTL corto + re-auth periódica; (3) logout remoto via Cloud Function (invalida el token Firebase). Pendiente definir cuál se implementa antes del lanzamiento. |
 | **[POST-SEM3]** Limpiar §12 y §13 de CLAUDE.md | Media | Al cerrar Sem 3 (flip de `USE_LEGACY_BRIDGE=false` + todos los handlers migrados): archivar decisiones técnicas obsoletas de §12 y resolver/eliminar ítems de deuda resueltos. También eliminar la regla de feature flag de CLAUDE.md §2 si ya no aplica. |
 | Optimización de `android/gradle.properties` — aplicar uno a la vez: (1) `configuration-cache=true`, (2) `enableJetifier=false` (previa verificación con `checkJetifier`), (3) `-Xmx2G` | Baja | Mejoras de rendimiento en builds. Sin urgencia para MVP. Cada cambio requiere `flutter clean` + build completo + test en device antes de commitear. |
-| Commitear `.claude/settings.json` — agrega `"defaultMode": "acceptEdits"` | Baja | Cambio ya en el working tree. Incluir en el próximo commit que toque `.claude/`. No abrir PR solo por esto. |
+| ~~Commitear `.claude/settings.json` — `"defaultMode": "acceptEdits"`~~ | ✅ Resuelto | Commiteado en PR #223 (`c023032`). |
 | Afinar performance de actualizaciones de emojis/estados — MS y Círculo | Media | El flujo actual es funcional (fire-and-forget + stream Firestore). Para producción: evaluar optimistic UI update (actualizar widget localmente antes de que el stream confirme) y reducir latencia del stream listener en `in_circle_view.dart`. Aplicable tanto al modal del Círculo como al modal en Modo Silencio. |
 | **[PENDIENTE VERIFICACIÓN]** Geofencing en Modo Silencio tras >1h | Media | Tras el fix de Token Service API (PR #202), falta probar en dispositivo: con MS activo y app >1h en background, que el geofencing detecte una zona pre-establecida (zona real + GPS) y la ruta de actualización Smooth escriba a Firestore correctamente. Usa el mismo token/Worker que ya quedó verificado para cambios manuales, por lo que **debería estar cubierto** — pero no se ha probado el disparo automático por zona. |
-| **[CÓDIGO MUERTO]** Andamiaje FASE 5 de modal de notificación sin uso | Media | `StatusModalActivity.kt`, `status_modal_service.dart`, `notification_status_selector.dart`, `<activity>` de Manifest y handlers duplicados del channel `status_modal` en `MainActivity` nunca se ejercitan: el único disparador (`showQuickActionNotification`) está comentado y `openModal()` no tiene callers. El modal real de Modo Silencio es `EmojiDialogActivity` (nativo). Eliminar en rama aparte + corregir comentario engañoso en `MainActivity.kt:618` ("tap abre StatusModalActivity" → en realidad abre `EmojiDialogActivity`). |
+| ~~**[CÓDIGO MUERTO]** Andamiaje FASE 5 de modal de notificación~~ | ✅ Resuelto | Eliminado en PRs #225 (E-1) + #226 (E-2): `StatusModalActivity`, `status_modal_service`, `notification_status_selector`, handlers `status_modal`, `warmUpModalEngine`. Comentario engañoso corregido. ~1240 LOC. |
+| **[DT-GEO]** Simulador de geofencing duplica lógica de estado | Media | `GeofencingDebugWidget._updateUserStatus` (`geofencing_debug_widget.dart`) escribe `memberStatus` directo en Firestore, **sin pasar** por `ApplyGeofenceStatus`/`GeofenceStatusWriter`/`DomainEventBus`. Ejercita un camino DISTINTO al geofencing real → el simulador puede pasar y el flujo real fallar (o viceversa). Al cerrar el BC de geofencing (entregable `ZoneEventRepository`), unificar: el simulador debe **publicar `ZoneEntered`/`ZoneExited` al `DomainEventBus`**, no escribir Firestore directo. Preexistente — no introducido por el slice de zonas (PR #229). Cierre: **Sem 8**. |
+
+---
+
+## Mapeo DT → Semana del plan de refactorización
+
+> Asignación de cada ítem abierto a la semana que lo cierra, para que ningún ítem
+> quede sin dueño al llegar al freeze (Sem 10). Actualizado 2026-06-11.
+
+| Semana | Ítems de DT que cierra |
+|--------|------------------------|
+| **Sem 8** (Geofencing BC) | [DT-GEO] simulador → `DomainEventBus`; verificación geofencing en MS >1h |
+| **Sem 9** (Seguridad/Compliance) | API Key Anthropic (server-side al implementar IA); validación de correos al registro; cierre remoto de sesión (equipo perdido); Política de privacidad + justificación `ACCESS_BACKGROUND_LOCATION` (CLAUDE.md §15) |
+| **Sem 10** (Launch Readiness + freeze) | `dev_utils/` + archivos dev en `lib/`; scripts `.ps1` en raíz; optimización `gradle.properties`; limpieza §12/§13 CLAUDE.md ([POST-SEM3]) |
+| **Post-MVP** (no bloquea lanzamiento) | Archivos legacy de auth; `updateCustomEmoji()`; ejercicio de respiración (v2.0); afinar performance de actualizaciones; State Management documentado en §5 |
+
+> **Nota:** "State Management documentado" (§5 CLAUDE.md) es Post-MVP como *documentación*,
+> pero la decisión de hecho ya está tomada (get_it + use cases + Result). Solo falta escribirla.
