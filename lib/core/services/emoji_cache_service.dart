@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'emoji_service.dart';
+import '../models/user_status.dart';
 import 'package:flutter/foundation.dart';
 
 /// Servicio para sincronizar emojis de Firebase a cache nativo (SharedPreferences)
@@ -39,6 +40,20 @@ class EmojiCacheService {
 
             // Combinar predefinidos + personalizados
             allEmojis = [...predefinedEmojis, ...customEmojis];
+
+            // Zonas custom (📍) → ítems sintéticos del grid (id 'zone_<docId>'),
+            // para que el modal nativo las muestre igual que el modal del Círculo.
+            final zonesSnap = await FirebaseFirestore.instance
+                .collection('circles').doc(circleId).collection('zones').get();
+            for (final doc in zonesSnap.docs) {
+              if (doc.data()['type'] == 'custom') {
+                final name = doc.data()['name'] as String? ?? 'Zona';
+                allEmojis.add(StatusType(
+                  id: 'zone_${doc.id}', emoji: '📍', label: name, shortLabel: name,
+                  category: 'custom', order: 999, isPredefined: false, canDelete: false,
+                ));
+              }
+            }
             debugPrint(
                 '[EmojiCacheService] 📦 Cargados ${predefinedEmojis.length} predefinidos + ${customEmojis.length} personalizados');
           } else {
@@ -93,8 +108,12 @@ class EmojiCacheService {
 
         for (final doc in zonesSnapshot.docs) {
           final type = doc.data()['type'] as String?;
-          if (type != null && ['home', 'school', 'university', 'work'].contains(type)) {
+          if (type == null) continue;
+          if (['home', 'school', 'university', 'work'].contains(type)) {
             configuredTypes.add(type);
+          } else if (type == 'custom') {
+            // Zona custom → su id sintético bloquea el botón 'zone_<docId>'
+            configuredTypes.add('zone_${doc.id}');
           }
         }
       }
