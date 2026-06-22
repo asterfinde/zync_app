@@ -383,18 +383,34 @@ class _StatusSelectorOverlayLoaderState
           .get()
           .timeout(const Duration(seconds: 5));
 
-      final configuredTypes = zonesSnapshot.docs
-          .where((doc) {
-            final type = doc.data()['type'] as String?;
-            return type != null &&
-                ['home', 'school', 'university', 'work'].contains(type);
-          })
-          .map((doc) => doc.data()['type'] as String)
-          .toSet();
+      // Zonas predefinidas → bloquean su StatusType base (home/school/…).
+      // Zonas custom (📍) → botón sintético propio, bloqueado (id 'zone_<docId>').
+      final configuredTypes = <String>{};
+      final customZoneStatuses = <StatusType>[];
+      for (final doc in zonesSnapshot.docs) {
+        final type = doc.data()['type'] as String?;
+        if (type == null) continue;
+        if (['home', 'school', 'university', 'work'].contains(type)) {
+          configuredTypes.add(type);
+        } else if (type == 'custom') {
+          final name = doc.data()['name'] as String? ?? 'Zona';
+          customZoneStatuses.add(StatusType(
+            id: 'zone_${doc.id}',
+            emoji: '📍',
+            label: name,
+            shortLabel: name,
+            category: 'custom',
+            order: 999,
+            isPredefined: false,
+            canDelete: false,
+          ));
+          configuredTypes.add('zone_${doc.id}');
+        }
+      }
 
       if (mounted) {
         setState(() {
-          _available = allEmojis;
+          _available = [...allEmojis, ...customZoneStatuses];
           _blockedZoneTypes = configuredTypes;
         });
       }

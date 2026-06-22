@@ -279,9 +279,17 @@ Los estados cuyo `id` coincide con el tipo de zona configurada aparecen **dimmed
 | `university` → 🎓 | `university` bloqueado | Entrada: `studying` 📚 · Salida: `fine` 🙂 |
 | `work` → 💼 | `work` bloqueado | Entrada: `busy` 🔴 · Salida: `fine` 🙂 |
 
-> Zonas `custom` (📍) no bloquean ningún estado. En entrada asignan `fine` con emoji `📍`.
+> Zonas `custom` (📍) no bloquean ningún estado **base** (Bien, Ocupado, etc.). En entrada asignan `fine` con emoji `📍`. **Sí aparecen como su propio botón bloqueado** (📍 + nombre de la zona) en ambos modales de selección — ver §7.3.
 
 El tap sobre un estado bloqueado muestra el modal **"Acción no permitida"** explicando que ese estado lo maneja el geofencing automáticamente.
+
+### 7.3 Zonas personalizadas (📍) en el selector
+
+Cada zona `custom` configurada aparece en **ambos modales** (Círculo y Modo Silencio) como un botón propio con emoji 📍 y el nombre de la zona, en estado **bloqueado/dimmed** — igual tratamiento que las predefinidas configuradas. El tap muestra el modal "Acción no permitida".
+
+- **Identificador interno:** `zone_<zoneId>` (pseudo-estado, no es un `StatusType` real). No colisiona con estados base ni emojis personalizados del círculo.
+- **A diferencia de las predefinidas**, una zona custom no bloquea un estado base existente: introduce su **propio** botón bloqueado.
+- Al eliminar la zona custom, su botón desaparece de ambos modales (el cache se re-sincroniza).
 
 > **Bug conocido:** `ZoneType.work` usa emoji 💼 pero `StatusType` con `id: 'work'` muestra 🏢. Hay mismatch entre `zone.type.emoji` y el `StatusType` correspondiente.
 
@@ -386,7 +394,7 @@ Cuando el Creador elimina una zona de tipo `custom`:
 | Tipo de zona | Estado miembro en zona | Selector |
 |--------------|----------------------|----------|
 | Predefinida (🏠🏫🎓🏢) | Reset a `fine` (equivalente a salida) | Botón se desbloquea |
-| Personalizada (📍) | Persiste, sin cambio | Sin cambio (nunca estuvo bloqueado) |
+| Personalizada (📍) | Persiste, sin cambio | Su botón 📍 desaparece del selector |
 
 ---
 
