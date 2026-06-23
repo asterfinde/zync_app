@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/geofencing/application/ports/place_search_service.dart';
 import 'package:nunakin_app/contexts/geofencing/application/ports/zone_repository.dart';
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/create_zone.dart';
 import 'package:nunakin_app/contexts/geofencing/domain/zone_constraints.dart';
@@ -37,6 +37,7 @@ class _ZoneFormState extends State<ZoneForm> {
   bool _isLoading = false;
   bool _isLoadingLocation = false;
   bool _isSearching = false;
+  List<PlacePrediction> _predictions = []; // Resultados del autocompletado
   List<Zone> _existingZones = []; // Para deshabilitar tipos ocupados
 
   @override
@@ -170,67 +171,127 @@ class _ZoneFormState extends State<ZoneForm> {
     );
   }
 
-  /// Buscar dirección y ubicar en mapa.
-  /// Solo muestra resultados dentro de 1500 km de la posición GPS actual
-  /// del usuario (REGLAS_NEGOCIO.md §10). Descarta resultados del mismo
-  /// nombre en otros países o continentes.
+  /// Buscar lugar/dirección vía Places SDK y mostrar predicciones.
+  /// El autocompletado se restringe a ~50 km alrededor de la posición actual
+  /// (REGLAS_NEGOCIO.md §10) e indexa POIs/acrónimos (UNALM, óvalos), que el
+  /// geocoder nativo no resolvía. El usuario elige una predicción de la lista.
   Future<void> _searchAddress() async {
-    final address = _addressController.text.trim();
-    if (address.isEmpty) return;
+    final query = _addressController.text.trim();
+    if (query.isEmpty) return;
 
+    setState(() {
+      _isSearching = true;
+      _predictions = [];
+    });
+
+    try {
+      final results = await sl<PlaceSearchService>().autocomplete(
+        query,
+        lat: _selectedLocation.latitude,
+        lng: _selectedLocation.longitude,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _predictions = results;
+        _isSearching = false;
+      });
+
+      if (results.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se encontró ese lugar cerca de tu ubicación'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } on PlaceSearchNetworkException {
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      _showNetworkSnack();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'No se pudo buscar el lugar: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  /// Snackbar neutro (no rojo) para errores de red transitorios.
+  void _showNetworkSnack() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Sin conexión a internet. Intenta de nuevo.'),
+        backgroundColor: Color(0xFF3A3A3C),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Limpia por completo el campo de búsqueda y descarta las predicciones.
+  void _clearSearch() {
+    setState(() {
+      _addressController.clear();
+      _predictions = [];
+    });
+  }
+
+  /// Resolver la predicción elegida a coordenadas y centrar el mapa.
+  /// Aplica el filtro circular fino de 50 km (REGLAS_NEGOCIO.md §10): el
+  /// `locationRestriction` del SDK es un rectángulo, cuyas esquinas exceden
+  /// los 50 km — este check garantiza el umbral exacto de ciudad.
+  Future<void> _selectPrediction(PlacePrediction prediction) async {
+    FocusScope.of(context).unfocus();
     setState(() => _isSearching = true);
 
     try {
-      // Biasear resultados hacia español (geocoding 3.x usa función global)
-      await setLocaleIdentifier('es_PE');
-      final locations = await locationFromAddress(address);
+      final location = await sl<PlaceSearchService>().resolve(prediction.placeId);
 
-      if (locations.isEmpty) {
-        throw Exception('No se encontró la dirección');
-      }
-
-      // Descartar resultados fuera de la ciudad del usuario (REGLAS_NEGOCIO.md §10).
-      // 50 km cubre cualquier área metropolitana del Perú (Lima ~40 km de radio,
-      // todas las demás < 30 km). Garantiza que "Iquitos" en Lima devuelva
-      // calles en Lima, no la ciudad de Iquitos (~1 100 km).
-      const maxDistanceMeters = 50 * 1000.0;
-      final nearby = locations.where((loc) {
-        final dist = Geolocator.distanceBetween(
-          _selectedLocation.latitude,
-          _selectedLocation.longitude,
-          loc.latitude,
-          loc.longitude,
+      if (!mounted) return;
+      if (location == null) {
+        setState(() => _isSearching = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ese lugar no tiene una ubicación disponible'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
         );
-        return dist <= maxDistanceMeters;
-      }).toList();
-
-      if (nearby.isEmpty) {
-        throw Exception('No se encontró esa dirección cerca de tu ubicación');
+        return;
       }
 
-      // De los candidatos cercanos, elegir el más próximo a la posición actual
-      final best = nearby.length == 1
-          ? nearby.first
-          : nearby.reduce((a, b) {
-              final distA = Geolocator.distanceBetween(
-                _selectedLocation.latitude,
-                _selectedLocation.longitude,
-                a.latitude,
-                a.longitude,
-              );
-              final distB = Geolocator.distanceBetween(
-                _selectedLocation.latitude,
-                _selectedLocation.longitude,
-                b.latitude,
-                b.longitude,
-              );
-              return distA <= distB ? a : b;
-            });
+      const maxDistanceMeters = 50 * 1000.0;
+      final dist = Geolocator.distanceBetween(
+        _selectedLocation.latitude,
+        _selectedLocation.longitude,
+        location.latitude,
+        location.longitude,
+      );
+      if (dist > maxDistanceMeters) {
+        setState(() => _isSearching = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ese lugar está fuera de tu ciudad'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
 
-      final newLocation = LatLng(best.latitude, best.longitude);
-
+      final newLocation = LatLng(location.latitude, location.longitude);
       setState(() {
         _selectedLocation = newLocation;
+        _predictions = [];
+        _addressController.text = prediction.primaryText;
         _isSearching = false;
       });
 
@@ -238,27 +299,28 @@ class _ZoneFormState extends State<ZoneForm> {
         CameraUpdate.newLatLngZoom(newLocation, 16),
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('📍 Ubicación encontrada - Refina el punto en el mapa'),
-            backgroundColor: Color(0xFF1EE9A4),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📍 Ubicación encontrada - Refina el punto en el mapa'),
+          backgroundColor: Color(0xFF1EE9A4),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } on PlaceSearchNetworkException {
+      if (!mounted) return;
       setState(() => _isSearching = false);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No se pudo encontrar la dirección: ${e.toString().replaceAll('Exception: ', '')}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      _showNetworkSnack();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'No se pudo ubicar el lugar: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -380,7 +442,15 @@ class _ZoneFormState extends State<ZoneForm> {
                                 borderSide: BorderSide.none,
                               ),
                               prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
+                              suffixIcon: _addressController.text.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      icon: const Icon(Icons.close,
+                                          color: Color(0xFF9E9E9E)),
+                                      onPressed: _clearSearch,
+                                    ),
                             ),
+                            onChanged: (_) => setState(() {}),
                             onFieldSubmitted: (_) => _searchAddress(),
                           ),
                         ),
@@ -406,6 +476,30 @@ class _ZoneFormState extends State<ZoneForm> {
                         ),
                       ],
                     ),
+
+                    // Lista de predicciones del autocompletado
+                    if (_predictions.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1C1E),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF3A3A3C)),
+                        ),
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < _predictions.length; i++) ...[
+                              if (i > 0)
+                                const Divider(
+                                  height: 1,
+                                  color: Color(0xFF3A3A3C),
+                                ),
+                              _buildPredictionTile(_predictions[i]),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 
@@ -666,6 +760,74 @@ class _ZoneFormState extends State<ZoneForm> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  /// Fila de una predicción del autocompletado.
+  Widget _buildPredictionTile(PlacePrediction prediction) {
+    final distanceLabel = prediction.distanceMeters != null
+        ? _formatDistance(prediction.distanceMeters!)
+        : null;
+
+    return InkWell(
+      onTap: () => _selectPrediction(prediction),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(Icons.place_outlined, color: Color(0xFF9E9E9E), size: 20),
+            const SizedBox(width: 12),
+            // Nombre + distrito (desambigua homónimos: misma calle, distinto distrito)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    prediction.primaryText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (prediction.secondaryText.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      prediction.secondaryText,
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Distancia destacada y alineada a la derecha → el usuario escanea
+            // rápido cuál homónimo es el más cercano.
+            if (distanceLabel != null) ...[
+              const SizedBox(width: 12),
+              Text(
+                distanceLabel,
+                style: const TextStyle(
+                  color: Color(0xFF1EE9A4),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDistance(int meters) {
+    if (meters < 1000) return '$meters m';
+    return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
   /// Widget para botón de tipo de zona (Option Button)

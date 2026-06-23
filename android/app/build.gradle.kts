@@ -55,6 +55,10 @@ android {
         
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
 
+        // Exponer la key a Dart vía MethodChannel (Places SDK la pide en el
+        // constructor). Sale de local.properties — nunca de código fuente.
+        buildConfigField("String", "MAPS_API_KEY", "\"$googleMapsApiKey\"")
+
         buildConfigField("boolean", "USE_LEGACY_BRIDGE", "false")
     }
 
