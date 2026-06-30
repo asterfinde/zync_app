@@ -1,6 +1,5 @@
 // lib/features/geofencing/presentation/widgets/zone_form.dart
 
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -282,23 +281,6 @@ class _ZoneFormState extends State<ZoneForm> {
         location.latitude,
         location.longitude,
       );
-
-      // ════════════════════════════════════════════════════════════
-      // [DIAG] [DT-PLACES-NEAREST] — predicción elegida vs resuelta
-      // Fecha: 2026-06-30
-      // origin = _selectedLocation (pin/origen previo). Si arrastró el pin o
-      // eligió antes, este origen drifteó → contrastar contra la coord resuelta.
-      // ════════════════════════════════════════════════════════════
-      if (kDebugMode) {
-        debugPrint(
-          'PlacesNearest selectPrediction placeId=${prediction.placeId} '
-          '"${prediction.primaryText}" listDist=${prediction.distanceMeters}m | '
-          'origin=(${_selectedLocation.latitude},${_selectedLocation.longitude}) '
-          'resolved=(${location.latitude},${location.longitude}) '
-          'calcDist=${dist.toStringAsFixed(0)}m',
-        );
-      }
-
       if (dist > maxDistanceMeters) {
         setState(() => _isSearching = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -787,11 +769,11 @@ class _ZoneFormState extends State<ZoneForm> {
   }
 
   /// Fila de una predicción del autocompletado.
+  /// El distrito (`secondaryText`) es el único desambiguador de homónimos:
+  /// misma calle, distinto distrito. No se muestra distancia porque Places API
+  /// (New) devuelve `distanceMeters = 0` aunque se pase `origin` (no soporta el
+  /// sesgo de proximidad en autocomplete) — ver DEUDA [DT-PLACES-NEAREST].
   Widget _buildPredictionTile(PlacePrediction prediction) {
-    final distanceLabel = prediction.distanceMeters != null
-        ? _formatDistance(prediction.distanceMeters!)
-        : null;
-
     return InkWell(
       onTap: () => _selectPrediction(prediction),
       child: Padding(
@@ -800,7 +782,6 @@ class _ZoneFormState extends State<ZoneForm> {
           children: [
             const Icon(Icons.place_outlined, color: Color(0xFF9E9E9E), size: 20),
             const SizedBox(width: 12),
-            // Nombre + distrito (desambigua homónimos: misma calle, distinto distrito)
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -830,28 +811,10 @@ class _ZoneFormState extends State<ZoneForm> {
                 ],
               ),
             ),
-            // Distancia destacada y alineada a la derecha → el usuario escanea
-            // rápido cuál homónimo es el más cercano.
-            if (distanceLabel != null) ...[
-              const SizedBox(width: 12),
-              Text(
-                distanceLabel,
-                style: const TextStyle(
-                  color: Color(0xFF1EE9A4),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
           ],
         ),
       ),
     );
-  }
-
-  String _formatDistance(int meters) {
-    if (meters < 1000) return '$meters m';
-    return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
   /// Widget para botón de tipo de zona (Option Button)

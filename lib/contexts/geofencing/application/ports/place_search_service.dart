@@ -31,16 +31,15 @@ class PlacePrediction {
   final String primaryText;
 
   /// Texto secundario (contexto/dirección). Ej: "La Molina, Lima".
+  /// Es el desambiguador de homónimos: misma calle, distinto distrito. La
+  /// distancia no se expone: Places API (New) devuelve `distanceMeters = 0`
+  /// aunque se pase `origin` (no honra el sesgo de proximidad en autocomplete).
   final String secondaryText;
-
-  /// Distancia en línea recta al punto de referencia, si está disponible.
-  final int? distanceMeters;
 
   const PlacePrediction({
     required this.placeId,
     required this.primaryText,
     required this.secondaryText,
-    this.distanceMeters,
   });
 }
 
