@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 import 'dart:math' as math;
 import 'dart:ui' show Locale;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_google_places_sdk/flutter_google_places_sdk.dart'
     as places;
@@ -74,7 +75,7 @@ class PlacesSdkSearchService implements PlaceSearchService {
           locationRestriction: _boundsAround(lat, lng, radiusMeters),
         ));
 
-    return response.predictions
+    final predictions = response.predictions
         .map((p) => PlacePrediction(
               placeId: p.placeId,
               primaryText: p.primaryText,
@@ -82,6 +83,29 @@ class PlacesSdkSearchService implements PlaceSearchService {
               distanceMeters: p.distanceMeters,
             ))
         .toList();
+
+    // ════════════════════════════════════════════════════════════
+    // [DIAG] [DT-PLACES-NEAREST] — logging de predicciones
+    // Fecha: 2026-06-30
+    // Loguea cada placeId / texto / distancia + el origin usado, para
+    // contrastar contra lo que resuelve fetchPlace al elegir un homónimo.
+    // ════════════════════════════════════════════════════════════
+    if (kDebugMode) {
+      developer.log(
+        'autocomplete("$query") origin=($lat,$lng) → ${predictions.length} pred',
+        name: 'PlacesNearest',
+      );
+      for (var i = 0; i < predictions.length; i++) {
+        final p = predictions[i];
+        developer.log(
+          '  [$i] placeId=${p.placeId} dist=${p.distanceMeters}m '
+          '"${p.primaryText}" / "${p.secondaryText}"',
+          name: 'PlacesNearest',
+        );
+      }
+    }
+
+    return predictions;
   }
 
   @override
@@ -94,6 +118,20 @@ class PlacesSdkSearchService implements PlaceSearchService {
         ));
 
     final latLng = response.place?.latLng;
+
+    // ════════════════════════════════════════════════════════════
+    // [DIAG] [DT-PLACES-NEAREST] — resultado de fetchPlace
+    // Fecha: 2026-06-30
+    // Hipótesis #1: las calles (route-type) devuelven latLng == null al pedir
+    // solo PlaceField.Location → confirma o descarta con este log.
+    // ════════════════════════════════════════════════════════════
+    if (kDebugMode) {
+      developer.log(
+        'resolve($placeId) → latLng=${latLng == null ? 'NULL' : '(${latLng.lat},${latLng.lng})'}',
+        name: 'PlacesNearest',
+      );
+    }
+
     if (latLng == null) {
       developer.log('fetchPlace sin coordenadas para $placeId',
           name: 'PlacesSearch');

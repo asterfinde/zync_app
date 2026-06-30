@@ -1,5 +1,8 @@
 // lib/features/geofencing/presentation/widgets/zone_form.dart
 
+import 'dart:developer' as developer;
+
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -225,13 +228,19 @@ class _ZoneFormState extends State<ZoneForm> {
   }
 
   /// Snackbar neutro (no rojo) para errores de red transitorios.
+  /// Texto blanco explícito (era ilegible por heredar el color del tema) y
+  /// accionable: la búsqueda Places es de red y tras Doze el primer intento
+  /// puede fallar — reabrir la pantalla reintenta limpio. [DT-PLACES-NET]
   void _showNetworkSnack() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Sin conexión a internet. Intenta de nuevo.'),
+        content: Text(
+          'Sin conexión. Cierra y vuelve a entrar a esta pantalla para reintentar.',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Color(0xFF3A3A3C),
-        duration: Duration(seconds: 3),
+        duration: Duration(seconds: 4),
       ),
     );
   }
@@ -275,6 +284,24 @@ class _ZoneFormState extends State<ZoneForm> {
         location.latitude,
         location.longitude,
       );
+
+      // ════════════════════════════════════════════════════════════
+      // [DIAG] [DT-PLACES-NEAREST] — predicción elegida vs resuelta
+      // Fecha: 2026-06-30
+      // origin = _selectedLocation (pin/origen previo). Si arrastró el pin o
+      // eligió antes, este origen drifteó → contrastar contra la coord resuelta.
+      // ════════════════════════════════════════════════════════════
+      if (kDebugMode) {
+        developer.log(
+          'selectPrediction placeId=${prediction.placeId} '
+          '"${prediction.primaryText}" listDist=${prediction.distanceMeters}m | '
+          'origin=(${_selectedLocation.latitude},${_selectedLocation.longitude}) '
+          'resolved=(${location.latitude},${location.longitude}) '
+          'calcDist=${dist.toStringAsFixed(0)}m',
+          name: 'PlacesNearest',
+        );
+      }
+
       if (dist > maxDistanceMeters) {
         setState(() => _isSearching = false);
         ScaffoldMessenger.of(context).showSnackBar(
