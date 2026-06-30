@@ -1,8 +1,6 @@
 // lib/features/geofencing/presentation/widgets/zone_form.dart
 
-import 'dart:developer' as developer;
-
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -292,13 +290,12 @@ class _ZoneFormState extends State<ZoneForm> {
       // eligió antes, este origen drifteó → contrastar contra la coord resuelta.
       // ════════════════════════════════════════════════════════════
       if (kDebugMode) {
-        developer.log(
-          'selectPrediction placeId=${prediction.placeId} '
+        debugPrint(
+          'PlacesNearest selectPrediction placeId=${prediction.placeId} '
           '"${prediction.primaryText}" listDist=${prediction.distanceMeters}m | '
           'origin=(${_selectedLocation.latitude},${_selectedLocation.longitude}) '
           'resolved=(${location.latitude},${location.longitude}) '
           'calcDist=${dist.toStringAsFixed(0)}m',
-          name: 'PlacesNearest',
         );
       }
 

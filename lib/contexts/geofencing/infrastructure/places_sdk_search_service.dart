@@ -2,7 +2,7 @@ import 'dart:developer' as developer;
 import 'dart:math' as math;
 import 'dart:ui' show Locale;
 
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_google_places_sdk/flutter_google_places_sdk.dart'
     as places;
@@ -91,16 +91,14 @@ class PlacesSdkSearchService implements PlaceSearchService {
     // contrastar contra lo que resuelve fetchPlace al elegir un homónimo.
     // ════════════════════════════════════════════════════════════
     if (kDebugMode) {
-      developer.log(
-        'autocomplete("$query") origin=($lat,$lng) → ${predictions.length} pred',
-        name: 'PlacesNearest',
+      debugPrint(
+        'PlacesNearest autocomplete("$query") origin=($lat,$lng) → ${predictions.length} pred',
       );
       for (var i = 0; i < predictions.length; i++) {
         final p = predictions[i];
-        developer.log(
-          '  [$i] placeId=${p.placeId} dist=${p.distanceMeters}m '
+        debugPrint(
+          'PlacesNearest   [$i] placeId=${p.placeId} dist=${p.distanceMeters}m '
           '"${p.primaryText}" / "${p.secondaryText}"',
-          name: 'PlacesNearest',
         );
       }
     }
@@ -126,9 +124,8 @@ class PlacesSdkSearchService implements PlaceSearchService {
     // solo PlaceField.Location → confirma o descarta con este log.
     // ════════════════════════════════════════════════════════════
     if (kDebugMode) {
-      developer.log(
-        'resolve($placeId) → latLng=${latLng == null ? 'NULL' : '(${latLng.lat},${latLng.lng})'}',
-        name: 'PlacesNearest',
+      debugPrint(
+        'PlacesNearest resolve($placeId) → latLng=${latLng == null ? 'NULL' : '(${latLng.lat},${latLng.lng})'}',
       );
     }
 
