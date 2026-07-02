@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/geofencing/application/ports/zone_event_repository.dart';
 import '../../domain/entities/zone.dart';
 import '../../domain/entities/zone_event.dart';
-import '../../services/zone_event_service.dart';
 import 'package:intl/intl.dart';
 
 /// Widget de debug para simular eventos de entrada/salida de zonas
@@ -25,7 +26,7 @@ class GeofencingDebugWidget extends StatefulWidget {
 }
 
 class _GeofencingDebugWidgetState extends State<GeofencingDebugWidget> {
-  final ZoneEventService _eventService = ZoneEventService();
+  final ZoneEventRepository _eventService = sl<ZoneEventRepository>();
   Zone? _selectedZone;
   bool _isLoading = false;
 
