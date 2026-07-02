@@ -101,6 +101,8 @@ Antes de escribir cualquier fix, para cada `null check`, `catch` block y agotami
 - Si no hay prefijo, se asume `AUTH`.
 - En modo `SOLO`, la IA reporta un resumen al final de todo lo ejecutado.
 
+> **Nota — allowlist de comandos:** el allowlist de comandos Bash/PowerShell (qué se ejecuta sin modal de aprobación) vive en `.claude/settings.json` / `.claude/settings.local.json`. No duplicar esas reglas aquí — este archivo es contexto que la IA lee y razona, no el mecanismo de enforcement que usa el harness.
+
 ---
 
 ## 3. Estructura del Proyecto
