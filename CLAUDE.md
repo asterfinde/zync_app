@@ -511,6 +511,9 @@ Decisiones EXCLUSIVAS del desarrollador:
 | 2026-03-17 | Solo el creador del círculo puede eliminarlo | Miembros solo pueden abandonarlo. Evita círculos zombie en Firestore. |
 | 2026-03-17 | MVP: un único círculo por usuario | Múltiples círculos generan fricción. La agencia del adolescente se expresa en qué comparte y cuándo. Múltiples círculos evaluados para v2.0. |
 | 2026-03-27 | Sin opción de salir del círculo sin eliminar cuenta | Usuarios sin círculo son ruido. La única salida es eliminar la cuenta. `btn_leave_circle` y su lógica eliminados de `settings_page.dart`. |
+| 2026-06-22 | Búsqueda de lugares vía **Places SDK (New)**, no HTTP | El SDK nativo permite reusar la key Android-restringida (package+SHA-1); HTTP la afloja (no se ata a la firma del APK) — §15. Reemplaza al geocoder on-device, que no indexaba POIs/acrónimos. |
+| 2026-06-22 | `force` Places nativo **3.5.0** (excepción §7) | `flutter_google_places_sdk` 0.4.3 solo admite impl Android 0.2.2, rota contra Places 5.x. 3.5.0 es la última 3.x con los getters que usa y ya soporta la New API. Ver DEUDA `[DT-PLACES-PIN]`. |
+| 2026-06-22 | Idioma de búsqueda vía **locale del dispositivo** (Opción 1) | La New API no respeta el init-locale para autocomplete; forzar español requiere fork del plugin. Para el mercado (Perú) los teléfonos en español ya devuelven español. Ver DEUDA `[DT-PLACES-LANG]`. |
 
 ---
 

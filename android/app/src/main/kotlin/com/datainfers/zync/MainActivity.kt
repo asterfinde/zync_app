@@ -30,6 +30,7 @@ class MainActivity: FlutterActivity() {
     private val CHANNEL = "mini_emoji/notification"
     private val KEEP_ALIVE_CHANNEL = "zync/keep_alive"
     private val NATIVE_STATE_CHANNEL = "zync/native_state"
+    private val CONFIG_CHANNEL = "nunakin/config"
     private val NOTIFICATION_ID = 12345
     private val NOTIFICATION_PERMISSION_REQUEST_CODE = 100
     private val TAG = "MainActivity"
@@ -377,6 +378,18 @@ class MainActivity: FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Expone la Maps/Places API key (inyectada desde local.properties en
+        // BuildConfig) a Dart. El Places SDK la requiere en su constructor.
+        // Independiente del modo bridge → se registra siempre.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CONFIG_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getMapsApiKey" -> result.success(BuildConfig.MAPS_API_KEY)
+                    else -> result.notImplemented()
+                }
+            }
+
         if (BuildConfig.USE_LEGACY_BRIDGE) {
             setupLegacyChannels(flutterEngine)
         } else {

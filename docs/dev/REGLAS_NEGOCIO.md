@@ -398,11 +398,15 @@ Cuando el Creador elimina una zona de tipo `custom`:
 
 ---
 
-## 10. Reglas de búsqueda de dirección al crear/editar zona
+## 10. Reglas de búsqueda de lugar al crear/editar zona
+
+> Desde 2026-06-22 la búsqueda usa el **Places SDK nativo** (`flutter_google_places_sdk`,
+> `useNewApi: true` → Places API New), no el geocoder nativo del dispositivo. El geocoder
+> solo resolvía direcciones y no indexaba POIs ni acrónimos (UNALM, óvalos); el SDK sí.
 
 ### 10.1 Filtro geográfico obligatorio — umbral = ciudad del usuario
 
-La búsqueda de dirección en el formulario de zona (`ZoneForm`) **descarta todo resultado ubicado a más de 50 km de la posición GPS actual del usuario**.
+La búsqueda en el formulario de zona (`ZoneForm`) **descarta todo resultado ubicado a más de 50 km de la posición GPS actual del usuario**.
 
 **Regla de producto:** el umbral es la ciudad donde está el usuario en ese momento.
 - Si el usuario está en Lima → solo resultados en Lima.
@@ -410,22 +414,28 @@ La búsqueda de dirección en el formulario de zona (`ZoneForm`) **descarta todo
 - Si el usuario escribe "Iquitos" estando en Lima → la app encuentra calles o barrios llamados "Iquitos" dentro de Lima, **no** la ciudad de Iquitos (a ~1 100 km).
 - Si el usuario escribe "Arequipa" estando en Lima → excluido (ciudad a ~1 000 km).
 
+**Doble capa de filtrado:**
+1. **Server-side (SDK):** el autocompletado se restringe con un `locationRestriction` = cuadro de ~50 km centrado en `_selectedLocation`. Además `countries: ['pe']` y `origin` = posición actual (para que cada predicción traiga su `distanceMeters`).
+2. **Client-side (fino):** al resolver la predicción elegida a coordenadas (`fetchPlace`), se aplica el umbral circular exacto de 50 km. Necesario porque las esquinas del rectángulo del SDK exceden los 50 km.
+
 **Referencia de distancia:** la posición GPS cargada en `_selectedLocation`. El formulario de zona requiere GPS activo — si no está disponible se muestra un diálogo bloqueante y el formulario se cierra, por lo que `_selectedLocation` siempre refleja la posición real al momento de buscar.
 
 **Umbral de 50 km:** cubre cualquier área metropolitana del Perú. Lima tiene el área metropolitana más extensa (~40 km de radio); todas las demás ciudades son considerablemente menores.
 
-### 10.2 Comportamiento ante resultados sin candidatos cercanos
+### 10.2 Comportamiento ante resultados sin predicciones
 
-Si **ningún** resultado del geocoder queda dentro del umbral de 1 500 km, se muestra el error:
+Si el autocompletado no devuelve predicciones dentro del `locationRestriction`, se muestra el error:
 
-> *"No se encontró esa dirección cerca de tu ubicación"*
+> *"No se encontró ese lugar cerca de tu ubicación"*
 
 No se centra el mapa en ningún punto nuevo. El usuario puede refinar el texto o ajustar el marcador manualmente.
 
-### 10.3 Selección del mejor candidato cercano
+Si la predicción elegida queda fuera del círculo fino de 50 km, se muestra *"Ese lugar está fuera de tu ciudad"* y el mapa no se mueve.
 
-De los candidatos que superan el filtro de distancia, se elige el **más cercano** a `_selectedLocation`. Esto garantiza consistencia cuando hay varios resultados válidos dentro del umbral (ej. dos barrios con el mismo nombre en distintas ciudades del país).
+### 10.3 Selección del resultado — el usuario elige
+
+El autocompletado devuelve una **lista de predicciones** rankeadas por Google (relevancia + proximidad), mostrada como dropdown bajo el campo. **El usuario elige** la predicción correcta. Esto reemplaza la heurística anterior de "elegir el más cercano automáticamente", que fallaba con POIs (un negocio homónimo cercano ganaba al lugar buscado). Al tocar una predicción se resuelve a coordenadas y se centra el mapa.
 
 ### 10.4 Idioma de resultados
 
-El geocoder se configura con `setLocaleIdentifier('es_PE')` antes de cada búsqueda para biasear las etiquetas de resultado hacia español de Perú. Este ajuste es complementario al filtro de distancia, no lo reemplaza.
+El SDK se inicializa con `locale: Locale('es', 'PE')` para biasear las etiquetas de resultado hacia español de Perú. Este ajuste es complementario al filtro de distancia, no lo reemplaza.
