@@ -101,27 +101,35 @@ class PlacesSdkSearchService implements PlaceSearchService {
     return PlaceLocation(latLng.lat, latLng.lng);
   }
 
-  /// Ejecuta [op] y, si falla con un error de red transitorio (típico tras
-  /// Doze: la radio despierta y el primer request falla DNS), reintenta UNA vez
-  /// tras una breve espera. Best-effort idempotente — autocomplete y fetchPlace
+  /// Ejecuta [op] y, si falla con un error de red transitorio, reintenta con
+  /// backoff (400ms, luego 1200ms). Tras Doze/idle prolongado la conexión TCP
+  /// cacheada en el `PlacesClient` nativo queda muerta en el pool — reintentar
+  /// con el mismo cliente reusa esa conexión zombie y vuelve a fallar. Por eso,
+  /// si TODOS los reintentos fallan por red, se descarta [_client] (`= null`)
+  /// antes de lanzar [PlaceSearchNetworkException]: la siguiente búsqueda
+  /// reconstruye el cliente nativo vía [_ensureClient], forzando un pool de
+  /// conexiones fresco. Best-effort idempotente — autocomplete y fetchPlace
   /// son lecturas, sin acción irreversible (§protocolo caminos negativos).
-  /// Si el reintento también falla por red, lanza [PlaceSearchNetworkException]
-  /// para que el caller muestre un mensaje amigable.
   Future<T> _withRetry<T>(Future<T> Function() op) async {
-    try {
-      return await op();
-    } on PlatformException catch (e) {
-      if (!_isTransientNetworkError(e)) rethrow;
-      developer.log('Reintentando tras error de red transitorio: ${e.message}',
-          name: 'PlacesSearch');
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+    const backoffs = [
+      Duration(milliseconds: 400),
+      Duration(milliseconds: 1200),
+    ];
+    for (var attempt = 0;; attempt++) {
       try {
         return await op();
-      } on PlatformException catch (e2) {
-        if (_isTransientNetworkError(e2)) {
+      } on PlatformException catch (e) {
+        if (!_isTransientNetworkError(e)) rethrow;
+        if (attempt >= backoffs.length) {
+          // Cliente probablemente zombie tras idle prolongado: se descarta
+          // para que la próxima búsqueda fuerce un pool de conexiones nuevo.
+          _client = null;
           throw const PlaceSearchNetworkException();
         }
-        rethrow;
+        developer.log(
+            'Reintentando tras error de red transitorio (intento ${attempt + 1}): ${e.message}',
+            name: 'PlacesSearch');
+        await Future<void>.delayed(backoffs[attempt]);
       }
     }
   }

@@ -225,15 +225,16 @@ class _ZoneFormState extends State<ZoneForm> {
   }
 
   /// Snackbar neutro (no rojo) para errores de red transitorios.
-  /// Texto blanco explícito (era ilegible por heredar el color del tema) y
-  /// accionable: la búsqueda Places es de red y tras Doze el primer intento
-  /// puede fallar — reabrir la pantalla reintenta limpio. [DT-PLACES-NET]
+  /// Texto blanco explícito. El servicio ya descartó el cliente Places zombie
+  /// tras agotar los reintentos (ver `_withRetry` en
+  /// `places_sdk_search_service.dart`), así que un segundo intento reconstruye
+  /// el cliente y suele recuperar de inmediato. [DT-PLACES-NET]
   void _showNetworkSnack() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-          'Sin conexión. Cierra y vuelve a entrar a esta pantalla para reintentar.',
+          'Sin conexión. Vuelve a intentarlo.',
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Color(0xFF3A3A3C),
@@ -507,6 +508,31 @@ class _ZoneFormState extends State<ZoneForm> {
                       ),
                     ],
 
+                    // Afordancia de marcado manual (REGLAS_NEGOCIO §10.2).
+                    // Google no indexa toda calle en el autocompletado; cuando
+                    // el lugar no aparece, el usuario fija el punto tocando el
+                    // mapa o arrastrando el marcador — no queda sin salida.
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.touch_app_outlined,
+                            color: Colors.grey.shade600, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '¿No aparece el lugar? Busca una referencia cercana '
+                            'o el distrito, luego toca el mapa o arrastra el '
+                            'marcador para fijar el punto exacto.',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
                     const SizedBox(height: 24),
 
                     // Tipo de zona con Option Buttons
@@ -772,7 +798,7 @@ class _ZoneFormState extends State<ZoneForm> {
   /// El distrito (`secondaryText`) es el único desambiguador de homónimos:
   /// misma calle, distinto distrito. No se muestra distancia porque Places API
   /// (New) devuelve `distanceMeters = 0` aunque se pase `origin` (no soporta el
-  /// sesgo de proximidad en autocomplete) — ver DEUDA [DT-PLACES-NEAREST].
+  /// sesgo de proximidad en autocomplete).
   Widget _buildPredictionTile(PlacePrediction prediction) {
     return InkWell(
       onTap: () => _selectPrediction(prediction),
