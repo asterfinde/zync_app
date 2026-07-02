@@ -8,6 +8,7 @@ import 'package:nunakin_app/contexts/geofencing/application/ports/zone_repositor
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/apply_geofence_status.dart';
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/create_zone.dart';
 import 'package:nunakin_app/contexts/geofencing/application/use_cases/delete_zone.dart';
+import 'package:nunakin_app/contexts/geofencing/application/use_cases/detect_zone_transition.dart';
 import 'package:nunakin_app/contexts/geofencing/infrastructure/firestore_geofence_status_writer.dart';
 import 'package:nunakin_app/contexts/geofencing/infrastructure/firestore_zone_event_repository.dart';
 import 'package:nunakin_app/contexts/geofencing/infrastructure/firestore_zone_repository.dart';
@@ -21,6 +22,15 @@ Future<void> registerGeofencingModule(GetIt sl) async {
 
   sl.registerLazySingleton<ZoneEventRepository>(
     () => FirestoreZoneEventRepository(sl<FirebaseFirestore>(), sl<FirebaseAuth>()),
+  );
+
+  sl.registerLazySingleton<DetectZoneTransition>(
+    () => DetectZoneTransition(
+      zoneRepo:  sl<ZoneRepository>(),
+      eventRepo: sl<ZoneEventRepository>(),
+      auth:      sl<FirebaseAuth>(),
+      bus:       sl<DomainEventBus>(),
+    ),
   );
 
   sl.registerLazySingleton<PlaceSearchService>(

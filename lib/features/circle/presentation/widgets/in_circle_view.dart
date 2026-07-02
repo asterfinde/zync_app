@@ -15,8 +15,6 @@ import '../../../../core/services/emoji_service.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart';
 import '../../../../core/models/user_status.dart';
 import '../../../geofencing/services/geofencing_service.dart';
-import 'package:nunakin_app/app/di/injection_container.dart';
-import 'package:nunakin_app/shared/events/domain_event_bus.dart';
 import 'member_status_grid.dart';
 import 'circle_info_card.dart';
 import '../../../../core/widgets/nk_app_header.dart';
@@ -72,7 +70,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   StreamSubscription<QuerySnapshot>? _customEmojisListener;
 
   // Servicio de geofencing
-  final GeofencingService _geofencingService = GeofencingService(bus: sl<DomainEventBus>());
+  final GeofencingService _geofencingService = GeofencingService();
   // --- FIN DE LA MODIFICACIÓN ---
 
   // Aprobación de ingreso
