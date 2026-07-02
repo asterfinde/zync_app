@@ -7,15 +7,15 @@ import 'package:geolocator/geolocator.dart';
 import 'package:nunakin_app/shared/events/domain_event.dart';
 import 'package:nunakin_app/shared/events/domain_event_bus.dart';
 import 'package:nunakin_app/app/di/injection_container.dart';
+import 'package:nunakin_app/contexts/geofencing/application/ports/zone_event_repository.dart';
 import 'package:nunakin_app/contexts/geofencing/application/ports/zone_repository.dart';
 import '../domain/entities/zone.dart';
 import '../domain/entities/zone_event.dart';
-import 'zone_event_service.dart';
 
 /// Servicio para monitoreo de geofencing y detección de entrada/salida de zonas
 class GeofencingService {
   final ZoneRepository _zoneRepo = sl<ZoneRepository>();
-  final ZoneEventService _eventService = ZoneEventService();
+  final ZoneEventRepository _eventService = sl<ZoneEventRepository>();
   final DomainEventBus? _bus;
 
   GeofencingService({DomainEventBus? bus}) : _bus = bus;
