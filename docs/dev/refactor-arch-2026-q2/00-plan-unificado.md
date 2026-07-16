@@ -8,7 +8,7 @@
 
 ---
 
-## Estado de avance — actualizado 2026-06-09
+## Estado de avance — actualizado 2026-07-16
 
 | Semana | Tema | Estado | Tag / PR |
 |--------|------|--------|----------|
@@ -20,14 +20,14 @@
 | 6 | Hardening (parcial) | ✅ Completa | `refactor-sem6-done` @ `9fcfda2` (PR #201) |
 | — | *(Fix de producción)* | ✅ Mergeado | PR #202 — raíz en GCP: Token Service API faltante en key `Android - Zync Maps` |
 | **6a** | **Design System** | ✅ **Completa** | PRs #203, #205–#218 — tokens + DS v2.0 Minimalist completo |
-| **7** | **Flujos no refactorizados** | **🔲 PRÓXIMA** | 4 PRs (A–D) · doc: [07-semana-7-flujos-legacy.md](07-semana-7-flujos-legacy.md) |
-| 8 | Geofencing BC completo | 🔲 Pendiente | — |
-| 9 | Seguridad y Compliance | 🔲 Pendiente | — |
+| 7 | Flujos no refactorizados | ✅ Completa | 4 PRs (A–D) · doc: [07-semana-7-flujos-legacy.md](07-semana-7-flujos-legacy.md) |
+| **8** | **Geofencing BC completo** | ✅ **Completa** | PRs #227–#237 — `ZoneRepository`, `DetectZoneTransition`, `GeofencingService` thin adapter. Quedan 2 ítems de device-test diferidos a cierre Sem 9 (ver `DEUDA_TECNICA.md`) |
+| **9** | **Seguridad y Compliance** | **🔲 PRÓXIMA** | — |
 | 10 | Launch Readiness + Freeze | 🔲 Pendiente | — |
 
-**main actual:** `1a0edaf` — PR #217 (compact InCircleView cards)
+**main actual:** `21c7ca8` — PR #237 (docs: register Sem 8 technical decisions in CLAUDE.md §12)
 **Lanzamiento estimado MVP:** ~15 agosto 2026
-**Días hábiles restantes (al 2026-06-09):** ~47
+**Días hábiles restantes (al 2026-07-16):** ~21 (≈4 semanas calendario)
 
 **Nota — `USE_LEGACY_BRIDGE`:** ya en `false` en `android/app/build.gradle.kts:58`. No requiere acción en Sem 9.
 
