@@ -44,9 +44,6 @@ abstract final class StorageKeys {
   /// JSON del usuario autenticado (Clean arch local datasource).
   static const cachedUser = 'CACHED_USER';
 
-  // ── Quick Actions (Flutter-only) ────────────────────────────────────────
-  static const quickActionsPreferences = 'quick_actions_preferences';
-
   // ── Badge (Flutter-only) ────────────────────────────────────────────────
   static const appBadgeLastSeen = 'app_badge_last_seen';
 

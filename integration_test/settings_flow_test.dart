@@ -2,8 +2,6 @@
 //
 // Fase 5 — Modo Configuración
 //
-// T5.1 🔗 Cambiar las 4 Quick Actions → preferencias guardadas correctamente
-// T5.2 👁  Quick Actions reflejadas en shortcuts nativos — MANUAL
 // T5.3 🔗 Agregar emoji personalizado → visible en Firestore
 // T5.4 🔗 Eliminar emoji personalizado → eliminado de Firestore
 // T5.5 🔗 Emoji personalizado aparece en EmojiManagementPage tras crearlo
@@ -19,7 +17,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:nunakin_app/core/services/emoji_service.dart';
-import 'package:nunakin_app/core/services/quick_actions_preferences_service.dart';
 import 'package:nunakin_app/features/circle/presentation/pages/home_page.dart';
 import 'package:nunakin_app/firebase_options.dart';
 import 'package:nunakin_app/services/circle_service.dart';
@@ -157,60 +154,6 @@ void main() {
 
   // -------------------------------------------------------------------------
   // T5.1 — Cambiar Quick Actions → preferencias guardadas
-  // -------------------------------------------------------------------------
-  testWidgets(
-      'T5.1 — Seleccionar 4 Quick Actions y guardar actualiza las preferencias',
-      (tester) async {
-    await _track('T5.1', tester, () async {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _testEmail,
-        password: _testPassword,
-      );
-      await _createCircleAndGetId();
-
-      await tester.pumpWidget(_homeWrapper());
-      await tester.pumpAndSettle(const Duration(seconds: 8));
-
-      // Abrir Settings desde InCircleView
-      expect(find.byKey(const Key('btn_settings')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('btn_settings')));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      // Tab "Cuenta" es el índice 0 (activo por defecto) — QuickActionsConfigWidget está aquí
-      // Hacer scroll hasta el widget de Quick Actions
-      await tester.ensureVisible(find.byKey(const Key('btn_reset_quick_actions')));
-      await tester.pumpAndSettle();
-
-      // Resetear a defaults primero para tener estado limpio
-      await tester.tap(find.byKey(const Key('btn_reset_quick_actions')));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      // Deseleccionar todas las opciones tocando las que están seleccionadas
-      // y seleccionar una combinación diferente: busy, sos, away, meeting
-      final targetIds = ['busy', 'sos', 'away', 'meeting'];
-      for (final id in targetIds) {
-        final key = ValueKey('qa_option_$id');
-        if (find.byKey(key).evaluate().isNotEmpty) {
-          await tester.ensureVisible(find.byKey(key));
-          await tester.tap(find.byKey(key));
-          await tester.pumpAndSettle(const Duration(milliseconds: 500));
-        }
-      }
-
-      // Guardar
-      await tester.ensureVisible(find.byKey(const Key('btn_save_quick_actions')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('btn_save_quick_actions')));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-
-      // Verificar que las preferencias se guardaron correctamente
-      final saved = await QuickActionsPreferencesService.getUserQuickActions();
-      expect(saved.length, equals(4));
-
-      await _signOutFromCircle(tester);
-    });
-  });
-
   // -------------------------------------------------------------------------
   // T5.3 — Agregar emoji personalizado → visible en Firestore
   // -------------------------------------------------------------------------

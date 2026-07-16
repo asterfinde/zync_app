@@ -63,17 +63,6 @@
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="true"
             android:noHistory="true"/>
-        <!-- QuickActionActivity: Procesa QuickActions sin mostrar UI -->
-        <activity
-            android:name=".QuickActionActivity"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:taskAffinity=""
-            android:excludeFromRecents="true"
-            android:finishOnTaskLaunch="true"
-            android:noHistory="true"/>
-
         <receiver
             android:name=".ShowQuickStatusReceiver"
             android:exported="true"/>

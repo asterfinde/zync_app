@@ -1,7 +1,6 @@
 // Se mantiene por si acaso
 import 'package:nunakin_app/core/widgets/status_widget.dart';
 import 'package:nunakin_app/widgets/widget_service.dart';
-import 'package:nunakin_app/quick_actions/quick_actions_service.dart';
 import 'package:nunakin_app/notifications/notification_service.dart';
 import 'package:nunakin_app/core/services/silent_functionality_coordinator.dart';
 import 'package:nunakin_app/core/services/app_badge_service.dart';
@@ -35,10 +34,6 @@ class InitializationService {
       // 2. Widget Service (home widgets)
       print('  📱 [InitService - BG Isolate] Inicializando Widget Service...');
       await WidgetService.initialize();
-      
-      // 3. Quick Actions Service
-      print('  ⚡ [InitService - BG Isolate] Inicializando Quick Actions...');
-      await QuickActionsService.initialize();
       
       // 4. Notification Service
       print('  🔔 [InitService - BG Isolate] Inicializando Notifications...');
