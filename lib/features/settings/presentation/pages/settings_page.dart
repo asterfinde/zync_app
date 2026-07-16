@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
 import '../../../../contexts/identity/presentation/provider/auth_state.dart';
 import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
-import '../../../../core/widgets/quick_actions_config_widget.dart';
 import '../../../../core/services/silent_functionality_coordinator.dart'; // Point 1 SPEC
 import '../../../../core/services/session_cache_service.dart'; // FIX: Para limpiar cache en logout
 import '../../../../core/widgets/nk_dialog.dart';
@@ -705,11 +704,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                 ),
               ],
             ),
-
-            const SizedBox(height: 24),
-
-            // Sección: Quick Actions (Point 14)
-            const QuickActionsConfigWidget(),
 
             const SizedBox(height: 24),
 

@@ -150,8 +150,8 @@
 
 | No. | Caso de prueba | Resultado esperado | Tipo | Estado | Observaciones |
 |:---:|:---|:---|:---:|:---:|:---|
-| 5.1 | Cambiar las 4 Quick Actions configuradas por el usuario | Las nuevas acciones quedan guardadas en preferencias y se reflejan en los shortcuts | 🔗 | ✅ | Test automatizado pasando 2026-03-20. |
-| 5.2 | Verificar que los cambios de Quick Actions se reflejan en los shortcuts nativos | Los shortcuts del SO muestran los nuevos estados | 👁 | | Requiere inspección visual en el dispositivo. |
+| ~~5.1~~ | ~~Cambiar las 4 Quick Actions configuradas por el usuario~~ | — | 🔗 | N/A | Quick Actions removida del MVP 2026-07-16 (íconos indistinguibles, BN ya cubre el caso de uso). Implementación archivada en rama `trunk/quick-actions`. |
+| ~~5.2~~ | ~~Verificar que los cambios de Quick Actions se reflejan en los shortcuts nativos~~ | — | 👁 | N/A | Ídem 5.1. |
 | 5.3 | Agregar un emoji personalizado | Emoji creado y visible en Firestore (`circles/{id}/customEmojis`) | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Emoji creado directamente en Firestore (EmojiPicker nativo no testeable en integración). |
 | 5.4 | Eliminar un emoji personalizado | Emoji eliminado de Firestore y desaparece del tab Estados | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Fix: documento debe incluir `usageCount: 0` — Firestore excluye docs sin ese campo del `orderBy`. |
 | 5.5 | Emoji personalizado aparece en el tab Estados de Settings | Tab Estados muestra el emoji recién creado con su label | 🔗 | ✅ | Test automatizado pasando 2026-03-20. Mismo fix que T5.4 (`usageCount: 0`). |

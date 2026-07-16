@@ -475,46 +475,8 @@ class MainActivity: FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
-        }        
-        // Canal para native shortcuts (QuickActions 100% nativos)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zync/native_shortcuts").setMethodCallHandler { call, result ->
-            when (call.method) {
-                "updateShortcuts" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                        val hasCircle = call.argument<Boolean>("hasCircle") ?: false
-                        val shortcutsData = call.argument<List<Map<String, String>>>("shortcuts") ?: emptyList()
-                        
-                        val shortcuts = shortcutsData.map {
-                            ShortcutData(
-                                type = it["type"] ?: "",
-                                emoji = it["emoji"] ?: "",
-                                label = it["label"] ?: ""
-                            )
-                        }
-                        
-                        NativeShortcutManager.updateShortcuts(this, hasCircle, shortcuts)
-                        result.success(true)
-                        Log.d(TAG, "✅ [SHORTCUTS] Nativos actualizados: hasCircle=$hasCircle, count=${shortcuts.size}")
-                    } else {
-                        result.error("API_LEVEL", "Shortcuts requieren API 25+", null)
-                    }
-                }
-                "clearShortcuts" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                        NativeShortcutManager.clearShortcuts(this)
-                        result.success(true)
-                        Log.d(TAG, "🧹 [SHORTCUTS] Nativos limpiados")
-                    } else {
-                        result.success(true)
-                    }
-                }
-                else -> result.notImplemented()
-            }
         }
-        
 
-
-        
         // Canal Silent Mode — Flutter solo dice "activate" o "deactivate".
         // Kotlin es dueño del estado, las notificaciones y el ciclo de vida.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEEP_ALIVE_CHANNEL).setMethodCallHandler { call, result ->
@@ -776,40 +738,6 @@ class MainActivity: FlutterActivity() {
                     val info = NativeStateManager.getDebugInfo(this)
                     Log.d(TAG, "🔍 [KOTLIN→FLUTTER] Debug info solicitado")
                     result.success(info)
-                }
-                else -> result.notImplemented()
-            }
-        }
-
-        // zync/native_shortcuts — usado por NativeShortcutService.dart / InCircleView
-        MethodChannel(messenger, "zync/native_shortcuts").setMethodCallHandler { call, result ->
-            when (call.method) {
-                "updateShortcuts" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                        val hasCircle = call.argument<Boolean>("hasCircle") ?: false
-                        val shortcutsData = call.argument<List<Map<String, String>>>("shortcuts") ?: emptyList()
-                        val shortcuts = shortcutsData.map {
-                            ShortcutData(
-                                type = it["type"] ?: "",
-                                emoji = it["emoji"] ?: "",
-                                label = it["label"] ?: ""
-                            )
-                        }
-                        NativeShortcutManager.updateShortcuts(this, hasCircle, shortcuts)
-                        result.success(true)
-                        Log.d(TAG, "✅ [SHORTCUTS] Nativos actualizados: hasCircle=$hasCircle, count=${shortcuts.size}")
-                    } else {
-                        result.error("API_LEVEL", "Shortcuts requieren API 25+", null)
-                    }
-                }
-                "clearShortcuts" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                        NativeShortcutManager.clearShortcuts(this)
-                        result.success(true)
-                        Log.d(TAG, "🧹 [SHORTCUTS] Nativos limpiados")
-                    } else {
-                        result.success(true)
-                    }
                 }
                 else -> result.notImplemented()
             }
