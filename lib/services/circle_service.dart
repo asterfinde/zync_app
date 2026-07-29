@@ -581,6 +581,8 @@ class CircleService {
         }
 
         final members = List<String>.from(circleDoc.data()!['members'] ?? []);
+        final creatorId = circleDoc.data()!['creatorId'] as String?;
+        final isCreator = creatorId != null && creatorId == user.uid;
 
         // Verificar que el usuario esté realmente en el círculo
         if (!members.contains(user.uid)) {
@@ -594,6 +596,16 @@ class CircleService {
         if (members.isEmpty) {
           transaction.delete(circleRef);
           log('[CircleService] Círculo eliminado (último miembro salió)');
+        } else if (isCreator) {
+          // Sucesión automática (estilo WhatsApp): el miembro más antiguo
+          // sobreviviente (members[0], preserva orden de arrayUnion) asume
+          // el rol de Creador. Sin diálogo de elección.
+          final newCreatorId = members.first;
+          transaction.update(circleRef, {
+            'members': members,
+            'creatorId': newCreatorId,
+          });
+          log('[CircleService] Creador salió. Nuevo creador: $newCreatorId. Miembros restantes: ${members.length}');
         } else {
           // Actualizar la lista de miembros del círculo
           transaction.update(circleRef, {'members': members});
