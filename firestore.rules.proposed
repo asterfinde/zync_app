@@ -1,0 +1,66 @@
+rules_version = '2';
+
+// PROPUESTA — Sem 9, hallazgo de seguridad "circles sin gate de membresía".
+// NO es el archivo que se despliega (ver firebase.json → firestore.rules).
+// Este archivo solo se usa para tests contra el Firebase Emulator.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /predefinedEmojis/{emojiId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    match /users/{userId} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.circleId != null &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.circleId == resource.data.circleId
+        )
+      );
+    }
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Lookup minimo por codigo de invitacion — sin datos sensibles.
+    match /circleInvites/{code} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null &&
+        request.auth.uid == get(/databases/$(database)/documents/circles/$(resource.data.circleId)).data.creatorId;
+    }
+
+    match /circles/{circleId} {
+      allow read: if request.auth != null &&
+        request.auth.uid in resource.data.members;
+
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.creatorId &&
+        request.resource.data.members == [request.auth.uid];
+
+      allow update: if request.auth != null &&
+        request.auth.uid in resource.data.members;
+
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.creatorId;
+    }
+
+    match /circles/{circleId}/joinRequests/{requestUserId} {
+      allow create: if request.auth != null && request.auth.uid == requestUserId;
+      allow read: if request.auth != null && (
+        request.auth.uid == requestUserId ||
+        request.auth.uid in get(/databases/$(database)/documents/circles/$(circleId)).data.members
+      );
+      allow update, delete: if request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/circles/$(circleId)).data.members;
+    }
+
+    match /circles/{circleId}/{document=**} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/circles/$(circleId)).data.members;
+    }
+  }
+}

@@ -59,6 +59,11 @@ scripts/serviceAccountKey.json
 # Node modules (Firebase Admin SDK)
 node_modules/
 
+# Firebase emulator debug logs
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+
 # Windows Zone.Identifier files
 *:Zone.Identifier
 
