@@ -1,5 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:developer';
 
 /// Servicio para manejo de GPS y ubicación
@@ -47,7 +48,9 @@ class GPSService {
         longitude: position.longitude,
       );
       
-      log('[GPSService] ✅ Ubicación obtenida: ${coordinates.latitude}, ${coordinates.longitude}');
+      if (kDebugMode) {
+        log('[GPSService] ✅ Ubicación obtenida: ${coordinates.latitude}, ${coordinates.longitude}');
+      }
       return coordinates;
       
     } catch (e) {

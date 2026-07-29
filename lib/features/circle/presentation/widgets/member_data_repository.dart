@@ -85,7 +85,9 @@ class MemberDataRepository {
         }
         return MapEntry(uid, '...');
       } catch (e) {
-        debugPrint('[MemberDataRepository] Error fetching nickname for $uid: $e');
+        if (kDebugMode) {
+          debugPrint('[MemberDataRepository] Error fetching nickname for $uid: $e');
+        }
         return MapEntry(uid, '...');
       }
     });

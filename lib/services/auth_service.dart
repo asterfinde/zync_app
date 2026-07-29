@@ -1,6 +1,7 @@
 // lib/services/auth_service.dart
 
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,7 +23,9 @@ class AuthService {
         return null;
       }
 
-      log('[AuthService] Obteniendo datos de Firestore para: ${firebaseUser.uid}');
+      if (kDebugMode) {
+        log('[AuthService] Obteniendo datos de Firestore para: ${firebaseUser.uid}');
+      }
       DocumentSnapshot<Map<String, dynamic>> doc;
       try {
         doc = await _firestore
@@ -37,7 +40,9 @@ class AuthService {
       }
 
       if (!doc.exists) {
-        log('[AuthService] ⚠️ Usuario no existe en Firestore: ${firebaseUser.uid}');
+        if (kDebugMode) {
+          log('[AuthService] ⚠️ Usuario no existe en Firestore: ${firebaseUser.uid}');
+        }
         return null;
       }
 
@@ -64,7 +69,9 @@ class AuthService {
     String nickname = '',
   }) async {
     try {
-      log('[AuthService] Intentando signInOrRegister para: $email');
+      if (kDebugMode) {
+        log('[AuthService] Intentando signInOrRegister para: $email');
+      }
 
       // Intentar login primero
       firebase.UserCredential? userCredential;
@@ -73,7 +80,9 @@ class AuthService {
           email: email,
           password: password,
         );
-        log('[AuthService] ✅ Login exitoso para: $email');
+        if (kDebugMode) {
+          log('[AuthService] ✅ Login exitoso para: $email');
+        }
       } on firebase.FirebaseAuthException catch (e) {
         if (e.code == 'user-not-found' || e.code == 'wrong-password') {
           // Usuario no existe, registrar
@@ -82,7 +91,9 @@ class AuthService {
             email: email,
             password: password,
           );
-          log('[AuthService] ✅ Registro exitoso para: $email');
+          if (kDebugMode) {
+            log('[AuthService] ✅ Registro exitoso para: $email');
+          }
         } else {
           throw Exception('Error de autenticación: ${e.message}');
         }

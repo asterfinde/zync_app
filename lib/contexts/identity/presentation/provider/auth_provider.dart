@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase;
 
@@ -29,8 +30,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void _onAuthStateChanged(firebase.User? firebaseUser) async {
-    log("[AuthNotifier] [STREAM] Stream reported user: ${firebaseUser?.uid}");
-    log("[AuthNotifier] [STREAM] _onAuthStateChanged: firebaseUser = ${firebaseUser?.uid}, email = ${firebaseUser?.email}");
+    if (kDebugMode) {
+      log("[AuthNotifier] [STREAM] Stream reported user: ${firebaseUser?.uid}");
+      log("[AuthNotifier] [STREAM] _onAuthStateChanged: firebaseUser = ${firebaseUser?.uid}, email = ${firebaseUser?.email}");
+    }
     try {
       if (firebaseUser != null) {
         log("[AuthNotifier] [STREAM] FirebaseUser existe. Llamando a getCurrentUser...");
@@ -50,7 +53,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
               log("[AuthNotifier] ⚠️ NativeState sync error (esperado en iOS): $e");
             });
 
-            log("[AuthNotifier] [STREAM] User details fetched successfully. State -> Authenticated. user.nickname: ${user.nickname}, user.email: ${user.email}");
+            if (kDebugMode) {
+              log("[AuthNotifier] [STREAM] User details fetched successfully. State -> Authenticated. user.nickname: ${user.nickname}, user.email: ${user.email}");
+            }
             state = Authenticated(user);
           } else {
             log("[AuthNotifier] [STREAM] AuthService returned a null user. State -> Unauthenticated");
@@ -109,7 +114,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> signInOrRegister(String email, String password,
       {String nickname = ''}) async {
-    log("[AuthNotifier] [ACTION] Triggering signInOrRegister for email: $email, nickname: $nickname");
+    if (kDebugMode) {
+      log("[AuthNotifier] [ACTION] Triggering signInOrRegister for email: $email, nickname: $nickname");
+    }
     state = AuthLoading();
 
     // 🔥 SIMPLIFICADO: try/catch en vez de Either/fold
@@ -136,7 +143,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
             log("[AuthNotifier] ⚠️ NativeState sync error (esperado en iOS): $e");
           });
 
-          log("[AuthNotifier] [ACTION] Usuario recargado tras login/registro. State -> Authenticated. Nickname: ${freshUser.nickname}, Email: ${freshUser.email}");
+          if (kDebugMode) {
+            log("[AuthNotifier] [ACTION] Usuario recargado tras login/registro. State -> Authenticated. Nickname: ${freshUser.nickname}, Email: ${freshUser.email}");
+          }
           state = Authenticated(freshUser);
         } else {
           log("[AuthNotifier] [ACTION] Usuario recargado es null tras login/registro. State -> Unauthenticated");
@@ -148,7 +157,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       if (nickname.isNotEmpty) {
-        log("[AuthNotifier] [ACTION] Registro fallido para $email. Borrando usuario Auth temporal si existe...");
+        if (kDebugMode) {
+          log("[AuthNotifier] [ACTION] Registro fallido para $email. Borrando usuario Auth temporal si existe...");
+        }
         try {
           await _firebaseAuth.currentUser?.delete();
         } catch (deleteError) {

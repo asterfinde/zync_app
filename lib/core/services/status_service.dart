@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nunakin_app/core/models/user_status.dart';
 import 'package:nunakin_app/contexts/presence/application/ports/presence_repository.dart';
@@ -212,7 +213,9 @@ class StatusService {
         log('[StatusService] 🆘 Estado SOS detectado - obteniendo ubicación GPS...');
         coordinates = await GPSService.getCurrentLocation();
         if (coordinates != null) {
-          log('[StatusService] 📍 Ubicación GPS obtenida para SOS: ${coordinates.latitude}, ${coordinates.longitude}');
+          if (kDebugMode) {
+            log('[StatusService] 📍 Ubicación GPS obtenida para SOS: ${coordinates.latitude}, ${coordinates.longitude}');
+          }
         } else {
           log('[StatusService] ⚠️ No se pudo obtener ubicación GPS para SOS');
         }

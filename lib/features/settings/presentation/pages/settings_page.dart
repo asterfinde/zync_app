@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/design_tokens.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -133,7 +134,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
               ? displayName
               : fbUser.email?.split('@')[0];
           _userNameController.text = _currentUserName ?? '';
-          debugPrint('[SettingsPage] ⚡ Usuario cargado desde FirebaseAuth fallback: email=[$_userEmail]');
+          if (kDebugMode) {
+            debugPrint('[SettingsPage] ⚡ Usuario cargado desde FirebaseAuth fallback: email=[$_userEmail]');
+          }
         }
       }
     } catch (e) {
