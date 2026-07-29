@@ -43,7 +43,7 @@
 |--------|------------------------|
 | **Sem 8** (Geofencing BC) | [DT-GEO] simulador → `DomainEventBus` — ✅ cerrado (PR #236) |
 | **Sem 9** (Seguridad/Compliance) | Validación de correos al registro; [DT-ACCOUNT-DELETE-POLICY] invertir a solo-salir-de-círculo; cierre remoto de sesión (equipo perdido); Política de privacidad + justificación `ACCESS_BACKGROUND_LOCATION` (CLAUDE.md §15) |
-| **Pendiente al cierre Sem 9** (2026-07-16 — batch de device-test extenso, no bloquea el resto de Sem 9) | Verificación geofencing en Modo Silencio >1h; [DT-ZONE-SMOKE-MANUAL] automatización smoke test E/S de zona |
+| **Pendiente al cierre Sem 9** (2026-07-16 — batch de device-test extenso, no bloquea el resto de Sem 9) | Verificación geofencing en Modo Silencio >1h; [DT-ZONE-SMOKE-MANUAL] automatización smoke test E/S de zona; 3 ítems PR #238 (Quick Actions removal, ver `project_pr238_pending_device_verification`); **3 ítems PR #241 (2026-07-29, excepción CLAUDE.md §8 confirmada — riesgo aceptado):** (1) salir del círculo siendo miembro regular, (2) salir del círculo siendo Creador → verificar sucesión automática al miembro más antiguo, (3) "Eliminar Cuenta" sigue funcionando desde su nueva ubicación en `settings_page.dart` |
 | **Sem 10** (Launch Readiness + freeze) | `dev_utils/` + archivos dev en `lib/`; scripts `.ps1` en raíz; optimización `gradle.properties`; limpieza §12/§13 CLAUDE.md ([POST-SEM3]) |
 | **Post-MVP** (no bloquea lanzamiento) | Archivos legacy de auth; `updateCustomEmoji()`; ejercicio de respiración (v2.0); afinar performance de actualizaciones; State Management documentado en §5; API Key Anthropic server-side (al implementar Fase 1 IA) |
 
