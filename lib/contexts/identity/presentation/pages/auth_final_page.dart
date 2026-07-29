@@ -2,6 +2,7 @@
 
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../../app/theme/design_tokens.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -228,8 +229,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
 
   // PROCESO ACTUAL: Solo Firebase Auth (comportamiento estándar)
   Future<bool> _sendPasswordResetEmail(String email) async {
-    log('[PROCESO AUTH] Iniciando envío de correo de recuperación para email: $email',
-        name: 'PasswordReset');
+    if (kDebugMode) {
+      log('[PROCESO AUTH] Iniciando envío de correo de recuperación para email: $email',
+          name: 'PasswordReset');
+    }
     log('[PROCESO AUTH] ⚠️ NOTA: Firebase Auth no valida existencia por seguridad',
         name: 'PasswordReset');
 
@@ -350,8 +353,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                         onPressed: () async {
                           final email = resetEmailController.text.trim();
 
-                          log('\n[VALIDACIÓN] Email ingresado: "$email"',
-                              name: 'PasswordReset');
+                          if (kDebugMode) {
+                            log('\n[VALIDACIÓN] Email ingresado: "$email"',
+                                name: 'PasswordReset');
+                          }
 
                           // CASO 3: Validación de campo vacío
                           if (email.isEmpty) {
@@ -388,8 +393,10 @@ class _AuthFinalPageState extends State<AuthFinalPage> {
                               name: 'PasswordReset');
                           log('[TREN EJECUCIÓN] Iniciando recuperación de contraseña',
                               name: 'PasswordReset');
-                          log('[TREN EJECUCIÓN] Email a procesar: $email',
-                              name: 'PasswordReset');
+                          if (kDebugMode) {
+                            log('[TREN EJECUCIÓN] Email a procesar: $email',
+                                name: 'PasswordReset');
+                          }
                           log('[TREN EJECUCIÓN] Usando solo Firebase Auth (sin Firestore)',
                               name: 'PasswordReset');
                           log('[TREN EJECUCIÓN] =================================\n',

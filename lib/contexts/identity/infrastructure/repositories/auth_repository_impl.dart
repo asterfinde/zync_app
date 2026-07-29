@@ -1,6 +1,7 @@
 // lib/features/auth/data/repositories/auth_repository_impl.dart
 
 import 'dart:developer'; // Añadido para logging
+import 'package:flutter/foundation.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
@@ -36,9 +37,13 @@ class AuthRepositoryImpl implements AuthRepository {
           password: password,
           nickname: nickname,
         );
-        log('[AuthRepository] HU: remoteDataSource devolvió el usuario con UID: ${remoteUser.uid}, email: ${remoteUser.email}, nickname: ${remoteUser.nickname}');
+        if (kDebugMode) {
+          log('[AuthRepository] HU: remoteDataSource devolvió el usuario con UID: ${remoteUser.uid}, email: ${remoteUser.email}, nickname: ${remoteUser.nickname}');
+        }
         await localDataSource.cacheUser(remoteUser);
-        log('[AuthRepository] HU: Usuario cacheado con UID: ${remoteUser.uid}');
+        if (kDebugMode) {
+          log('[AuthRepository] HU: Usuario cacheado con UID: ${remoteUser.uid}');
+        }
         return Right(remoteUser);
       } on ServerException catch (e) {
         log('[AuthRepository] HU: ServerException atrapada: ${e.message}');
@@ -57,10 +62,14 @@ class AuthRepositoryImpl implements AuthRepository {
     if (await networkInfo.isConnected) {
       try {
         final remoteUser = await remoteDataSource.getCurrentUser();
-        log('[AuthRepository] HU: Usuario obtenido de remoto: ${remoteUser?.uid}, email: ${remoteUser?.email}, nickname: ${remoteUser?.nickname}');
+        if (kDebugMode) {
+          log('[AuthRepository] HU: Usuario obtenido de remoto: ${remoteUser?.uid}, email: ${remoteUser?.email}, nickname: ${remoteUser?.nickname}');
+        }
         if (remoteUser != null) {
           await localDataSource.cacheUser(remoteUser);
-          log('[AuthRepository] HU: Usuario cacheado con UID: ${remoteUser.uid}');
+          if (kDebugMode) {
+            log('[AuthRepository] HU: Usuario cacheado con UID: ${remoteUser.uid}');
+          }
           return Right(remoteUser);
         } else {
           log('[AuthRepository] HU: No hay usuario autenticado en remoto.');
@@ -72,7 +81,9 @@ class AuthRepositoryImpl implements AuthRepository {
     } else {
       try {
         final localUser = await localDataSource.getLastUser();
-        log('[AuthRepository] HU: Usuario obtenido del caché (sin conexión): ${localUser?.uid}, email: ${localUser?.email}, nickname: ${localUser?.nickname}');
+        if (kDebugMode) {
+          log('[AuthRepository] HU: Usuario obtenido del caché (sin conexión): ${localUser?.uid}, email: ${localUser?.email}, nickname: ${localUser?.nickname}');
+        }
         return Right(localUser);
       } on CacheException {
         return Left(NetworkFailure(message: 'No internet connection and no cached user.'));

@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -637,7 +638,9 @@ class CircleService {
     if (user == null) throw Exception('Usuario no autenticado');
 
     final uid = user.uid;
-    log('[CircleService] 🗑️ Iniciando deleteAccount() para uid: $uid');
+    if (kDebugMode) {
+      log('[CircleService] 🗑️ Iniciando deleteAccount() para uid: $uid');
+    }
 
     // 1. Manejar círculo según rol (creador vs miembro común)
     final userDoc = await _firestore.collection('users').doc(uid).get();
