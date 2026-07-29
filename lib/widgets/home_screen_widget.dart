@@ -116,8 +116,12 @@ class _HomeScreenWidgetState extends ConsumerState<HomeScreenWidget> with Ticker
 
     try {
       // Usar StatusService con el StatusType correcto
-      await StatusService.updateUserStatus(statusType);
-      await _showSuccessFeedback(statusType.emoji);
+      final result = await StatusService.updateUserStatus(statusType);
+      if (result.isSuccess) {
+        await _showSuccessFeedback(statusType.emoji);
+      } else {
+        await _showErrorFeedback();
+      }
     } catch (e) {
       await _showErrorFeedback();
     } finally {

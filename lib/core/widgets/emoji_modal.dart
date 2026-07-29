@@ -433,7 +433,21 @@ class _StatusSelectorOverlayLoaderState
 
   void _onSosTriggered() {
     final sos = StatusType.fallbackPredefined.firstWhere((s) => s.id == 'sos');
-    StatusService.updateUserStatus(sos);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    StatusService.updateUserStatus(sos).then((result) {
+      if (!result.isSuccess) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              result.errorMessage == 'email_not_verified'
+                  ? '🚫 Verifica tu correo para poder usar SOS'
+                  : '❌ Error al enviar SOS: ${result.errorMessage ?? 'desconocido'}',
+            ),
+            backgroundColor: NkColors.danger,
+          ),
+        );
+      }
+    });
   }
 
   @override

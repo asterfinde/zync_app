@@ -26,6 +26,7 @@ class StatusService {
   static bool tokenLikelyInvalid = false;
 
   static const String _zoneManualSelectionNotAllowedError = 'zone_manual_selection_not_allowed';
+  static const String _emailNotVerifiedError = 'email_not_verified';
   static const Set<String> _blockedZoneStatusIds = {
     StatusIds.home,
     StatusIds.school,
@@ -196,6 +197,14 @@ class StatusService {
           (previousWasAutoUpdated || previousManualOverride) && !wasInZone && newStatus.id != StatusIds.fine;
 
       log('[StatusService] 📍 Usuario estaba en zona: $wasInZone${wasInZone ? ' ($previousZoneName)' : ''}');
+
+      // Sem 9 PA95C item A: SOS requiere email verificado (bloqueo de seguridad).
+      // Se usa el flag cacheado de FirebaseAuth (sin reload()) para no agregar
+      // una dependencia de red a un camino crítico.
+      if (newStatus.id == StatusIds.sos && !user.emailVerified) {
+        log('[StatusService] 🚫 SOS bloqueado: email no verificado');
+        return StatusUpdateResult.error(_emailNotVerifiedError);
+      }
 
       // Point 16: Obtener ubicación GPS si es estado SOS
       Coordinates? coordinates;
