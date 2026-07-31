@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/design_tokens.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../../../contexts/identity/presentation/provider/auth_provider.dart';
 import '../../../../contexts/identity/presentation/provider/auth_state.dart';
 import '../../../../contexts/identity/presentation/pages/auth_final_page.dart';
@@ -575,6 +576,80 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
     }
   }
 
+  /// Sem9 Paso 8: confirma y ejecuta el cierre de sesión remota (revoke_own_sessions).
+  /// Invalida los refresh tokens del propio uid en TODOS los dispositivos, incluido este.
+  void _showRevokeSessionsDialog(BuildContext context) async {
+    final confirmed = await NkDialog.confirm(
+      context,
+      title: 'Cerrar sesión en todos los dispositivos',
+      body:
+          'Esto cerrará tu sesión en TODOS los dispositivos donde hayas iniciado sesión con esta cuenta, incluido este. Tendrás que volver a iniciar sesión.',
+      confirmLabel: 'Cerrar en todos',
+      confirmDestructive: true,
+      barrierDismissible: false,
+    );
+    if (confirmed != true) return;
+    if (context.mounted) {
+      await _executeRevokeSessions(context);
+    }
+  }
+
+  Future<void> _executeRevokeSessions(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(NkColors.mint),
+        ),
+      ),
+    );
+
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('revoke_own_sessions');
+      await callable.call();
+
+      await SilentFunctionalityCoordinator.deactivateAfterLogout().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('[SettingsPage] ⚠️ Timeout en deactivateAfterLogout (revoke sessions)');
+        },
+      );
+      await SessionCacheService.clearSession();
+      await FirebaseAuth.instance.signOut();
+
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AuthFinalPage()),
+          (route) => false,
+        );
+      }
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('[SettingsPage] ❌ Error revoke_own_sessions: ${e.code} — ${e.message}');
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.message ?? e.code}'),
+            backgroundColor: _AppColors.sosRed,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[SettingsPage] ❌ Error inesperado revoke_own_sessions: $e');
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error cerrando sesión remota: $e'),
+            backgroundColor: _AppColors.sosRed,
+          ),
+        );
+      }
+    }
+  }
+
   /// Muestra diálogo de confirmación para salir del círculo actual.
   void _showLeaveCircleDialog(BuildContext context) async {
     final confirmed = await NkDialog.confirm(
@@ -823,10 +898,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> with SingleTickerPr
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Eliminar tu cuenta borra permanentemente tus datos personales. Si estás en un círculo, sal de él primero.',
+                    'Si perdiste acceso a un dispositivo con tu sesión abierta, ciérrala remotamente. Eliminar tu cuenta borra permanentemente tus datos personales — si estás en un círculo, sal de él primero.',
                     style: _AppTextStyles.textBody,
                   ),
                   const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => _showRevokeSessionsDialog(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _AppColors.sosRed.withValues(alpha: 0.15),
+                      foregroundColor: _AppColors.sosRed,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: _AppColors.sosRed.withValues(alpha: 0.5)),
+                      ),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.phonelink_erase_outlined),
+                    label: const Text('Cerrar sesión en todos los dispositivos'),
+                  ),
+                  const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: () => _showDeleteAccountDialog(context),
                     style: ElevatedButton.styleFrom(
