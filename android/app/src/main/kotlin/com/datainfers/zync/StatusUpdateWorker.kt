@@ -156,12 +156,44 @@ class StatusUpdateWorker(
             //   o hace bail-out por timestamp mismatch, no se setea (Flutter ya
             //   habrá procesado vía canal e invocado el suppress in-memory).
             // ════════════════════════════════════════════════════════════
-            applicationContext
+            val flutterPrefs = applicationContext
                 .getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .edit()
+
+            // ════════════════════════════════════════════════════════════
+            // [FIX] Borde verde desincronizado tras pick de BN
+            // Fecha: 2026-08-02
+            // PROBLEMA: este Worker (único encolador, ver EmojiDialogActivity.kt;
+            //   la notificación persistente que lo dispara solo existe con Modo
+            //   Silencio activo) solo escribía current_status_id. El indicador de
+            //   estado activo (EmojiDialogActivity.kt / in_circle_view.dart)
+            //   resuelve con prioridad pre_silent_status_id mientras MS está
+            //   activo — nunca se actualizaba, dejando el borde verde congelado
+            //   en la selección previa a pesar de que Firestore ya reflejaba la
+            //   nueva.
+            // SOLUCIÓN: dado que este Worker solo corre con MS activo, actualizar
+            //   pre_silent_status_id en cada pick (siempre selección deliberada).
+            //   TAMBIÉN actualizar manual_status_id, aunque en el momento de
+            //   escribirla MS siga activo y por tanto no gobierne el indicador
+            //   todavía: MainActivity.onCreate() autodesactiva MS al reabrir la
+            //   app (Regla 1) y borra pre_silent_status_id/is_silent_mode_active
+            //   SIN sincronizar manual_status_id (a diferencia de ExitSilentMode,
+            //   que sí lo hace). Si luego el usuario reactiva MS sin elegir un
+            //   estado nuevo antes, SilentFunctionalityCoordinator siembra el
+            //   próximo pre_silent_status_id desde manual_status_id — si quedó
+            //   viejo, reintroduce este mismo bug por esa vía.
+            // ════════════════════════════════════════════════════════════
+            val isSilentModeActive = flutterPrefs.getBoolean(
+                SharedKeys.flutter(SharedKeys.IS_SILENT_MODE_ACTIVE), false
+            )
+            val editor = flutterPrefs.edit()
                 .putBoolean(SharedKeys.flutter(SharedKeys.SUPPRESS_NEXT_GEOFENCE_CHECK), true)
                 .putString(SharedKeys.flutter(SharedKeys.CURRENT_STATUS_ID), statusType)
-                .apply()
+                .putString(SharedKeys.flutter(SharedKeys.MANUAL_STATUS_ID), statusType)
+            if (isSilentModeActive) {
+                editor.putString(SharedKeys.flutter(SharedKeys.PRE_SILENT_STATUS_ID), statusType)
+            }
+            editor.apply()
+            Log.d(TAG, "[DIAG-W6b] SharedPrefs actualizado — manual_status_id='$statusType' pre_silent_status_id=${if (isSilentModeActive) "'$statusType'" else "sin tocar (MS inactivo)"}")
 
             // Limpiar pending_status para que Flutter no lo reprocese al reabrir la app
             prefs.edit().clear().apply()

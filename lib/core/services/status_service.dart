@@ -368,6 +368,25 @@ class StatusService {
         // ════════════════════════════════════════════════════════════
         await prefs.setString(NativeSharedKeys.manualStatusId, newStatus.id);
         log('[StatusService] 💾 manual_status_id guardado: ${newStatus.id}');
+
+        // ════════════════════════════════════════════════════════════
+        // [FIX] Borde verde desincronizado tras selección con MS activo
+        // Fecha: 2026-08-02
+        // PROBLEMA: pre_silent_status_id es el snapshot que EmojiDialogActivity
+        //   e in_circle_view leen con prioridad cuando is_silent_mode_active es
+        //   true (ver SilentFunctionalityCoordinator). Se escribe una sola vez
+        //   al activar Modo Silencio y nunca se actualizaba ante una selección
+        //   posterior — el indicador quedaba congelado en el estado previo a MS
+        //   aunque Firestore y current_status_id ya reflejaran el nuevo.
+        // SOLUCIÓN: si Modo Silencio sigue activo, esta selección también es
+        //   deliberada — actualizar pre_silent_status_id en el mismo commit.
+        //   Simétrico al fix en StatusUpdateWorker.kt (camino con proceso muerto).
+        // ════════════════════════════════════════════════════════════
+        final isSilentModeActive = prefs.getBool(NativeSharedKeys.isSilentModeActive) ?? false;
+        if (isSilentModeActive) {
+          await prefs.setString(NativeSharedKeys.preSilentStatusId, newStatus.id);
+          log('[StatusService] 💾 pre_silent_status_id actualizado (MS activo): ${newStatus.id}');
+        }
       } catch (e) {
         log('[StatusService] ⚠️ Error guardando current_status_id: $e');
       }
