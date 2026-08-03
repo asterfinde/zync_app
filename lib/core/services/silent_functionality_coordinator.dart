@@ -151,7 +151,11 @@ class SilentFunctionalityCoordinator {
     //           cuando is_silent_mode_active == true.
     // ════════════════════════════════════════════════════════════
     try {
+      // [FIX] DT-PREFS-STALE-CACHE — reload() antes de leer manualId: el
+      // Worker (BN) pudo haberlo escrito directo al XML nativo mientras
+      // este isolate seguía vivo. Fecha: 2026-08-02.
       final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
       final manualId = prefs.getString(NativeSharedKeys.manualStatusId);
       if (manualId != null) {
         await prefs.setString(NativeSharedKeys.preSilentStatusId, manualId);
