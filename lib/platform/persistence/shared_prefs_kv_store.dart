@@ -37,4 +37,9 @@ class SharedPrefsKvStore implements KvStore {
 
   @override
   Future<bool> containsKey(String key) async => _prefs.containsKey(key);
+
+  @override
+  Future<void> reload() async {
+    await _prefs.reload();
+  }
 }

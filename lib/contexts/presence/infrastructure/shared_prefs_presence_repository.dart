@@ -20,6 +20,18 @@ class SharedPrefsPresenceRepository implements PresenceRepository {
   @override
   Future<Result<PresenceState>> currentState() async {
     try {
+      // ════════════════════════════════════════════════════════════
+      // [FIX] DT-PREFS-STALE-CACHE — recargar antes de leer
+      // Fecha: 2026-08-02
+      // PROBLEMA: StatusUpdateWorker.kt (BN) y MainActivity.onCreate Regla 1
+      //   escriben/borran estas claves directo en el XML nativo mientras el
+      //   isolate Dart sigue vivo (motor pre-calentado en ZyncApplication).
+      //   El caché en memoria de shared_preferences no ve esas escrituras.
+      // SOLUCIÓN: reload() antes de leer — este repositorio se consulta
+      //   fuera del ciclo de resume de la app (EnterSilentMode, RaiseSOS),
+      //   donde no hay otro punto que ya haya refrescado el caché.
+      // ════════════════════════════════════════════════════════════
+      await _kv.reload();
       final isSilent = await _kv.getBool(NativeSharedKeys.isSilentModeActive) ?? false;
       if (isSilent) {
         final preSilentId = await _kv.getString(NativeSharedKeys.preSilentStatusId);

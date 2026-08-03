@@ -40,7 +40,7 @@ class InCircleView extends ConsumerStatefulWidget {
   ConsumerState<InCircleView> createState() => _InCircleViewState();
 }
 
-class _InCircleViewState extends ConsumerState<InCircleView> {
+class _InCircleViewState extends ConsumerState<InCircleView> with WidgetsBindingObserver {
   final Map<String, Map<String, dynamic>> _memberDataCache = {};
   final Map<String, String> _memberNicknamesCache = {};
   // ════════════════════════════════════════════════════════════
@@ -82,6 +82,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _repo = MemberDataRepository(
       circleId: widget.circle.id,
       service: _circleService,
@@ -172,12 +173,32 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _repo.saveAll(_memberNicknamesCache, _memberDataCache);
     _circleListenerSubscription?.cancel();
     _customEmojisListener?.cancel();
     _joinRequestsSubscription?.cancel();
     _stopGeofencingMonitoring();
     super.dispose();
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // [FIX] DT-PREFS-STALE-CACHE — re-leer estado al reabrir la app
+  // Fecha: 2026-08-02
+  // PROBLEMA: con el motor Flutter pre-calentado (ZyncApplication +
+  //   MainActivity.provideFlutterEngine), este widget sobrevive entre
+  //   reaperturas — initState() no vuelve a correr y _lastKnownStatusId
+  //   quedaba congelado en el valor leído la primera vez que montó.
+  //   Confirmado en dispositivo: el marcador de initState no aparece en
+  //   ninguna reapertura con proceso vivo, solo en cold start real.
+  // SOLUCIÓN: WidgetsBindingObserver — repetir la lectura en cada resumed.
+  // ════════════════════════════════════════════════════════════
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _loadLastKnownStatusId();
+    }
   }
 
   /// Listener para detectar cuando se agregan nuevos emojis personalizados
@@ -235,6 +256,9 @@ class _InCircleViewState extends ConsumerState<InCircleView> {
   Future<void> _loadLastKnownStatusId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // DT-PREFS-STALE-CACHE: no depender del orden de listeners de
+      // WidgetsBindingObserver — recargar aquí mismo antes de leer.
+      await prefs.reload();
       final manualId = prefs.getString(NativeSharedKeys.manualStatusId);
       final currentId = prefs.getString(NativeSharedKeys.currentStatusId);
       final isSilent = prefs.getBool(NativeSharedKeys.isSilentModeActive) ?? false;

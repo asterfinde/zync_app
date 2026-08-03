@@ -289,6 +289,24 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       }
     } else if (state == AppLifecycleState.resumed) {
       // ════════════════════════════════════════════════════════════
+      // [FIX] DT-PREFS-STALE-CACHE — recargar SharedPreferences al reabrir
+      // Fecha: 2026-08-02
+      // PROBLEMA: ZyncApplication pre-calienta el motor Flutter en el
+      //   arranque del proceso y MainActivity lo reutiliza
+      //   (provideFlutterEngine) — el isolate Dart sobrevive entre
+      //   reaperturas y su caché de shared_preferences (poblado una sola
+      //   vez por proceso) no ve las escrituras que Kotlin hace directo al
+      //   XML mientras la Activity no existe: StatusUpdateWorker.kt (BN,
+      //   app cerrada con Modo Silencio activo) y MainActivity.onCreate
+      //   Regla 1 (justo antes de este evento resumed).
+      // SOLUCIÓN: recargar el singleton de SharedPreferences desde disco
+      //   en cada resumed — chokepoint donde ambos ya escribieron.
+      // ════════════════════════════════════════════════════════════
+      SharedPreferences.getInstance().then((p) => p.reload()).catchError((e) {
+        debugPrint('[App] ⚠️ Error recargando caché de SharedPreferences: $e');
+      });
+
+      // ════════════════════════════════════════════════════════════
       // [FIX v3] Forzar refresh del Auth ID token al resumir (retry indefinido)
       // Fecha: 2026-05-19
       // PROBLEMA: securetoken.googleapis.com bloqueado por más de 50s post-Doze.
