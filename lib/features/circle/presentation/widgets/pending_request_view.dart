@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nunakin_app/core/services/session_cache_service.dart';
 import 'package:nunakin_app/contexts/identity/presentation/pages/auth_final_page.dart';
 import 'package:nunakin_app/app/theme/design_tokens.dart';
+import '../../../../services/circle_service.dart';
 
 class PendingRequestView extends StatefulWidget {
   final String pendingCircleId;
@@ -16,11 +18,25 @@ class PendingRequestView extends StatefulWidget {
 
 class _PendingRequestViewState extends State<PendingRequestView> {
   String? _circleName;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _requestSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadCircleName();
+    // DT-RULES-CIRCLES-OPEN: el creador ya no puede escribir el circleId de
+    // este usuario directamente — este listener aplica el veredicto (self-write)
+    // apenas el creador aprueba/rechaza. HomePage.getUserCircleStream() ya
+    // reacciona a ese cambio y transiciona la pantalla automáticamente.
+    _requestSubscription = CircleService().listenToOwnJoinRequest(
+      circleId: widget.pendingCircleId,
+    );
+  }
+
+  @override
+  void dispose() {
+    _requestSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCircleName() async {
