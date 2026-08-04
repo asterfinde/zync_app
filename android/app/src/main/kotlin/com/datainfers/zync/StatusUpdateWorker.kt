@@ -80,6 +80,23 @@ class StatusUpdateWorker(
                 return Result.failure()
             }
 
+            // ════════════════════════════════════════════════════════════
+            // [FIX] DT-SOS-BN-EMAILGATE — SOS desde BN sin verificar bypasseaba el gate
+            // Fecha: 2026-08-04
+            // PROBLEMA: StatusService.updateUserStatus() (Dart) bloquea SOS si
+            //   !user.emailVerified, pero este Worker escribe a Firestore directo
+            //   y nunca replicó ese chequeo — confirmado en device: SOS con
+            //   emailVerified=false se escribía igual, con GPS real.
+            // SOLUCIÓN: mismo criterio que el lado Dart — flag cacheado de
+            //   FirebaseAuth (sin reload()) para no agregar una dependencia de
+            //   red a este camino. No es un fallo transitorio: Result.failure()
+            //   (sin retry), igual que el resto de los guards de esta función.
+            // ════════════════════════════════════════════════════════════
+            if (statusType == "sos" && !currentUser.isEmailVerified) {
+                Log.w(TAG, "[DIAG-SOS] FAIL — SOS bloqueado: email no verificado (uid=$userId)")
+                return Result.failure()
+            }
+
             // Write directo a Firestore — mismo esquema que StatusService.updateUserStatus() en Flutter
 
             // ════════════════════════════════════════════════════════════
