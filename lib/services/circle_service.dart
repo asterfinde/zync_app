@@ -135,6 +135,13 @@ class CircleService {
       {'circleId': circleRef.id},
       SetOptions(merge: true),
     );
+    // Lookup mínimo por código (DT-RULES-CIRCLES-OPEN): un no-miembro no
+    // puede leer/listar `circles` bajo las reglas nuevas, así que unirse
+    // por código necesita esta colección aparte, sin datos sensibles.
+    batch.set(
+      _firestore.collection('circleInvites').doc(invitationCode),
+      {'circleId': circleRef.id},
+    );
 
     await batch.commit();
     log('[CircleService] ✅ Círculo creado exitosamente: ${circleRef.id}');
@@ -143,67 +150,6 @@ class CircleService {
     _refreshController.add(null);
 
     return circleRef.id;
-  }
-
-  /// Une al usuario actual a un círculo existente usando código de invitación.
-  /// Método legado — solo para uso interno o tests.
-  Future<void> joinCircle(String invitationCode) async {
-    log('[CircleService] Uniéndose al círculo con código: $invitationCode');
-
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw Exception('Usuario no autenticado');
-    }
-
-    if (invitationCode.isEmpty) {
-      throw Exception('Código de invitación vacío');
-    }
-
-    // Buscar círculo por código de invitación
-    final query =
-        await _firestore.collection('circles').where('invitation_code', isEqualTo: invitationCode).limit(1).get();
-
-    if (query.docs.isEmpty) {
-      throw Exception('Código de invitación inválido');
-    }
-
-    final circleRef = query.docs.first.reference;
-
-    await _firestore.runTransaction((transaction) async {
-      final circleSnapshot = await transaction.get(circleRef);
-
-      if (!circleSnapshot.exists) {
-        throw Exception('El círculo no existe');
-      }
-
-      final currentMembers = List<String>.from(circleSnapshot.get('members') ?? []);
-
-      if (currentMembers.contains(user.uid)) {
-        throw Exception('Ya eres miembro de este círculo');
-      }
-
-      currentMembers.add(user.uid);
-
-      final initialStatus = {
-        'userId': user.uid,
-        'statusType': 'fine',
-        'timestamp': FieldValue.serverTimestamp(),
-      };
-
-      transaction.update(circleRef, {
-        'members': currentMembers,
-        'memberStatus.${user.uid}': initialStatus,
-      });
-
-      transaction.update(_firestore.collection('users').doc(user.uid), {
-        'circleId': circleRef.id,
-      });
-    });
-
-    // Forzar actualización del stream
-    _refreshController.add(null);
-
-    log('[CircleService] ✅ Usuario se unió al círculo exitosamente');
   }
 
   /// Envía una solicitud de ingreso al círculo con el código dado.
@@ -215,23 +161,27 @@ class CircleService {
     if (user == null) throw Exception('Usuario no autenticado');
     if (invitationCode.isEmpty) throw Exception('Código de invitación vacío');
 
-    // Buscar el círculo por código
-    final query =
-        await _firestore.collection('circles').where('invitation_code', isEqualTo: invitationCode).limit(1).get();
+    // Buscar el círculo por código — vía circleInvites (DT-RULES-CIRCLES-OPEN):
+    // un no-miembro no puede leer/listar `circles` directamente bajo las
+    // reglas nuevas, así que el lookup pasa por esta colección intermedia.
+    final inviteDoc = await _firestore.collection('circleInvites').doc(invitationCode).get();
+    if (!inviteDoc.exists) throw Exception('Código de invitación inválido');
 
-    if (query.docs.isEmpty) throw Exception('Código de invitación inválido');
+    final circleId = inviteDoc.data()!['circleId'] as String;
 
-    final circleDoc = query.docs.first;
-    final circleId = circleDoc.id;
-
-    // ¿Ya es miembro?
-    final currentMembers = List<String>.from(circleDoc.data()['members'] ?? []);
-    if (currentMembers.contains(user.uid)) {
+    // Validación de membresía vía el propio doc del usuario (self-read, siempre
+    // permitido) — leer circles/{circleId} aquí exigiría ya ser miembro
+    // (DT-RULES-CIRCLES-OPEN), imposible antes de unirse. circleInvites/{code}
+    // se borra cuando el círculo desaparece (leaveCircle/deleteAccount), así que
+    // su sola existencia ya certifica que el círculo existe. MVP: un único
+    // círculo por usuario, por lo que circleId propio == circleId del código
+    // implica ya ser miembro de este círculo.
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final currentCircleId = userDoc.data()?['circleId'] as String?;
+    if (currentCircleId == circleId) {
       throw Exception('Ya eres miembro de este círculo');
     }
 
-    // ¿Ya tiene una solicitud pendiente (en cualquier círculo)?
-    final userDoc = await _firestore.collection('users').doc(user.uid).get();
     final existingPending = userDoc.data()?['pendingCircleId'] as String?;
     if (existingPending != null && existingPending.isNotEmpty) {
       throw Exception('Ya tienes una solicitud pendiente');
@@ -307,11 +257,9 @@ class CircleService {
       'members': FieldValue.arrayUnion([requestingUserId]),
       'memberStatus.$requestingUserId': initialStatus,
     });
-    // Actualizar documento del usuario
-    batch.update(_firestore.collection('users').doc(requestingUserId), {
-      'circleId': circleId,
-      'pendingCircleId': FieldValue.delete(),
-    });
+    // NOTA (DT-RULES-CIRCLES-OPEN): el creador YA NO escribe users/{requestingUserId}
+    // — las reglas nuevas exigen self-write. El propio solicitante detecta
+    // el cambio de status vía listenToOwnJoinRequest() y escribe su circleId.
 
     await batch.commit();
     log('[CircleService] ✅ Solicitud aprobada para: $requestingUserId');
@@ -341,14 +289,50 @@ class CircleService {
       circleRef.collection('joinRequests').doc(requestingUserId),
       {'status': 'rejected'},
     );
-    // Limpiar pendingCircleId del usuario
-    batch.update(_firestore.collection('users').doc(requestingUserId), {
-      'pendingCircleId': FieldValue.delete(),
-    });
+    // NOTA (DT-RULES-CIRCLES-OPEN): el creador YA NO limpia pendingCircleId
+    // de otro usuario — self-write exigido por las reglas nuevas. El propio
+    // solicitante lo limpia vía listenToOwnJoinRequest().
 
     await batch.commit();
     log('[CircleService] ✅ Solicitud rechazada para: $requestingUserId');
     _refreshController.add(null);
+  }
+
+  /// Escucha la PROPIA solicitud de ingreso pendiente y reacciona al veredicto
+  /// del creador escribiendo el resultado en el propio documento de usuario.
+  /// DT-RULES-CIRCLES-OPEN: el creador ya no puede escribir users/{otroUid}
+  /// (self-write exigido por las reglas), así que quien detecta y aplica el
+  /// cambio es el propio solicitante. Retorna la subscription para que el
+  /// caller la cancele en dispose().
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>> listenToOwnJoinRequest({
+    required String circleId,
+  }) {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Usuario no autenticado');
+
+    return _firestore
+        .collection('circles')
+        .doc(circleId)
+        .collection('joinRequests')
+        .doc(user.uid)
+        .snapshots()
+        .listen((snapshot) async {
+      if (!snapshot.exists) return;
+      final status = snapshot.data()?['status'] as String?;
+
+      if (status == 'approved') {
+        await _firestore.collection('users').doc(user.uid).update({
+          'circleId': circleId,
+          'pendingCircleId': FieldValue.delete(),
+        });
+        log('[CircleService] ✅ Solicitud propia aprobada — circleId escrito');
+      } else if (status == 'rejected') {
+        await _firestore.collection('users').doc(user.uid).update({
+          'pendingCircleId': FieldValue.delete(),
+        });
+        log('[CircleService] ℹ️ Solicitud propia rechazada — pendingCircleId limpiado');
+      }
+    });
   }
 
   /// Stream de las solicitudes pendientes de ingreso a un círculo.
@@ -451,20 +435,31 @@ class CircleService {
             // Usuario está en un círculo → escuchar cambios del círculo
             log('[CircleService] Stream: Escuchando círculo $circleId');
             await circleSubscription?.cancel();
-            circleSubscription = _firestore.collection('circles').doc(circleId).snapshots().listen((circleSnapshot) {
-              if (!circleSnapshot.exists) {
-                log('[CircleService] Stream: Círculo eliminado');
-                // Limpiar circleId del propio usuario (escritura en doc propio — permitida por reglas)
-                _firestore.collection('users').doc(user.uid).update({
-                  'circleId': FieldValue.delete(),
-                }).catchError((_) {}); // silencioso si el doc ya no existe
-                controller.add(UserNoCircle());
-                return;
-              }
-              final state = UserInCircle(Circle.fromFirestore(circleSnapshot));
-              log('[CircleService] Stream: ✅ Círculo actualizado: ${state.circle.name}');
-              controller.add(state);
-            });
+            circleSubscription = _firestore.collection('circles').doc(circleId).snapshots().listen(
+              (circleSnapshot) {
+                if (!circleSnapshot.exists) {
+                  log('[CircleService] Stream: Círculo eliminado');
+                  // Limpiar circleId del propio usuario (escritura en doc propio — permitida por reglas)
+                  _firestore.collection('users').doc(user.uid).update({
+                    'circleId': FieldValue.delete(),
+                  }).catchError((_) {}); // silencioso si el doc ya no existe
+                  controller.add(UserNoCircle());
+                  return;
+                }
+                final state = UserInCircle(Circle.fromFirestore(circleSnapshot));
+                log('[CircleService] Stream: ✅ Círculo actualizado: ${state.circle.name}');
+                controller.add(state);
+              },
+              onError: (e) {
+                // DT-RULES-CIRCLES-OPEN: el write optimista (local) de circleId en
+                // users/{uid} dispara este listener antes de que el batch de
+                // createCircle()/approveJoinRequest() confirme en el servidor. Las
+                // reglas (gate de membresía) deniegan esa lectura prematura — se
+                // autocorrige con el forceRefresh() que ya dispara ese mismo método
+                // al terminar. No propagar como excepción no manejada.
+                log('[CircleService] Stream: circleSubscription error (carrera post-escritura esperada): $e');
+              },
+            );
           } else if (pendingCircleId != null && pendingCircleId.isNotEmpty) {
             // Verificar si la solicitud sigue pendiente o ya expiró
             log('[CircleService] Stream: Verificando solicitud pendiente en $pendingCircleId');
@@ -595,6 +590,13 @@ class CircleService {
 
         // Si es el último miembro, eliminar el círculo completamente
         if (members.isEmpty) {
+          // Borrar circleInvites ANTES que el círculo — misma razón que en
+          // deleteAccount(): la regla de borrado de circleInvites exige
+          // get(circles/{circleId}).data.creatorId (DT-RULES-CIRCLES-OPEN).
+          final invitationCode = circleDoc.data()!['invitation_code'] as String?;
+          if (invitationCode != null && invitationCode.isNotEmpty) {
+            transaction.delete(_firestore.collection('circleInvites').doc(invitationCode));
+          }
           transaction.delete(circleRef);
           log('[CircleService] Círculo eliminado (último miembro salió)');
         } else if (isCreator) {
@@ -670,6 +672,16 @@ class CircleService {
               }
               await batch.commit();
               log('[CircleService] ✅ joinRequests eliminados: ${joinRequestsSnapshot.docs.length}');
+            }
+            // Borrar circleInvites ANTES que el círculo: su regla de borrado
+            // exige get(circles/{circleId}).data.creatorId — si el círculo ya
+            // no existe, ese get() no resuelve y la regla deniega, dejando
+            // circleInvites huérfano y abortando el resto de deleteAccount()
+            // (DT-RULES-CIRCLES-OPEN).
+            final invitationCode = circleDoc.data()?['invitation_code'] as String?;
+            if (invitationCode != null && invitationCode.isNotEmpty) {
+              await _firestore.collection('circleInvites').doc(invitationCode).delete();
+              log('[CircleService] ✅ circleInvites/$invitationCode eliminado.');
             }
             // Luego borrar el documento del círculo
             await _firestore.collection('circles').doc(circleId).delete();
