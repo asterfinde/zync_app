@@ -430,6 +430,7 @@ class _InCircleViewState extends ConsumerState<InCircleView> with WidgetsBinding
                     nicknamesCache: _memberNicknamesCache,
                     memberDataCache: _memberDataCache,
                     isLoading: _isLoadingNicknames,
+                    creatorId: circle.creatorId,
                     currentUserId: FirebaseAuth.instance.currentUser?.uid,
                     currentUserNickname: _getCurrentUserNickname(ref),
                     lastKnownStatusId: _lastKnownStatusId,
