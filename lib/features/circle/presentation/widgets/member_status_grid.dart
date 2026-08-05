@@ -11,6 +11,7 @@ class MemberStatusGrid extends StatelessWidget {
   final Map<String, String> nicknamesCache;
   final Map<String, Map<String, dynamic>> memberDataCache;
   final bool isLoading;
+  final String? creatorId;
   final String? currentUserId;
   final String? currentUserNickname;
   final String? lastKnownStatusId;
@@ -24,6 +25,7 @@ class MemberStatusGrid extends StatelessWidget {
     required this.nicknamesCache,
     required this.memberDataCache,
     required this.isLoading,
+    required this.creatorId,
     required this.currentUserId,
     required this.currentUserNickname,
     required this.lastKnownStatusId,
@@ -43,9 +45,7 @@ class MemberStatusGrid extends StatelessWidget {
           const Center(child: CircularProgressIndicator(color: NkColors.mint))
         else
           Column(
-            children: sortedMemberIds.asMap().entries.map((entry) {
-              final index = entry.key;
-              final memberId = entry.value;
+            children: sortedMemberIds.map((memberId) {
               final isCurrentUser = currentUserId == memberId;
               final nickname = isCurrentUser
                   ? (currentUserNickname ?? nicknamesCache[memberId] ?? '...')
@@ -67,7 +67,7 @@ class MemberStatusGrid extends StatelessWidget {
                   memberId: memberId,
                   nickname: nickname,
                   isCurrentUser: isCurrentUser,
-                  isFirst: index == 0,
+                  isCreator: memberId == creatorId,
                   memberData: memberData,
                   onTap: isCurrentUser
                       ? () {
@@ -96,7 +96,7 @@ class _MemberListItem extends StatelessWidget {
   final String memberId;
   final String nickname;
   final bool isCurrentUser;
-  final bool isFirst;
+  final bool isCreator;
   final Map<String, dynamic> memberData;
   final VoidCallback? onTap;
   final void Function(BuildContext context, Map<String, dynamic> coords, String memberName)
@@ -108,7 +108,7 @@ class _MemberListItem extends StatelessWidget {
     required this.memberId,
     required this.nickname,
     required this.isCurrentUser,
-    required this.isFirst,
+    required this.isCreator,
     required this.memberData,
     this.onTap,
     required this.onOpenMaps,
@@ -252,7 +252,7 @@ class _MemberListItem extends StatelessWidget {
                                   style: const TextStyle(
                                       fontSize: 11, color: NkColors.fgHint),
                                 ),
-                              if (isFirst && status != 'loading')
+                              if (isCreator && status != 'loading')
                                 Text(
                                   '• Creador',
                                   style: TextStyle(
