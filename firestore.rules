@@ -45,7 +45,15 @@ service cloud.firestore {
     }
 
     match /circles/{circleId}/joinRequests/{requestUserId} {
-      allow create: if request.auth != null && request.auth.uid == requestUserId;
+      // create + update (no solo create): un usuario que salió del círculo y
+      // vuelve a solicitar ingreso reusa el mismo doc (circle_service.dart
+      // requestToJoinCircle "set sobreescribe") — para Firestore Rules ese
+      // set() es un update si el doc ya existe de un ciclo anterior, no un
+      // create. Se exige status == 'pending' para que el propio solicitante
+      // nunca pueda auto-aprobarse; la aprobación real (status: 'approved')
+      // sigue restringida a miembros en la regla de abajo.
+      allow create, update: if request.auth != null && request.auth.uid == requestUserId &&
+        request.resource.data.status == 'pending';
       allow read: if request.auth != null && (
         request.auth.uid == requestUserId ||
         request.auth.uid in get(/databases/$(database)/documents/circles/$(circleId)).data.members

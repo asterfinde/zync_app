@@ -252,6 +252,31 @@ test('joinRequests: el propio solicitante NO puede aprobarse a si mismo', async 
   await assertFails(updateDoc(doc(mallory, 'circles/c1/joinRequests/mallory'), { status: 'approved' }));
 });
 
+test('joinRequests: un NO-miembro puede RE-solicitar tras salir del circulo (doc previo approved)', async () => {
+  // Reproduce el caso real: mallory ya fue miembro, salio, y su doc
+  // joinRequests de aquel ciclo quedo en 'approved' — el set() de una nueva
+  // solicitud es un update (el doc ya existe), no un create.
+  await seed(async (db) => {
+    await setDoc(doc(db, 'circles/c1'), { creatorId: 'alice', members: ['alice'] });
+    await setDoc(doc(db, 'circles/c1/joinRequests/mallory'), { status: 'approved' });
+  });
+  const mallory = testEnv.authenticatedContext('mallory').firestore();
+  await assertSucceeds(
+    setDoc(doc(mallory, 'circles/c1/joinRequests/mallory'), { status: 'pending' })
+  );
+});
+
+test('joinRequests: NO puede re-solicitar poniendose approved directamente (bypass de aprobacion)', async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'circles/c1'), { creatorId: 'alice', members: ['alice'] });
+    await setDoc(doc(db, 'circles/c1/joinRequests/mallory'), { status: 'approved' });
+  });
+  const mallory = testEnv.authenticatedContext('mallory').firestore();
+  await assertFails(
+    setDoc(doc(mallory, 'circles/c1/joinRequests/mallory'), { status: 'approved' })
+  );
+});
+
 // ─── subcolecciones (zones, customEmojis, statusEvents, members) ───────
 
 for (const sub of ['zones', 'zone_events', 'customEmojis', 'members', 'statusEvents']) {
