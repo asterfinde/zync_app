@@ -321,6 +321,14 @@ class CircleService {
       final status = snapshot.data()?['status'] as String?;
 
       if (status == 'approved') {
+        // Guard contra reproceso: leaveCircle() no resetea este doc
+        // joinRequests, que queda en 'approved' para siempre. Sin este check,
+        // cualquier re-disparo del listener (p. ej. una escritura optimista
+        // local revertida por el servidor) reescribe circleId aunque el
+        // usuario ya haya salido del círculo. pendingCircleId solo está
+        // presente mientras la aprobación no fue procesada todavía.
+        final userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.data()?['pendingCircleId'] != circleId) return;
         await _firestore.collection('users').doc(user.uid).update({
           'circleId': circleId,
           'pendingCircleId': FieldValue.delete(),
